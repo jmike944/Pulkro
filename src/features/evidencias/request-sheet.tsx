@@ -216,9 +216,9 @@ function PhoneRequest({
   const captureArea = area || m.areaChoices[0] || "Área general";
   const meta = { orderId: order.id, jornadaId: jornada.id, kind: request.kind, area: captureArea, serviceTypeId: order.serviceTypeId, selectedForReport: true };
 
-  const onFiles = async (files: FileList | null) => {
+  const onFiles = async (files: FileList | null, input: "camera" | "gallery") => {
     if (!files?.length) return;
-    const ids = await capture(files, meta);
+    const ids = await capture(files, meta, input);
     afterCapture(ids, { toast: false });
   };
 
@@ -278,8 +278,8 @@ function PhoneRequest({
     <div className="space-y-2.5">
       {canCapture ? (
         <>
-          <input ref={camRef} type="file" accept="image/*" capture="environment" hidden onChange={(e) => void onFiles(e.target.files).then(() => (e.target.value = ""))} />
-          <input ref={galRef} type="file" accept="image/*" multiple hidden onChange={(e) => void onFiles(e.target.files).then(() => (e.target.value = ""))} />
+          <input ref={camRef} type="file" accept="image/*" capture="environment" hidden onChange={(e) => void onFiles(e.target.files, "camera").then(() => (e.target.value = ""))} />
+          <input ref={galRef} type="file" accept="image/*" multiple hidden onChange={(e) => void onFiles(e.target.files, "gallery").then(() => (e.target.value = ""))} />
           <BigButton onClick={() => camRef.current?.click()} disabled={busy}>
             {busy ? <Loader2 className="animate-spin" /> : <Camera />} Tomar foto {m.kindLabel}
           </BigButton>

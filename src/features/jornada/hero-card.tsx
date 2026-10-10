@@ -38,7 +38,7 @@ export function HeroCard({ f, actions }: { f: FieldReady; actions: HeroActions }
       initial={{ opacity: 0, y: 16, scale: 0.985 }}
       animate={{ opacity: 1, y: 0, scale: 1 }}
       transition={{ duration: 0.6, ease: EASE }}
-      className="relative scroll-mt-24 overflow-hidden rounded-[28px] bg-brand-deep p-5 text-white shadow-lift sm:p-7"
+      className="relative isolate scroll-mt-24 overflow-hidden rounded-[28px] bg-brand-deep p-5 text-white shadow-lift sm:p-7"
     >
       <span aria-hidden className="pointer-events-none absolute -right-24 -top-28 size-80 rounded-full bg-sky/25 blur-3xl" />
       <span aria-hidden className="pointer-events-none absolute -bottom-32 -left-20 size-72 rounded-full bg-st-blue/20 blur-3xl" />

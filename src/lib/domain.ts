@@ -2,8 +2,9 @@
  * Pure business rules (doc §8). No React here — safe to use in selectors, metrics and PDF.
  */
 import { differenceInMinutes, isSameDay, parseISO } from "date-fns";
-import type { Incident, Jornada, Order, Photo, Report, Survey, PostSaleCase } from "./types";
+import type { GeoSource, Incident, Jornada, Order, Photo, Report, Role, Survey, PostSaleCase } from "./types";
 import type { Tone } from "./status";
+import { can } from "./permissions";
 
 export type JornadaEvidence = {
   jornada: Jornada;
@@ -51,14 +52,22 @@ export function orderEvidence(order: Order, jornadas: Jornada[], photos: Photo[]
 
 export type Blocker = { id: string; label: string; detail?: string; severity: "block" | "warn"; href?: string };
 
-/** Why an order can't be closed yet (doc §8: fotos obligatorias, jornadas, incidencias, sincronización). */
+/**
+ * Why an order can't be closed yet (doc §8: fotos obligatorias, jornadas, incidencias, sincronización).
+ * Pass `role` so links point where that role can go: the supervisor to the jornada / incident screens, everyone else to
+ * the matching tab of the order detail (field screens are supervisor-only).
+ */
 export function closureBlockers(
   order: Order,
   jornadas: Jornada[],
   photos: Photo[],
   incidents: Incident[],
   pendingSyncCount = 0,
+  role?: Role,
 ): Blocker[] {
+  const field = !role || can(role, "field.capture");
+  const evidenceHref = (jornadaId: string) => (field ? `/jornada/${jornadaId}` : `/ordenes/${order.folio}?tab=evidencia`);
+  const incidentHref = (incidentId: string) => (field ? `/incidencias?i=${incidentId}` : `/ordenes/${order.folio}?tab=incidencias`);
   const out: Blocker[] = [];
   const js = jornadas.filter((j) => j.orderId === order.id);
   const pending = js.filter((j) => j.status !== "cerrada");
@@ -68,16 +77,45 @@ export function closureBlockers(
   ev.perJornada
     .filter((x) => x.jornada.checkIn)
     .forEach((x) => {
-      if (!x.antes) out.push({ id: `antes-${x.jornada.id}`, label: `Falta foto ANTES · Jornada ${x.jornada.dayIndex}`, severity: "block", href: `/jornada/${x.jornada.id}` });
-      if (!x.despues) out.push({ id: `despues-${x.jornada.id}`, label: `Falta foto DESPUÉS · Jornada ${x.jornada.dayIndex}`, severity: "block", href: `/jornada/${x.jornada.id}` });
+      if (!x.antes) out.push({ id: `antes-${x.jornada.id}`, label: `Falta foto ANTES · Jornada ${x.jornada.dayIndex}`, severity: "block", href: evidenceHref(x.jornada.id) });
+      if (!x.despues) out.push({ id: `despues-${x.jornada.id}`, label: `Falta foto DESPUÉS · Jornada ${x.jornada.dayIndex}`, severity: "block", href: evidenceHref(x.jornada.id) });
     });
   incidents
     .filter((i) => i.orderId === order.id && i.status === "abierta")
     .forEach((i) =>
-      out.push({ id: i.id, label: `Incidencia abierta ${i.folio}`, detail: i.description, severity: i.blocksClosure ? "block" : "warn", href: `/incidencias?i=${i.id}` }),
+      out.push({ id: i.id, label: `Incidencia abierta ${i.folio}`, detail: i.description, severity: i.blocksClosure ? "block" : "warn", href: incidentHref(i.id) }),
     );
   if (pendingSyncCount > 0)
     out.push({ id: "sync", label: `${pendingSyncCount} registro(s) sin sincronizar`, detail: "El PDF definitivo se bloquea hasta sincronizar.", severity: "warn" });
+  return out;
+}
+
+/* ───────────── evidence integrity ───────────── */
+
+/** How a check-in/out location was obtained, for labels and the report. */
+export const GEO_SOURCE_LABEL: Record<GeoSource, string> = {
+  gps: "GPS en sitio",
+  manual: "Ubicación manual justificada",
+  remota: "Supervisión remota",
+};
+
+/** Minimum length of the note required for a manual location or a remote-supervision record. */
+export const GEO_NOTE_MIN = 8;
+
+export type PhotoTimingIssue = { id: "antes_after_checkout" | "despues_before_checkin"; label: string };
+
+/**
+ * Timing checks for a jornada photo against its check-in/out (doc §4.2 evidence integrity). Uses the real capture time
+ * (EXIF when present), so a gallery pick taken at the wrong moment is flagged even when it was attached in time.
+ */
+export function photoTimingIssues(photo: Pick<Photo, "kind" | "takenAt">, jornada?: Pick<Jornada, "checkIn" | "checkOut">): PhotoTimingIssue[] {
+  if (!jornada) return [];
+  const at = photo.takenAt;
+  const out: PhotoTimingIssue[] = [];
+  if (photo.kind === "antes" && jornada.checkOut && at > jornada.checkOut.deviceAt)
+    out.push({ id: "antes_after_checkout", label: "Foto ANTES tomada después del registro de salida" });
+  if (photo.kind === "despues" && jornada.checkIn && at < jornada.checkIn.deviceAt)
+    out.push({ id: "despues_before_checkin", label: "Foto DESPUÉS tomada antes del registro de entrada" });
   return out;
 }
 
@@ -118,12 +156,45 @@ export type NextAction = {
   tone: Tone;
 };
 
-/** Single source of truth for "what should happen next" on an order (dashboard, lists, cards). */
-export function nextAction(
-  order: Order,
-  ctx: { jornadas: Jornada[]; photos: Photo[]; incidents: Incident[]; reports: Report[]; surveys: Survey[]; cases: PostSaleCase[] },
-  now = new Date(),
-): NextAction {
+type NextActionCtx = { jornadas: Jornada[]; photos: Photo[]; incidents: Incident[]; reports: Report[]; surveys: Survey[]; cases: PostSaleCase[] };
+
+/**
+ * Single source of truth for "what should happen next" on an order (dashboard, lists, cards).
+ * Pass `role` (ctx.role): the step is then only offered to whoever can take it; other roles get "Ver" into the order detail
+ * (the matching tab), never a link to a screen of another role (field screens are supervisor-only).
+ */
+export function nextAction(order: Order, ctx: NextActionCtx & { role?: Role }, now = new Date()): NextAction {
+  const step = nextStep(order, ctx, now);
+  if (!ctx.role) return step;
+  const role = ctx.role;
+  const base = `/ordenes/${order.folio}`;
+  const view = (tab?: string): NextAction => ({ ...step, label: "Ver", href: tab ? `${base}?tab=${tab}` : base, variant: "secondary" });
+  const field = can(role, "field.capture");
+  switch (order.status) {
+    case "borrador":
+      return can(role, "crew.assign") ? step : view("jornadas");
+    case "programada":
+    case "jornada_cerrada":
+    case "en_ejecucion":
+      return field ? step : view(step.href.startsWith("/jornada/") ? "jornadas" : undefined);
+    case "pendiente_validacion":
+    case "reabierta":
+      return field && can(role, "closure.authorize") ? step : view(step.label === "Solicitar" ? "evidencia" : undefined);
+    case "con_incidencia":
+      return field ? step : view("incidencias");
+    case "finalizada":
+      return can(role, "report.share") ? step : view();
+    case "reprogramada":
+      return can(role, "order.reschedule") ? step : view("jornadas");
+    case "reporte_enviado":
+    case "seguimiento":
+      return can(role, "postventa.manage") ? step : { ...step, label: "Ver", variant: "secondary" };
+    default:
+      return step;
+  }
+}
+
+function nextStep(order: Order, ctx: NextActionCtx, now: Date): NextAction {
   const href = `/ordenes/${order.folio}`;
   const j = activeJornada(order.id, ctx.jornadas, now);
   switch (order.status) {

@@ -9,7 +9,7 @@ import { useAppStore } from "@/lib/store";
 import { DEMO_USER_BY_ROLE } from "@/lib/seed";
 import { ROLE_LABEL } from "@/lib/status";
 import type { Role } from "@/lib/types";
-import { PulkroMark } from "@/components/pk/brand";
+import { PulkroLogo } from "@/components/pk/brand";
 import { Bubbles } from "@/components/pk/aurora";
 import { PersonAvatar } from "@/components/pk/bits";
 import { EASE } from "@/components/pk/motion";
@@ -55,10 +55,7 @@ function LoginInner() {
       <div className="bg-aurora grain relative hidden overflow-hidden lg:block">
         <Bubbles />
         <div className="relative z-[2] flex h-full flex-col justify-between p-12">
-          <div className="flex items-center gap-3">
-            <PulkroMark className="size-11 rounded-[13px]" />
-            <span className="font-brand text-[22px] font-extrabold tracking-[0.18em] text-brand-ink">PULKRO</span>
-          </div>
+          <PulkroLogo />
           <div className="max-w-xl">
             <motion.p
               initial={{ opacity: 0, y: 20, filter: "blur(8px)" }}
@@ -104,10 +101,7 @@ function LoginInner() {
               transition={{ duration: 0.5, ease: EASE }}
               className="w-full max-w-[440px] rounded-[28px] bg-surface p-7 shadow-lift ring-1 ring-edge sm:p-9"
             >
-              <div className="mb-8 flex items-center gap-3 lg:hidden">
-                <PulkroMark />
-                <span className="font-brand text-[18px] font-extrabold tracking-[0.16em] text-brand-ink">PULKRO</span>
-              </div>
+              <PulkroLogo className="mb-8 gap-3 lg:hidden [&>span:first-child]:size-11 [&>span:last-child]:h-[19px]" />
               <h1 className="font-serif text-[34px] font-medium leading-tight text-ink">Bienvenido</h1>
               <p className="mt-2 text-[15px] text-subtle">Elige un perfil de demostración para entrar. Cada rol ve solo lo que le corresponde.</p>
 

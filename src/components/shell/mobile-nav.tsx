@@ -4,31 +4,26 @@ import { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { LayoutGroup, motion } from "motion/react";
-import { CalendarDays, ClipboardList, House, Inbox, Menu, type LucideIcon } from "lucide-react";
+import { Menu, type LucideIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { useMediaQuery, useScopedData } from "@/lib/hooks";
-import { SECONDARY_BADGES, isActive, isSecondaryRoute } from "./nav";
+import { useCurrentUser, useMediaQuery, useScopedData } from "@/lib/hooks";
+import { isActive, isSecondaryRoute, phoneTabsFor, secondaryBadgesFor } from "./nav";
 import { MobileMenu } from "./mobile-menu";
 import { MobileSyncPill } from "./sync-indicator";
 import { useNavBadges } from "./use-nav-badges";
-
-// Route tabs; keep in sync with PHONE_TAB_ROUTES in ./nav (the 5th tab, Menú, opens the sheet).
-const TABS = [
-  { href: "/", label: "Hoy", icon: House },
-  { href: "/ordenes", label: "Órdenes", icon: ClipboardList },
-  { href: "/agenda", label: "Agenda", icon: CalendarDays },
-  { href: "/pendientes", label: "Pendientes", icon: Inbox },
-] as const;
 
 const TILE = "relative flex h-[62px] w-full flex-col items-center justify-center gap-1 rounded-[16px]";
 
 /**
  * Phone/tablet tab bar on the sand chrome (mobile reference): the active tab is a white tile.
- * Four route tabs + Menú, which opens the sections sheet; Menú stays lit (and the sheet's page highlighted) inside any
- * section that is not a tab, Perfil included. A labeled sync pill floats above the bar.
+ * Four route tabs per role (nav.ts → phoneTabsFor: supervisors get Agenda, Dirección / Administración Indicadores) + Menú,
+ * which opens the sections sheet; Menú stays lit (and the sheet's page highlighted) inside any section that is not a tab,
+ * Perfil included. A labeled sync pill floats above the bar.
  */
 export function MobileNav() {
   const pathname = usePathname();
+  const role = useCurrentUser().role;
+  const tabs = phoneTabsFor(role);
   const badges = useNavBadges();
   const { jornadas } = useScopedData();
   const desktop = useMediaQuery("(min-width: 1024px)");
@@ -41,12 +36,12 @@ export function MobileNav() {
   }
   const live = jornadas.some((j) => j.status === "en_curso");
   // Sections that are not a tab carry their counts in the Menú sheet: surface them as a dot on the tab.
-  const menuDot = SECONDARY_BADGES.some((k) => badges[k] > 0);
+  const menuDot = secondaryBadgesFor(role).some((k) => badges[k] > 0);
   // Resizing up to the desktop layout drops the sheet for good (it would reopen when shrinking back otherwise).
   if (desktop && menuOpen) setMenuOpen(false);
   const sheetOpen = menuOpen && !desktop;
   // One lit tile at a time: the open sheet wins, then secondary routes (incl. Perfil) light Menú, else the route's own tab.
-  const menuActive = sheetOpen || isSecondaryRoute(pathname);
+  const menuActive = sheetOpen || isSecondaryRoute(pathname, role);
   // Perfil has its own sync card, jornadas their own banner, and the new-order wizard a sticky action bar above the tab bar.
   const hideSync = pathname === "/perfil" || pathname === "/ordenes/nueva" || pathname.startsWith("/jornada/");
 
@@ -59,7 +54,7 @@ export function MobileNav() {
         <MobileSyncPill hidden={hideSync} />
         <LayoutGroup id="tabbar">
           <ul className="mx-auto grid max-w-lg grid-cols-5 gap-0.5">
-            {TABS.map((t) => {
+            {tabs.map((t) => {
               const active = !menuActive && isActive(pathname, t.href);
               // Only what the user can act on (same count as the Pendientes page's "Para mí"); consulta roles with nothing actionable get no badge.
               const badge = t.href === "/pendientes" ? badges.pendientes : 0;

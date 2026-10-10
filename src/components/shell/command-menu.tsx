@@ -3,7 +3,7 @@
 import { useEffect, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { Building2, ClipboardList, Plus, UserRound, WifiOff } from "lucide-react";
-import { useAppStore, useCan, useLookups, useScopedData } from "@/lib/hooks";
+import { useCan, useLookups, useScopedCatalog, useScopedData } from "@/lib/hooks";
 import { useUi } from "@/lib/ui-store";
 import { ORDER_STATUS } from "@/lib/status";
 import { fmtDay } from "@/lib/format";
@@ -19,7 +19,7 @@ import {
   CommandShortcut,
 } from "@/components/ui/command";
 import { StatusDot } from "@/components/pk/status";
-import { NAV_FOOT, NAV_GROUPS, NAV_HOME, type NavItem } from "./nav";
+import { canSeeRoute, navFor, type NavItem } from "./nav";
 
 /**
  * Phones: expose the *visual* viewport height (it shrinks when the on-screen keyboard opens, unlike dvh) as --pk-vvh
@@ -43,17 +43,24 @@ function useVisualViewportHeight(active: boolean) {
 // Phone rows get a 44px tap target; desktop keeps the compact cmdk rows.
 const ITEM = "max-lg:min-h-11";
 
-/** Global ⌘K palette: orders by folio/client/address, clients, crew, pages, quick actions. */
+/**
+ * Global ⌘K palette: orders by folio/client/address, clients, crew, pages, quick actions — all scoped to the current role
+ * (doc §2): only orders, clients and crew it may open, and only the sections it may open.
+ */
 export function CommandMenu() {
   const open = useUi((s) => s.commandOpen);
   const setOpen = useUi((s) => s.setCommandOpen);
   const setSyncOpen = useUi((s) => s.setSyncOpen);
   const router = useRouter();
-  const { orders } = useScopedData();
+  const { orders, user } = useScopedData();
   const lk = useLookups();
-  const clients = useAppStore((s) => s.clients);
-  const workers = useAppStore((s) => s.workers);
+  const catalog = useScopedCatalog();
   const canCreate = useCan("order.create");
+  const nav = navFor(user.role);
+  // Crew results open Equipo; only list them where the role may open it.
+  const showCrew = canSeeRoute(user.role, "/equipo");
+  const clients = catalog.clients;
+  const workers = useMemo(() => (showCrew ? catalog.workers.filter((w) => w.active) : []), [showCrew, catalog.workers]);
 
   useVisualViewportHeight(open);
 
@@ -104,17 +111,17 @@ export function CommandMenu() {
       </div>
       <CommandList className="max-h-[440px] max-lg:max-h-[min(calc(var(--pk-vvh,100dvh)-7.5rem),36rem)]">
         <CommandEmpty>Sin resultados.</CommandEmpty>
-        {canCreate && (
-          <CommandGroup heading="Acciones">
+        <CommandGroup heading="Acciones">
+          {canCreate && (
             <CommandItem className={ITEM} onSelect={() => go("/ordenes/nueva")}>
               <Plus /> Nueva orden de servicio
               <CommandShortcut>N</CommandShortcut>
             </CommandItem>
-            <CommandItem className={ITEM} onSelect={() => { setOpen(false); setSyncOpen(true); }}>
-              <WifiOff /> Estado de sincronización
-            </CommandItem>
-          </CommandGroup>
-        )}
+          )}
+          <CommandItem className={ITEM} onSelect={() => { setOpen(false); setSyncOpen(true); }}>
+            <WifiOff /> Estado de sincronización
+          </CommandItem>
+        </CommandGroup>
         <CommandGroup heading="Órdenes">
           {recentOrders.map((o) => {
             const c = lk.clients.get(o.clientId);
@@ -139,29 +146,33 @@ export function CommandMenu() {
           })}
         </CommandGroup>
         <CommandSeparator />
-        <CommandGroup heading="Clientes">
-          {clients.map((c) => (
-            <CommandItem key={c.id} className={ITEM} value={`${c.name} ${c.contactName} ${c.segment}`} onSelect={() => go(`/clientes/${c.id}`)}>
-              <Building2 /> {c.name}
-              <span className="ml-auto text-[12px] text-subtle">{c.segment}</span>
-            </CommandItem>
-          ))}
-        </CommandGroup>
-        <CommandGroup heading="Personal">
-          {workers.slice(0, 50).map((w) => (
-            <CommandItem key={w.id} className={ITEM} value={`${w.name} ${w.specialty}`} onSelect={() => go(`/equipo?w=${w.id}`)}>
-              <UserRound /> {w.name}
-              <span className="ml-auto text-[12px] text-subtle">{w.specialty}</span>
-            </CommandItem>
-          ))}
-        </CommandGroup>
-        <CommandGroup heading="Principal">{NAV_HOME.map(sectionItem)}</CommandGroup>
-        {NAV_GROUPS.map((g) => (
+        {clients.length > 0 && (
+          <CommandGroup heading="Clientes">
+            {clients.map((c) => (
+              <CommandItem key={c.id} className={ITEM} value={`${c.name} ${c.contactName} ${c.segment}`} onSelect={() => go(`/clientes/${c.id}`)}>
+                <Building2 /> {c.name}
+                <span className="ml-auto text-[12px] text-subtle">{c.segment}</span>
+              </CommandItem>
+            ))}
+          </CommandGroup>
+        )}
+        {workers.length > 0 && (
+          <CommandGroup heading="Personal">
+            {workers.slice(0, 50).map((w) => (
+              <CommandItem key={w.id} className={ITEM} value={`${w.name} ${w.specialty}`} onSelect={() => go(`/equipo?w=${w.id}`)}>
+                <UserRound /> {w.name}
+                <span className="ml-auto text-[12px] text-subtle">{w.specialty}</span>
+              </CommandItem>
+            ))}
+          </CommandGroup>
+        )}
+        <CommandGroup heading="Principal">{nav.home.map(sectionItem)}</CommandGroup>
+        {nav.groups.map((g) => (
           <CommandGroup key={g.key} heading={g.label}>
             {g.items.map(sectionItem)}
           </CommandGroup>
         ))}
-        <CommandGroup heading="Configuración y ayuda">{NAV_FOOT.map(sectionItem)}</CommandGroup>
+        <CommandGroup heading="Configuración y ayuda">{nav.foot.map(sectionItem)}</CommandGroup>
       </CommandList>
       </Command>
     </CommandDialog>

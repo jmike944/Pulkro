@@ -2,6 +2,7 @@
 
 import dynamic from "next/dynamic";
 import { cn } from "@/lib/utils";
+import { DEMO_ENABLED } from "@/lib/demo";
 
 export type GeoMarker = {
   lat: number;
@@ -49,16 +50,18 @@ export function distanceMeters(a: { lat: number; lng: number }, b: { lat: number
 export type GeoReading = { lat: number; lng: number; accuracy: number; source: "gps" | "manual" };
 
 /**
- * Read the device position. Falls back to a simulated reading near `fallback` (the site) when the
- * browser denies or lacks GPS — the caller must then ask for a justification (doc §4.2 PENDIENTE).
+ * Read the device position. Falls back to a simulated reading (`simulated: true`) at the site when the browser denies or
+ * lacks GPS — the caller must then ask for a justification (doc §4.2 PENDIENTE) and never present it as a GPS fix.
+ * The demo build (NEXT_PUBLIC_DEMO ≠ "0") scatters it a few meters around the site so the map looks alive; a pilot build
+ * returns the site's own coordinates, with no invented jitter.
  */
 export function readPosition(fallback: { lat: number; lng: number }, timeoutMs = 8000): Promise<GeoReading & { simulated: boolean; error?: string }> {
   return new Promise((resolve) => {
     const simulate = (error?: string) =>
       resolve({
-        lat: fallback.lat + (Math.random() - 0.5) * 0.0005,
-        lng: fallback.lng + (Math.random() - 0.5) * 0.0005,
-        accuracy: Math.round(6 + Math.random() * 12),
+        lat: DEMO_ENABLED ? fallback.lat + (Math.random() - 0.5) * 0.0005 : fallback.lat,
+        lng: DEMO_ENABLED ? fallback.lng + (Math.random() - 0.5) * 0.0005 : fallback.lng,
+        accuracy: DEMO_ENABLED ? Math.round(6 + Math.random() * 12) : 25,
         source: "gps",
         simulated: true,
         error,

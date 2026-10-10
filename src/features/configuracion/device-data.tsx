@@ -6,6 +6,7 @@ import { motion } from "motion/react";
 import { Download, HardDrive, RotateCcw, ShieldCheck, Sparkles } from "lucide-react";
 import { toast } from "sonner";
 import { useAppStore, useCurrentUser, useLookups, useScopedData, useShallow, useSyncSummary } from "@/lib/hooks";
+import { can } from "@/lib/permissions";
 import { downloadBlob } from "@/lib/export";
 import { fmtNum } from "@/lib/format";
 import { ROLE_LABEL } from "@/lib/status";
@@ -60,6 +61,7 @@ export function DeviceData() {
   const captured = useMemo(() => data.photos.filter((p) => p.source.type === "idb").length, [data.photos]);
 
   const exportBackup = () => {
+    if (!can(user.role, "export.backup")) return;
     const full = user.role === "direccion" && unitFilter === "all";
     const unitScope = user.role === "direccion" ? unitFilter : user.unitId;
     const inUnit = <T extends { unitId: string }>(xs: T[]) => (unitScope === "all" ? xs : xs.filter((x) => x.unitId === unitScope));
@@ -80,8 +82,8 @@ export function DeviceData() {
       versionDatos: data.meta.seedVersion,
       nota: "Las fotografías capturadas con cámara viven en el almacenamiento del dispositivo y no se incluyen; solo su referencia.",
       catalogos: {
-        unidades: data.units,
-        usuarios: full ? data.users : data.users.map(({ id, name, role, title, unitId }) => ({ id, name, role, title, unitId })),
+        unidades: full ? data.units : data.units.filter((u) => u.id === unitScope),
+        usuarios: full ? data.users : inUnit(data.users).map(({ id, name, role, title, unitId }) => ({ id, name, role, title, unitId })),
         personal: inUnit(data.workers),
         clientes: clients,
         sitios: data.sites.filter((s) => clientIds.has(s.clientId)),
@@ -164,7 +166,7 @@ export function DeviceData() {
       </section>
 
       <section className="space-y-3">
-        <Button onClick={exportBackup} className="h-11 w-full rounded-[12px] text-[14.5px] font-semibold">
+        <Button disabled={!can(user.role, "export.backup")} onClick={exportBackup} className="h-11 w-full rounded-[12px] text-[14.5px] font-semibold">
           <Download className="size-4" /> Exportar respaldo (JSON)
         </Button>
         <p className="text-center text-[12.5px] text-subtle">

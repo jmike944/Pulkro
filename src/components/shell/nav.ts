@@ -8,6 +8,7 @@ import {
   FileText,
   Handshake,
   HardHat,
+  House,
   Inbox,
   LayoutGrid,
   MessageSquareHeart,
@@ -16,6 +17,8 @@ import {
   Users,
   type LucideIcon,
 } from "lucide-react";
+import { can } from "@/lib/permissions";
+import type { Role } from "@/lib/types";
 
 export type NavKey =
   | "inicio"
@@ -33,7 +36,20 @@ export type NavKey =
   | "ayuda"
   | "perfil";
 
-export type NavItem = { key: NavKey; href: string; label: string; icon: LucideIcon; badge?: "ordenes" | "evidencias" | "incidencias" | "postventa" | "pendientes" };
+export type NavItem = {
+  key: NavKey;
+  href: string;
+  label: string;
+  icon: LucideIcon;
+  badge?: "ordenes" | "evidencias" | "incidencias" | "postventa" | "pendientes";
+  /** Roles that may open the section (doc §7 + product decisions). Omitted = every role. */
+  roles?: Role[];
+};
+
+/** Field screens are the supervisor's: Dirección and Administración see jornadas, evidence and incidents inside the order. */
+const FIELD: Role[] = ["supervisor"];
+/** Indicadores (and their exports) are for Dirección and Administración; supervisors see their own figures on Hoy. */
+const MANAGEMENT: Role[] = ["direccion", "administracion"];
 
 export type NavBadgeKey = NonNullable<NavItem["badge"]>;
 
@@ -54,9 +70,9 @@ export const NAV_GROUPS: NavGroup[] = [
     icon: HardHat,
     items: [
       { key: "ordenes", href: "/ordenes", label: "Órdenes", icon: ClipboardList, badge: "ordenes" },
-      { key: "agenda", href: "/agenda", label: "Agenda", icon: CalendarDays },
-      { key: "evidencias", href: "/evidencias", label: "Evidencias", icon: Camera, badge: "evidencias" },
-      { key: "incidencias", href: "/incidencias", label: "Incidencias", icon: TriangleAlert, badge: "incidencias" },
+      { key: "agenda", href: "/agenda", label: "Agenda", icon: CalendarDays, roles: FIELD },
+      { key: "evidencias", href: "/evidencias", label: "Evidencias", icon: Camera, badge: "evidencias", roles: FIELD },
+      { key: "incidencias", href: "/incidencias", label: "Incidencias", icon: TriangleAlert, badge: "incidencias", roles: FIELD },
     ],
   },
   {
@@ -64,7 +80,7 @@ export const NAV_GROUPS: NavGroup[] = [
     label: "Seguimiento",
     icon: Handshake,
     items: [
-      { key: "reportes", href: "/reportes", label: "Reportes", icon: FileText },
+      { key: "reportes", href: "/reportes", label: "Reportes", icon: FileText, roles: FIELD },
       { key: "postventa", href: "/postventa", label: "Postventa", icon: MessageSquareHeart, badge: "postventa" },
       { key: "clientes", href: "/clientes", label: "Clientes", icon: Building2 },
     ],
@@ -74,7 +90,7 @@ export const NAV_GROUPS: NavGroup[] = [
     label: "Gestión",
     icon: ChartColumn,
     items: [
-      { key: "indicadores", href: "/indicadores", label: "Indicadores", icon: ChartColumn },
+      { key: "indicadores", href: "/indicadores", label: "Indicadores", icon: ChartColumn, roles: MANAGEMENT },
       { key: "equipo", href: "/equipo", label: "Equipo", icon: Users },
     ],
   },
@@ -94,16 +110,57 @@ export function isActive(pathname: string, href: string) {
   return pathname === href || pathname.startsWith(`${href}/`);
 }
 
-/** The phone tab bar's route tabs (the 5th tab, Menú, opens a sheet instead of navigating). */
-export const PHONE_TAB_ROUTES = ["/", "/ordenes", "/agenda", "/pendientes"] as const;
+/* ───────────── role access ───────────── */
 
-/** Sections that are not a phone tab: they live in the Menú sheet. */
-const SECONDARY = NAV_ALL.filter((n) => !(PHONE_TAB_ROUTES as readonly string[]).includes(n.href));
+export const navItemVisible = (item: NavItem, role: Role) => !item.roles || item.roles.includes(role);
 
-/** Badge kinds shown by secondary sections only — the phone Menú tab carries a dot when any of them has a count. */
-export const SECONDARY_BADGES: NavBadgeKey[] = SECONDARY.flatMap((n) => (n.badge ? [n.badge] : []));
+/** Routes that are not nav sections, most specific first. `null` roles = every role. */
+const ROUTE_RULES: { match: (pathname: string) => boolean; allows: (role: Role) => boolean }[] = [
+  { match: (p) => p === "/ordenes/nueva" || p.startsWith("/ordenes/nueva/"), allows: (r) => can(r, "order.create") },
+  // The report share/send workspace; Dirección and Administración download the order PDF from the order detail.
+  { match: (p) => /^\/ordenes\/[^/]+\/reporte(\/|$)/.test(p), allows: (r) => FIELD.includes(r) },
+  { match: (p) => isActive(p, "/jornada"), allows: (r) => FIELD.includes(r) },
+];
 
-/** True inside a section that is not a phone tab (incl. /perfil, reached from the Menú sheet) — the Menú tab lights up there. */
-export function isSecondaryRoute(pathname: string) {
-  return isActive(pathname, "/perfil") || SECONDARY.some((n) => isActive(pathname, n.href));
+/** Whether `role` may open `pathname` (dynamic segments included: /jornada/[id], /ordenes/[folio]/reporte…). Unknown routes → true. */
+export function canSeeRoute(role: Role, pathname: string): boolean {
+  const rule = ROUTE_RULES.find((r) => r.match(pathname));
+  if (rule) return rule.allows(role);
+  const item = [...NAV_ALL].filter((n) => n.href !== "/" && isActive(pathname, n.href)).sort((a, b) => b.href.length - a.href.length)[0];
+  return item ? navItemVisible(item, role) : true;
+}
+
+/** The nav model filtered for one role: groups without visible pages disappear. */
+export function navFor(role: Role) {
+  const keep = (items: NavItem[]) => items.filter((i) => navItemVisible(i, role));
+  const groups = NAV_GROUPS.map((g) => ({ ...g, items: keep(g.items) })).filter((g) => g.items.length > 0);
+  const home = keep(NAV_HOME);
+  const foot = keep(NAV_FOOT);
+  return { home, groups, foot, all: [...home, ...groups.flatMap((g) => g.items), ...foot] };
+}
+
+/* ───────────── phone tab bar ───────────── */
+
+export type PhoneTab = { href: string; label: string; icon: LucideIcon };
+
+/** Route tabs of the phone bar per role (the 5th tab, Menú, opens a sheet). Supervisors get Agenda; the other roles Indicadores. */
+export function phoneTabsFor(role: Role): PhoneTab[] {
+  const third: PhoneTab = role === "supervisor" ? { href: "/agenda", label: "Agenda", icon: CalendarDays } : { href: "/indicadores", label: "Indicadores", icon: ChartColumn };
+  return [{ href: "/", label: "Hoy", icon: House }, { href: "/ordenes", label: "Órdenes", icon: ClipboardList }, third, { href: "/pendientes", label: "Pendientes", icon: Inbox }];
+}
+
+/** Sections of `role` that are not a phone tab: they live in the Menú sheet. */
+function secondaryFor(role: Role) {
+  const tabs = phoneTabsFor(role).map((t) => t.href);
+  return navFor(role).all.filter((n) => !tabs.includes(n.href));
+}
+
+/** Badge kinds shown by the role's secondary sections only — the phone Menú tab carries a dot when any of them has a count. */
+export function secondaryBadgesFor(role: Role): NavBadgeKey[] {
+  return secondaryFor(role).flatMap((n) => (n.badge ? [n.badge] : []));
+}
+
+/** True inside a section that is not one of the role's phone tabs (incl. /perfil, reached from the Menú sheet) — the Menú tab lights up there. */
+export function isSecondaryRoute(pathname: string, role: Role = "supervisor") {
+  return isActive(pathname, "/perfil") || secondaryFor(role).some((n) => isActive(pathname, n.href));
 }

@@ -11,7 +11,7 @@ import { ROLE_LABEL } from "@/lib/status";
 import { fmtAgo } from "@/lib/format";
 import { PersonAvatar } from "@/components/pk/bits";
 import { Drawer, DrawerClose, DrawerContent, DrawerDescription, DrawerTitle } from "@/components/ui/drawer";
-import { NAV_FOOT, NAV_GROUPS, isActive, type NavGroup, type NavItem } from "./nav";
+import { isActive, navFor, type NavGroup, type NavItem } from "./nav";
 import { ThemeSegmented } from "./theme-switcher";
 import { UnitPickerSheet, useUnitScope } from "./unit-picker";
 import { useNavBadges } from "./use-nav-badges";
@@ -63,6 +63,7 @@ function MenuBody({ onClose, onPickUnit, onSearch, onSync }: { onClose: () => vo
   const pathname = usePathname();
   const badges = useNavBadges();
   const canCreate = useCan("order.create");
+  const nav = navFor(useCurrentUser().role);
   return (
     <div className="min-h-0 flex-1 space-y-5 overflow-y-auto overscroll-contain px-4 pb-[calc(1.25rem+env(safe-area-inset-bottom))] pt-1">
       <ProfileCard onClose={onClose} onPickUnit={onPickUnit} />
@@ -86,12 +87,12 @@ function MenuBody({ onClose, onPickUnit, onSearch, onSync }: { onClose: () => vo
         </button>
       </div>
 
-      {NAV_GROUPS.map((group) => (
+      {nav.groups.map((group) => (
         <TileGroup key={group.key} group={group} pathname={pathname} badges={badges} onClose={onClose} />
       ))}
 
       <div className="rounded-[22px] border border-hairline bg-surface p-1.5">
-        {NAV_FOOT.map((item) => (
+        {nav.foot.map((item) => (
           <ListRow key={item.key} item={item} onClose={onClose} />
         ))}
         <SyncRow onOpen={onSync} />

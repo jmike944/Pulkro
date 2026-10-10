@@ -71,7 +71,7 @@ export type ReportGpsPoint = {
   lng: number;
   accuracy: number;
   at: string;
-  source: "gps" | "manual";
+  source: "gps" | "manual" | "remota";
   offline: boolean;
 };
 

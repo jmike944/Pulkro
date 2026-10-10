@@ -119,7 +119,7 @@ function FieldCaptureButtons({
   const onFiles = async (input: HTMLInputElement) => {
     const files = input.files;
     if (files?.length) {
-      const ids = await capture(files, meta);
+      const ids = await capture(files, meta, input === galRef.current ? "gallery" : "camera");
       if (ids.length) onCaptured?.(ids);
     }
     input.value = "";
