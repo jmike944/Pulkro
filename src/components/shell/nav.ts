@@ -6,6 +6,8 @@ import {
   CircleHelp,
   ClipboardList,
   FileText,
+  Handshake,
+  HardHat,
   Inbox,
   LayoutGrid,
   MessageSquareHeart,
@@ -35,8 +37,8 @@ export type NavItem = { key: NavKey; href: string; label: string; icon: LucideIc
 
 export type NavBadgeKey = NonNullable<NavItem["badge"]>;
 
-/** A labeled block of the sidebar / phone Menú sheet. */
-export type NavGroup = { key: "operacion" | "seguimiento" | "gestion"; label: string; items: NavItem[] };
+/** A labeled block of the sidebar / phone Menú sheet. The icon stands for the whole group where only one icon fits (collapsed sidebar, group header). */
+export type NavGroup = { key: "operacion" | "seguimiento" | "gestion"; label: string; icon: LucideIcon; items: NavItem[] };
 
 /** Top of the nav, no heading: the two "where do I start" destinations. */
 export const NAV_HOME: NavItem[] = [
@@ -49,6 +51,7 @@ export const NAV_GROUPS: NavGroup[] = [
   {
     key: "operacion",
     label: "Operación",
+    icon: HardHat,
     items: [
       { key: "ordenes", href: "/ordenes", label: "Órdenes", icon: ClipboardList, badge: "ordenes" },
       { key: "agenda", href: "/agenda", label: "Agenda", icon: CalendarDays },
@@ -59,6 +62,7 @@ export const NAV_GROUPS: NavGroup[] = [
   {
     key: "seguimiento",
     label: "Seguimiento",
+    icon: Handshake,
     items: [
       { key: "reportes", href: "/reportes", label: "Reportes", icon: FileText },
       { key: "postventa", href: "/postventa", label: "Postventa", icon: MessageSquareHeart, badge: "postventa" },
@@ -68,6 +72,7 @@ export const NAV_GROUPS: NavGroup[] = [
   {
     key: "gestion",
     label: "Gestión",
+    icon: ChartColumn,
     items: [
       { key: "indicadores", href: "/indicadores", label: "Indicadores", icon: ChartColumn },
       { key: "equipo", href: "/equipo", label: "Equipo", icon: Users },

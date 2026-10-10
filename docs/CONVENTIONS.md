@@ -100,8 +100,10 @@ switches to the **mobile reference** (Today · Labor breakdown · Sent screens):
   not a tab (`isSecondaryRoute`, Perfil included) and carries a red dot when a section that lives only in the sheet has a badge count.
   Perfil no longer lists sections.
 - **Navigation model:** `src/components/shell/nav.ts` is the single source of truth — `NAV_HOME` (Inicio, Pendientes), `NAV_GROUPS`
-  (Operación · Seguimiento · Gestión, each `{ key, label, items }`), `NAV_FOOT` (Configuración, Centro de ayuda) and the flat `NAV_ALL`.
-  The desktop sidebar, the Menú sheet and the ⌘K palette all render from it; add a section there, never in a component.
+  (Operación · Seguimiento · Gestión, each `{ key, label, icon, items }`), `NAV_FOOT` (Configuración, Centro de ayuda) and the flat `NAV_ALL`.
+  The desktop sidebar, the Menú sheet and the ⌘K palette all render from it; add a section there, never in a component. In the sidebar a group is
+  a collapsible row (group `icon` · label · chevron; open state saved in `pk.sidebar.groups`, the current route's group always opens) with
+  icon-less page rows along a guide line; collapsed (84px) it is a single group icon that opens a flyout menu with its pages.
 - `/` renders `TodayMobile` (`src/features/inicio/today-mobile.tsx`): date eyebrow, serif greeting, aurora next-step card, "Jornadas de hoy" list.
 - Primitives in `@/components/pk/mobile`:
   `TimeTile` (sand "9:00 / a. m."), `MobileRow` (leading tile · bold title · meta · status dot · chevron), `NextStepCard` (aurora-framed

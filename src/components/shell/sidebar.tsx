@@ -2,9 +2,9 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { useEffect, useId, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { AnimatePresence, LayoutGroup, motion } from "motion/react";
-import { Check, ChevronDown, EllipsisVertical, LogOut, PanelLeft, Plus, RotateCcw, UserRound } from "lucide-react";
+import { Check, ChevronDown, ChevronRight, EllipsisVertical, LogOut, PanelLeft, Plus, RotateCcw, UserRound } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { useAppStore, useCan, useCurrentUser } from "@/lib/hooks";
@@ -12,6 +12,7 @@ import { ROLE_LABEL } from "@/lib/status";
 import type { Role } from "@/lib/types";
 import { PulkroMark } from "@/components/pk/brand";
 import { PersonAvatar } from "@/components/pk/bits";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -23,27 +24,38 @@ import {
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { NAV_FOOT, NAV_GROUPS, NAV_HOME, isActive, type NavGroup, type NavItem } from "./nav";
 import { useNavBadges } from "./use-nav-badges";
+import { useOpenGroups } from "./use-open-groups";
 import { SyncChip } from "./sync-indicator";
 
 const COLLAPSE_KEY = "pk.sidebar.collapsed";
 
+/** Saved collapsed state. The sidebar mounts only after the store hydrates (never in server HTML), so reading it up front is safe. */
+function readCollapsed() {
+  if (typeof window === "undefined") return false;
+  try {
+    return localStorage.getItem(COLLAPSE_KEY) === "1";
+  } catch {
+    return false;
+  }
+}
+
+/** Keyboard focus ring for sidebar rows. Inset: the scrolling nav would clip a ring drawn outside the row. */
+const ROW_FOCUS = "outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[#1667e0]/60";
+
 export function Sidebar() {
-  const [collapsed, setCollapsed] = useState(false);
-  useEffect(() => {
+  const pathname = usePathname();
+  const [collapsed, setCollapsed] = useState(readCollapsed);
+  const groups = useOpenGroups(pathname);
+  const toggle = () => {
     try {
-      setCollapsed(localStorage.getItem(COLLAPSE_KEY) === "1");
+      localStorage.setItem(COLLAPSE_KEY, collapsed ? "0" : "1");
     } catch {}
-  }, []);
-  const toggle = () =>
-    setCollapsed((c) => {
-      try {
-        localStorage.setItem(COLLAPSE_KEY, c ? "0" : "1");
-      } catch {}
-      return !c;
-    });
+    setCollapsed(!collapsed);
+  };
 
   return (
     <motion.aside
+      initial={false}
       animate={{ width: collapsed ? 84 : 272 }}
       transition={{ type: "spring", stiffness: 380, damping: 38 }}
       className="sticky top-0 hidden h-dvh shrink-0 flex-col overflow-hidden px-4 pb-3 pt-4 lg:flex print:hidden"
@@ -63,33 +75,35 @@ export function Sidebar() {
         <NewOrderButton collapsed={collapsed} />
       </div>
 
-      <NavScroller>
-        {/* One LayoutGroup for every group so the active pill glides between sections. */}
-        <LayoutGroup id="sidebar">
+      {/* One LayoutGroup for the whole sidebar (home rows, group children, footer) so the active pill glides between them. */}
+      <LayoutGroup id="sidebar">
+        <NavScroller>
           <ul className="space-y-0.5">
             {NAV_HOME.map((item) => (
               <NavLink key={item.key} item={item} collapsed={collapsed} />
             ))}
+            {NAV_GROUPS.map((group) =>
+              collapsed ? (
+                <CollapsedGroup key={group.key} group={group} />
+              ) : (
+                <NavGroupSection key={group.key} group={group} open={groups.isOpen(group.key)} onOpenChange={(open) => groups.setGroupOpen(group.key, open)} />
+              ),
+            )}
           </ul>
-          {NAV_GROUPS.map((group) => (
-            <NavSection key={group.key} group={group} collapsed={collapsed} />
-          ))}
-        </LayoutGroup>
-      </NavScroller>
+        </NavScroller>
 
-      <div className="mt-1.5">
-        <LayoutGroup id="sidebar-foot">
+        <div className="mt-1.5">
           <ul className="space-y-0.5">
             {NAV_FOOT.map((item) => (
               <NavLink key={item.key} item={item} collapsed={collapsed} />
             ))}
           </ul>
-        </LayoutGroup>
-        <div className="pt-1.5">
-          <SyncChip collapsed={collapsed} slim />
+          <div className="pt-1.5">
+            <SyncChip collapsed={collapsed} slim />
+          </div>
+          <UserCard collapsed={collapsed} />
         </div>
-        <UserCard collapsed={collapsed} />
-      </div>
+      </LayoutGroup>
     </motion.aside>
   );
 }
@@ -133,24 +147,189 @@ function NavScroller({ children }: { children: React.ReactNode }) {
   );
 }
 
-/** Labeled block of links. Collapsed (84px) the heading text gives way to a short hairline (kept as sr-only text for the list's label). */
-function NavSection({ group, collapsed }: { group: NavGroup; collapsed: boolean }) {
-  const headingId = useId();
+/** The white tile behind the current section. One shared layoutId, so it glides between rows, group children and the footer. */
+function ActivePill() {
   return (
-    <div>
-      {collapsed && <div aria-hidden className="mb-1.5 mt-2 flex justify-center"><span className="block h-px w-6 bg-black/10" /></div>}
-      <p id={headingId} className={cn(collapsed ? "sr-only" : "mt-3 px-3.5 text-[11px] font-semibold uppercase leading-4 tracking-[0.12em] text-subtle/80")}>
-        {group.label}
-      </p>
-      <ul aria-labelledby={headingId} className="space-y-0.5">
-        {group.items.map((item) => (
-          <NavLink key={item.key} item={item} collapsed={collapsed} />
-        ))}
-      </ul>
-    </div>
+    <motion.span
+      layoutId="nav-active"
+      className="absolute inset-0 rounded-[14px] bg-white shadow-[0_1px_2px_rgb(16_24_40/0.05),0_8px_20px_-12px_rgb(16_24_40/0.18)]"
+      transition={{ type: "spring", stiffness: 480, damping: 38 }}
+    />
   );
 }
 
+function CountChip({ count }: { count: number }) {
+  return (
+    <motion.span
+      key={count}
+      initial={{ scale: 0.6, opacity: 0 }}
+      animate={{ scale: 1, opacity: 1 }}
+      className="relative inline-flex h-[22px] min-w-[22px] items-center justify-center rounded-md bg-[#e9edf2] px-1.5 text-[12px] font-semibold text-ink tabular"
+    >
+      {count}
+    </motion.span>
+  );
+}
+
+/** Badge counts of one group: per item, plus the sum (shown on the group while it is closed so attention items never hide). */
+function useGroupCounts(group: NavGroup) {
+  const badges = useNavBadges();
+  const counts = group.items.map((item) => (item.badge ? badges[item.badge] : 0));
+  return { counts, total: counts.reduce((sum, n) => sum + n, 0) };
+}
+
+/**
+ * Expanded sidebar: a group is a collapsible row (icon · label · chevron). Open, its pages list below as icon-less rows
+ * along a thin guide line. Closed, the chevron carries the summed badge count.
+ */
+function NavGroupSection({ group, open, onOpenChange }: { group: NavGroup; open: boolean; onOpenChange: (open: boolean) => void }) {
+  const pathname = usePathname();
+  const { counts, total } = useGroupCounts(group);
+  const Icon = group.icon;
+  const hasActive = group.items.some((item) => isActive(pathname, item.href));
+  return (
+    <li>
+      <Collapsible open={open} onOpenChange={onOpenChange}>
+        <CollapsibleTrigger
+          className={cn(
+            "group relative flex h-10 w-full items-center gap-3.5 rounded-[14px] px-3.5 text-left text-[15px] transition-colors",
+            hasActive && !open ? "text-ink" : "text-[#3b4554] hover:text-ink",
+            ROW_FOCUS,
+          )}
+        >
+          <Icon className={cn("size-[20px] shrink-0 transition-colors", hasActive && !open ? "text-[#1667e0]" : "text-[#5b6675] group-hover:text-ink")} strokeWidth={1.7} />
+          <span className="flex-1 truncate">{group.label}</span>
+          {!open && total > 0 && <CountChip count={total} />}
+          <ChevronRight className="size-4 shrink-0 text-subtle transition-transform duration-200 group-data-[state=open]:rotate-90 motion-reduce:transition-none" aria-hidden />
+        </CollapsibleTrigger>
+        <CollapsibleContent className="overflow-hidden motion-safe:data-[state=closed]:animate-collapsible-up motion-safe:data-[state=open]:animate-collapsible-down">
+          <ul aria-label={group.label} className="ml-6 mt-0.5 border-l border-black/10 pl-[7px]">
+            {group.items.map((item, i) => (
+              <SubLink key={item.key} item={item} count={counts[i]} />
+            ))}
+          </ul>
+        </CollapsibleContent>
+      </Collapsible>
+    </li>
+  );
+}
+
+/** Page row inside an open group: text only (the group icon already says what it is), pill + semibold when current. */
+function SubLink({ item, count }: { item: NavItem; count: number }) {
+  const pathname = usePathname();
+  const active = isActive(pathname, item.href);
+  // The middle of the sidebar scrolls on short windows: keep the current section in view.
+  const ref = useRef<HTMLAnchorElement>(null);
+  useEffect(() => {
+    if (active) ref.current?.scrollIntoView({ block: "nearest" });
+  }, [active]);
+  return (
+    <li>
+      <Link
+        ref={ref}
+        href={item.href}
+        aria-current={active ? "page" : undefined}
+        className={cn(
+          "relative scroll-my-10 flex h-9 items-center gap-2 rounded-[14px] pl-4 pr-3.5 text-[14.5px] transition-colors",
+          active ? "font-semibold text-ink" : "text-[#3b4554] hover:text-ink",
+          ROW_FOCUS,
+        )}
+      >
+        {active && <ActivePill />}
+        <span className="relative flex-1 truncate">{item.label}</span>
+        {count > 0 && <CountChip count={count} />}
+      </Link>
+    </li>
+  );
+}
+
+/**
+ * Collapsed sidebar (84px): one icon per group. It opens a flyout to the right with the group's pages; the tooltip names the
+ * group while the flyout is closed. Lit like an active row when the current page is inside, red dot when anything needs attention.
+ */
+function CollapsedGroup({ group }: { group: NavGroup }) {
+  const pathname = usePathname();
+  const { counts, total } = useGroupCounts(group);
+  const Icon = group.icon;
+  const hasActive = group.items.some((item) => isActive(pathname, item.href));
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [tipOpen, setTipOpen] = useState(false);
+  // Closing the flyout hands focus back to the trigger, which would pop the tooltip open on a stale hover/focus.
+  const justClosed = useRef(false);
+  return (
+    <li>
+      <DropdownMenu
+        open={menuOpen}
+        onOpenChange={(next) => {
+          setMenuOpen(next);
+          // Opening with the keyboard never clicks the trigger, so the tooltip would otherwise reappear once the flyout closes.
+          if (next) setTipOpen(false);
+        }}
+      >
+        <Tooltip
+          open={tipOpen && !menuOpen}
+          onOpenChange={(next) => {
+            if (!(next && justClosed.current)) setTipOpen(next);
+          }}
+        >
+          <TooltipTrigger asChild>
+            <DropdownMenuTrigger asChild>
+              <button
+                type="button"
+                className={cn(
+                  "group relative flex h-10 w-full items-center justify-center rounded-[14px] transition-colors data-[state=open]:bg-white/60",
+                  hasActive ? "text-ink" : "text-[#3b4554] hover:text-ink",
+                  ROW_FOCUS,
+                )}
+              >
+                {hasActive && <ActivePill />}
+                <Icon className={cn("relative size-[20px] shrink-0 transition-colors", hasActive ? "text-[#1667e0]" : "text-[#5b6675] group-hover:text-ink")} strokeWidth={1.7} />
+                <span className="sr-only">
+                  {group.label}
+                  {total > 0 ? `, ${total} por atender` : ""}
+                </span>
+                {total > 0 && <span aria-hidden className="absolute right-3.5 top-2.5 size-2 rounded-full bg-st-red ring-2 ring-canvas" />}
+              </button>
+            </DropdownMenuTrigger>
+          </TooltipTrigger>
+          <TooltipContent side="right">{group.label}</TooltipContent>
+        </Tooltip>
+        <DropdownMenuContent
+          side="right"
+          align="start"
+          sideOffset={10}
+          className="w-60 rounded-[16px] p-1.5 shadow-[0_12px_32px_-12px_rgb(16_24_40/0.28)]"
+          onCloseAutoFocus={() => {
+            justClosed.current = true;
+            setTimeout(() => (justClosed.current = false), 250);
+          }}
+        >
+          <DropdownMenuLabel className="px-2.5 pb-1 pt-1.5 text-[13px] font-semibold text-subtle">{group.label}</DropdownMenuLabel>
+          {group.items.map((item, i) => {
+            const active = isActive(pathname, item.href);
+            const ItemIcon = item.icon;
+            return (
+              <DropdownMenuItem
+                key={item.key}
+                asChild
+                className={cn("h-10 gap-3 rounded-[11px] px-2.5 text-[14.5px]", active ? "bg-[#f1f3f6] font-semibold text-ink" : "text-[#3b4554]")}
+              >
+                <Link href={item.href} aria-current={active ? "page" : undefined}>
+                  <ItemIcon className={cn("size-[18px] shrink-0", active ? "text-[#1667e0]" : "text-[#5b6675]")} strokeWidth={1.7} />
+                  <span className="flex-1 truncate">{item.label}</span>
+                  {counts[i] > 0 && <CountChip count={counts[i]} />}
+                  {active && <Check className="size-4 shrink-0 text-[#1667e0]" aria-hidden />}
+                </Link>
+              </DropdownMenuItem>
+            );
+          })}
+        </DropdownMenuContent>
+      </DropdownMenu>
+    </li>
+  );
+}
+
+/** Row with its own icon: Inicio / Pendientes at the top and Configuración / Centro de ayuda in the footer. */
 function NavLink({ item, collapsed }: { item: NavItem; collapsed: boolean }) {
   const pathname = usePathname();
   const badges = useNavBadges();
@@ -166,31 +345,19 @@ function NavLink({ item, collapsed }: { item: NavItem; collapsed: boolean }) {
     <Link
       ref={ref}
       href={item.href}
+      aria-current={active ? "page" : undefined}
+      aria-label={collapsed ? item.label : undefined}
       className={cn(
         "group relative scroll-my-10 flex h-10 items-center gap-3.5 rounded-[14px] px-3.5 text-[15px] transition-colors",
         active ? "font-semibold text-ink" : "text-[#3b4554] hover:text-ink",
         collapsed && "justify-center px-0",
+        ROW_FOCUS,
       )}
     >
-      {active && (
-        <motion.span
-          layoutId="nav-active"
-          className="absolute inset-0 rounded-[14px] bg-white shadow-[0_1px_2px_rgb(16_24_40/0.05),0_8px_20px_-12px_rgb(16_24_40/0.18)]"
-          transition={{ type: "spring", stiffness: 480, damping: 38 }}
-        />
-      )}
+      {active && <ActivePill />}
       <Icon className={cn("relative size-[20px] shrink-0 transition-colors", active ? "text-[#1667e0]" : "text-[#5b6675] group-hover:text-ink")} strokeWidth={1.7} />
       {!collapsed && <span className="relative flex-1 truncate">{item.label}</span>}
-      {!collapsed && count > 0 && (
-        <motion.span
-          key={count}
-          initial={{ scale: 0.6, opacity: 0 }}
-          animate={{ scale: 1, opacity: 1 }}
-          className="relative inline-flex h-[22px] min-w-[22px] items-center justify-center rounded-md bg-[#e9edf2] px-1.5 text-[12px] font-semibold text-ink tabular"
-        >
-          {count}
-        </motion.span>
-      )}
+      {!collapsed && count > 0 && <CountChip count={count} />}
       {collapsed && count > 0 && <span className="absolute right-3.5 top-2.5 size-2 rounded-full bg-st-red ring-2 ring-canvas" />}
     </Link>
   );
