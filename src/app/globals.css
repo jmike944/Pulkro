@@ -1,26 +1,273 @@
 @import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
+@custom-variant dark (&:is(.dark *));
+
+/* ───────────────────────────── Pulkro Cuadrillas · design tokens ─────────────────────────────
+   Brand: Pulkro navy #023A63 · Pulkro sky #7AD1F4 (from pulkro.com.mx)
+   Layout language: soft canvas, white rounded work panel, aurora-gradient hero panels,
+   serif display headings (Newsreader) + Geist UI + Montserrat wordmark.                       */
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
+  --font-sans: var(--font-geist), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-geist-mono), ui-monospace, monospace;
+  --font-serif: var(--font-newsreader), ui-serif, Georgia, serif;
+  --font-heading: var(--font-newsreader), ui-serif, Georgia, serif;
+  --font-brand: var(--font-montserrat), var(--font-geist), sans-serif;
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+  --color-sidebar-ring: var(--sidebar-ring);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar: var(--sidebar);
+  --color-chart-5: var(--chart-5);
+  --color-chart-4: var(--chart-4);
+  --color-chart-3: var(--chart-3);
+  --color-chart-2: var(--chart-2);
+  --color-chart-1: var(--chart-1);
+  --color-ring: var(--ring);
+  --color-input: var(--input);
+  --color-border: var(--border);
+  --color-destructive: var(--destructive);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-accent: var(--accent);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-muted: var(--muted);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-secondary: var(--secondary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-primary: var(--primary);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-popover: var(--popover);
+  --color-card-foreground: var(--card-foreground);
+  --color-card: var(--card);
+
+  /* Pulkro extensions */
+  --color-canvas: var(--canvas);
+  --color-sand: var(--sand);
+  --color-sand-deep: var(--sand-deep);
+  --color-panel: var(--panel);
+  --color-brand: var(--brand);
+  --color-brand-deep: var(--brand-deep);
+  --color-sky: var(--sky);
+  --color-sky-soft: var(--sky-soft);
+  --color-link: var(--link);
+  --color-ink: var(--ink);
+  --color-subtle: var(--subtle);
+  --color-hairline: var(--hairline);
+  --color-st-blue: var(--st-blue);
+  --color-st-amber: var(--st-amber);
+  --color-st-red: var(--st-red);
+  --color-st-teal: var(--st-teal);
+  --color-st-violet: var(--st-violet);
+  --color-st-slate: var(--st-slate);
+
+  --radius-sm: calc(var(--radius) * 0.6);
+  --radius-md: calc(var(--radius) * 0.8);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) * 1.4);
+  --radius-2xl: calc(var(--radius) * 1.8);
+  --radius-3xl: calc(var(--radius) * 2.2);
+  --radius-4xl: calc(var(--radius) * 2.6);
+
+  --shadow-soft: 0 1px 2px rgb(16 24 40 / 0.04), 0 10px 28px -14px rgb(16 24 40 / 0.14);
+  --shadow-lift: 0 1px 2px rgb(16 24 40 / 0.05), 0 24px 48px -20px rgb(2 58 99 / 0.28);
+  --shadow-glass: 0 1px 0 rgb(255 255 255 / 0.9) inset, 0 18px 40px -18px rgb(2 58 99 / 0.35);
+
+  --animate-aurora: aurora 18s ease-in-out infinite alternate;
+  --animate-shimmer: shimmer 2.2s linear infinite;
+  --animate-float: float 7s ease-in-out infinite;
+  --animate-ping-soft: ping-soft 2.4s cubic-bezier(0, 0, 0.2, 1) infinite;
+
+  @keyframes aurora {
+    0% { background-position: 0% 0%, 0% 100%, 100% 100%, 70% 20%, 0 0; }
+    100% { background-position: 8% 6%, 6% 92%, 92% 90%, 60% 30%, 0 0; }
+  }
+  @keyframes shimmer {
+    from { background-position: -200% 0; }
+    to { background-position: 200% 0; }
+  }
+  @keyframes float {
+    0%, 100% { transform: translateY(0) }
+    50% { transform: translateY(-10px) }
+  }
+  @keyframes ping-soft {
+    0% { transform: scale(1); opacity: 0.55 }
+    80%, 100% { transform: scale(2.4); opacity: 0 }
   }
 }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+:root {
+  --radius: 0.75rem;
+
+  --canvas: #f1f3f6;
+  --sand: #f3f2ee;
+  --sand-deep: #e9e7e1;
+  --panel: #ffffff;
+  --brand: #023a63;
+  --brand-deep: #07243f;
+  --sky: #7ad1f4;
+  --sky-soft: #e6f5fd;
+  --link: #1764d8;
+  --ink: #0e1726;
+  --subtle: #667085;
+  --hairline: #e9ecf1;
+
+  --st-blue: #2f80ed;
+  --st-amber: #f0a020;
+  --st-red: #e5484d;
+  --st-teal: #12a594;
+  --st-violet: #7c5cfc;
+  --st-slate: #98a2b3;
+
+  --background: #ffffff;
+  --foreground: #0e1726;
+  --card: #ffffff;
+  --card-foreground: #0e1726;
+  --popover: #ffffff;
+  --popover-foreground: #0e1726;
+  --primary: #07243f;
+  --primary-foreground: #ffffff;
+  --secondary: #f2f4f7;
+  --secondary-foreground: #0e1726;
+  --muted: #f4f6f8;
+  --muted-foreground: #667085;
+  --accent: #eef3f9;
+  --accent-foreground: #0e1726;
+  --destructive: #e5484d;
+  --border: #e9ecf1;
+  --input: #e3e7ed;
+  --ring: #7ad1f4;
+  --chart-1: #023a63;
+  --chart-2: #2f80ed;
+  --chart-3: #7ad1f4;
+  --chart-4: #b9c7ff;
+  --chart-5: #12a594;
+  --sidebar: #f1f3f6;
+  --sidebar-foreground: #0e1726;
+  --sidebar-primary: #07243f;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: #ffffff;
+  --sidebar-accent-foreground: #0e1726;
+  --sidebar-border: #e9ecf1;
+  --sidebar-ring: #7ad1f4;
+}
+
+/* Phones/tablets use the warm "sand" chrome of the mobile reference; desktop keeps the cool canvas. */
+@media (max-width: 1023.98px) {
+  :root {
+    --canvas: #f3f2ee;
+    --sidebar: #f3f2ee;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  html {
+    @apply bg-canvas font-sans;
+    -webkit-tap-highlight-color: transparent;
+  }
+  body {
+    @apply bg-canvas text-foreground antialiased;
+    font-feature-settings: "ss01", "cv11";
+  }
+  button:not(:disabled),
+  [role="button"]:not(:disabled) {
+    cursor: pointer;
+  }
+  ::selection {
+    background: color-mix(in oklab, var(--sky) 45%, transparent);
+  }
+}
+
+/* ───────────── Signature surfaces ───────────── */
+
+/* Aurora hero gradient (lavender → sky → Pulkro blue) used for the big KPI panels */
+@utility bg-aurora {
+  background-color: #dcecff;
+  background-image:
+    radial-gradient(60% 80% at 0% 0%, #e7e1ff 0%, transparent 60%),
+    radial-gradient(55% 70% at 0% 100%, #c8f1ef 0%, transparent 62%),
+    radial-gradient(70% 90% at 100% 100%, #6fb3ff 0%, transparent 60%),
+    radial-gradient(60% 70% at 70% 20%, #d7ecff 0%, transparent 65%),
+    linear-gradient(135deg, #eceeff 0%, #d6ebff 48%, #93c6ff 100%);
+  background-size: 120% 120%, 120% 120%, 120% 120%, 120% 120%, 100% 100%;
+}
+
+/* Soft ring-frame around featured cards (the "glow frame" in the claim detail card) */
+@utility bg-aurora-frame {
+  background-image:
+    radial-gradient(80% 80% at 0% 0%, #e2dcff 0%, transparent 60%),
+    radial-gradient(80% 80% at 100% 100%, #7fbdff 0%, transparent 60%),
+    linear-gradient(135deg, #e9ecff, #cfe7ff 55%, #9fcdfd);
+}
+
+/* Paper grain overlay to give gradients a tactile, printed finish */
+@utility grain {
+  position: relative;
+  isolation: isolate;
+  &::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    pointer-events: none;
+    opacity: 0.22;
+    mix-blend-mode: soft-light;
+    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='3' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 .55 0'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>");
+    z-index: 1;
+  }
+}
+
+/* Frosted white card that floats inside an aurora panel */
+@utility glass-card {
+  background: linear-gradient(180deg, rgb(255 255 255 / 0.97), rgb(255 255 255 / 0.9));
+  border: 1px solid rgb(255 255 255 / 0.9);
+  box-shadow: var(--shadow-glass);
+  backdrop-filter: blur(14px);
+}
+
+/* Skeleton shimmer */
+@utility shimmer {
+  background: linear-gradient(90deg, #eef1f5 0%, #f8f9fb 40%, #eef1f5 80%);
+  background-size: 200% 100%;
+  animation: var(--animate-shimmer);
+}
+
+@utility tabular {
+  font-variant-numeric: tabular-nums;
+}
+
+@utility scrollbar-none {
+  scrollbar-width: none;
+  &::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .bg-aurora {
+    animation: none !important;
+  }
+}
+
+/* Leaflet (maps) — keep tiles soft and on-brand */
+.leaflet-container {
+  font-family: var(--font-geist), system-ui, sans-serif;
+  background: #eef2f6;
+}
+.leaflet-tile-pane {
+  filter: saturate(0.65) contrast(0.98);
+}
+.leaflet-control-attribution {
+  font-size: 9px !important;
+  background: rgb(255 255 255 / 0.7) !important;
 }

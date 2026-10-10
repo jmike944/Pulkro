@@ -1,0 +1,167 @@
+"use client";
+
+import { useEffect, useMemo, useState } from "react";
+import { useShallow } from "zustand/react/shallow";
+import { isOffline, useAppStore } from "./store";
+import { can, canSeeOrder, type Action } from "./permissions";
+import type { Client, Jornada, Order, ServiceType, Site, User, Worker, Material, Unit } from "./types";
+
+export { useAppStore } from "./store";
+export { useShallow } from "zustand/react/shallow";
+
+export function useHydrated() {
+  return useAppStore((s) => s.hydrated);
+}
+
+export function useCurrentUser(): User {
+  const users = useAppStore((s) => s.users);
+  const userId = useAppStore((s) => s.session.userId);
+  return useMemo(
+    () =>
+      users.find((u) => u.id === userId) ?? {
+        id: userId, name: "Usuario", initials: "U", role: "supervisor", title: "", unitId: "u_mty", email: "", phone: "", hue: 200, active: true,
+      },
+    [users, userId],
+  );
+}
+
+export function useCan(action: Action) {
+  const user = useCurrentUser();
+  return can(user.role, action);
+}
+
+/** Id → entity maps for fast joins. */
+export function useLookups() {
+  const { units, users, workers, clients, sites, serviceTypes, materials } = useAppStore(
+    useShallow((s) => ({ units: s.units, users: s.users, workers: s.workers, clients: s.clients, sites: s.sites, serviceTypes: s.serviceTypes, materials: s.materials })),
+  );
+  return useMemo(() => {
+    const map = <T extends { id: string }>(xs: T[]) => new Map(xs.map((x) => [x.id, x] as const));
+    return {
+      units: map<Unit>(units),
+      users: map<User>(users),
+      workers: map<Worker>(workers),
+      clients: map<Client>(clients),
+      sites: map<Site>(sites),
+      serviceTypes: map<ServiceType>(serviceTypes),
+      materials: map<Material>(materials),
+    };
+  }, [units, users, workers, clients, sites, serviceTypes, materials]);
+}
+
+/**
+ * Data scoped to what the current user may see (doc §2):
+ * supervisor → own orders · administración → own unit · dirección → all or selected unit.
+ * Related collections (jornadas, photos, incidents…) are filtered to the visible orders.
+ */
+export function useScopedData() {
+  const user = useCurrentUser();
+  const unitFilter = useAppStore((s) => s.session.unitFilter);
+  const raw = useAppStore(
+    useShallow((s) => ({
+      orders: s.orders, jornadas: s.jornadas, photos: s.photos, incidents: s.incidents, reports: s.reports,
+      cases: s.cases, surveys: s.surveys, audit: s.audit,
+    })),
+  );
+  return useMemo(() => {
+    const orders = raw.orders.filter((o) => canSeeOrder(user, o, unitFilter));
+    const ids = new Set(orders.map((o) => o.id));
+    const by = <T extends { orderId?: string }>(xs: T[]) => xs.filter((x) => x.orderId && ids.has(x.orderId));
+    return {
+      user,
+      unitFilter,
+      orders,
+      orderIds: ids,
+      jornadas: by(raw.jornadas),
+      photos: by(raw.photos),
+      incidents: by(raw.incidents),
+      reports: by(raw.reports),
+      cases: by(raw.cases),
+      surveys: by(raw.surveys),
+      audit: by(raw.audit),
+    };
+  }, [raw, user, unitFilter]);
+}
+
+/** Everything about one order, by folio ("OS-24817") or id. */
+export function useOrderBundle(folioOrId: string) {
+  const lk = useLookups();
+  const s = useAppStore(
+    useShallow((st) => ({
+      orders: st.orders, jornadas: st.jornadas, photos: st.photos, incidents: st.incidents, reports: st.reports,
+      cases: st.cases, surveys: st.surveys, audit: st.audit, queue: st.sync.queue,
+    })),
+  );
+  return useMemo(() => {
+    const order = s.orders.find((o) => o.folio === folioOrId || o.id === folioOrId);
+    if (!order) return null;
+    const jornadas = s.jornadas.filter((j) => j.orderId === order.id).sort((a, b) => a.dayIndex - b.dayIndex);
+    return {
+      order,
+      client: lk.clients.get(order.clientId)!,
+      site: lk.sites.get(order.siteId)!,
+      serviceType: lk.serviceTypes.get(order.serviceTypeId)!,
+      supervisor: lk.users.get(order.supervisorId)!,
+      unit: lk.units.get(order.unitId)!,
+      jornadas,
+      photos: s.photos.filter((p) => p.orderId === order.id),
+      incidents: s.incidents.filter((i) => i.orderId === order.id),
+      reports: s.reports.filter((r) => r.orderId === order.id).sort((a, b) => b.version - a.version),
+      cases: s.cases.filter((c) => c.orderId === order.id),
+      surveys: s.surveys.filter((x) => x.orderId === order.id),
+      audit: s.audit.filter((a) => a.orderId === order.id),
+      pendingSync: s.queue.filter((q) => q.orderId === order.id && q.state !== "sincronizado"),
+      currentCrew: (jornadas.find((j) => j.status !== "cerrada") ?? jornadas.at(-1))?.workerIds.map((id) => lk.workers.get(id)!).filter(Boolean) ?? [],
+    };
+  }, [s, lk, folioOrId]);
+}
+
+export type OrderBundle = NonNullable<ReturnType<typeof useOrderBundle>>;
+
+export function useJornadaBundle(jornadaId: string) {
+  const jornada = useAppStore((s) => s.jornadas.find((j) => j.id === jornadaId));
+  const orderId = jornada?.orderId ?? "";
+  const bundle = useOrderBundle(orderId);
+  return jornada && bundle ? { jornada: jornada as Jornada, ...bundle } : null;
+}
+
+/** Offline = browser offline OR "Simular sin conexión". */
+export function useIsOffline() {
+  return useAppStore((s) => isOffline(s));
+}
+
+export function useSyncSummary() {
+  const queue = useAppStore((s) => s.sync.queue);
+  const lastSyncAt = useAppStore((s) => s.sync.lastSyncAt);
+  const offline = useIsOffline();
+  return useMemo(() => {
+    const pending = queue.filter((q) => q.state === "pendiente" || q.state === "error");
+    const syncing = queue.filter((q) => q.state === "sincronizando");
+    return { offline, pending, syncing, lastSyncAt, queue };
+  }, [queue, lastSyncAt, offline]);
+}
+
+/** Re-renders every `ms` — for live timers and "hace X min" labels. */
+export function useNow(ms = 30_000) {
+  const [now, setNow] = useState(() => new Date());
+  useEffect(() => {
+    const t = setInterval(() => setNow(new Date()), ms);
+    return () => clearInterval(t);
+  }, [ms]);
+  return now;
+}
+
+export function useMediaQuery(query: string) {
+  // Views render only after client hydration (AppShell gate), so reading window here is safe.
+  const [match, setMatch] = useState(() => typeof window !== "undefined" && window.matchMedia(query).matches);
+  useEffect(() => {
+    const m = window.matchMedia(query);
+    const on = () => setMatch(m.matches);
+    on();
+    m.addEventListener("change", on);
+    return () => m.removeEventListener("change", on);
+  }, [query]);
+  return match;
+}
+
+export type { Order };

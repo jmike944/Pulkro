@@ -1,0 +1,153 @@
+"use client";
+
+import { useMemo } from "react";
+import { motion } from "motion/react";
+import { ArrowUpRight, Phone, UserRoundPlus, Users } from "lucide-react";
+import { mapsLink } from "@/lib/domain";
+import { fmtDateTime, plural } from "@/lib/format";
+import { distanceMeters, GeoMap, type GeoMarker } from "@/components/pk/geo-map";
+import { Eyebrow, KeyValues, PersonAvatar } from "@/components/pk/bits";
+import { rowVariants, staggerContainer } from "@/components/pk/motion";
+import { Button } from "@/components/ui/button";
+import { compact, fmtWeekdayDay } from "./orden-format";
+import { useOrder } from "./order-context";
+import { Gated } from "./ui";
+
+/** SITIO: client, address, contact + map with site and check-in/out markers. */
+export function SitePanel() {
+  const { d } = useOrder();
+  const { order, client, site, jornadas } = d;
+
+  // Map the jornada in progress, or the latest one with GPS stamps.
+  const stamped = d.live ?? [...jornadas].reverse().find((j) => j.checkIn);
+  const markers = useMemo(() => {
+    const m: GeoMarker[] = [{ lat: site.lat, lng: site.lng, kind: "site", label: "Sitio", tooltip: site.name }];
+    if (stamped?.checkIn)
+      m.push({ lat: stamped.checkIn.lat, lng: stamped.checkIn.lng, kind: stamped.checkOut ? "checkin" : "live", label: "Entrada", tooltip: `Jornada ${stamped.dayIndex}` });
+    if (stamped?.checkOut) m.push({ lat: stamped.checkOut.lat, lng: stamped.checkOut.lng, kind: "checkout", label: "Salida", tooltip: `Jornada ${stamped.dayIndex}` });
+    return m;
+  }, [site, stamped]);
+  const dist = stamped?.checkIn ? Math.round(distanceMeters(site, stamped.checkIn)) : null;
+
+  return (
+    <section>
+      <KeyValues
+        title="Sitio"
+        rows={[
+          { k: "Cliente", v: client.name },
+          { k: "Sitio", v: site.name },
+          { k: "Dirección", v: <span className="font-normal leading-snug">{site.address}</span> },
+          { k: "Municipio", v: site.municipality },
+          { k: "Contacto", v: order.siteContact.name || "—" },
+          {
+            k: "Teléfono",
+            v: order.siteContact.phone ? (
+              <a href={`tel:${order.siteContact.phone.replace(/\s/g, "")}`} className="text-link tabular hover:underline">
+                {order.siteContact.phone}
+              </a>
+            ) : (
+              "—"
+            ),
+          },
+        ]}
+      />
+      <GeoMap markers={markers} connect accuracy={stamped?.checkIn ? { lat: stamped.checkIn.lat, lng: stamped.checkIn.lng, radius: stamped.checkIn.accuracy } : undefined} className="mt-5 h-[210px]" />
+      <div className="mt-2.5 flex items-center justify-between gap-3 text-[12.5px] text-subtle">
+        <span className="min-w-0 truncate">
+          {stamped?.checkIn && dist !== null ? `Entrada J${stamped.dayIndex} a ${dist} m del sitio · ±${Math.round(stamped.checkIn.accuracy)} m` : "Sin registros GPS todavía"}
+        </span>
+        <a href={mapsLink(site.lat, site.lng)} target="_blank" rel="noreferrer" className="inline-flex shrink-0 items-center gap-1 font-semibold text-link">
+          Abrir en Maps <ArrowUpRight className="size-3.5" />
+        </a>
+      </div>
+    </section>
+  );
+}
+
+/** CUADRILLA: current crew with specialty + change crew (supervisor only). */
+export function CrewPanel() {
+  const { d, ui } = useOrder();
+  const crew = d.currentCrew;
+  return (
+    <section>
+      <div className="mb-3 flex items-center justify-between gap-3">
+        <Eyebrow>Cuadrilla · {crew.length}</Eyebrow>
+        <Gated gate={d.gates.crew}>
+          <Button variant="outline" disabled={!d.gates.crew.ok} onClick={() => ui.openCrew()} className="h-9 rounded-[11px] border-[#dfe3ea] px-3 text-[13px] font-semibold">
+            <UserRoundPlus className="size-4" /> Cambiar cuadrilla
+          </Button>
+        </Gated>
+      </div>
+      {crew.length === 0 ? (
+        <p className="flex items-center gap-2 rounded-[16px] border border-dashed border-[#d9dfe7] px-4 py-4 text-[14px] text-subtle">
+          <Users className="size-4" /> Sin personal asignado
+        </p>
+      ) : (
+        <motion.ul variants={staggerContainer(0.04, 0.1)} initial="hidden" animate="show" className="divide-y divide-hairline">
+          {crew.map((w) => (
+            <motion.li key={w.id} variants={rowVariants} layout className="flex items-center gap-3 py-2.5">
+              <PersonAvatar name={w.name} initials={w.initials} hue={w.hue} size={36} />
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-[14px] font-medium text-ink">{w.name}</p>
+                <p className="truncate text-[12.5px] text-subtle">{w.specialty}</p>
+              </div>
+              <a
+                href={`tel:${w.phone.replace(/\s/g, "")}`}
+                aria-label={`Llamar a ${w.name}`}
+                className="inline-flex size-10 shrink-0 items-center justify-center rounded-full text-subtle transition hover:bg-muted hover:text-ink"
+              >
+                <Phone className="size-4" />
+              </a>
+            </motion.li>
+          ))}
+        </motion.ul>
+      )}
+    </section>
+  );
+}
+
+/** Historial de reasignaciones: who changed the crew, when and why (doc §8). */
+export function CrewHistory() {
+  const { d } = useOrder();
+  const { order, lk, jornadas } = d;
+  const entries = order.crewHistory.map((c, i) => {
+    const prev = order.crewHistory[i - 1];
+    const added = prev ? c.workerIds.filter((id) => !prev.workerIds.includes(id)) : [];
+    const removed = prev ? prev.workerIds.filter((id) => !c.workerIds.includes(id)) : [];
+    return { c, added: compact(added.map((id) => lk.workers.get(id))), removed: compact(removed.map((id) => lk.workers.get(id))), first: !prev };
+  });
+  if (!entries.length) return null;
+  const firstName = (n: string) => n.split(" ")[0];
+  return (
+    <section>
+      <Eyebrow className="mb-4">Historial de reasignaciones</Eyebrow>
+      <ol className="space-y-4">
+        {[...entries].reverse().map(({ c, added, removed, first }, i) => {
+          const by = lk.users.get(c.by);
+          const j = c.jornadaId ? jornadas.find((x) => x.id === c.jornadaId) : undefined;
+          return (
+            <motion.li key={`${c.at}-${i}`} initial={{ opacity: 0, x: -6 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.05 * i }} className="flex gap-3">
+              <PersonAvatar name={by?.name} initials={by?.initials ?? "?"} hue={by?.hue} size={30} />
+              <div className="min-w-0 flex-1 text-[13.5px]">
+                <p className="text-ink">
+                  <span className="font-semibold">{by?.name ?? "Usuario"}</span>{" "}
+                  {first ? "asignó" : "reasignó"} {plural(c.workerIds.length, "persona", "personas")}
+                  {j ? ` · Jornada ${j.dayIndex} (${fmtWeekdayDay(j.date)})` : ""}
+                </p>
+                {(added.length > 0 || removed.length > 0) && (
+                  <p className="mt-0.5 flex flex-wrap gap-x-2 text-[12.5px]">
+                    {added.length > 0 && <span className="text-st-teal">+ {added.map((w) => firstName(w.name)).join(", ")}</span>}
+                    {removed.length > 0 && <span className="text-st-red">− {removed.map((w) => firstName(w.name)).join(", ")}</span>}
+                  </p>
+                )}
+                <p className="mt-0.5 text-subtle">
+                  {c.reason ? `“${c.reason}”` : "Sin motivo"} · {fmtDateTime(c.at)}
+                </p>
+              </div>
+            </motion.li>
+          );
+        })}
+      </ol>
+    </section>
+  );
+}
