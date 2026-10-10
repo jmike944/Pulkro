@@ -3,14 +3,15 @@
 import Link from "next/link";
 import { useMemo, useState } from "react";
 import { AnimatePresence, motion } from "motion/react";
-import { ArrowDown, ArrowUp, Building2, ChevronRight, Search } from "lucide-react";
+import { ArrowDown, ArrowUp, ArrowUpDown, Building2, ChevronRight, Search } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { fmtRelativeDay } from "@/lib/format";
+import { fmtRelativeDay, plural } from "@/lib/format";
 import type { ClientSegment } from "@/lib/types";
 import { ClientMark } from "@/components/pk/client-mark";
 import { EmptyState } from "@/components/pk/feedback";
 import { EASE } from "@/components/pk/motion";
 import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Stars } from "@/features/postventa/rating";
 import { FilterChip, inputCls } from "@/features/postventa/ui";
 import type { ClientStats } from "./use-clients";
@@ -19,11 +20,27 @@ type SortKey = "nombre" | "servicios" | "ultimo" | "csat" | "casos";
 const SEGMENTS: ClientSegment[] = ["Industrial", "Comercial", "Residencial"];
 const COLS = "md:grid-cols-[minmax(0,1.7fr)_56px_84px_108px_112px_64px_20px]";
 
+type Sort = { key: SortKey; dir: 1 | -1 };
+const dirFor = (key: SortKey): 1 | -1 => (key === "nombre" ? 1 : -1);
+/** Phone sort menu: the desktop column headers (key + direction) spelled out as plain-language options. */
+const SORT_OPTIONS: { key: SortKey; dir: 1 | -1; label: string }[] = [
+  { key: "servicios", dir: -1, label: "Más servicios" },
+  { key: "servicios", dir: 1, label: "Menos servicios" },
+  { key: "ultimo", dir: -1, label: "Servicio más reciente" },
+  { key: "ultimo", dir: 1, label: "Servicio más antiguo" },
+  { key: "csat", dir: -1, label: "Mejor satisfacción" },
+  { key: "csat", dir: 1, label: "Peor satisfacción" },
+  { key: "casos", dir: -1, label: "Más casos abiertos" },
+  { key: "casos", dir: 1, label: "Menos casos abiertos" },
+  { key: "nombre", dir: 1, label: "Nombre, A a Z" },
+  { key: "nombre", dir: -1, label: "Nombre, Z a A" },
+];
+
 /** "Todos los clientes": searchable, segment chips, sortable columns; cards on phones. */
 export function ClientsTable({ rows }: { rows: ClientStats[] }) {
   const [query, setQuery] = useState("");
   const [segment, setSegment] = useState<ClientSegment | "todos">("todos");
-  const [sort, setSort] = useState<{ key: SortKey; dir: 1 | -1 }>({ key: "servicios", dir: -1 });
+  const [sort, setSort] = useState<Sort>({ key: "servicios", dir: -1 });
 
   const counts = useMemo(() => Object.fromEntries(SEGMENTS.map((s) => [s, rows.filter((r) => r.client.segment === s).length])) as Record<ClientSegment, number>, [rows]);
 
@@ -47,6 +64,8 @@ export function ClientsTable({ rows }: { rows: ClientStats[] }) {
       .filter((r) => segment === "todos" || r.client.segment === segment)
       .filter((r) => !q || [r.client.name, r.client.shortName, r.client.contactName, ...r.sites.map((s) => s.municipality)].some((x) => x.toLowerCase().includes(q)))
       .sort((a, b) => {
+        // unrated clients never lead a satisfaction ranking, whichever the direction
+        if (sort.key === "csat" && (a.csatCount === 0) !== (b.csatCount === 0)) return a.csatCount === 0 ? 1 : -1;
         const x = val(a);
         const y = val(b);
         const c = typeof x === "string" ? x.localeCompare(y as string) : x - (y as number);
@@ -54,7 +73,7 @@ export function ClientsTable({ rows }: { rows: ClientStats[] }) {
       });
   }, [rows, query, segment, sort]);
 
-  const toggle = (key: SortKey) => setSort((s) => (s.key === key ? { key, dir: s.dir === 1 ? -1 : 1 } : { key, dir: key === "nombre" ? 1 : -1 }));
+  const toggle = (key: SortKey) => setSort((s) => (s.key === key ? { key, dir: s.dir === 1 ? -1 : 1 } : { key, dir: dirFor(key) }));
 
   return (
     <div>
@@ -73,6 +92,29 @@ export function ClientsTable({ rows }: { rows: ClientStats[] }) {
             </FilterChip>
           ))}
         </div>
+        {/* phones have no column headers to click: same sort state, as a menu */}
+        <Select
+          value={`${sort.key}:${sort.dir}`}
+          onValueChange={(v) => {
+            const [key, dir] = v.split(":");
+            setSort({ key: key as SortKey, dir: dir === "1" ? 1 : -1 });
+          }}
+        >
+          <SelectTrigger aria-label="Ordenar clientes" className={cn(inputCls, "w-full data-[size=default]:h-11 md:hidden")}>
+            <span className="flex min-w-0 items-center gap-2">
+              <ArrowUpDown className="size-4 text-subtle" />
+              <span className="text-subtle">Ordenar</span>
+              <SelectValue className="truncate font-medium text-ink" />
+            </span>
+          </SelectTrigger>
+          <SelectContent position="popper" align="start" className="w-(--radix-select-trigger-width) rounded-[14px] p-1">
+            {SORT_OPTIONS.map((o) => (
+              <SelectItem key={`${o.key}:${o.dir}`} value={`${o.key}:${o.dir}`} className="min-h-11 rounded-[10px] text-[14px]">
+                {o.label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
       </div>
 
       {shown.length === 0 ? (
@@ -119,10 +161,7 @@ export function ClientsTable({ rows }: { rows: ClientStats[] }) {
                         <span className="block truncate text-[15px] font-semibold text-ink group-hover:text-link">{r.client.name}</span>
                         <span className="block truncate text-[13px] text-subtle">
                           {r.client.segment}
-                          <span className="md:hidden">
-                            {" "}
-                            · {r.services.length} servicios · {r.lastService ? `último ${fmtRelativeDay(r.lastService).toLowerCase()}` : "sin servicios"}
-                          </span>
+                          <span className="md:hidden"> · {r.lastService ? `último ${fmtRelativeDay(r.lastService).toLowerCase()}` : "sin servicios"}</span>
                         </span>
                       </span>
                     </span>
@@ -140,7 +179,6 @@ export function ClientsTable({ rows }: { rows: ClientStats[] }) {
                       )}
                     </span>
                     <span className="flex items-center justify-end gap-2 md:contents">
-                      <span className="md:hidden">{r.csatCount ? <Stars value={r.csat} size={12} /> : null}</span>
                       {r.openCases > 0 && (
                         <span className="inline-flex h-6 items-center rounded-md bg-[#fdeeee] px-1.5 text-[12px] font-semibold text-st-red md:hidden">
                           {r.openCases === 1 ? "1 caso" : `${r.openCases} casos`}
@@ -156,6 +194,20 @@ export function ClientsTable({ rows }: { rows: ClientStats[] }) {
                         {r.openCases}
                       </span>
                       <ChevronRight className="hidden size-4 text-[#c5ccd6] transition-transform group-hover:translate-x-0.5 group-hover:text-ink md:block" />
+                    </span>
+                    {/* phones: the columns the table has (sitios, 12 m, numeric CSAT / sin encuestas), under the name (42px mark + 12px gap) */}
+                    <span className="col-span-full flex flex-wrap items-center justify-between gap-x-3 gap-y-1 pl-[54px] text-[13px] text-subtle md:hidden">
+                      <span>
+                        {plural(r.sites.length, "sitio", "sitios")} · {plural(r.services.length, "servicio", "servicios")} en 12 m
+                      </span>
+                      {r.csatCount ? (
+                        <span className="inline-flex items-center gap-1.5">
+                          <Stars value={r.csat} size={12} />
+                          <span className="font-semibold text-ink tabular">{r.csat.toFixed(1)}</span>
+                        </span>
+                      ) : (
+                        <span>Sin encuestas</span>
+                      )}
                     </span>
                   </Link>
                 </motion.li>
@@ -177,7 +229,7 @@ function SortHeader({
   className,
 }: {
   k: SortKey;
-  sort: { key: SortKey; dir: 1 | -1 };
+  sort: Sort;
   onSort: (k: SortKey) => void;
   children: React.ReactNode;
   label?: string;

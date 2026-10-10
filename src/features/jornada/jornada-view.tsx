@@ -22,12 +22,13 @@ import { PhotoSection, QuickCaptureFlow } from "./photo-section";
 import { IncidentsSection } from "./incidents-section";
 import { BeforeAfterSection } from "./before-after-section";
 import { Bitacora, NoteFlow } from "./bitacora";
-import { OrderRail } from "./order-rail";
+import { OrderContextRow, OrderRail } from "./order-rail";
 import { GpsFlow, type GpsMode, type GpsNext, type GpsResult } from "./gps-capture";
 import { CrewFlow } from "./crew-flow";
 import { BreakdownFlow } from "./breakdown-flow";
 import { useFlowState } from "./flow-bits";
 import { fmtShortDay } from "./field-bits";
+import { useMinWidth } from "./use-min-width";
 
 /** /jornada/[id] — the supervisor's field screen (doc §3 pasos 5–11, §4.2, §6, §8). */
 export function JornadaView({ params }: { params: Promise<{ id: string }> }) {
@@ -48,6 +49,8 @@ function FieldScreen({ f }: { f: FieldReady }) {
   const crew = useFlowState();
   const breakdown = useFlowState();
   const [incidentOpen, setIncidentOpen] = useState(false);
+  // Same breakpoint as the `@min-[880px]` classes below: the rail is a side column only when it fits.
+  const [boxRef, wide] = useMinWidth<HTMLDivElement>(880);
 
   const openGps = (mode: GpsMode) => gps.show({ mode, warnings: gpsWarnings(f, mode, new Date()) });
 
@@ -103,7 +106,7 @@ function FieldScreen({ f }: { f: FieldReady }) {
   };
 
   return (
-    <div className="@container mx-auto w-full max-w-[1240px]">
+    <div ref={boxRef} className="@container mx-auto w-full max-w-[1240px]">
       <FieldHeader f={f} />
 
       <div className="grid gap-10 @min-[880px]:grid-cols-[minmax(0,1fr)_minmax(290px,340px)] @min-[1080px]:gap-14">
@@ -112,6 +115,7 @@ function FieldScreen({ f }: { f: FieldReady }) {
             <StepRail steps={f.steps} current={f.currentStep} />
             <HeroCard f={f} actions={actions} />
             {f.jornada.status === "cerrada" && <NextStep f={f} />}
+            {!wide && <OrderContextRow f={f} />}
           </div>
           <PhotoSection f={f} kind="antes" />
           <IncidentsSection f={f} onNew={() => setIncidentOpen(true)} />
@@ -120,9 +124,11 @@ function FieldScreen({ f }: { f: FieldReady }) {
           <Bitacora f={f} />
         </div>
 
-        <aside aria-label="Datos de la orden" className="min-w-0 @min-[880px]:sticky @min-[880px]:top-6 @min-[880px]:max-h-[calc(100dvh-48px)] @min-[880px]:self-start @min-[880px]:overflow-y-auto @min-[880px]:scrollbar-none">
-          <OrderRail f={f} />
-        </aside>
+        {wide && (
+          <aside aria-label="Datos de la orden" className="min-w-0 @min-[880px]:sticky @min-[880px]:top-6 @min-[880px]:max-h-[calc(100dvh-48px)] @min-[880px]:self-start @min-[880px]:overflow-y-auto @min-[880px]:scrollbar-none">
+            <OrderRail f={f} />
+          </aside>
+        )}
       </div>
 
       {gps.session > 0 && gps.data && (

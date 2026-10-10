@@ -121,10 +121,11 @@ function JornadaEvidence({ j, index }: { j: Jornada; index: number }) {
         </p>
       ) : (
         <>
+          {/* stacked on phones, not a swipe carousel: the slider claims horizontal drags, so the carousel could not be paged from a photo */}
           {pairs.length > 0 && (
-            <div className="scrollbar-none -mx-4 mt-5 flex snap-x gap-4 overflow-x-auto px-4 pb-1 sm:mx-0 sm:grid sm:grid-cols-2 sm:overflow-visible sm:px-0">
+            <div className="mt-5 grid gap-6 sm:grid-cols-2 sm:gap-4 sm:pb-1">
               {pairs.map(({ a, b }) => (
-                <figure key={a.id} className="w-[82vw] max-w-[360px] shrink-0 snap-start sm:w-auto sm:max-w-none">
+                <figure key={a.id} className="min-w-0">
                   <BeforeAfter before={a} after={b} />
                   <figcaption className="mt-2 flex items-center justify-between gap-2 text-[12.5px] text-subtle">
                     <span className="truncate font-medium text-ink">{a.area}</span>

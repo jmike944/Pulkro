@@ -3,17 +3,19 @@
 import Link from "next/link";
 import { useMemo, useState } from "react";
 import { AnimatePresence, motion } from "motion/react";
-import { Building2, ChevronDown, ClipboardList, MapPin, Pencil, Plus } from "lucide-react";
+import { Building2, ChevronDown, ClipboardList, MapPin, MessageCircle, Pencil, Phone, Plus } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { useAppStore, useCan, useLookups, useScopedData, useShallow } from "@/lib/hooks";
-import { fmtCoords, fmtDate, plural } from "@/lib/format";
+import { whatsappLink } from "@/lib/domain";
+import { firstName, fmtCoords, fmtDate, plural } from "@/lib/format";
 import type { Client, ClientSegment, Site } from "@/lib/types";
 import { ClientMark } from "@/components/pk/client-mark";
 import { GeoMap } from "@/components/pk/geo-map";
 import { Segmented } from "@/components/pk/page";
 import { EmptyState } from "@/components/pk/feedback";
 import { EASE, rowVariants, staggerContainer } from "@/components/pk/motion";
+import { ReasonTip } from "@/components/pk/reason-tip";
 import { Button } from "@/components/ui/button";
 import { GatedButton, ListHead, NO_CATALOGS, SearchField, norm, useDialogTarget } from "./shared";
 import { useCatalogUnit } from "./use-catalog-unit";
@@ -239,17 +241,14 @@ function ClientDetail({
                   </p>
                   <p className="text-[11.5px] text-[#98a2b3] tabular">{fmtCoords(s.lat, s.lng)}</p>
                 </div>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={() => onEditSite(s)}
-                  disabled={!canEdit}
-                  aria-label={`Editar sitio ${s.name}`}
-                  title={canEdit ? undefined : NO_CATALOGS}
-                  className="size-11 shrink-0 rounded-[12px] xl:size-10"
-                >
-                  <Pencil className="size-4" />
-                </Button>
+                {/* a title attribute never shows on touch: ReasonTip opens the reason on tap */}
+                <ReasonTip reason={canEdit ? undefined : NO_CATALOGS} contentClassName="max-w-[260px] text-[12.5px] leading-snug">
+                  <span tabIndex={canEdit ? undefined : 0} className="inline-flex shrink-0 rounded-[12px] outline-none focus-visible:ring-3 focus-visible:ring-ring/50">
+                    <Button variant="ghost" size="icon" onClick={() => onEditSite(s)} disabled={!canEdit} aria-label={`Editar sitio ${s.name}`} className="size-11 shrink-0 rounded-[12px] xl:size-10">
+                      <Pencil className="size-4" />
+                    </Button>
+                  </span>
+                </ReasonTip>
               </motion.li>
             ))}
           </ul>
@@ -264,6 +263,26 @@ function ClientDetail({
             </a>
           </p>
         </div>
+        {/* the "Contacto" column (phone) only exists from xl: below it, call / WhatsApp live here */}
+        {client.contactPhone && (
+          <div className="mt-3 grid gap-2 sm:grid-cols-2 xl:hidden">
+            <Button asChild variant="outline" className="h-11 min-w-0 rounded-[12px] border-[#dfe3ea] bg-white px-3 font-semibold">
+              <a href={`tel:${client.contactPhone.replace(/\s/g, "")}`} aria-label={`Llamar a ${client.contactName}: ${client.contactPhone}`}>
+                <Phone className="size-4 shrink-0" /> <span className="truncate tabular">{client.contactPhone}</span>
+              </a>
+            </Button>
+            <Button asChild variant="outline" className="h-11 min-w-0 rounded-[12px] border-[#dfe3ea] bg-white px-3 font-semibold">
+              <a
+                href={whatsappLink(client.contactPhone, `Hola ${firstName(client.contactName)}, le saluda Pulkro Compañía de Servicios.`)}
+                target="_blank"
+                rel="noreferrer"
+                aria-label={`Escribir por WhatsApp a ${client.contactName}`}
+              >
+                <MessageCircle className="size-4 shrink-0" /> WhatsApp
+              </a>
+            </Button>
+          </div>
+        )}
         <div className="mt-4 flex flex-wrap gap-2">
           <Button asChild variant="outline" className="h-10 rounded-[12px] border-[#dfe3ea] bg-white px-4 font-semibold">
             <Link href={`/clientes/${client.id}`}>

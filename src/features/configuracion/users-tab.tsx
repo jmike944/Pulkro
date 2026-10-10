@@ -11,13 +11,23 @@ import type { Role, User } from "@/lib/types";
 import { PersonAvatar, SectionHeader } from "@/components/pk/bits";
 import { Segmented } from "@/components/pk/page";
 import { EmptyState } from "@/components/pk/feedback";
-import { rowVariants, staggerContainer } from "@/components/pk/motion";
+import { EASE } from "@/components/pk/motion";
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog, GatedButton, useDialogTarget, InlineSwitch, ListHead, NO_USERS, ROLES, RoleBadge, SearchField, norm } from "./shared";
 import { UserDialog } from "./user-dialog";
 import { PermissionMatrix } from "./permission-matrix";
 
 const ROLE_ORDER: Record<Role, number> = { direccion: 0, administracion: 1, supervisor: 2 };
+
+/**
+ * Rows drive their own entrance (initial/animate on each <motion.li>, stagger via the `custom` index) instead of inheriting "show" from the <ul>.
+ * The inner <AnimatePresence> resets the presence context, so under settings-view's `<AnimatePresence initial={false}>` a parent-driven list
+ * deadlocks: the <ul> is initial-blocked (never animates) while its rows start hidden and wait for it to push "show".
+ */
+const rowIn = {
+  hidden: { opacity: 0, y: 8 },
+  show: (i: number = 0) => ({ opacity: 1, y: 0, transition: { duration: 0.4, ease: EASE, delay: 0.05 + Math.min(0.5, i * 0.035) } }),
+};
 
 export function UsersTab() {
   const { users, orders } = useAppStore(useShallow((s) => ({ users: s.users, orders: s.orders })));
@@ -104,16 +114,19 @@ export function UsersTab() {
               <span className="text-center">Activo</span>
               <span />
             </ListHead>
-            <motion.ul variants={staggerContainer(0.035, 0.05)} initial="hidden" animate="show">
+            <ul>
               <AnimatePresence>
-                {list.map((u) => {
+                {list.map((u, i) => {
                   const isMe = u.id === me.id;
                   const open = openOrdersBy.get(u.id) ?? 0;
                   return (
                     <motion.li
                       key={u.id}
                       layout
-                      variants={rowVariants}
+                      custom={i}
+                      variants={rowIn}
+                      initial="hidden"
+                      animate="show"
                       exit={{ opacity: 0, height: 0 }}
                       className={cn(
                         "grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3 gap-y-2 border-b border-hairline py-4 xl:grid-cols-[minmax(0,1.4fr)_150px_minmax(0,1fr)_64px_96px] xl:gap-x-4",
@@ -173,7 +186,7 @@ export function UsersTab() {
                   );
                 })}
               </AnimatePresence>
-            </motion.ul>
+            </ul>
           </div>
         )}
       </section>

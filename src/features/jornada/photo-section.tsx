@@ -6,6 +6,7 @@ import { Camera, Check, CircleCheck, EyeOff, ImagePlus, LoaderCircle, Lock, Spar
 import { toast } from "sonner";
 import { SCENE_AREAS } from "@/lib/seed";
 import type { Photo, SceneKind } from "@/lib/types";
+import { useEdgeFade } from "@/components/pk/edge-fade";
 import { areaSuggestions, usePhotoCapture, type CaptureMeta } from "@/components/pk/photo-capture";
 import { PhotoThumb } from "@/components/pk/scene-photo";
 import { SoftBadge } from "@/components/pk/status";
@@ -53,6 +54,7 @@ export function CaptureComposer({ f, kind, onCaptured, className }: { f: FieldRe
   const { all, missing, used } = useAreaOptions(f, kind);
   const [area, setArea] = useState(() => [...missing][0] ?? all.find((a) => !used.has(a)) ?? all[0] ?? "");
   const inputId = useId();
+  const { ref: chipRef, style: chipStyle } = useEdgeFade();
 
   return (
     <div className={className}>
@@ -67,7 +69,7 @@ export function CaptureComposer({ f, kind, onCaptured, className }: { f: FieldRe
         className="h-12 rounded-[14px] bg-white text-[16px] sm:text-[15px]"
         autoComplete="off"
       />
-      <div className="scrollbar-none -mx-1 mt-2.5 flex gap-2 overflow-x-auto px-1 pb-1">
+      <div ref={chipRef} style={chipStyle} className="scrollbar-none -mx-1 mt-2.5 flex gap-2 overflow-x-auto px-1 pb-1">
         {all.slice(0, 10).map((a) => (
           <Chip key={a} active={area === a} onClick={() => setArea(a)} hint={missing.has(a) ? "falta" : undefined}>
             {a}

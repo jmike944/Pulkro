@@ -41,6 +41,7 @@ export function OrdersFilters(props: Props) {
   const [sheetOpen, setSheetOpen] = useState(false);
   const count = activeFilterCount(filters);
   const dirty = count > 0 || search.trim().length > 0;
+  const chips = appliedChips(props);
 
   return (
     <div className="mt-5 flex flex-col gap-3 md:flex-row md:flex-wrap md:items-center">
@@ -60,6 +61,35 @@ export function OrdersFilters(props: Props) {
         </Button>
         <AltaToggle on={filters.alta} onToggle={() => props.onChange({ alta: !filters.alta })} className="h-11" />
       </div>
+
+      {/* Phone: what the sheet applied, one tap to drop each filter */}
+      <AnimatePresence initial={false}>
+        {chips.length > 0 && (
+          <motion.ul
+            key="chips"
+            aria-label="Filtros aplicados"
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: "auto" }}
+            exit={{ opacity: 0, height: 0 }}
+            transition={{ duration: 0.25 }}
+            className="-my-1.5 flex flex-wrap gap-x-2 overflow-hidden md:hidden"
+          >
+            {chips.map((c) => (
+              <li key={c.key}>
+                <button type="button" onClick={() => props.onChange({ [c.key]: "" })} aria-label={`Quitar filtro ${c.label}: ${c.value}`} className="group inline-flex h-11 items-center outline-none">
+                  <span className="inline-flex h-9 max-w-[260px] items-center gap-1.5 rounded-full border border-[#bcd8fb] bg-[#f2f8fe] pl-3.5 pr-2.5 text-[13.5px] transition group-focus-visible:ring-3 group-focus-visible:ring-ring/50 group-active:scale-95">
+                    <span className="min-w-0 truncate">
+                      <span className="text-subtle">{c.label}: </span>
+                      <span className="font-semibold text-ink">{c.value}</span>
+                    </span>
+                    <X className="size-3.5 shrink-0 text-subtle" />
+                  </span>
+                </button>
+              </li>
+            ))}
+          </motion.ul>
+        )}
+      </AnimatePresence>
 
       {/* Tablet / desktop: inline */}
       <div className="hidden min-w-0 flex-wrap items-center gap-2 md:flex">
@@ -115,6 +145,19 @@ export function OrdersFilters(props: Props) {
       </Sheet>
     </div>
   );
+}
+
+type SelectKey = "sup" | "srv" | "cli" | "uni";
+
+/** Applied select filters with their readable value, for the phone chip row. */
+function appliedChips({ filters, options }: Props) {
+  const defs: { key: SelectKey; label: string; list: FilterOption[] }[] = [
+    { key: "sup", label: "Supervisor", list: options.supervisors },
+    { key: "srv", label: "Servicio", list: options.services },
+    { key: "cli", label: "Cliente", list: options.clients },
+    { key: "uni", label: "Unidad", list: options.units },
+  ];
+  return defs.flatMap((d) => (filters[d.key] ? [{ key: d.key, label: d.label, value: d.list.find((o) => o.value === filters[d.key])?.label ?? "Seleccionado" }] : []));
 }
 
 function SearchBox({ value, onChange }: { value: string; onChange: (v: string) => void }) {

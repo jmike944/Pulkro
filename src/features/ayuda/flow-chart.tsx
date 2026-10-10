@@ -78,7 +78,7 @@ export function FlowChart() {
         <button
           type="button"
           onClick={togglePlay}
-          className="relative hidden h-11 items-center gap-2 overflow-hidden rounded-[14px] bg-brand-deep px-4 text-[14px] font-semibold text-white shadow-[0_10px_24px_-12px_rgb(7_36_63/0.7)] transition hover:bg-[#0b2f52] md:inline-flex"
+          className="relative inline-flex h-12 items-center justify-center gap-2 overflow-hidden rounded-[14px] bg-brand-deep px-4 text-[14px] font-semibold text-white shadow-[0_10px_24px_-12px_rgb(7_36_63/0.7)] transition hover:bg-[#0b2f52] max-md:w-full md:h-11"
         >
           {playing ? <Pause className="size-4 fill-white" /> : <Play className="size-4 fill-white" />}
           {playing ? "Pausar recorrido" : selected > 1 && selected < 15 ? "Continuar recorrido" : "Ver recorrido"}
@@ -103,8 +103,8 @@ export function FlowChart() {
         </GlassCard>
       </div>
 
-      {/* phones: vertical rail with inline detail */}
-      <FlowRail />
+      {/* phones: vertical rail with inline detail (follows the tour) */}
+      <FlowRail selected={selected} playing={playing} onPick={pick} />
 
       <p className="mt-6 px-2 text-[12.5px] leading-relaxed text-ink/65 sm:px-0">
         Ramas de control: si faltan jornadas, regresar a registro de entrada; si falta evidencia, corregir antes del cierre. Los envíos son manuales; los clientes no
@@ -357,37 +357,57 @@ function FlowNode({
         <span className="truncate">{ROLE_SHORT[s.role] ?? s.role}</span>
       </span>
       <span className="mt-1.5 text-[13px] font-medium leading-snug text-ink xl:text-[14px]">{s.title}</span>
-      {s.branches && (
-        <span className="mt-auto hidden flex-wrap gap-1.5 pt-2 xl:flex">
-          {s.branches.map((b) => (
-            <span
-              key={b.label}
-              className={cn("inline-flex h-[20px] items-center rounded-md px-1.5 text-[10.5px] font-bold tabular", b.label === "Sí" ? "bg-[#dcf4ef] text-st-teal" : "bg-white text-[#b86e00] ring-1 ring-[#f3c97a]")}
-            >
-              {b.label} → {pad2(b.to)}
-            </span>
-          ))}
-        </span>
-      )}
+      {s.branches && <BranchChips branches={s.branches} className="mt-auto hidden flex-wrap gap-1.5 pt-2 xl:flex" />}
     </motion.button>
+  );
+}
+
+/** "Sí → 05 · No → 09": where each branch of a decision goes (the loop-back arrows of the serpentine, as text). */
+function BranchChips({ branches, className }: { branches: NonNullable<FlowStep["branches"]>; className?: string }) {
+  return (
+    <span className={className}>
+      {branches.map((b) => (
+        <span
+          key={b.label}
+          className={cn("inline-flex h-[20px] items-center rounded-md px-1.5 text-[10.5px] font-bold tabular", b.label === "Sí" ? "bg-[#dcf4ef] text-st-teal" : "bg-white text-[#b86e00] ring-1 ring-[#f3c97a]")}
+        >
+          {b.label} → {pad2(b.to)}
+        </span>
+      ))}
+    </span>
   );
 }
 
 /* ───────────── phones: vertical rail ───────────── */
 
-function FlowRail() {
-  const [open, setOpen] = useState<number | null>(1);
+/** Brings a rail item into view once the previously open one has collapsed. */
+const revealStep = (n: number, reduce: boolean | null) =>
+  setTimeout(() => document.getElementById(`flow-rail-${n}`)?.scrollIntoView({ behavior: reduce ? "auto" : "smooth", block: "center" }), 340);
+
+/** Same selection as the serpentine, so the guided tour also runs on phones (the open item is the current step). */
+function FlowRail({ selected, playing, onPick }: { selected: number; playing: boolean; onPick: (n: number) => void }) {
+  const reduce = useReducedMotion();
+  // the step the reader folded; it only applies while it is the selected one, so picking another step clears it by itself
+  const [folded, setFolded] = useState<number | null>(null);
+  const open = folded === selected && !playing ? null : selected;
   const jumpTo = (n: number) => {
-    setOpen(n);
-    // wait for the previous item to collapse, then bring the target into view
-    setTimeout(() => document.getElementById(`flow-rail-${n}`)?.scrollIntoView({ behavior: "smooth", block: "center" }), 340);
+    setFolded(null);
+    onPick(n);
+    revealStep(n, reduce);
   };
+  // the tour moves the open item: follow it
+  useEffect(() => {
+    if (!playing) return;
+    const t = revealStep(selected, reduce);
+    return () => clearTimeout(t);
+  }, [playing, selected, reduce]);
   return (
     <div className="mt-5 md:hidden">
       {FLOW_PHASES.map((phase, pi) => (
         <section key={phase.title} className={cn(pi > 0 && "mt-5")}>
           <p className="mb-2 px-2 text-[12px] font-semibold uppercase tracking-[0.1em] text-ink/60">
             {phase.range} · {phase.title}
+            <span className="mt-0.5 block text-[12.5px] font-normal normal-case tracking-normal text-ink/55">{phase.hint}</span>
           </p>
           <ol className="space-y-2">
             {FLOW_STEPS.slice(pi * 5, pi * 5 + 5).map((s, i) => {
@@ -403,7 +423,15 @@ function FlowRail() {
                   transition={{ duration: 0.35, ease: EASE, delay: i * 0.04 }}
                   className={cn("overflow-hidden rounded-[18px]", decision ? "border border-[#f3c97a] bg-[#fff7e8]" : "glass-card")}
                 >
-                  <button type="button" onClick={() => setOpen(isOpen ? null : s.n)} aria-expanded={isOpen} className="flex min-h-[60px] w-full items-center gap-3 px-3.5 py-3 text-left">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      onPick(s.n);
+                      setFolded(isOpen ? s.n : null);
+                    }}
+                    aria-expanded={isOpen}
+                    className="flex min-h-[60px] w-full items-center gap-3 px-3.5 py-3 text-left"
+                  >
                     <span
                       className={cn(
                         "inline-flex size-9 shrink-0 items-center justify-center rounded-full text-[13px] font-semibold tabular",
@@ -418,6 +446,7 @@ function FlowRail() {
                         <span className={cn("size-[6px] rounded-full", toneDot[FLOW_ROLE_TONE[s.role]])} />
                         {s.role}
                       </span>
+                      {s.branches && <BranchChips branches={s.branches} className="mt-1.5 flex flex-wrap gap-1.5" />}
                     </span>
                     <motion.span animate={{ rotate: isOpen ? 180 : 0 }} className="text-subtle">
                       <ChevronDown className="size-[18px]" />

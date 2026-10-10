@@ -5,9 +5,9 @@ import { Building2, Check, ChevronDown, ChevronLeft, ChevronRight, Download, Pri
 import { cn } from "@/lib/utils";
 import type { Unit } from "@/lib/types";
 import { Segmented } from "@/components/pk/page";
+import { ReasonTip } from "@/components/pk/reason-tip";
 import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
-import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -110,18 +110,13 @@ export function Controls({
             {exporting ? "Generando…" : "Exportar"}
           </Button>
         ) : (
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <span tabIndex={0} className="inline-flex rounded-[12px] outline-none focus-visible:ring-2 focus-visible:ring-sky">
-                <Button variant="outline" disabled className="h-11 w-full rounded-[12px] border-[#dfe3ea] px-4 text-[14px] font-semibold lg:h-10">
-                  <Download className="size-4" /> Exportar
-                </Button>
-              </span>
-            </TooltipTrigger>
-            <TooltipContent side="bottom" className="max-w-[260px] text-[12.5px] leading-snug">
-              El Excel de indicadores lo exportan Dirección y Administración (doc §2). Puede usar Imprimir / PDF.
-            </TooltipContent>
-          </Tooltip>
+          <ReasonTip side="bottom" reason="El Excel de indicadores lo exportan Dirección y Administración (doc §2). Puede usar Imprimir / PDF." contentClassName="max-w-[260px] text-[12.5px] leading-snug">
+            <span tabIndex={0} className="inline-flex rounded-[12px] outline-none focus-visible:ring-2 focus-visible:ring-sky">
+              <Button variant="outline" disabled className="h-11 w-full rounded-[12px] border-[#dfe3ea] px-4 text-[14px] font-semibold lg:h-10">
+                <Download className="size-4" /> Exportar
+              </Button>
+            </span>
+          </ReasonTip>
         )}
         <Button
           variant="outline"
@@ -145,16 +140,20 @@ function ScopePicker({ scope }: { scope: Parameters<typeof Controls>[0]["scope"]
   );
   if (!scope.canPick) {
     return (
-      <Tooltip>
-        <TooltipTrigger asChild>
+      <>
+        <ReasonTip side="bottom" reason={scope.hint} contentClassName="max-w-[260px] text-[12.5px] leading-snug">
           <span tabIndex={0} className="hidden h-10 min-w-0 items-center gap-2 rounded-[12px] border border-hairline px-3 text-[13.5px] font-medium text-ink outline-none focus-visible:ring-2 focus-visible:ring-sky lg:inline-flex">
             {chip}
           </span>
-        </TooltipTrigger>
-        <TooltipContent side="bottom" className="max-w-[260px] text-[12.5px] leading-snug">
-          {scope.hint}
-        </TooltipContent>
-      </Tooltip>
+        </ReasonTip>
+        {/* below lg the chip is hidden: say the scope and its rule in plain text */}
+        <p className="flex items-start gap-2 text-[13px] leading-snug text-subtle lg:hidden">
+          <Building2 className="mt-0.5 size-4 shrink-0" />
+          <span>
+            <b className="font-semibold text-ink">{scope.label}.</b> {scope.hint}
+          </span>
+        </p>
+      </>
     );
   }
   return (

@@ -8,7 +8,7 @@ import { daysUntil, firstName, fmtDay, fmtDaysLeft } from "@/lib/format";
 import { CASE_CATEGORY, CASE_CHANNEL, CASE_STATUS, SEVERITY } from "@/lib/status";
 import type { CaseCategory, CaseStatus, PostSaleCase } from "@/lib/types";
 import { IconTile, PersonAvatar } from "@/components/pk/bits";
-import { SoftBadge, StatusDot } from "@/components/pk/status";
+import { SoftBadge, StatusDot, TonePill } from "@/components/pk/status";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -69,6 +69,7 @@ export function CaseCard({
 }) {
   const { c, client, order, owner } = row;
   const Icon = CASE_CATEGORY_ICON[c.category];
+  const status = CASE_STATUS[c.status];
   return (
     <motion.article
       layout
@@ -84,9 +85,14 @@ export function CaseCard({
     >
       <Link href={`/postventa/${c.folio}`} aria-label={`Abrir caso ${c.folio}`} className="absolute inset-0 z-0 rounded-[18px] outline-none focus-visible:ring-2 focus-visible:ring-sky" />
       <div className="pointer-events-none relative flex items-start justify-between gap-2">
-        <span className="inline-flex items-center gap-2 pt-1 text-[12px] font-semibold tracking-[0.04em] text-subtle tabular">
-          <StatusDot tone={CASE_STATUS[c.status].tone} live={CASE_STATUS[c.status].live} />
+        <span className="inline-flex items-center gap-2 pt-1 text-[12px] font-semibold tracking-[0.04em] text-subtle tabular max-md:pt-0.5">
+          {/* md+: the column header names the status; phones have no columns, so the pill spells it out */}
+          <StatusDot tone={status.tone} live={status.live} className="max-md:hidden" />
           {c.folio}
+          <TonePill tone={status.tone} live={status.live} className="tracking-normal md:hidden">
+            {status.label}
+          </TonePill>
+          <span className="sr-only max-md:hidden">{status.label}</span>
         </span>
         <CaseMenu row={row} canManage={canManage} onMove={onMove} />
       </div>

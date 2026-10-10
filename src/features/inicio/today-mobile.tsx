@@ -1,25 +1,32 @@
 "use client";
 
-import Link from "next/link";
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { isSameDay, parseISO } from "date-fns";
 import { motion } from "motion/react";
-import { ArrowRight, Camera, Clock, WifiOff } from "lucide-react";
+import { Camera, Clock, Sparkles, WifiOff } from "lucide-react";
 import { useCan, useIsOffline, useLookups, useNow, useScopedData, useSyncSummary } from "@/lib/hooks";
-import { closedAt, photoCompliance } from "@/lib/metrics";
 import { jornadaMinutes } from "@/lib/domain";
-import { firstName, fmtDuration, fmtHours, fmtLongDay, fmtNum, fmtPct, fmtTime, greeting, plural } from "@/lib/format";
+import { firstName, fmtLongDay, fmtNum, fmtPct, fmtTime, greeting, plural } from "@/lib/format";
 import type { Jornada } from "@/lib/types";
 import { PulkroMark } from "@/components/pk/brand";
 import { AnimatedNumber, PersonAvatar } from "@/components/pk/bits";
-import { ClientMark } from "@/components/pk/client-mark";
 import { EmptyState } from "@/components/pk/feedback";
-import { AuroraStat, BigButton, MobileGreeting, MobileRow, NextStepCard, TimeTile } from "@/components/pk/mobile";
-import { rowVariants, staggerContainer } from "@/components/pk/motion";
-import { ProfileAvatar } from "@/components/shell/header-tools";
+import { AuroraStat, BigButton, MobileGreeting, MobileRow, NextStepCard } from "@/components/pk/mobile";
+import { staggerContainer } from "@/components/pk/motion";
+import { MobileToolbar, useUnitScope } from "@/components/shell/header-tools";
 import { usePendingItems, type PendingItem } from "@/features/pendientes/use-pending-items";
+import { AttentionRow, ClosureBlockers, JornadaRow, MoreLink, PipelineTiles, SectionTitle, ServicesHero } from "./today-parts";
+import { useAttention, useHoyStats, useIncidentYear } from "./use-hoy-stats";
 
-/** Mobile "Hoy" (PWA home) — mirrors the reference Today screen. */
+/** Rows per list on the phone: scannable, the full list is one "Ver todo" tap away. */
+const JORNADAS_MAX = 5;
+const ATTENTION_MAX = 5;
+
+/**
+ * Mobile "Hoy" (PWA home) — mirrors the reference Today screen, then the dashboard's data in phone form:
+ * today's jornadas (crew, photos), the orders that need attention and, for Dirección / Administración,
+ * the month KPI, pipeline counters and what holds closures back. Supervisors keep a field focus.
+ */
 export function TodayMobile() {
   const data = useScopedData();
   const { user, orders, jornadas, photos, incidents, reports } = data;
@@ -29,16 +36,35 @@ export function TodayMobile() {
   const { pending } = useSyncSummary();
   const { items } = usePendingItems();
   const canCapture = useCan("field.capture");
+  const { allUnits, selected } = useUnitScope();
+  const manager = user.role !== "supervisor";
+  const [month, setMonth] = useState(() => now.getMonth());
+  const stats = useHoyStats(data, now, month);
+  const { all: attentionAll } = useAttention(data, now);
+  const { incidentYear, incidentBars } = useIncidentYear(data, now);
 
+  // live first (like the desktop strip), then by planned start
   const today = useMemo(
     () =>
       jornadas
         .filter((j) => isSameDay(parseISO(j.plannedStart), now) || j.status === "en_curso")
         .filter((j) => orders.find((o) => o.id === j.orderId)?.status !== "cancelada")
-        .sort((a, b) => a.plannedStart.localeCompare(b.plannedStart)),
+        .sort((a, b) => Number(b.status === "en_curso") - Number(a.status === "en_curso") || a.plannedStart.localeCompare(b.plannedStart)),
     [jornadas, orders, now],
   );
   const live = today.find((j) => j.status === "en_curso");
+
+  // ANTES / DESPUÉS photo counts per jornada, in one pass
+  const photoCount = useMemo(() => {
+    const m = new Map<string, { antes: number; despues: number }>();
+    for (const p of photos) {
+      if (!p.jornadaId || (p.kind !== "antes" && p.kind !== "despues")) continue;
+      const c = m.get(p.jornadaId) ?? { antes: 0, despues: 0 };
+      c[p.kind]++;
+      m.set(p.jornadaId, c);
+    }
+    return m;
+  }, [photos]);
 
   /* ── the one card that matters right now ── */
   const card = useMemo(() => {
@@ -49,23 +75,30 @@ export function TodayMobile() {
     return it ? { type: "item" as const, it } : null;
   }, [items, live, canCapture]);
 
-  const stat = useMemo(() => {
+  // Supervisor: own evidence this year (the hero KPI block is for Dirección / Administración)
+  const myPhotos = useMemo(() => {
     const year = now.getFullYear();
-    const closed = orders.filter((o) => closedAt(o)?.getFullYear() === year);
-    const comp = photoCompliance(closed, jornadas, photos);
-    if (user.role === "supervisor") {
-      const mine = photos.filter((p) => p.by === user.id && parseISO(p.takenAt).getFullYear() === year && (p.kind === "antes" || p.kind === "despues")).length;
-      return { label: "Tu evidencia este año", value: mine, unit: "fotos", sub: `En ${fmtNum(closed.length)} cierres · ${fmtPct(comp.rate)} con ANTES y DESPUÉS completos` };
-    }
-    const minutes = jornadas.filter((j) => j.checkOut && closed.some((o) => o.id === j.orderId)).reduce((s, j) => s + jornadaMinutes(j), 0);
-    return { label: `Servicios terminados en ${year}`, value: closed.length, unit: "servicios", sub: `${fmtNum(Math.round(minutes / 60))} h reales · ${fmtPct(comp.rate)} cumplimiento fotográfico` };
-  }, [orders, jornadas, photos, user, now]);
+    return photos.filter((p) => p.by === user.id && parseISO(p.takenAt).getFullYear() === year && (p.kind === "antes" || p.kind === "despues")).length;
+  }, [photos, user.id, now]);
 
   const more = items.filter((i) => i.actionable && (card?.type !== "item" || i.id !== card.it.id)).slice(0, 3);
 
+  // The attention list leaves out the orders already shown above (next-step card, "También pendiente")
+  const shownOrders = new Set<string | undefined>([card?.type === "live" ? card.j.orderId : card?.it.orderId, ...more.map((i) => i.orderId)]);
+  const attention = attentionAll.filter((x) => !shownOrders.has(x.o.id));
+
   return (
     <div>
-      <MobileGreeting eyebrow={fmtLongDay(now)} title={`${greeting(now)}, ${firstName(user.name)}`} avatar={<ProfileAvatar className="size-12" />} />
+      <MobileGreeting
+        eyebrow={
+          <>
+            {fmtLongDay(now)}
+            {allUnits && <> · {selected?.name ?? "Todas las unidades"}</>}
+          </>
+        }
+        title={`${greeting(now)}, ${firstName(user.name)}`}
+        avatar={<MobileToolbar />}
+      />
 
       {offline && (
         <motion.div initial={{ opacity: 0, y: -6 }} animate={{ opacity: 1, y: 0 }} className="mb-5 flex items-center gap-3 rounded-[16px] bg-[#fff6e6] px-4 py-3 text-[14px] text-[#8a5300]">
@@ -76,79 +109,80 @@ export function TodayMobile() {
         </motion.div>
       )}
 
-      {card?.type === "live" && <LiveCard j={card.j} now={now} lk={lk} orders={orders} photosCount={photos.filter((p) => p.jornadaId === card.j.id && p.kind === "antes").length} />}
+      {card?.type === "live" && <LiveCard j={card.j} now={now} lk={lk} orders={orders} photosCount={photoCount.get(card.j.id)?.antes ?? 0} />}
       {card?.type === "item" && <ItemCard it={card.it} lk={lk} data={{ orders, jornadas, incidents, reports }} />}
 
       <section className="mt-8">
-        <div className="mb-1 flex items-baseline justify-between">
-          <h2 className="text-[21px] font-medium tracking-[-0.01em] text-ink">Jornadas de hoy</h2>
-          <span className="text-[14px] text-subtle">{plural(today.length, "jornada", "jornadas")}</span>
-        </div>
+        <SectionTitle title="Jornadas de hoy" count={today.length} href="/agenda" linkLabel="Abrir agenda" />
         {today.length === 0 ? (
           <EmptyState icon={<Clock />} title="Sin jornadas hoy" className="mt-3 py-9">
             No hay cuadrillas programadas para hoy.
           </EmptyState>
         ) : (
-          <motion.div variants={staggerContainer(0.05, 0.25)} initial="hidden" animate="show">
-            {today.map((j) => {
-              const o = orders.find((x) => x.id === j.orderId);
-              if (!o) return null;
-              const c = lk.clients.get(o.clientId);
-              const site = lk.sites.get(o.siteId);
-              const st =
-                j.status === "en_curso"
-                  ? { tone: "blue" as const, label: `En curso · ${fmtDuration(jornadaMinutes(j, now))}`, live: true }
-                  : j.status === "cerrada"
-                    ? { tone: "teal" as const, label: `Cerrada · ${fmtHours(jornadaMinutes(j))}` }
-                    : { tone: "slate" as const, label: `Programada · J${j.dayIndex} de ${o.plannedDays}` };
-              return (
-                <motion.div key={j.id} variants={rowVariants}>
-                  <MobileRow
-                    href={`/jornada/${j.id}`}
-                    leading={<TimeTile date={j.plannedStart} tone={j.status === "en_curso" ? "live" : undefined} />}
-                    title={o.title.split(" · ")[0]}
-                    meta={
-                      <>
-                        {c && <ClientMark name={c.name} hue={c.hue} size={18} className="rounded-[5px]" />}
-                        <span className="truncate">
-                          {c?.shortName} · {site?.municipality}
-                        </span>
-                      </>
-                    }
-                    status={st}
-                  />
-                </motion.div>
-              );
-            })}
-          </motion.div>
+          <>
+            <motion.div variants={staggerContainer(0.05, 0.25)} initial="hidden" animate="show">
+              {today.slice(0, JORNADAS_MAX).map((j) => {
+                const o = orders.find((x) => x.id === j.orderId);
+                if (!o) return null;
+                return <JornadaRow key={j.id} j={j} o={o} lk={lk} now={now} photos={photoCount.get(j.id) ?? { antes: 0, despues: 0 }} />;
+              })}
+            </motion.div>
+            {today.length > JORNADAS_MAX && <MoreLink href="/agenda">Ver {today.length - JORNADAS_MAX} más en la agenda</MoreLink>}
+          </>
         )}
       </section>
 
       {more.length > 0 && (
         <section className="mt-8">
-          <div className="mb-1 flex items-baseline justify-between">
-            <h2 className="text-[21px] font-medium tracking-[-0.01em] text-ink">También pendiente</h2>
-            <Link href="/pendientes" className="flex items-center gap-1 text-[14px] font-semibold text-link">
-              Ver todo <ArrowRight className="size-4" />
-            </Link>
-          </div>
+          <SectionTitle title="También pendiente" href="/pendientes" linkLabel="Ver todo" />
           {more.map((it) => (
             <MobileRow key={it.id} href={it.href} title={it.title} meta={<span className="truncate">{it.sub}</span>} status={{ tone: it.tone, label: kindLabel(it) }} />
           ))}
         </section>
       )}
 
-      <AuroraStat
-        className="mt-9"
-        label={stat.label}
-        value={
-          <span className="flex items-baseline gap-2">
-            <AnimatedNumber value={stat.value} />
-            <span className="text-[18px] font-normal tracking-normal text-subtle">{stat.unit}</span>
-          </span>
-        }
-        sub={stat.sub}
-      />
+      {attention.length > 0 ? (
+        <section className="mt-8">
+          <SectionTitle title="Requieren atención" subtitle={plural(attention.length, "orden", "órdenes")} href="/ordenes" linkLabel="Ver órdenes" />
+          <motion.div variants={staggerContainer(0.05, 0.25)} initial="hidden" animate="show">
+            {attention.slice(0, ATTENTION_MAX).map((x) => (
+              <AttentionRow key={x.o.id} item={x} lk={lk} role={user.role} now={now} />
+            ))}
+          </motion.div>
+          {attention.length > ATTENTION_MAX && <MoreLink href="/ordenes">Ver {attention.length - ATTENTION_MAX} más en Órdenes</MoreLink>}
+        </section>
+      ) : (
+        // management roles: say so when nothing waits on anyone (not when the card above already shows the only one)
+        manager &&
+        attentionAll.length === 0 && (
+          <section className="mt-8">
+            <SectionTitle title="Requieren atención" href="/ordenes" linkLabel="Ver órdenes" />
+            <EmptyState icon={<Sparkles />} title="Todo al día" className="mt-3 py-9">
+              No hay órdenes pendientes de acción.
+            </EmptyState>
+          </section>
+        )
+      )}
+
+      {manager ? (
+        <div className="mt-9">
+          <ServicesHero stats={stats} now={now} month={month} onMonth={setMonth} />
+          <PipelineTiles stats={stats} className="mt-3" />
+          <ClosureBlockers className="mt-9" year={now.getFullYear()} incidentYear={incidentYear} bars={incidentBars} compliance={stats.compliance} />
+        </div>
+      ) : (
+        <AuroraStat
+          className="mt-9"
+          label="Tu evidencia este año"
+          value={
+            <span className="flex items-baseline gap-2">
+              <AnimatedNumber value={myPhotos} />
+              <span className="text-[18px] font-normal tracking-normal text-subtle">fotos</span>
+            </span>
+          }
+          sub={`En ${fmtNum(stats.yearClosed)} cierres · ${fmtNum(Math.round(stats.totalHours))} h reales · ${fmtPct(stats.compliance.rate)} con ANTES y DESPUÉS completos`}
+        />
+      )}
     </div>
   );
 }

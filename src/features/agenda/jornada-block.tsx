@@ -62,6 +62,7 @@ export function JornadaBlock({
       transition={{ type: "spring", stiffness: 420, damping: 30 }}
       onClick={() => onOpen(j.id)}
       aria-label={ariaLabel(item)}
+      data-order-id={order.id}
       className={cn(
         "group relative flex w-full flex-col overflow-hidden rounded-[14px] border text-left outline-none transition-shadow duration-300 hover:shadow-lift focus-visible:ring-3 focus-visible:ring-ring/60",
         variant === "timeline" && "h-full",
@@ -78,7 +79,7 @@ export function JornadaBlock({
       <span aria-hidden className="absolute inset-y-0 left-0 w-[3px]" style={{ background: toneHex[visual.tone] }} />
       {live && <span aria-hidden className="pointer-events-none absolute -right-10 -top-10 size-28 rounded-full bg-sky/25 blur-2xl" />}
 
-      <div className={cn("relative flex min-h-0 flex-1 flex-col pl-2.5 pr-2", tiny ? "justify-center py-1" : "py-2")}>
+      <div className={cn("@container relative flex min-h-0 flex-1 flex-col pl-2.5 pr-2", tiny ? "justify-center py-1" : "py-2")}>
         <div className={cn("flex items-center justify-between gap-1.5 tabular", variant === "compact" ? "text-[11px]" : "text-[11.5px]")}>
           <span className={cn("flex min-w-0 items-center gap-1.5 font-semibold tracking-[-0.01em]", live ? "text-sky" : "text-ink/80")}>
             <StatusDot tone={visual.tone} live={live} />
@@ -86,7 +87,13 @@ export function JornadaBlock({
           </span>
           {(showSupervisor || tiny) && (
             <span className={cn("flex shrink-0 items-center gap-1", live ? "text-white/60" : "text-subtle")}>
-              {showSupervisor && supervisor && <PersonAvatar name={supervisor.name} initials={supervisor.initials} hue={supervisor.hue} size={18} />}
+              {showSupervisor && supervisor && (
+                <>
+                  <PersonAvatar name={supervisor.name} initials={supervisor.initials} hue={supervisor.hue} size={18} />
+                  {/* touch has no title: show the first name whenever the block is wide enough for it */}
+                  <span className="hidden max-w-[88px] truncate font-medium @[176px]:inline">{supervisor.name.split(" ")[0]}</span>
+                </>
+              )}
               {tiny && isMultiDay(j, order) && dayLabel(j, order)}
             </span>
           )}
@@ -105,7 +112,7 @@ export function JornadaBlock({
             )}
             <div className="mt-auto flex items-center justify-between gap-2 pt-2">
               {crew.length ? (
-                <AvatarStack people={crew} size={20} max={3} />
+                <AvatarStack people={crew} size={20} max={3} interactive={false} />
               ) : (
                 <span className="text-[11.5px] font-medium text-subtle">Sin cuadrilla</span>
               )}
@@ -164,6 +171,7 @@ export function JornadaRow({
         type="button"
         onClick={() => onOpen(j.id)}
         aria-label={ariaLabel(item)}
+        data-order-id={order.id}
         className={cn(
           "group grid w-full grid-cols-[52px_minmax(0,1fr)_auto] items-center gap-x-4 gap-y-2 rounded-[14px] border-b border-hairline px-1 py-4 text-left outline-none transition-colors hover:bg-[#fafbfc] focus-visible:ring-3 focus-visible:ring-ring/50 md:grid-cols-[64px_minmax(0,1fr)_120px_150px_20px]",
           highlight && "bg-sky-soft/60",
@@ -174,9 +182,14 @@ export function JornadaRow({
           <span className="text-[12.5px] text-subtle">{fmtTime(item.end)}</span>
         </span>
         <span className="min-w-0">
-          <span className="block truncate text-[15px] font-semibold text-ink transition-colors group-hover:text-link">{order.title}</span>
+          {/* phones: two lines, the avatar stack takes a column and the distinguishing site part sits at the end of the title */}
+          <span className="line-clamp-2 text-[15px] font-semibold leading-snug text-ink transition-colors group-hover:text-link md:line-clamp-1 md:leading-normal">
+            {order.title}
+          </span>
           <span className="mt-0.5 flex items-center gap-1.5 truncate text-[13px] text-subtle">
-            {order.folio} · {client?.shortName}
+            <span className="truncate">
+              {order.folio} · {client?.shortName}
+            </span>
             {isMultiDay(j, order) && (
               <>
                 <span className="text-[#c5ccd6]">·</span>
@@ -184,7 +197,8 @@ export function JornadaRow({
               </>
             )}
             {site && (
-              <span className="hidden items-center gap-1 lg:inline-flex">
+              // phones show the municipality on the status line instead: this line would clip it
+              <span className="hidden items-center gap-1 md:inline-flex">
                 <span className="text-[#c5ccd6]">·</span>
                 <MapPin className="size-3.5" />
                 {site.municipality}
@@ -194,18 +208,34 @@ export function JornadaRow({
         </span>
         <span className="flex items-center justify-end gap-2 md:justify-start">
           {showSupervisor && supervisor && (
-            <PersonAvatar name={`Supervisor: ${supervisor.name}`} initials={supervisor.initials} hue={supervisor.hue} size={26} className="ring-2 ring-sky/40 max-md:hidden" />
+            <PersonAvatar name={`Supervisor: ${supervisor.name}`} initials={supervisor.initials} hue={supervisor.hue} size={26} className="ring-2 ring-sky/40 max-lg:hidden" />
           )}
-          {crew.length ? <AvatarStack people={crew} size={26} max={3} /> : <span className="text-[13px] text-subtle">Sin cuadrilla</span>}
+          {crew.length ? <AvatarStack people={crew} size={26} max={3} interactive={false} /> : <span className="text-[13px] text-subtle">Sin cuadrilla</span>}
         </span>
-        <span className="col-start-2 flex items-center gap-2 md:col-start-auto">
-          <StatusDot tone={visual.tone} live={visual.live} />
-          <ToneText tone={visual.tone === "sky" ? "blue" : visual.tone} className="text-[13.5px]">
-            {visual.label}
-          </ToneText>
+        {/* phones: full width under the title; wraps so status, place and owner never clip (from lg it stays one line) */}
+        <span className="col-span-2 col-start-2 flex flex-wrap items-center gap-x-3 gap-y-1 md:col-span-1 md:col-start-auto md:gap-x-2 lg:flex-nowrap">
+          <span className="inline-flex items-center gap-2">
+            <StatusDot tone={visual.tone} live={visual.live} />
+            <ToneText tone={visual.tone === "sky" ? "blue" : visual.tone} className="text-[13.5px]">
+              {visual.label}
+            </ToneText>
+          </span>
           {item.conflictIds.length > 0 && (
             <span className="inline-flex items-center gap-1 text-[12.5px] font-medium text-[#b86e00]">
               <TriangleAlert className="size-3.5" /> {item.conflictIds.length} doble
+            </span>
+          )}
+          {site && (
+            <span className="inline-flex min-w-0 items-center gap-1 text-[13px] text-subtle md:hidden">
+              <MapPin className="size-3.5 shrink-0" />
+              <span className="truncate">{site.municipality}</span>
+            </span>
+          )}
+          {showSupervisor && supervisor && (
+            // from lg the 26px avatar in the crew column carries this (hover title); below it, touch needs the name in plain sight
+            <span className="inline-flex min-w-0 items-center gap-1.5 text-[13px] text-subtle lg:hidden">
+              <PersonAvatar initials={supervisor.initials} hue={supervisor.hue} size={18} />
+              <span className="truncate">Sup. {supervisor.name.split(" ")[0]}</span>
             </span>
           )}
         </span>

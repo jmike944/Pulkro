@@ -74,7 +74,7 @@ export function PhotoLightbox({
       <DialogContent
         showCloseButton={false}
         onKeyDown={onKeyDown}
-        className="max-h-[94dvh] gap-0 overflow-y-auto rounded-[26px] p-0 ring-black/5 sm:max-w-[min(1100px,calc(100%-3rem))] md:grid-cols-[minmax(0,1fr)_340px] md:overflow-hidden"
+        className="max-h-[94dvh] gap-0 overflow-y-auto rounded-[26px] p-0 ring-black/5 sm:max-w-[min(1100px,calc(100%-3rem))] lg:grid-cols-[minmax(0,1fr)_340px] lg:overflow-hidden"
       >
         {photo ? (
           <LightboxBody
@@ -193,7 +193,7 @@ function LightboxBody({
   return (
     <>
       {/* stage */}
-      <div className="relative aspect-[4/3] w-full overflow-hidden bg-[#0d1b2a] md:self-start">
+      <div className="relative aspect-[4/3] w-full overflow-hidden bg-[#0d1b2a] max-lg:max-h-[60dvh] lg:self-start">
         <AnimatePresence initial={false} custom={dir} mode="popLayout">
           <motion.div
             key={showCompare && pair ? `cmp-${pair.before.id}-${pair.after.id}` : photo.id}
@@ -238,7 +238,7 @@ function LightboxBody({
 
       {/* metadata */}
       <aside className="relative min-w-0 bg-white">
-        <div className="p-5 sm:p-6 md:absolute md:inset-0 md:overflow-y-auto">
+        <div className="p-5 sm:p-6 lg:absolute lg:inset-0 lg:overflow-y-auto">
           <div className="flex flex-wrap items-center gap-2 pr-12">
             <SoftBadge tone={kind.tone}>{kind.label.toUpperCase()}</SoftBadge>
             {photo.selectedForReport && <SoftBadge tone="navy">En reporte</SoftBadge>}
@@ -277,7 +277,7 @@ function LightboxBody({
               </Link>
             </Button>
           )}
-          {total > 1 && <p className="mt-6 hidden text-[12px] text-subtle md:block">Usa ← → para recorrer las fotos.</p>}
+          {total > 1 && <p className="mt-6 hidden text-[12px] text-subtle lg:block">Usa ← → para recorrer las fotos.</p>}
         </div>
       </aside>
 
@@ -285,7 +285,7 @@ function LightboxBody({
         <button
           type="button"
           aria-label="Cerrar"
-          className="absolute right-3 top-3 z-10 inline-flex size-10 items-center justify-center rounded-full bg-white/95 text-ink shadow-[0_2px_10px_rgb(16_24_40/0.18)] transition hover:bg-white"
+          className="absolute right-3 top-3 z-10 inline-flex size-11 items-center justify-center rounded-full bg-white/95 text-ink shadow-[0_2px_10px_rgb(16_24_40/0.18)] transition hover:bg-white lg:size-10"
         >
           <X className="size-[18px]" />
         </button>

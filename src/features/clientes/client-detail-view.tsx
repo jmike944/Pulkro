@@ -14,7 +14,7 @@ import { AuroraPanel, GlassCard } from "@/components/pk/aurora";
 import { AnimatedNumber, IconTile, MiniStat } from "@/components/pk/bits";
 import { ClientMark } from "@/components/pk/client-mark";
 import { EmptyState } from "@/components/pk/feedback";
-import { PageHeader } from "@/components/pk/page";
+import { MetaList, PageHeader } from "@/components/pk/page";
 import { PillBars } from "@/components/pk/pill-bars";
 import { Button } from "@/components/ui/button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
@@ -93,20 +93,17 @@ function ClientDetail({ client }: { client: Client }) {
           </span>
         }
         meta={
-          <>
+          <MetaList>
             <span className="inline-flex items-center gap-1.5">
               <span className="size-[6px] rounded-full bg-st-teal" />
               Cliente desde {sinceYear}
             </span>
-            <span className="text-[#c5ccd6]">·</span>
             <span>{client.segment}</span>
-            <span className="text-[#c5ccd6]">·</span>
             <span>{plural(stats.sites.length, "sitio", "sitios")}</span>
-            <span className="text-[#c5ccd6]">·</span>
             <span>
               Contacto: <span className="font-medium text-ink">{client.contactName}</span>
             </span>
-          </>
+          </MetaList>
         }
         actions={
           <>
@@ -138,15 +135,15 @@ function ClientDetail({ client }: { client: Client }) {
       <AuroraPanel className="p-3 sm:p-6 lg:p-8">
         <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.15fr)] lg:gap-10">
           <GlassCard className="p-5 sm:p-7">
-            <div className="flex items-center justify-between gap-3">
-              <div className="flex min-w-0 items-center gap-3">
+            <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-3">
+              <div className="flex min-w-0 flex-1 basis-[8.5rem] items-center gap-3">
                 <IconTile>
                   <Building />
                 </IconTile>
-                <span className="truncate text-[15px] font-medium text-ink">Servicios para {client.shortName}</span>
+                <span className="text-[15px] font-medium leading-snug text-ink sm:truncate sm:leading-normal">Servicios para {client.shortName}</span>
               </div>
               <DropdownMenu>
-                <DropdownMenuTrigger className="inline-flex h-9 shrink-0 items-center gap-2 rounded-[10px] bg-[#f2f4f7] px-3 text-[14px] font-medium text-ink outline-none transition hover:bg-[#e9edf2]">
+                <DropdownMenuTrigger className="ml-auto inline-flex h-9 shrink-0 items-center gap-2 rounded-[10px] bg-[#f2f4f7] px-3 text-[14px] font-medium text-ink outline-none transition hover:bg-[#e9edf2]">
                   {PERIOD_LABEL[period]}
                   <ChevronDown className="size-4" />
                 </DropdownMenuTrigger>

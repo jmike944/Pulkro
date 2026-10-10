@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useMemo, useState } from "react";
 import { AnimatePresence, motion } from "motion/react";
 import { isSameDay, parseISO } from "date-fns";
-import { ClipboardList, History, Search } from "lucide-react";
+import { ClipboardList, Clock, History, Search } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useLookups } from "@/lib/hooks";
 import { jornadaMinutes } from "@/lib/domain";
@@ -24,6 +24,18 @@ import type { ClientStats } from "./use-clients";
 
 const minutesOf = (orderId: string, jornadas: Jornada[], now?: Date) =>
   jornadas.filter((j) => j.orderId === orderId).reduce((s, j) => s + jornadaMinutes(j, now), 0);
+
+/** Phone-only duration chip: the md+ grids give hours their own column. */
+function HoursChip({ minutes, suffix, className }: { minutes: number; suffix?: string; className?: string }) {
+  if (minutes <= 0) return null;
+  return (
+    <span className={cn("inline-flex items-center gap-1 text-[13px] font-semibold text-ink tabular md:hidden", className)}>
+      <Clock className="size-3.5 text-subtle" />
+      {fmtHours(minutes)}
+      {suffix && <span className="font-normal text-subtle">{suffix}</span>}
+    </span>
+  );
+}
 
 /** "N órdenes abiertas" — work in progress for this client. */
 export function ClientOpenOrders({ orders, jornadas, now }: { orders: Order[]; jornadas: Jornada[]; now: Date }) {
@@ -56,8 +68,9 @@ export function ClientOpenOrders({ orders, jornadas, now }: { orders: Order[]; j
                       {o.status === "programada" && <span className="font-medium text-ink/80"> · en {fmtDaysLeft(o.scheduledStart)}</span>}
                     </span>
                   </span>
-                  <span className="col-start-2 md:col-start-auto">
+                  <span className="col-start-2 flex flex-wrap items-center gap-x-3 gap-y-1 md:col-start-auto md:block">
                     <OrderStatusPill status={o.status} />
+                    <HoursChip minutes={minutes} suffix="trabajadas" />
                   </span>
                   <span className="hidden text-right text-[15px] font-semibold text-ink tabular md:block">{minutes ? fmtHours(minutes) : "—"}</span>
                 </Link>
@@ -182,6 +195,12 @@ export function ClientHistory({
                     <span className="hidden aspect-[4/3] w-14 overflow-hidden rounded-[10px] bg-[#eef1f5] ring-1 ring-black/5 md:block">
                       {r.cover && <PhotoImage photo={r.cover} />}
                     </span>
+                    {/* phones: the "después" cover goes under the date, beside the status row */}
+                    {r.cover && (
+                      <span aria-hidden className="col-start-1 row-start-2 aspect-[4/3] w-[52px] overflow-hidden rounded-[10px] bg-[#eef1f5] ring-1 ring-black/5 md:hidden">
+                        <PhotoImage photo={r.cover} />
+                      </span>
+                    )}
                     <span className="min-w-0">
                       <span className="block truncate text-[15px] font-semibold text-ink group-hover:text-link">{r.o.title}</span>
                       <span className="mt-0.5 block truncate text-[13px] text-subtle">
@@ -200,6 +219,7 @@ export function ClientHistory({
                       {r.kase && (
                         <span className="inline-flex h-[22px] items-center rounded-md bg-[#fdeeee] px-2 text-[11.5px] font-semibold text-st-red">Queja {r.kase.folio}</span>
                       )}
+                      <HoursChip minutes={r.minutes} className="ml-auto" />
                     </span>
                     <span className="hidden text-right text-[15px] font-semibold text-ink tabular md:block">{r.minutes ? fmtHours(r.minutes) : "—"}</span>
                   </Link>

@@ -226,19 +226,28 @@ export function NpsPicker({ value, onChange, className }: { value: number | null
   );
 }
 
-/** Compact NPS number with its color group. */
-export function NpsValue({ value, className }: { value: number; className?: string }) {
+const NPS_LABEL = { promotor: "Promotor", pasivo: "Pasivo", detractor: "Detractor" } as const;
+
+/**
+ * Compact NPS number with its color group. The group name is always in the accessible name and the
+ * hover title; `showLabel` also prints it ("9 · Promotor") where touch users have no hover.
+ */
+export function NpsValue({ value, className, showLabel }: { value: number; className?: string; showLabel?: boolean }) {
   const g = npsGroup(value);
+  const label = NPS_LABEL[g];
   return (
     <span
+      role="img"
+      aria-label={`${value} de 10, ${label.toLowerCase()}`}
       className={cn(
-        "inline-flex h-6 min-w-7 items-center justify-center rounded-md px-1.5 text-[12.5px] font-semibold tabular",
+        "inline-flex h-6 min-w-7 items-center justify-center gap-1 rounded-md px-1.5 text-[12.5px] font-semibold tabular",
         g === "promotor" ? "bg-[#e7f7f4] text-st-teal" : g === "pasivo" ? "bg-[#fff6e6] text-[#b86e00]" : "bg-[#fdeeee] text-st-red",
         className,
       )}
-      title={g === "promotor" ? "Promotor" : g === "pasivo" ? "Pasivo" : "Detractor"}
+      title={label}
     >
       {value}
+      {showLabel && <span className="font-medium">· {label}</span>}
     </span>
   );
 }

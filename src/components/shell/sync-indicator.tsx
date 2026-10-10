@@ -1,11 +1,12 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import { AnimatePresence, motion } from "motion/react";
-import { Check, CloudOff, CloudUpload, Loader2, RefreshCw, WifiOff } from "lucide-react";
+import { Check, ChevronRight, CloudOff, CloudUpload, Loader2, RefreshCw, WifiOff } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAppStore, useNow, useSyncSummary } from "@/lib/hooks";
 import { useUi } from "@/lib/ui-store";
-import { fmtAgo, fmtTime } from "@/lib/format";
+import { fmtAgo, fmtTime, plural } from "@/lib/format";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Switch } from "@/components/ui/switch";
 import { Button } from "@/components/ui/button";
@@ -69,6 +70,61 @@ export function SyncChip({ collapsed, compact }: { collapsed?: boolean; compact?
         </AnimatePresence>
       )}
     </button>
+  );
+}
+
+/**
+ * Phone/tablet: labeled status pill floating above the tab bar (mounted by MobileNav) while the device is offline or
+ * the queue lingers / failed; one tap opens the sync queue sheet. Online flushes take ~1–2 s per item, so "Enviando"
+ * only shows once the queue has been busy for a moment instead of flashing after every capture.
+ */
+export function MobileSyncPill({ hidden }: { hidden?: boolean }) {
+  const { offline, pending, syncing, queue } = useSyncSummary();
+  const setOpen = useUi((s) => s.setSyncOpen);
+  const count = pending.length + syncing.length;
+  const failed = queue.some((q) => q.state === "error");
+  const busy = !offline && count > 0;
+  const [lingers, setLingers] = useState(false);
+  useEffect(() => {
+    if (!busy) return;
+    const t = setTimeout(() => setLingers(true), 2500);
+    return () => {
+      clearTimeout(t);
+      setLingers(false);
+    };
+  }, [busy]);
+  const show = !hidden && (offline || (busy && (lingers || failed)));
+  const warn = offline || failed;
+  const label = offline ? "Sin conexión" : failed ? "Error de envío" : "Enviando";
+  const detail = offline ? (count ? `${plural(count, "registro", "registros")} por enviar` : "se guarda en el dispositivo") : failed ? `${plural(count, "registro", "registros")} sin enviar` : plural(count, "registro", "registros");
+
+  return (
+    <div role="status" aria-live="polite" className="pointer-events-none absolute inset-x-0 bottom-full flex justify-center px-4 pb-2">
+      <AnimatePresence initial={false}>
+        {show && (
+          <motion.button
+            key="pill"
+            type="button"
+            onClick={() => setOpen(true)}
+            initial={{ opacity: 0, y: 8, scale: 0.96 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 8, scale: 0.96 }}
+            transition={{ type: "spring", stiffness: 420, damping: 32 }}
+            aria-label={`${label}, ${detail}. Abrir la cola de sincronización`}
+            className={cn(
+              "pointer-events-auto inline-flex min-h-11 max-w-full items-center gap-2.5 rounded-full py-2 pl-4 pr-3 text-[13.5px] shadow-lift ring-1",
+              warn ? "bg-[#fff6e6] text-[#7a5a1e] ring-[#f6dfb4]" : "bg-sky-soft text-[#1667e0] ring-[#cfe3fb]",
+            )}
+          >
+            <span className={cn("size-2.5 shrink-0 rounded-full", warn ? "bg-st-amber" : "bg-sky animate-pulse")} />
+            <span className="min-w-0 truncate">
+              <b className={cn("font-semibold", warn ? "text-[#5e4410]" : "text-[#1667e0]")}>{label}</b> · {detail}
+            </span>
+            <ChevronRight className="size-4 shrink-0 opacity-60" />
+          </motion.button>
+        )}
+      </AnimatePresence>
+    </div>
   );
 }
 

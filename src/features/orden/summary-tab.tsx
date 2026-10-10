@@ -12,14 +12,15 @@ import { fmtDiff, fmtWeekdayDay, jornadaPlanned, toHours } from "./orden-format"
 import { useOrder } from "./order-context";
 import { OrderTimeline } from "./order-timeline";
 import { FeaturedCard } from "./featured-card";
-import { CrewHistory, CrewPanel, SitePanel } from "./side-panel";
+import { CrewHistory, CrewPanel, SitePanel, SiteQuickCard } from "./side-panel";
 
-/** Resumen: timeline + service breakdown + hours on the left; next-action card, site and crew on the right. */
+/** Resumen: timeline + service breakdown + hours on the left; next-action card, site and crew on the right. Below lg a compact site card sits under the next-action card. */
 export function SummaryTab() {
   return (
     <div className="grid gap-10 lg:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)] lg:grid-rows-[auto_1fr] lg:gap-x-0 lg:gap-y-9">
       <div className="min-w-0 lg:col-start-2 lg:row-start-1 lg:pl-10">
         <FeaturedCard />
+        <SiteQuickCard className="mt-5" />
       </div>
       <div className="min-w-0 space-y-12 lg:col-start-1 lg:row-span-2 lg:row-start-1 lg:border-r lg:border-hairline lg:pr-10">
         <OrderTimeline />
@@ -147,6 +148,8 @@ function HoursBreakdown() {
           const real = jornadaMinutes(j, now);
           const live = j.status === "en_curso";
           const diff = real - planned;
+          const diffText = j.checkOut ? fmtDiff(diff) : live ? "En curso" : "Pendiente";
+          const diffTone = !j.checkOut ? "text-subtle" : diff > 30 ? "text-[#b86e00]" : diff < -30 ? "text-link" : "text-subtle";
           return (
             <motion.li
               key={j.id}
@@ -179,10 +182,10 @@ function HoursBreakdown() {
               <span className="text-right text-[14.5px] font-semibold text-ink tabular">
                 {j.checkIn ? fmtDuration(real) : <span className="font-normal text-[#98a2b3]">—</span>}
                 <span className="block text-[12px] font-normal text-subtle sm:hidden">plan {fmtHours(planned)}</span>
+                {/* phones have no Diferencia column: the signed difference goes under the plan */}
+                <span className={cn("block text-[12px] font-medium sm:hidden", diffTone)}>{diffText}</span>
               </span>
-              <span className={cn("hidden text-right text-[13px] tabular sm:block", !j.checkOut ? "text-subtle" : diff > 30 ? "text-[#b86e00]" : diff < -30 ? "text-link" : "text-subtle")}>
-                {j.checkOut ? fmtDiff(diff) : live ? "En curso" : "Pendiente"}
-              </span>
+              <span className={cn("hidden text-right text-[13px] tabular sm:block", diffTone)}>{diffText}</span>
             </motion.li>
           );
         })}

@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { useState } from "react";
 import { motion } from "motion/react";
 import { ChevronRight, CloudUpload, Download, LogOut, RotateCcw, Share, Smartphone, WifiOff } from "lucide-react";
 import { toast } from "sonner";
@@ -16,6 +17,8 @@ import { Segmented } from "@/components/pk/page";
 import { MobileGreeting } from "@/components/pk/mobile";
 import { EASE, staggerContainer, fadeUp } from "@/components/pk/motion";
 import { Switch } from "@/components/ui/switch";
+import { MobileToolbar } from "@/components/shell/header-tools";
+import { UnitPickerSheet, useUnitScope } from "@/components/shell/unit-picker";
 import { NAV_FOOT, NAV_MAIN } from "@/components/shell/nav";
 import { useNavBadges } from "@/components/shell/use-nav-badges";
 import { useInstallPrompt } from "@/components/shell/pwa";
@@ -28,7 +31,7 @@ function Card({ children, className }: { children: React.ReactNode; className?: 
   );
 }
 
-/** Perfil — identity, sync, install, demo role switch and every section of the app (mobile "more"). */
+/** Perfil — identity, unit scope (Dirección), sync, install, demo role switch and every section of the app (mobile "more"). */
 export function PerfilView() {
   const user = useCurrentUser();
   const lk = useLookups();
@@ -43,10 +46,14 @@ export function PerfilView() {
   const badges = useNavBadges();
   const { canPrompt, standalone, ios, install } = useInstallPrompt();
   const unit = lk.units.get(user.unitId);
+  const { allUnits, selected } = useUnitScope();
+  const [unitOpen, setUnitOpen] = useState(false);
+  // Dirección's eyebrow shows the unit it is currently looking at, not its home unit.
+  const scopeName = allUnits ? (selected?.name ?? "Todas las unidades") : (unit?.name ?? "");
 
   return (
     <div className="mx-auto max-w-2xl">
-      <MobileGreeting eyebrow={`${ROLE_LABEL[user.role]} · ${unit?.name ?? ""}`} title="Perfil" />
+      <MobileGreeting eyebrow={`${ROLE_LABEL[user.role]} · ${scopeName}`} title="Perfil" avatar={<MobileToolbar avatar={false} unit={false} />} />
 
       <motion.div variants={staggerContainer(0.06)} initial="hidden" animate="show" className="space-y-4">
         <Card className="flex items-center gap-4">
@@ -58,6 +65,21 @@ export function PerfilView() {
           </div>
         </Card>
 
+        {allUnits && (
+          <Card className="p-2">
+            <p className="px-3 pb-1 pt-3 text-[12px] font-semibold uppercase tracking-[0.1em] text-subtle">Unidad</p>
+            <button type="button" onClick={() => setUnitOpen(true)} className="flex min-h-[60px] w-full items-center gap-3.5 rounded-[14px] px-3 py-2 text-left active:bg-sand">
+              <span className="inline-flex size-10 shrink-0 items-center justify-center rounded-[12px] bg-sand text-[13px] font-bold tracking-wide text-ink">{selected?.code ?? "PK"}</span>
+              <span className="min-w-0 flex-1">
+                <span className="block truncate text-[15.5px] font-semibold text-ink">{scopeName}</span>
+                <span className="block text-[13px] leading-snug text-subtle">Aplica a todas las secciones de la app.</span>
+              </span>
+              <span className="shrink-0 text-[14px] font-semibold text-link">Cambiar</span>
+            </button>
+            <UnitPickerSheet open={unitOpen} onOpenChange={setUnitOpen} />
+          </Card>
+        )}
+
         <Card>
           <div className="flex items-center gap-3">
             <span className={cn("inline-flex size-10 items-center justify-center rounded-[12px]", offline ? "bg-[#fff1d6] text-[#b86e00]" : "bg-[#e3f1fd] text-[#1667e0]")}>
@@ -67,7 +89,7 @@ export function PerfilView() {
               <p className="font-semibold text-ink">{offline ? "Sin conexión" : pending.length ? "Sincronizando" : "Sincronizado"}</p>
               <p className="text-[13.5px] text-subtle">{pending.length ? `${pending.length} registro(s) en el dispositivo` : `Última sincronización ${fmtAgo(lastSyncAt)}`}</p>
             </div>
-            <button onClick={() => setSyncOpen(true)} className="text-[14px] font-semibold text-link">
+            <button onClick={() => setSyncOpen(true)} className="-mr-2 inline-flex min-h-11 items-center px-2 text-[14px] font-semibold text-link">
               Ver cola
             </button>
           </div>

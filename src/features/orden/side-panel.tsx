@@ -2,16 +2,70 @@
 
 import { useMemo } from "react";
 import { motion } from "motion/react";
-import { ArrowUpRight, Phone, UserRoundPlus, Users } from "lucide-react";
+import { ArrowUpRight, MapPin, Navigation, Phone, UserRoundPlus, Users } from "lucide-react";
+import { cn } from "@/lib/utils";
 import { mapsLink } from "@/lib/domain";
 import { fmtDateTime, plural } from "@/lib/format";
 import { distanceMeters, GeoMap, type GeoMarker } from "@/components/pk/geo-map";
-import { Eyebrow, KeyValues, PersonAvatar } from "@/components/pk/bits";
+import { AvatarStack, Eyebrow, IconTile, KeyValues, PersonAvatar } from "@/components/pk/bits";
 import { rowVariants, staggerContainer } from "@/components/pk/motion";
 import { Button } from "@/components/ui/button";
-import { compact, fmtWeekdayDay } from "./orden-format";
+import { compact, crewNames, fmtWeekdayDay } from "./orden-format";
 import { useOrder } from "./order-context";
 import { Gated } from "./ui";
+
+/**
+ * Phones and tablets: where to go, who to call on site and who is on the crew, right under the
+ * next-action card (below lg SitePanel/CrewPanel sit after the timeline, breakdown and hours).
+ */
+export function SiteQuickCard({ className }: { className?: string }) {
+  const { d } = useOrder();
+  const { order, site } = d;
+  const crew = d.currentCrew;
+  const phone = order.siteContact.phone;
+  return (
+    <section aria-label="Sitio y contacto" className={cn("rounded-[22px] border border-hairline bg-white p-4 shadow-soft sm:p-5 lg:hidden", className)}>
+      <div className="flex items-start gap-3">
+        <IconTile>
+          <MapPin />
+        </IconTile>
+        <div className="min-w-0 flex-1">
+          <p className="truncate text-[15px] font-semibold text-ink">{site.name}</p>
+          <p className="text-[13.5px] leading-snug text-subtle">
+            {site.address}, {site.municipality}
+          </p>
+          {order.siteContact.name && (
+            <p className="mt-1 text-[13px] text-subtle">
+              Contacto: <span className="font-medium text-ink">{order.siteContact.name}</span>
+            </p>
+          )}
+        </div>
+      </div>
+      <div className="mt-3.5 flex gap-2">
+        <Button asChild variant="outline" className="h-11 min-w-0 flex-1 rounded-[12px] border-[#dfe3ea] font-semibold">
+          <a href={mapsLink(site.lat, site.lng)} target="_blank" rel="noreferrer">
+            <Navigation /> Cómo llegar
+          </a>
+        </Button>
+        {phone && (
+          <Button asChild variant="outline" className="h-11 min-w-0 flex-1 rounded-[12px] border-[#dfe3ea] font-semibold">
+            <a href={`tel:${phone.replace(/\s/g, "")}`} aria-label={`Llamar a ${order.siteContact.name || "contacto en sitio"}`}>
+              <Phone /> Llamar
+            </a>
+          </Button>
+        )}
+      </div>
+      {crew.length > 0 && (
+        <div className="mt-3.5 flex items-center gap-2.5 border-t border-hairline pt-3.5">
+          <AvatarStack people={crew} size={28} max={4} />
+          <p className="min-w-0 flex-1 text-[13px] leading-snug text-subtle">
+            <span className="font-medium text-ink">Cuadrilla · {crew.length}</span> · {crewNames(crew)}
+          </p>
+        </div>
+      )}
+    </section>
+  );
+}
 
 /** SITIO: client, address, contact + map with site and check-in/out markers. */
 export function SitePanel() {
@@ -56,7 +110,7 @@ export function SitePanel() {
         <span className="min-w-0 truncate">
           {stamped?.checkIn && dist !== null ? `Entrada J${stamped.dayIndex} a ${dist} m del sitio · ±${Math.round(stamped.checkIn.accuracy)} m` : "Sin registros GPS todavía"}
         </span>
-        <a href={mapsLink(site.lat, site.lng)} target="_blank" rel="noreferrer" className="inline-flex shrink-0 items-center gap-1 font-semibold text-link">
+        <a href={mapsLink(site.lat, site.lng)} target="_blank" rel="noreferrer" className="inline-flex min-h-11 shrink-0 items-center gap-1 font-semibold text-link lg:min-h-0">
           Abrir en Maps <ArrowUpRight className="size-3.5" />
         </a>
       </div>

@@ -1,9 +1,11 @@
 "use client";
 
+import { Children, useEffect, useRef } from "react";
 import Link from "next/link";
 import { motion, LayoutGroup } from "motion/react";
 import { ChevronLeft } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { EDGE_FADE_PX, useEdgeFade } from "./edge-fade";
 import { HeaderTools } from "@/components/shell/header-tools";
 import { EASE } from "./motion";
 
@@ -118,6 +120,28 @@ export function PageHeader({
   );
 }
 
+/**
+ * Inline facts separated by dots that never dangle when the line wraps (for `PageHeader`'s `meta`).
+ * Each dot belongs to the item after it, in a padding strip that sits left of the row: when an item starts
+ * a row, its dot falls outside the clipped box and disappears. Falsy children are skipped.
+ */
+export function MetaList({ children, className }: { children: React.ReactNode; className?: string }) {
+  return (
+    <div className={cn("overflow-hidden", className)}>
+      <ul className="-ml-7 flex flex-wrap gap-y-1.5">
+        {Children.toArray(children).map((c, i) => (
+          <li
+            key={i}
+            className="relative flex items-center pl-7 before:absolute before:left-[12px] before:top-1/2 before:-translate-y-1/2 before:text-[#c5ccd6] before:leading-none before:content-['·']"
+          >
+            {c}
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
 /* ───────────── underline tabs (Overview · Evidence 9/10 · Activity 6) ───────────── */
 
 export type TabItem = { value: string; label: string; count?: React.ReactNode };
@@ -135,9 +159,33 @@ export function UnderlineTabs({
   className?: string;
   id?: string;
 }) {
+  const { ref: listRef, style: fadeStyle } = useEdgeFade<HTMLDivElement>();
+  const firstScroll = useRef(true);
+
+  // Bring the active tab into view (deep links, programmatic switches, remounts). Scrolls the strip only,
+  // never the page: scrollIntoView would also move the window vertically.
+  useEffect(() => {
+    const el = listRef.current;
+    const tab = el?.querySelector<HTMLElement>('[aria-selected="true"]');
+    const first = firstScroll.current;
+    firstScroll.current = false;
+    if (!el || !tab || el.scrollWidth <= el.clientWidth) return;
+    const box = el.getBoundingClientRect();
+    const t = tab.getBoundingClientRect();
+    if (t.left >= box.left + EDGE_FADE_PX && t.right <= box.right - EDGE_FADE_PX) return;
+    const smooth = !first && !window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    el.scrollTo({ left: el.scrollLeft + (t.left - box.left) - (box.width - t.width) / 2, behavior: smooth ? "smooth" : "auto" });
+  }, [value, listRef]);
+
   return (
     <LayoutGroup id={id}>
-      <div role="tablist" className={cn("scrollbar-none -mx-1 flex gap-7 overflow-x-auto border-b border-hairline px-1", className)}>
+      <div
+        ref={listRef}
+        role="tablist"
+        style={fadeStyle}
+        // phones/tablets: the strip bleeds to the panel edge (the shell's own padding) so tabs run off the edge under the fade
+        className={cn("scrollbar-none -mx-5 flex gap-7 overflow-x-auto border-b border-hairline px-5 sm:-mx-7 sm:px-7 lg:-mx-1 lg:px-1", className)}
+      >
         {items.map((t) => {
           const active = t.value === value;
           return (

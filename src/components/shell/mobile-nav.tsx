@@ -7,7 +7,8 @@ import { ClipboardList, House, Inbox, UserRound } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useScopedData } from "@/lib/hooks";
 import { usePendingItems } from "@/features/pendientes/use-pending-items";
-import { isActive } from "./nav";
+import { isActive, isSecondaryRoute } from "./nav";
+import { MobileSyncPill } from "./sync-indicator";
 
 const TABS = [
   { href: "/", label: "Hoy", icon: House },
@@ -16,27 +17,40 @@ const TABS = [
   { href: "/perfil", label: "Perfil", icon: UserRound },
 ] as const;
 
-/** Phone/tablet tab bar on the sand chrome (mobile reference): the active tab is a white tile. */
+/**
+ * Phone/tablet tab bar on the sand chrome (mobile reference): the active tab is a white tile.
+ * Perfil stays lit inside its secondary sections (Agenda, Clientes…); a labeled sync pill floats above the bar.
+ */
 export function MobileNav() {
   const pathname = usePathname();
   const { actionable } = usePendingItems();
   const { jornadas } = useScopedData();
   const live = jornadas.some((j) => j.status === "en_curso");
+  const inMore = isSecondaryRoute(pathname);
+  // Perfil has its own sync card, jornadas their own banner, and the new-order wizard a sticky action bar above the tab bar.
+  const hideSync = pathname === "/perfil" || pathname === "/ordenes/nueva" || pathname.startsWith("/jornada/");
 
   return (
     <nav
       aria-label="Navegación principal"
       className="fixed inset-x-0 bottom-0 z-40 bg-sand/92 px-2 pb-[max(10px,env(safe-area-inset-bottom))] pt-2 backdrop-blur-xl lg:hidden print:hidden"
     >
+      <MobileSyncPill hidden={hideSync} />
       <LayoutGroup id="tabbar">
         <ul className="mx-auto grid max-w-lg grid-cols-4 gap-1">
           {TABS.map((t) => {
-            const active = isActive(pathname, t.href);
+            const active = t.href === "/perfil" ? isActive(pathname, t.href) || inMore : isActive(pathname, t.href);
             const Icon = t.icon;
+            // Only what the user can act on (same count as the Pendientes page's "Para mí"); consulta roles with nothing actionable get no badge.
             const badge = t.href === "/pendientes" ? actionable : 0;
             return (
               <li key={t.href}>
-                <Link href={t.href} aria-current={active ? "page" : undefined} className="relative flex h-[62px] flex-col items-center justify-center gap-1 rounded-[16px]">
+                <Link
+                  href={t.href}
+                  aria-current={active ? "page" : undefined}
+                  aria-label={badge > 0 ? `${t.label}, ${badge} por atender` : undefined}
+                  className="relative flex h-[62px] flex-col items-center justify-center gap-1 rounded-[16px]"
+                >
                   {active && (
                     <motion.span
                       layoutId="tab-tile"

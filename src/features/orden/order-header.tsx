@@ -6,6 +6,7 @@ import { isSameDay, parseISO } from "date-fns";
 import { Ban, CalendarClock, Ellipsis, FileText, Flame, MapPin, Navigation, Pencil, RotateCcw, type LucideIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { fmtHours, fmtTime, plural } from "@/lib/format";
+import { useMediaQuery } from "@/lib/hooks";
 import { PageHeader } from "@/components/pk/page";
 import { ClientMark } from "@/components/pk/client-mark";
 import { PersonAvatar } from "@/components/pk/bits";
@@ -48,14 +49,10 @@ function narrative(d: OrderDetail) {
 }
 
 export function OrderHeader() {
-  const { d, ui } = useOrder();
-  const { order, client, site, serviceType, supervisor, active, now, perms, gates } = d;
-  // When a menu action opens a dialog, don't hand focus back to the "⋯" trigger.
-  const openedDialog = useRef(false);
-  const pick = (fn: () => void) => () => {
-    openedDialog.current = true;
-    fn();
-  };
+  const { d } = useOrder();
+  const { order, client, site, serviceType, supervisor, active, now } = d;
+  // sm+: actions sit at the top right. Phones: "⋯" shares a row with "Abrir jornada", or with the status pill when there is none.
+  const wide = useMediaQuery("(min-width: 640px)");
   const showJornada = !!active && (active.status === "en_curso" || (active.status === "pendiente" && isSameDay(parseISO(active.plannedStart), now)));
 
   const meta = (
@@ -85,7 +82,8 @@ export function OrderHeader() {
     </>
   );
 
-  const actions = (
+  const menuInActions = wide || showJornada;
+  const actions = menuInActions ? (
     <>
       {showJornada && active && (
         <Button asChild variant="outline" className="h-10 rounded-[12px] border-[#dfe3ea] px-4 font-semibold shadow-[0_1px_2px_rgb(16_24_40/0.05)]">
@@ -94,52 +92,76 @@ export function OrderHeader() {
           </Link>
         </Button>
       )}
-      <DropdownMenu modal={false}>
-        <DropdownMenuTrigger asChild>
-          <Button variant="outline" size="icon" aria-label="Más acciones" className="size-10 rounded-[12px] border-[#dfe3ea] shadow-[0_1px_2px_rgb(16_24_40/0.05)]">
-            <Ellipsis className="size-[18px]" />
-          </Button>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent
-          align="end"
-          sideOffset={6}
-          className="w-[min(300px,calc(100vw-2rem))] rounded-[16px] p-1.5"
-          onCloseAutoFocus={(e) => {
-            if (openedDialog.current) e.preventDefault();
-            openedDialog.current = false;
-          }}
-        >
-          <MenuAction icon={Pencil} label="Editar datos" hint={perms.edit ? "Todos los campos" : "Datos operativos"} gate={gates.edit} onSelect={pick(ui.openEdit)} />
-          <MenuAction icon={CalendarClock} label="Reprogramar" hint="Mover jornadas pendientes" gate={gates.reschedule} onSelect={pick(() => ui.openSchedule("reprogramar"))} />
-          {REOPENABLE.includes(order.status) && (
-            <MenuAction icon={RotateCcw} label="Reabrir" hint="Genera una nueva versión del reporte" gate={gates.reopen} onSelect={pick(ui.openReopen)} />
-          )}
-          <DropdownMenuItem asChild className="min-h-11 gap-3 rounded-[10px] px-2.5">
-            <Link href={`/ordenes/${order.folio}/reporte`}>
-              <FileText className="size-4 text-subtle" />
-              <span className="text-[14px] font-medium">Ver reporte</span>
-            </Link>
-          </DropdownMenuItem>
-          {order.status !== "cancelada" && (
-            <>
-              <DropdownMenuSeparator />
-              <MenuAction icon={Ban} label="Cancelar orden" destructive gate={gates.cancel} onSelect={pick(ui.openCancel)} />
-            </>
-          )}
-        </DropdownMenuContent>
-      </DropdownMenu>
+      <OrderMoreMenu />
     </>
-  );
+  ) : undefined;
 
   return (
     <PageHeader
       breadcrumb={[{ label: "Órdenes", href: "/ordenes" }, { label: order.folio }]}
       title={order.title}
-      titleAddon={<OrderStatusPill status={order.status} />}
+      titleAddon={
+        menuInActions ? (
+          <OrderStatusPill status={order.status} />
+        ) : (
+          <span className="flex items-center gap-2.5">
+            <OrderStatusPill status={order.status} />
+            <OrderMoreMenu />
+          </span>
+        )
+      }
       meta={meta}
       description={narrative(d)}
       actions={actions}
     />
+  );
+}
+
+/** "⋯" menu; owns the focus bookkeeping for the dialogs it opens, so it can sit in either header slot. */
+function OrderMoreMenu() {
+  const { d, ui } = useOrder();
+  const { order, perms, gates } = d;
+  // When a menu action opens a dialog, don't hand focus back to the "⋯" trigger.
+  const openedDialog = useRef(false);
+  const pick = (fn: () => void) => () => {
+    openedDialog.current = true;
+    fn();
+  };
+  return (
+    <DropdownMenu modal={false}>
+      <DropdownMenuTrigger asChild>
+        <Button variant="outline" size="icon" aria-label="Más acciones" className="size-10 rounded-[12px] border-[#dfe3ea] shadow-[0_1px_2px_rgb(16_24_40/0.05)]">
+          <Ellipsis className="size-[18px]" />
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent
+        align="end"
+        sideOffset={6}
+        className="w-[min(300px,calc(100vw-2rem))] rounded-[16px] p-1.5"
+        onCloseAutoFocus={(e) => {
+          if (openedDialog.current) e.preventDefault();
+          openedDialog.current = false;
+        }}
+      >
+        <MenuAction icon={Pencil} label="Editar datos" hint={perms.edit ? "Todos los campos" : "Datos operativos"} gate={gates.edit} onSelect={pick(ui.openEdit)} />
+        <MenuAction icon={CalendarClock} label="Reprogramar" hint="Mover jornadas pendientes" gate={gates.reschedule} onSelect={pick(() => ui.openSchedule("reprogramar"))} />
+        {REOPENABLE.includes(order.status) && (
+          <MenuAction icon={RotateCcw} label="Reabrir" hint="Genera una nueva versión del reporte" gate={gates.reopen} onSelect={pick(ui.openReopen)} />
+        )}
+        <DropdownMenuItem asChild className="min-h-11 gap-3 rounded-[10px] px-2.5">
+          <Link href={`/ordenes/${order.folio}/reporte`}>
+            <FileText className="size-4 text-subtle" />
+            <span className="text-[14px] font-medium">Ver reporte</span>
+          </Link>
+        </DropdownMenuItem>
+        {order.status !== "cancelada" && (
+          <>
+            <DropdownMenuSeparator />
+            <MenuAction icon={Ban} label="Cancelar orden" destructive gate={gates.cancel} onSelect={pick(ui.openCancel)} />
+          </>
+        )}
+      </DropdownMenuContent>
+    </DropdownMenu>
   );
 }
 

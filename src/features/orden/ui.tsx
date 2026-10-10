@@ -4,30 +4,25 @@ import { motion } from "motion/react";
 import { ChevronDown, Lock, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Dialog, DialogClose, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
-import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { ReasonTip } from "@/components/pk/reason-tip";
 import type { Gate } from "./order-context";
 
 /**
  * Wraps a control that may be disabled by role/state. When blocked, the child must already be
- * `disabled`; the wrapper keeps it hoverable/focusable and explains who can do it.
+ * `disabled`; the wrapper keeps it hoverable/focusable (tappable on touch) and explains who can do it.
  */
 export function Gated({ gate, children, className }: { gate: Gate; children: React.ReactNode; className?: string }) {
   if (gate.ok) return <>{children}</>;
   return (
-    <Tooltip>
-      <TooltipTrigger asChild>
-        <span tabIndex={0} className={cn("inline-flex cursor-not-allowed rounded-[12px] outline-none focus-visible:ring-3 focus-visible:ring-ring/50", className)} aria-label={gate.reason}>
-          {children}
-        </span>
-      </TooltipTrigger>
-      <TooltipContent side="top" className="max-w-[260px] text-center leading-snug">
-        {gate.reason}
-      </TooltipContent>
-    </Tooltip>
+    <ReasonTip reason={gate.reason} contentClassName="max-w-[260px] text-center leading-snug">
+      <span tabIndex={0} className={cn("inline-flex cursor-not-allowed rounded-[12px] outline-none focus-visible:ring-3 focus-visible:ring-ring/50", className)} aria-label={gate.reason}>
+        {children}
+      </span>
+    </ReasonTip>
   );
 }
 
-/** Small inline line under a blocked CTA (tooltips don't show on touch). */
+/** Small inline line under a blocked CTA (a persistent alternative to the tip bubble). */
 export function GateHint({ gate, className }: { gate: Gate; className?: string }) {
   if (gate.ok || !gate.reason) return null;
   return (

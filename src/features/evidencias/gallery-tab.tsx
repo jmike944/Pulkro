@@ -257,6 +257,8 @@ function GalleryTile({
       )}
       <span className="absolute inset-x-3 bottom-2.5 text-white">
         <span className="block truncate text-[12.5px] font-semibold">{photo.area}</span>
+        {/* the hover pill never shows on touch, so there the folio rides in the caption */}
+        {order && <span className="hidden truncate text-[11px] font-semibold tabular pointer-coarse:block">{order.folio}</span>}
         <span className="block text-[11px] opacity-80 tabular">
           {fmtDay(photo.takenAt)} · {fmtTime(photo.takenAt)}
         </span>

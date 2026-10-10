@@ -1,11 +1,12 @@
 "use client";
 
 import { useLayoutEffect, useState } from "react";
+import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { AnimatePresence, motion } from "motion/react";
-import { Users } from "lucide-react";
-import { useCan } from "@/lib/hooks";
-import { plural } from "@/lib/format";
+import { CalendarDays, Users } from "lucide-react";
+import { useCan, useMediaQuery } from "@/lib/hooks";
+import { fmtLongDay, plural } from "@/lib/format";
 import { PageHeader, UnderlineTabs } from "@/components/pk/page";
 import { AuroraPanel, GlassCard } from "@/components/pk/aurora";
 import { PillBars } from "@/components/pk/pill-bars";
@@ -30,6 +31,9 @@ export function EquipoView() {
   const router = useRouter();
   const data = useTeamData();
   const canCatalog = useCan("catalogs.admin");
+  const isDesktop = useMediaQuery("(min-width: 1024px)");
+  // Below lg a tap on a day shows its count (tap used to navigate away before it could be read).
+  const [pickedDay, setPickedDay] = useState<number | null>(null);
 
   const w = searchParams.get("w");
   const [tab, setTab] = useState<Tab>(searchParams.get("tab") === "supervisores" ? "supervisores" : "personal");
@@ -68,6 +72,11 @@ export function EquipoView() {
   const bars = data.weekBars.map((b) => ({ key: b.key, label: `${dowShort(b.date)} ${b.date.getDate()}`, value: b.value }));
   const todayBar = data.weekBars[data.todayIndex];
   const peak = data.weekBars.reduce((m, b) => Math.max(m, b.value), 0);
+  const pickedIdx = !isDesktop && pickedDay !== null && data.weekBars[pickedDay] ? pickedDay : null;
+  const picked = pickedIdx !== null ? data.weekBars[pickedIdx] : undefined;
+  const shownBar = picked ?? todayBar;
+  const highlightIdx = pickedIdx ?? (data.todayIndex >= 0 ? data.todayIndex : bars.length - 1);
+  const agendaBar = shownBar ?? data.weekBars[data.weekBars.length - 1];
   const exists = !!w && data.stats.some((s) => s.worker.id === w);
 
   return (
@@ -108,18 +117,27 @@ export function EquipoView() {
 
           <div className="flex min-w-0 flex-col px-1 pb-1 sm:px-0">
             <p className="text-[14px] font-medium text-ink/70">Personas asignadas{data.weekBars[0] ? ` · semana ${weekNumber(data.weekBars[0].date)}` : ""}</p>
-            <AnimatedNumber value={todayBar?.value ?? peak} className="mt-1 block text-[38px] font-medium leading-none tracking-[-0.03em] text-ink" />
+            <AnimatedNumber value={shownBar?.value ?? peak} className="mt-1 block text-[38px] font-medium leading-none tracking-[-0.03em] text-ink" />
             <p className="mt-2 text-[14px] text-ink/70">
-              {todayBar ? "hoy" : "máximo de la semana"} · de {counts.active} disponibles · toca un día para abrir la agenda
+              {picked && picked !== todayBar ? fmtLongDay(picked.date) : todayBar ? "hoy" : "máximo de la semana"} · de {counts.active} disponibles ·{" "}
+              {isDesktop ? "toca un día para abrir la agenda" : "toca un día para ver su carga"}
             </p>
             <PillBars
               data={bars}
-              highlight={data.todayIndex >= 0 ? data.todayIndex : bars.length - 1}
+              highlight={highlightIdx}
               className="mt-6 flex-1"
               height={190}
               format={(v) => plural(v, "persona", "personas")}
-              onSelect={(i) => router.push(`/agenda?fecha=${data.weekBars[i].key}`)}
+              onSelect={(i) => (isDesktop ? router.push(`/agenda?fecha=${data.weekBars[i].key}`) : setPickedDay(i))}
             />
+            {agendaBar && (
+              <Link
+                href={`/agenda?fecha=${agendaBar.key}`}
+                className="mt-4 inline-flex h-11 items-center justify-center gap-2 self-start rounded-[14px] bg-white px-4 text-[14px] font-semibold text-ink shadow-[0_1px_2px_rgb(16_24_40/0.08)] transition active:scale-[0.98] lg:hidden"
+              >
+                <CalendarDays className="size-4" /> Abrir agenda · {agendaBar === todayBar ? "hoy" : `${dowShort(agendaBar.date)} ${agendaBar.date.getDate()}`}
+              </Link>
+            )}
           </div>
         </div>
       </AuroraPanel>

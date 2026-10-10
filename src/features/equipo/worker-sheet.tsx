@@ -21,6 +21,9 @@ import { dayKey, jornadaSpanMinutes, jornadaVisual, timeRange, weekStartOf } fro
 import { REASON_CATALOG } from "./personal-tab";
 import type { TeamData } from "./use-team";
 
+/** Max bar height (px) of the weekly assigned-hours chart; the rest of the plot is room for the value label. */
+const WEEK_BAR_MAX = 90;
+
 /** Worker profile (?w=<workerId>): contact, upcoming assignments, history and preliminary productivity. */
 export function WorkerSheet({
   workerId,
@@ -92,7 +95,8 @@ function WorkerBody({
       const a = dayKey(start);
       const b = dayKey(end);
       const minutes = js.filter((j) => j.date >= a && j.date < b).reduce((s, j) => s + jornadaSpanMinutes(j, now), 0);
-      return { key: a, label: format(start, "d MMM", { locale: es }).replace(".", ""), minutes };
+      const month = format(start, "MMM", { locale: es }).replace(".", "");
+      return { key: a, label: format(start, "d MMM", { locale: es }).replace(".", ""), day: String(start.getDate()), month, minutes };
     });
     return { upcoming, history, last30: last30.length, minutes30, orders30, weeks };
   }, [jornadas, now]);
@@ -188,9 +192,10 @@ function WorkerBody({
                         </span>
                       </span>
                       {sameDay && (
-                        <span title="Doble asignación ese día" className="text-[#b86e00]">
-                          <TriangleAlert className="size-4" />
-                        </span>
+                        <SoftBadge tone="amber" className="shrink-0">
+                          <TriangleAlert className="size-3" />
+                          Doble<span className="sr-only"> asignación ese día</span>
+                        </SoftBadge>
                       )}
                     </Link>
                   </li>
@@ -256,23 +261,42 @@ function WorkerBody({
           </div>
           <div className="mt-5">
             <p className="mb-2 text-[12px] text-subtle">Horas de jornada asignada por semana</p>
-            <div className="flex h-[92px] items-end gap-1.5" role="img" aria-label="Horas de jornada asignada en las últimas 8 semanas">
-              {view.weeks.map((wk, i) => (
-                <div key={wk.key} className="flex h-full flex-1 flex-col items-center justify-end gap-1">
-                  <motion.span
-                    title={`${wk.label}: ${fmtHours(wk.minutes)}`}
-                    initial={{ height: 0 }}
-                    animate={{ height: `${Math.max(4, (wk.minutes / maxWeek) * 100)}%` }}
-                    transition={{ type: "spring", stiffness: 140, damping: 18, delay: 0.15 + i * 0.05 }}
-                    className={cn("w-full max-w-[26px] rounded-full", i === view.weeks.length - 1 ? "bg-st-violet" : wk.minutes ? "bg-[#cfc4ff]" : "bg-[#ece8fb]")}
-                  />
-                </div>
-              ))}
+            {/* values are printed on the bars: a title attribute never shows on touch */}
+            <div className="flex h-[112px] items-end gap-1.5" role="img" aria-label={`Horas de jornada asignada en las últimas 8 semanas: ${view.weeks.map((wk) => `${wk.label} ${fmtHours(wk.minutes)}`).join(", ")}`}>
+              {view.weeks.map((wk, i) => {
+                const barPx = Math.max(4, (wk.minutes / maxWeek) * WEEK_BAR_MAX);
+                const t = { type: "spring" as const, stiffness: 140, damping: 18, delay: 0.15 + i * 0.05 };
+                return (
+                  <div key={wk.key} className="relative flex h-full flex-1 flex-col items-center justify-end" title={`${wk.label}: ${fmtHours(wk.minutes)}`}>
+                    {wk.minutes > 0 && (
+                      <motion.span
+                        initial={{ bottom: 0, opacity: 0 }}
+                        animate={{ bottom: barPx + 3, opacity: 1 }}
+                        transition={t}
+                        className="absolute whitespace-nowrap text-[10.5px] font-semibold leading-none text-ink/70 tabular"
+                      >
+                        {(wk.minutes / 60).toFixed(1).replace(/\.0$/, "")}
+                      </motion.span>
+                    )}
+                    <motion.span
+                      initial={{ height: 0 }}
+                      animate={{ height: barPx }}
+                      transition={t}
+                      className={cn("w-full max-w-[26px] rounded-full", i === view.weeks.length - 1 ? "bg-st-violet" : wk.minutes ? "bg-[#cfc4ff]" : "bg-[#ece8fb]")}
+                    />
+                  </div>
+                );
+              })}
             </div>
             <div className="mt-1.5 flex gap-1.5">
               {view.weeks.map((wk, i) => (
-                <span key={wk.key} className={cn("flex-1 text-center text-[10.5px] text-subtle", i % 2 === 1 && "max-sm:invisible")}>
-                  {wk.label}
+                <span key={wk.key} className="flex-1 text-center text-[10.5px] leading-tight text-subtle">
+                  {/* phones: 8 "d MMM" labels do not fit in a row, so the month goes below the day and only when it changes */}
+                  <span className="max-sm:hidden">{wk.label}</span>
+                  <span className="sm:hidden">
+                    {wk.day}
+                    <span className="block h-[11px] text-[9.5px]">{i === 0 || wk.month !== view.weeks[i - 1].month ? wk.month : ""}</span>
+                  </span>
                 </span>
               ))}
             </div>

@@ -55,15 +55,15 @@ export function SatisfactionHero({ surveys, cases, now }: { surveys: Survey[]; c
     <AuroraPanel className="p-3 sm:p-6 lg:p-8">
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.15fr)] lg:gap-10">
         <GlassCard className="p-5 sm:p-7">
-          <div className="flex items-center justify-between gap-3">
-            <div className="flex min-w-0 items-center gap-3">
+          <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-3">
+            <div className="flex min-w-0 flex-1 basis-[8.5rem] items-center gap-3">
               <IconTile>
                 <HandHeart />
               </IconTile>
-              <span className="truncate text-[15px] font-medium text-ink">Satisfacción del cliente</span>
+              <span className="text-[15px] font-medium leading-snug text-ink sm:truncate sm:leading-normal">Satisfacción del cliente</span>
             </div>
             <DropdownMenu>
-              <DropdownMenuTrigger className="inline-flex h-9 shrink-0 items-center gap-2 rounded-[10px] bg-[#f2f4f7] px-3 text-[14px] font-medium text-ink outline-none transition hover:bg-[#e9edf2]">
+              <DropdownMenuTrigger className="ml-auto inline-flex h-9 shrink-0 items-center gap-2 rounded-[10px] bg-[#f2f4f7] px-3 text-[14px] font-medium text-ink outline-none transition hover:bg-[#e9edf2]">
                 {PERIOD_LABEL[period]}
                 <ChevronDown className="size-4" />
               </DropdownMenuTrigger>

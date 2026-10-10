@@ -1,14 +1,17 @@
 "use client";
 
-import { useMemo } from "react";
+import { Fragment, useMemo } from "react";
 import { isSameDay } from "date-fns";
 import { motion } from "motion/react";
 import { CalendarDays } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useMediaQuery } from "@/lib/hooks";
 import { fmtTime, plural } from "@/lib/format";
 import { EmptyState } from "@/components/pk/feedback";
+import { staggerContainer } from "@/components/pk/motion";
 import { dayKey, hourRange, longDay, packColumns, type AgendaItem } from "./agenda-model";
-import { JornadaBlock } from "./jornada-block";
+import { JornadaBlock, JornadaRow } from "./jornada-block";
+import { NowLine } from "./week-view";
 import type { AgendaData } from "./use-agenda";
 
 const HOUR_PX = 64;
@@ -16,7 +19,11 @@ const MIN_BLOCK = 46; // keeps every block tappable (≥ 40px)
 const minutesOfDay = (d: Date) => d.getHours() * 60 + d.getMinutes();
 const pad2 = (n: number) => String(n).padStart(2, "0");
 
-/** Día: vertical timeline (06:00–22:00, widened for night work) with blocks positioned by time. */
+/**
+ * Día: vertical timeline (06:00–22:00, widened for night work) with blocks positioned by time.
+ * Phones can't fit side-by-side columns (a 5-way overlap leaves ~45px each), so when jornadas overlap
+ * they become the same time-sorted rows as Lista, with place and supervisor in plain sight.
+ */
 export function DayView({
   data,
   day,
@@ -33,6 +40,7 @@ export function DayView({
   const k = dayKey(day);
   const items = useMemo(() => data.items.filter((i) => i.j.date === k), [data.items, k]);
   const isToday = isSameDay(day, now);
+  const wide = useMediaQuery("(min-width: 768px)");
   const { from, to } = hourRange(items, day);
   const total = (to - from) * HOUR_PX;
   const startMin = from * 60;
@@ -51,6 +59,10 @@ export function DayView({
       ),
     [items, day, startMin],
   );
+
+  // supervisors merged (Dirección/Administración) need the name next to each block, so any overlap switches there
+  const maxCols = boxes.reduce((m, b) => Math.max(m, b.cols), 1);
+  const stacked = !wide && maxCols > (data.multiLane ? 1 : 2);
 
   const nowMin = minutesOfDay(now);
   const showNow = isToday && nowMin >= startMin && nowMin <= to * 60;
@@ -79,6 +91,8 @@ export function DayView({
         <EmptyState icon={<CalendarDays />} title="Día libre" className="border-none py-10">
           No hay jornadas programadas este día en tu alcance.
         </EmptyState>
+      ) : stacked ? (
+        <DayStack items={items} now={now} isToday={isToday} multiLane={data.multiLane} onOpen={onOpen} highlightOrderId={highlightOrderId} />
       ) : (
         <div className="grid grid-cols-[42px_minmax(0,1fr)] gap-2 pt-2 sm:grid-cols-[52px_minmax(0,1fr)]">
           <div className="relative" style={{ height: total }} aria-hidden>
@@ -148,5 +162,46 @@ export function DayView({
         </div>
       )}
     </div>
+  );
+}
+
+/** Phones, overlapping day: rows by start time (like Lista) with the "now" line between them. */
+function DayStack({
+  items,
+  now,
+  isToday,
+  multiLane,
+  onOpen,
+  highlightOrderId,
+}: {
+  items: AgendaItem[];
+  now: Date;
+  isToday: boolean;
+  multiLane: boolean;
+  onOpen: (jornadaId: string) => void;
+  highlightOrderId?: string | null;
+}) {
+  const nowIdx = isToday ? items.filter((i) => i.start <= now).length : -1;
+  return (
+    <>
+      <p className="px-1 pb-1 text-[12.5px] leading-snug text-subtle">Varias jornadas coinciden en horario: se listan por hora de inicio.</p>
+      <motion.ul variants={staggerContainer(0.045, 0.05)} initial="hidden" animate="show" className="[&>li:last-child>button]:border-b-0">
+        {items.map((it, idx) => (
+          <Fragment key={it.j.id}>
+            {idx === nowIdx && (
+              <li className="py-1">
+                <NowLine now={now} />
+              </li>
+            )}
+            <JornadaRow item={it} onOpen={onOpen} showSupervisor={multiLane} highlight={highlightOrderId === it.order.id} />
+          </Fragment>
+        ))}
+        {isToday && nowIdx === items.length && (
+          <li className="py-2">
+            <NowLine now={now} />
+          </li>
+        )}
+      </motion.ul>
+    </>
   );
 }

@@ -7,13 +7,13 @@ import { cn } from "@/lib/utils";
 import { ROLE_LABEL, type Tone } from "@/lib/status";
 import type { Role } from "@/lib/types";
 import { IconTile } from "@/components/pk/bits";
+import { ReasonTip } from "@/components/pk/reason-tip";
 import { SoftBadge } from "@/components/pk/status";
 import { EASE } from "@/components/pk/motion";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Dialog, DialogClose, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
-import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 
 /* ───────────── doc scope tags (CONFIRMADO / PROPUESTO / PENDIENTE) ───────────── */
 
@@ -51,8 +51,8 @@ export function RoleBadge({ role, className }: { role: Role; className?: string 
 /* ───────────── permission gate ───────────── */
 
 /**
- * Renders the action disabled with a tooltip explaining who can do it.
- * Disabled buttons swallow pointer events, so the tooltip hangs off a focusable wrapper.
+ * Renders the action disabled with a tooltip (tap bubble on touch) explaining who can do it.
+ * Disabled buttons swallow pointer events, so the tip hangs off a focusable wrapper.
  */
 export function GatedButton({
   allowed,
@@ -69,16 +69,11 @@ export function GatedButton({
   );
   if (allowed) return button;
   return (
-    <Tooltip>
-      <TooltipTrigger asChild>
-        <span tabIndex={0} className="inline-flex cursor-not-allowed rounded-[12px] outline-none focus-visible:ring-3 focus-visible:ring-ring/50" aria-label={reason}>
-          {button}
-        </span>
-      </TooltipTrigger>
-      <TooltipContent side="top" className="max-w-[260px] text-[12.5px] leading-snug">
-        {reason}
-      </TooltipContent>
-    </Tooltip>
+    <ReasonTip reason={reason} contentClassName="max-w-[260px] text-[12.5px] leading-snug">
+      <span tabIndex={0} className="inline-flex cursor-not-allowed rounded-[12px] outline-none focus-visible:ring-3 focus-visible:ring-ring/50" aria-label={reason}>
+        {button}
+      </span>
+    </ReasonTip>
   );
 }
 
@@ -491,14 +486,11 @@ export function InlineSwitch({
   );
   if (!disabled || !reason) return sw;
   return (
-    <Tooltip>
-      <TooltipTrigger asChild>
-        <span tabIndex={0} className="inline-flex outline-none">
-          {sw}
-        </span>
-      </TooltipTrigger>
-      <TooltipContent className="max-w-[240px] text-[12.5px] leading-snug">{reason}</TooltipContent>
-    </Tooltip>
+    <ReasonTip reason={reason} contentClassName="max-w-[240px] text-[12.5px] leading-snug">
+      <span tabIndex={0} className="inline-flex outline-none">
+        {sw}
+      </span>
+    </ReasonTip>
   );
 }
 

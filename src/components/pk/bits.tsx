@@ -7,6 +7,7 @@ import { ArrowRight, ArrowUpRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { fmtMonthShort, d } from "@/lib/format";
 import { toneDot, type Tone } from "@/lib/status";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { EASE } from "./motion";
 
 /* ───────────── numbers ───────────── */
@@ -92,21 +93,28 @@ export function PersonAvatar({
   );
 }
 
+/**
+ * Overlapping avatars + "+N". With people present the whole stack is a button that opens the full
+ * list (avatar, name, specialty), because `title` never shows on touch and "+N" would be inert.
+ * Pass `interactive={false}` when the stack sits inside a Link/button (nested interactive content).
+ */
 export function AvatarStack({
   people,
   max = 4,
   size = 28,
   className,
+  interactive = true,
 }: {
-  people: { id: string; name: string; initials: string; hue: number }[];
+  people: { id: string; name: string; initials: string; hue: number; specialty?: string }[];
   max?: number;
   size?: number;
   className?: string;
+  interactive?: boolean;
 }) {
   const shown = people.slice(0, max);
   const rest = people.length - shown.length;
-  return (
-    <div className={cn("flex items-center", className)}>
+  const avatars = (
+    <>
       {shown.map((p, i) => (
         <PersonAvatar key={p.id} name={p.name} initials={p.initials} hue={p.hue} size={size} ring className={i ? "-ml-2" : ""} />
       ))}
@@ -118,7 +126,46 @@ export function AvatarStack({
           +{rest}
         </span>
       )}
-    </div>
+    </>
+  );
+  if (!interactive || people.length === 0) return <div className={cn("flex items-center", className)}>{avatars}</div>;
+  return (
+    <Popover>
+      <PopoverTrigger asChild>
+        <button
+          type="button"
+          aria-label={`Ver personas: ${people.map((p) => p.name).join(", ")}`}
+          onClick={(e) => e.stopPropagation()}
+          // ≥ 44px hit area on touch without moving the layout; z-[1] lifts it over stretched-link overlays
+          style={{ "--hit": `${Math.max(0, Math.round((44 - size) / 2))}px` } as React.CSSProperties}
+          className={cn(
+            "relative z-[1] flex cursor-pointer items-center rounded-full outline-none focus-visible:ring-3 focus-visible:ring-ring/50 max-lg:-mx-1 max-lg:-my-[var(--hit)] max-lg:px-1 max-lg:py-[var(--hit)]",
+            className,
+          )}
+        >
+          {avatars}
+        </button>
+      </PopoverTrigger>
+      <PopoverContent align="start" collisionPadding={12} className="w-[min(280px,calc(100vw-24px))] gap-0 rounded-[16px] p-1.5 shadow-lift">
+        {/* stopPropagation keeps the list scrollable when the stack sits inside a modal Dialog/Sheet (its scroll lock eats wheel/touch outside) */}
+        <ul
+          aria-label="Personas"
+          onWheel={(e) => e.stopPropagation()}
+          onTouchMove={(e) => e.stopPropagation()}
+          className="max-h-[min(50dvh,320px)] overflow-y-auto overscroll-contain"
+        >
+          {people.map((p) => (
+            <li key={p.id} className="flex items-center gap-3 rounded-[12px] px-2 py-2">
+              <PersonAvatar initials={p.initials} hue={p.hue} size={36} />
+              <span className="min-w-0">
+                <span className="block truncate text-[14px] font-medium text-ink">{p.name}</span>
+                {p.specialty && <span className="block truncate text-[12.5px] text-subtle">{p.specialty}</span>}
+              </span>
+            </li>
+          ))}
+        </ul>
+      </PopoverContent>
+    </Popover>
   );
 }
 
@@ -181,7 +228,11 @@ export function CornerLink({ href, label }: { href: string; label: string }) {
 
 /* ───────────── bar list ───────────── */
 
-/** "Why claims get denied" horizontal bars: first bar strong blue, rest light. */
+/**
+ * "Why claims get denied" horizontal bars: first bar strong blue, rest light.
+ * Phones/tablets (< lg): label + figure on the first line (the label wraps, never truncates), full-width bar below.
+ * Desktop: label · bar · figure on a single row.
+ */
 export function BarList({
   items,
   className,
@@ -193,14 +244,17 @@ export function BarList({
 }) {
   const max = Math.max(0.0001, ...items.map((i) => i.pct));
   return (
-    <ul className={cn("space-y-[18px]", className)}>
+    <ul className={cn("space-y-5 lg:space-y-[18px]", className)}>
       {items.map((it, i) => (
-        <li key={it.label} className="grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)_44px] items-center gap-4">
-          <div className="min-w-0">
-            <p className="truncate text-[14px] text-ink">{it.label}</p>
+        <li
+          key={it.label}
+          className="grid grid-cols-[minmax(0,1fr)_auto] items-baseline gap-x-4 gap-y-2 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_44px] lg:items-center"
+        >
+          <div className="col-start-1 row-start-1 min-w-0">
+            <p className="text-[14px] leading-snug text-ink lg:truncate lg:leading-normal">{it.label}</p>
             {it.sub && <p className="text-[12px] text-subtle">{it.sub}</p>}
           </div>
-          <div className="h-[7px] w-full">
+          <div className="col-span-2 row-start-2 h-[7px] w-full lg:col-span-1 lg:col-start-2 lg:row-start-1">
             <motion.div
               initial={{ width: 0 }}
               animate={{ width: `${(it.pct / max) * 100}%` }}
@@ -208,7 +262,7 @@ export function BarList({
               className={cn("h-full rounded-full", i === 0 ? "bg-[#1667e0]" : "bg-[#b9d8fb]")}
             />
           </div>
-          <span className="text-right text-[14px] font-semibold text-ink tabular">
+          <span className="col-start-2 row-start-1 text-right text-[14px] font-semibold text-ink tabular lg:col-start-3">
             {showCount ? it.value : `${Math.round(it.pct * 100)}%`}
           </span>
         </li>

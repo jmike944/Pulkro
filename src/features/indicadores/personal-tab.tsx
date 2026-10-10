@@ -63,6 +63,8 @@ export function PersonalTab({
       description: `Cerradas en ${win.phrase} y abiertas del periodo`,
       orders: ind.prodOrders.filter((o) => o.supervisorId === r.user.id),
     });
+  // Dirección in "todas las unidades": the phone rows need the unit to tell supervisors apart (the table has a column for it).
+  const multiUnit = useMemo(() => new Set(ind.productivity.map((r) => r.user.unitId)).size > 1, [ind.productivity]);
   const maxClosed = Math.max(1, ...rows.map((r) => r.closed));
   const maxHours = Math.max(1, ...rows.map((r) => r.hours));
 
@@ -152,7 +154,16 @@ export function PersonalTab({
                   onClick={() => openDrill(r)}
                   className="min-h-[72px] border-0"
                   leading={<PersonAvatar name={r.user.name} initials={r.user.initials} hue={r.user.hue} size={44} />}
-                  title={r.user.name}
+                  title={
+                    multiUnit ? (
+                      <>
+                        {r.user.name}
+                        <span className="block text-[13px] font-normal text-subtle">{units.get(r.user.unitId)?.name}</span>
+                      </>
+                    ) : (
+                      r.user.name
+                    )
+                  }
                   meta={
                     <>
                       {plural(r.closed, "cerrada", "cerradas")} · {plural(r.open, "abierta", "abiertas")}

@@ -3,9 +3,9 @@
 import { useState } from "react";
 import Link from "next/link";
 import { AnimatePresence, motion } from "motion/react";
-import { CalendarClock, ChevronDown, Sparkles } from "lucide-react";
+import { CalendarClock, ChevronDown, Lock, Sparkles } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { useLookups } from "@/lib/hooks";
+import { useLookups, useMediaQuery } from "@/lib/hooks";
 import { fmtRelativeDay, fmtTime, plural } from "@/lib/format";
 import type { Order } from "@/lib/types";
 import { AuroraFrame } from "@/components/pk/aurora";
@@ -110,7 +110,9 @@ export function UnassignedRail(props: Props) {
 
 /** Phones / tablets: collapsible section above the calendar. */
 export function UnassignedSection(props: Props) {
-  const [open, setOpen] = useState(props.orders.length > 0);
+  // Each pending order is ~180px tall: starting open would push the calendar below the first screen on phones/tablets.
+  const stacked = !useMediaQuery("(min-width: 1024px)");
+  const [open, setOpen] = useState(() => props.orders.length > 0 && !stacked);
   return (
     <div className="rounded-[20px] border border-hairline bg-white shadow-soft">
       <button
@@ -145,6 +147,11 @@ export function UnassignedSection(props: Props) {
             className="overflow-hidden"
           >
             <div className="border-t border-hairline px-4">
+              {!props.canPlan && props.orders.length > 0 && (
+                <p className="flex items-start gap-2 pt-3 text-[12.5px] leading-snug text-subtle lg:hidden">
+                  <Lock className="mt-0.5 size-3.5 shrink-0" /> Solo consulta. {REASON_CREW}
+                </p>
+              )}
               <UnassignedList {...props} />
             </div>
           </motion.div>

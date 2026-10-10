@@ -21,6 +21,28 @@ import {
 import { StatusDot } from "@/components/pk/status";
 import { NAV_FOOT, NAV_MAIN } from "./nav";
 
+/**
+ * Phones: expose the *visual* viewport height (it shrinks when the on-screen keyboard opens, unlike dvh) as --pk-vvh
+ * so the palette list can size itself to the space above the keyboard.
+ */
+function useVisualViewportHeight(active: boolean) {
+  useEffect(() => {
+    const vv = window.visualViewport;
+    if (!active || !vv) return;
+    const root = document.documentElement;
+    const sync = () => root.style.setProperty("--pk-vvh", `${Math.round(vv.height)}px`);
+    sync();
+    vv.addEventListener("resize", sync);
+    return () => {
+      vv.removeEventListener("resize", sync);
+      root.style.removeProperty("--pk-vvh");
+    };
+  }, [active]);
+}
+
+// Phone rows get a 44px tap target; desktop keeps the compact cmdk rows.
+const ITEM = "max-lg:min-h-11";
+
 /** Global ⌘K palette: orders by folio/client/address, clients, crew, pages, quick actions. */
 export function CommandMenu() {
   const open = useUi((s) => s.commandOpen);
@@ -32,6 +54,8 @@ export function CommandMenu() {
   const clients = useAppStore((s) => s.clients);
   const workers = useAppStore((s) => s.workers);
   const canCreate = useCan("order.create");
+
+  useVisualViewportHeight(open);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -55,18 +79,32 @@ export function CommandMenu() {
   };
 
   return (
-    <CommandDialog open={open} onOpenChange={setOpen} title="Buscar en Pulkro" description="Órdenes, clientes, personal y secciones">
+    <CommandDialog
+      open={open}
+      onOpenChange={setOpen}
+      title="Buscar en Pulkro"
+      description="Órdenes, clientes, personal y secciones"
+      className="max-lg:top-[max(12px,env(safe-area-inset-top))] max-sm:max-w-[calc(100%-1rem)]"
+    >
       <Command>
-      <CommandInput placeholder="Folio, cliente, dirección, trabajador…" />
-      <CommandList className="max-h-[440px]">
+      <div className="flex items-center">
+        <div className="min-w-0 flex-1 max-lg:[&_[data-slot=input-group]]:h-11!">
+          {/* 16px on phones: smaller input text makes iOS zoom the page on focus */}
+          <CommandInput placeholder="Folio, cliente, dirección, trabajador…" className="max-lg:text-base" />
+        </div>
+        <button type="button" onClick={() => setOpen(false)} className="inline-flex h-11 shrink-0 items-center px-3 text-[15px] font-semibold text-link lg:hidden">
+          Cancelar
+        </button>
+      </div>
+      <CommandList className="max-h-[440px] max-lg:max-h-[min(calc(var(--pk-vvh,100dvh)-7.5rem),36rem)]">
         <CommandEmpty>Sin resultados.</CommandEmpty>
         {canCreate && (
           <CommandGroup heading="Acciones">
-            <CommandItem onSelect={() => go("/ordenes/nueva")}>
+            <CommandItem className={ITEM} onSelect={() => go("/ordenes/nueva")}>
               <Plus /> Nueva orden de servicio
               <CommandShortcut>N</CommandShortcut>
             </CommandItem>
-            <CommandItem onSelect={() => { setOpen(false); setSyncOpen(true); }}>
+            <CommandItem className={ITEM} onSelect={() => { setOpen(false); setSyncOpen(true); }}>
               <WifiOff /> Estado de sincronización
             </CommandItem>
           </CommandGroup>
@@ -77,7 +115,7 @@ export function CommandMenu() {
             const site = lk.sites.get(o.siteId);
             const st = ORDER_STATUS[o.status];
             return (
-              <CommandItem key={o.id} value={`${o.folio} ${o.title} ${c?.name} ${site?.address} ${site?.municipality}`} onSelect={() => go(`/ordenes/${o.folio}`)}>
+              <CommandItem key={o.id} className={ITEM} value={`${o.folio} ${o.title} ${c?.name} ${site?.address} ${site?.municipality}`} onSelect={() => go(`/ordenes/${o.folio}`)}>
                 <ClipboardList />
                 <span className="flex min-w-0 flex-1 flex-col">
                   <span className="truncate">
@@ -97,7 +135,7 @@ export function CommandMenu() {
         <CommandSeparator />
         <CommandGroup heading="Clientes">
           {clients.map((c) => (
-            <CommandItem key={c.id} value={`${c.name} ${c.contactName} ${c.segment}`} onSelect={() => go(`/clientes/${c.id}`)}>
+            <CommandItem key={c.id} className={ITEM} value={`${c.name} ${c.contactName} ${c.segment}`} onSelect={() => go(`/clientes/${c.id}`)}>
               <Building2 /> {c.name}
               <span className="ml-auto text-[12px] text-subtle">{c.segment}</span>
             </CommandItem>
@@ -105,7 +143,7 @@ export function CommandMenu() {
         </CommandGroup>
         <CommandGroup heading="Personal">
           {workers.slice(0, 50).map((w) => (
-            <CommandItem key={w.id} value={`${w.name} ${w.specialty}`} onSelect={() => go(`/equipo?w=${w.id}`)}>
+            <CommandItem key={w.id} className={ITEM} value={`${w.name} ${w.specialty}`} onSelect={() => go(`/equipo?w=${w.id}`)}>
               <UserRound /> {w.name}
               <span className="ml-auto text-[12px] text-subtle">{w.specialty}</span>
             </CommandItem>
@@ -113,7 +151,7 @@ export function CommandMenu() {
         </CommandGroup>
         <CommandGroup heading="Secciones">
           {[...NAV_MAIN, ...NAV_FOOT].map((n) => (
-            <CommandItem key={n.key} onSelect={() => go(n.href)}>
+            <CommandItem key={n.key} className={ITEM} onSelect={() => go(n.href)}>
               <n.icon /> {n.label}
             </CommandItem>
           ))}

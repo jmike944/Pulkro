@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { AnimatePresence, motion } from "motion/react";
-import { ChevronLeft, CloudUpload, Eye, MapPin, WifiOff } from "lucide-react";
+import { ChevronLeft, CloudUpload, Eye, MapPin, Phone, WifiOff } from "lucide-react";
 import { useNow } from "@/lib/hooks";
 import { useUi } from "@/lib/ui-store";
 import { jornadaMinutes, mapsLink } from "@/lib/domain";
@@ -69,6 +69,15 @@ export function FieldHeader({ f }: { f: FieldReady }) {
             {site.address}, {site.municipality}
           </span>
         </a>
+        {/* one-tap call; the wide layout has it in the rail */}
+        {order.siteContact.phone && (
+          <a
+            href={`tel:${order.siteContact.phone.replace(/\s/g, "")}`}
+            className="inline-flex min-h-11 items-center gap-1.5 font-medium text-link hover:underline @min-[880px]:hidden"
+          >
+            <Phone className="size-3.5 shrink-0" /> Llamar al contacto
+          </a>
+        )}
       </motion.div>
 
       <Narrative f={f} />
@@ -82,7 +91,7 @@ export function FieldHeader({ f }: { f: FieldReady }) {
         >
           <Eye className="mt-0.5 size-4 shrink-0 text-ink/60" />
           <span>
-            <b className="font-semibold text-ink">Modo consulta.</b> {f.roleLabel} ve toda la jornada; la entrada, salida, fotos, incidencias y notas las captura el supervisor en sitio.
+            <b className="font-semibold text-ink">Modo consulta.</b> {f.roleLabel} ve toda la jornada; la entrada, salida, fotos, incidencias y notas las captura el supervisor en sitio, y solo él autoriza el cierre y elige las fotos del reporte.
           </span>
         </motion.p>
       )}

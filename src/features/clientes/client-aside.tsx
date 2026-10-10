@@ -95,8 +95,12 @@ export function ClientAside({ stats, surveys }: { stats: ClientStats; surveys: S
               >
                 <ScrollText className="mt-0.5 size-4 shrink-0 text-[#1667e0]" />
                 <span className="min-w-0 flex-1 text-[14px] leading-snug text-ink">{text}</span>
-                <span className="shrink-0 rounded-md bg-white px-1.5 py-0.5 text-[12px] font-semibold text-subtle tabular" title={`En ${n} órdenes`}>
-                  ×{n}
+                <span className="shrink-0 rounded-md bg-white px-1.5 py-0.5 text-[12px] font-semibold text-subtle tabular">
+                  {/* no hover on touch: spell the count out below lg, keep the compact ×n (with its tooltip) on desktop */}
+                  <span className="lg:hidden">{n === 1 ? "1 orden" : `${n} órdenes`}</span>
+                  <span className="max-lg:hidden" title={n === 1 ? "En 1 orden" : `En ${n} órdenes`}>
+                    ×{n}
+                  </span>
                 </span>
               </motion.li>
             ))}

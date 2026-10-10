@@ -52,3 +52,14 @@ export function fmtDiff(minutes: number) {
 
 /** Drop missing lookups: `compact(ids.map((id) => map.get(id)))`. */
 export const compact = <T,>(xs: (T | undefined | null)[]) => xs.filter((x): x is T => x != null);
+
+/** "Ana, Luis y Marco" / "Ana, Luis, Marco y 2 más": first names, spelled out (touch has no avatar hover). */
+export function crewNames(crew: { name: string }[], max = 3) {
+  const names = crew.map((w) => w.name.split(" ")[0]);
+  const rest = names.length > max + 1 ? names.length - max : 0; // never "y 1 más"
+  const shown = rest ? names.slice(0, max) : names;
+  const tail = rest ? `${rest} más` : (shown.pop() ?? "");
+  if (!shown.length) return tail;
+  const conj = !rest && /^h?[ií](?![aeou])/i.test(tail) ? "e" : "y"; // "Ana e Irma"
+  return `${shown.join(", ")} ${conj} ${tail}`;
+}

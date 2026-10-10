@@ -23,6 +23,8 @@ import { CAPTURE_REASON, Guarded } from "./guarded";
 import { useRequestModel } from "./request-model";
 import { AreaChips, History, NeededBox, PersonCard, ReceivedCard, RequestFacts, RingingBell } from "./request-sections";
 
+const NO_PHONE_REASON = "El supervisor no tiene teléfono registrado.";
+
 /**
  * Detail of one missing-evidence request: right Sheet on tablet/desktop, full-screen flow on phones
  * (one-tap camera in the sticky footer, success screen after the upload).
@@ -61,6 +63,8 @@ function DesktopRequest({ request }: { request: EvidenceRequest }) {
   const [wipe, setWipe] = useState(0);
   const [rings, setRings] = useState(0);
   const lb = useLightbox();
+  // tablets are touch: the tap bubble is still there, but the reasons are also printed like on the phone flow
+  const touch = useMediaQuery("(hover: none)");
 
   if (!m) return <SheetTitle className="sr-only">Solicitud no disponible</SheetTitle>;
   const { order, jornada, client, serviceType } = m;
@@ -146,7 +150,12 @@ function DesktopRequest({ request }: { request: EvidenceRequest }) {
           </>
         ) : (
           <>
-            {!m.isMine && <p className="order-last w-full text-right text-[12px] text-subtle">Recordatorio manual por WhatsApp · sin alertas automáticas</p>}
+            {!m.isMine && (
+              <p className="order-last w-full text-right text-[12px] text-subtle">
+                {touch && !m.supervisor?.phone ? NO_PHONE_REASON : "Recordatorio manual por WhatsApp · sin alertas automáticas"}
+              </p>
+            )}
+            {touch && !canCapture && <p className="order-last w-full text-right text-[12px] leading-snug text-subtle">{CAPTURE_REASON}</p>}
             <Guarded reason={canCapture ? null : CAPTURE_REASON}>
               <Button
                 variant={m.isMine ? "default" : "outline"}
@@ -158,7 +167,7 @@ function DesktopRequest({ request }: { request: EvidenceRequest }) {
               </Button>
             </Guarded>
             {!m.isMine && (
-              <Guarded reason={m.supervisor?.phone ? null : "El supervisor no tiene teléfono registrado."}>
+              <Guarded reason={m.supervisor?.phone ? null : NO_PHONE_REASON}>
                 <Button disabled={!m.supervisor?.phone} onClick={() => remind() && setRings((n) => n + 1)} className="h-11 rounded-[12px] px-4 font-semibold">
                   <RingingBell rings={rings} />
                   Recordar a {m.supFirst}
@@ -225,10 +234,19 @@ function PhoneRequest({
         description="Evidencia recibida"
         footer={
           <div className="space-y-2.5">
-            {m.readyToClose && canClose && <BigButton href={`/ordenes/${order.folio}?cerrar=1`}>Validar cierre</BigButton>}
-            <BigButton variant="outline" onClick={close}>
-              Volver a evidencias
-            </BigButton>
+            {m.readyToClose && canClose ? (
+              <BigButton href={`/ordenes/${order.folio}?cerrar=1`}>Validar cierre</BigButton>
+            ) : (
+              <BigButton href={`/ordenes/${order.folio}`}>Ver orden</BigButton>
+            )}
+            <div className="grid grid-cols-2 gap-2.5">
+              <BigButton variant="outline" href={`/jornada/${jornada.id}`} className="h-12 px-3 text-center text-[15px] leading-tight">
+                Ver jornada
+              </BigButton>
+              <BigButton variant="outline" onClick={close} className="h-12 px-3 text-center text-[15px] leading-tight">
+                Volver a evidencias
+              </BigButton>
+            </div>
           </div>
         }
       >
@@ -292,7 +310,7 @@ function PhoneRequest({
             <RingingBell rings={rings} /> Recordar a {m.supFirst}
           </BigButton>
           <p className="text-center text-[12px] text-subtle">
-            {m.supervisor?.phone ? "Recordatorio manual por WhatsApp · sin alertas automáticas" : "El supervisor no tiene teléfono registrado."}
+            {m.supervisor?.phone ? "Recordatorio manual por WhatsApp · sin alertas automáticas" : NO_PHONE_REASON}
           </p>
         </>
       )}

@@ -1,22 +1,17 @@
 "use client";
 
 import { cn } from "@/lib/utils";
-import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { ReasonTip } from "@/components/pk/reason-tip";
 
-/** Wraps a (disabled) control with a tooltip that explains who can do it / why it is blocked. */
+/** Wraps a (disabled) control with a tooltip (tap bubble on touch) that explains who can do it / why it is blocked. */
 export function WithReason({ reason, children, className }: { reason?: string | null; children: React.ReactNode; className?: string }) {
   if (!reason) return <>{children}</>;
   return (
-    <Tooltip>
-      <TooltipTrigger asChild>
-        <span tabIndex={0} className={cn("inline-flex rounded-[12px] outline-none focus-visible:ring-3 focus-visible:ring-sky/50", className)}>
-          {children}
-        </span>
-      </TooltipTrigger>
-      <TooltipContent side="top" className="max-w-[280px] text-[12.5px] leading-snug">
-        {reason}
-      </TooltipContent>
-    </Tooltip>
+    <ReasonTip reason={reason} contentClassName="max-w-[280px] text-[12.5px] leading-snug">
+      <span tabIndex={0} className={cn("inline-flex rounded-[12px] outline-none focus-visible:ring-3 focus-visible:ring-sky/50", className)}>
+        {children}
+      </span>
+    </ReasonTip>
   );
 }
 
