@@ -57,7 +57,7 @@ function LoginInner() {
         <div className="relative z-[2] flex h-full flex-col justify-between p-12">
           <div className="flex items-center gap-3">
             <PulkroMark className="size-11 rounded-[13px]" />
-            <span className="font-brand text-[22px] font-extrabold tracking-[0.18em] text-brand-deep">PULKRO</span>
+            <span className="font-brand text-[22px] font-extrabold tracking-[0.18em] text-brand-ink">PULKRO</span>
           </div>
           <div className="max-w-xl">
             <motion.p
@@ -68,7 +68,7 @@ function LoginInner() {
             >
               Si piensas en limpio…
               <br />
-              <span className="italic text-brand">¡piensa en Pulkro!</span>
+              <span className="italic text-brand-ink">¡piensa en Pulkro!</span>
             </motion.p>
             <motion.p
               initial={{ opacity: 0 }}
@@ -102,11 +102,11 @@ function LoginInner() {
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.97, filter: "blur(6px)" }}
               transition={{ duration: 0.5, ease: EASE }}
-              className="w-full max-w-[440px] rounded-[28px] bg-white p-7 shadow-lift ring-1 ring-black/[0.03] sm:p-9"
+              className="w-full max-w-[440px] rounded-[28px] bg-surface p-7 shadow-lift ring-1 ring-edge sm:p-9"
             >
               <div className="mb-8 flex items-center gap-3 lg:hidden">
                 <PulkroMark />
-                <span className="font-brand text-[18px] font-extrabold tracking-[0.16em] text-brand-deep">PULKRO</span>
+                <span className="font-brand text-[18px] font-extrabold tracking-[0.16em] text-brand-ink">PULKRO</span>
               </div>
               <h1 className="font-serif text-[34px] font-medium leading-tight text-ink">Bienvenido</h1>
               <p className="mt-2 text-[15px] text-subtle">Elige un perfil de demostración para entrar. Cada rol ve solo lo que le corresponde.</p>
@@ -128,7 +128,7 @@ function LoginInner() {
                       onDoubleClick={enter}
                       className={cn(
                         "flex w-full items-center gap-4 rounded-[18px] border p-4 text-left transition-all",
-                        active ? "border-transparent bg-[#f2f8fe] ring-2 ring-[#1667e0]" : "border-hairline hover:border-[#d5dbe3] hover:bg-[#fafbfc]",
+                        active ? "border-transparent bg-blue-wash ring-2 ring-azure" : "border-hairline hover:border-line-strong hover:bg-wash",
                       )}
                     >
                       {u ? <PersonAvatar initials={u.initials} hue={u.hue} size={44} /> : <span className="size-11 rounded-full shimmer" />}
@@ -139,7 +139,7 @@ function LoginInner() {
                         </span>
                         <span className="mt-0.5 block text-[13px] leading-snug text-subtle">{ROLE_COPY[r]}</span>
                       </span>
-                      <span className={cn("inline-flex size-6 shrink-0 items-center justify-center rounded-full transition", active ? "bg-[#1667e0] text-white" : "border border-[#d5dbe3]")}>
+                      <span className={cn("inline-flex size-6 shrink-0 items-center justify-center rounded-full transition", active ? "bg-azure text-white" : "border border-line-strong")}>
                         {active && <Check className="size-3.5" strokeWidth={3} />}
                       </span>
                     </motion.button>
@@ -152,7 +152,7 @@ function LoginInner() {
                 <ArrowRight className="transition-transform group-hover:translate-x-1" />
               </Button>
               <p className="mt-5 flex items-start gap-2 text-[12.5px] leading-relaxed text-subtle">
-                <ShieldCheck className="mt-0.5 size-4 shrink-0 text-st-teal" />
+                <ShieldCheck className="mt-0.5 size-4 shrink-0 text-teal-fg" />
                 Prototipo navegable. En producción cada persona accede con su cuenta individual, sesiones seguras y bitácora de auditoría.
               </p>
             </motion.div>

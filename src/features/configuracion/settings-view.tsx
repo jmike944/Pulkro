@@ -94,7 +94,7 @@ export function SettingsView() {
         title="Configuración"
         description={description}
         actions={
-          <Button asChild variant="outline" className="h-10 rounded-[12px] border-[#dfe3ea] px-4 text-[14px] font-semibold shadow-[0_1px_2px_rgb(16_24_40/0.05)]">
+          <Button asChild variant="outline" className="h-10 rounded-[12px] border-line px-4 text-[14px] font-semibold shadow-[0_1px_2px_rgb(16_24_40/0.05)]">
             <Link href="/ayuda">
               <CircleHelp className="size-4" /> Centro de ayuda
             </Link>

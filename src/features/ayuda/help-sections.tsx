@@ -58,7 +58,7 @@ export function BusinessRules() {
             variants={{ hidden: { opacity: 0, y: 12 }, show: { opacity: 1, y: 0, transition: { duration: 0.45, ease: EASE } } }}
             whileHover={{ y: -3 }}
             className={cn(
-              "group flex flex-col rounded-[22px] border border-hairline bg-white p-5 shadow-soft transition-shadow hover:shadow-lift",
+              "group flex flex-col rounded-[22px] border border-hairline bg-surface p-5 shadow-soft transition-shadow hover:shadow-lift",
               wide && "sm:col-span-2 sm:grid sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] sm:gap-x-8 xl:col-span-3",
             )}
           >
@@ -67,7 +67,7 @@ export function BusinessRules() {
                 <IconTile tone={ic.tone} className="size-10 rounded-[12px] [&_svg]:size-5">
                   {ic.icon}
                 </IconTile>
-                <span className={cn("font-serif text-[22px] leading-none text-[#c5ccd6] tabular", wide && "sm:hidden")}>{String(i + 1).padStart(2, "0")}</span>
+                <span className={cn("font-serif text-[22px] leading-none text-ghost tabular", wide && "sm:hidden")}>{String(i + 1).padStart(2, "0")}</span>
               </div>
               <p className="mt-4 flex flex-wrap items-center gap-2 text-[16px] font-semibold text-ink">
                 {r.title}
@@ -76,7 +76,7 @@ export function BusinessRules() {
               <p className="mt-1.5 text-[14px] leading-relaxed text-subtle">{r.rule}</p>
             </div>
             <div className={cn("flex min-w-0 flex-1 flex-col", wide && "sm:justify-center")}>
-              <p className="mt-4 rounded-[14px] bg-[#f4f8fd] px-3.5 py-3 text-[13.5px] leading-relaxed text-ink">
+              <p className="mt-4 rounded-[14px] bg-blue-wash px-3.5 py-3 text-[13.5px] leading-relaxed text-ink">
                 <span className="font-semibold">En el prototipo: </span>
                 {r.how}
               </p>
@@ -107,14 +107,14 @@ export function PendingQuestions() {
         <motion.li
           key={p.q}
           variants={{ hidden: { opacity: 0, y: 10 }, show: { opacity: 1, y: 0, transition: { duration: 0.4, ease: EASE } } }}
-          className="relative flex flex-col overflow-hidden rounded-[20px] bg-[#fff8eb] p-4 ring-1 ring-[#f6e2bd] sm:p-5"
+          className="relative flex flex-col overflow-hidden rounded-[20px] bg-amber-soft p-4 ring-1 ring-amber-line sm:p-5"
         >
           <span aria-hidden className="pointer-events-none absolute -top-4 right-4 select-none font-serif text-[84px] leading-none text-[#f3d9a6]/60">
             ?
           </span>
           <div className="relative flex items-center gap-2">
             <DocTag status="pendiente" />
-            <span className="text-[12px] font-semibold uppercase tracking-[0.1em] text-[#8a5300]/80">
+            <span className="text-[12px] font-semibold uppercase tracking-[0.1em] text-amber-ink/80">
               {String(i + 1).padStart(2, "0")} · {p.topic}
             </span>
           </div>
@@ -124,7 +124,7 @@ export function PendingQuestions() {
             {p.now}
           </p>
           {p.href && (
-            <Link href={p.href} className="group relative mt-auto inline-flex w-fit items-center gap-1.5 pt-3 text-[13px] font-semibold text-[#8a5300] hover:text-ink">
+            <Link href={p.href} className="group relative mt-auto inline-flex w-fit items-center gap-1.5 pt-3 text-[13px] font-semibold text-amber-ink hover:text-ink">
               {p.linkLabel}
               <ArrowRight className="size-3.5 transition-transform group-hover:translate-x-0.5" />
             </Link>
@@ -149,18 +149,18 @@ export function Faq() {
     <div>
       <SearchField value={q} onChange={setQ} placeholder="Buscar en preguntas frecuentes" className="mb-4 max-w-md" />
       {list.length === 0 ? (
-        <p className="rounded-[18px] border border-dashed border-[#d9dfe7] px-5 py-8 text-center text-[14px] text-subtle">
+        <p className="rounded-[18px] border border-dashed border-line-strong px-5 py-8 text-center text-[14px] text-subtle">
           Sin resultados para «{q}». Llama a la Matriz si necesitas ayuda directa.
         </p>
       ) : (
-        <ul className="divide-y divide-hairline rounded-[22px] border border-hairline bg-white shadow-soft">
+        <ul className="divide-y divide-hairline rounded-[22px] border border-hairline bg-surface shadow-soft">
           {list.map((f) => {
             const isOpen = open === f.q;
             return (
               <li key={f.q}>
                 <Collapsible open={isOpen} onOpenChange={(v) => setOpen(v ? f.q : null)}>
                   <CollapsibleTrigger className="group flex min-h-14 w-full items-center gap-4 px-5 py-4 text-left outline-none focus-visible:bg-muted sm:px-6">
-                    <span className={cn("inline-flex size-8 shrink-0 items-center justify-center rounded-[10px] transition-colors", isOpen ? "bg-brand-deep text-white" : "bg-[#f2f4f7] text-ink")}>
+                    <span className={cn("inline-flex size-8 shrink-0 items-center justify-center rounded-[10px] transition-colors", isOpen ? "bg-brand-deep text-white" : "bg-tile text-ink")}>
                       <MessageCircleQuestion className="size-4" />
                     </span>
                     <span className="min-w-0 flex-1 text-[15.5px] font-semibold leading-snug text-ink">{f.q}</span>
@@ -193,7 +193,7 @@ export function ContactCard() {
   const directions = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`Pulkro, ${PULKRO_CONTACT.address}`)}`;
   return (
     <div className="bg-aurora-frame grain rounded-[28px] p-2.5 shadow-lift">
-      <div className="relative z-[2] grid overflow-hidden rounded-[22px] bg-white md:grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)]">
+      <div className="relative z-[2] grid overflow-hidden rounded-[22px] bg-surface md:grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)]">
         <div className="p-6 sm:p-8">
           <p className="flex items-center gap-2 text-[12px] font-semibold uppercase tracking-[0.1em] text-subtle">
             <Building2 className="size-3.5" /> Pulkro · desde 1985
@@ -228,7 +228,7 @@ export function ContactCard() {
                 <Phone className="size-4" /> Llamar a la Matriz
               </a>
             </Button>
-            <Button asChild variant="outline" className="h-11 rounded-[12px] border-[#dfe3ea] px-5 text-[14.5px] font-semibold">
+            <Button asChild variant="outline" className="h-11 rounded-[12px] border-line px-5 text-[14.5px] font-semibold">
               <a href={directions} target="_blank" rel="noopener noreferrer">
                 <Navigation className="size-4" /> Cómo llegar
               </a>
@@ -252,7 +252,7 @@ export function ContactCard() {
 /** Stylised street map of the Matriz surroundings (no tiles, so it never breaks offline). */
 function MatrizIllustration() {
   return (
-    <div className="relative h-full min-h-[240px] overflow-hidden rounded-[18px] bg-[#eef3f8] ring-1 ring-black/5">
+    <div className="relative h-full min-h-[240px] overflow-hidden rounded-[18px] bg-well ring-1 ring-edge">
       <svg viewBox="0 0 400 260" preserveAspectRatio="xMidYMid slice" className="absolute inset-0 size-full" aria-hidden>
         <defs>
           <pattern id="pk-blocks" width="46" height="38" patternUnits="userSpaceOnUse">
@@ -278,19 +278,19 @@ function MatrizIllustration() {
       </svg>
       <div className="absolute left-[52%] top-[57%] -translate-x-1/2 -translate-y-full">
         <div className="relative flex flex-col items-center">
-          <span className="mb-1.5 whitespace-nowrap rounded-[10px] bg-white px-2.5 py-1.5 text-[12px] font-semibold text-ink shadow-[0_6px_18px_-8px_rgb(2_58_99/0.5)] transition group-hover:-translate-y-0.5">
+          <span className="mb-1.5 whitespace-nowrap rounded-[10px] bg-surface px-2.5 py-1.5 text-[12px] font-semibold text-ink shadow-[0_6px_18px_-8px_rgb(2_58_99/0.5)] transition group-hover:-translate-y-0.5">
             Pulkro · Matriz
           </span>
           <span className="relative inline-flex size-5 items-center justify-center">
             <span className="absolute inset-0 rounded-full bg-brand/30 animate-ping-soft" />
-            <span className="relative size-3.5 rounded-full border-[3px] border-white bg-brand-deep shadow-[0_4px_10px_rgb(2_58_99/0.45)]" />
+            <span className="relative size-3.5 rounded-full border-[3px] border-surface bg-brand-deep shadow-[0_4px_10px_rgb(2_58_99/0.45)]" />
           </span>
         </div>
       </div>
-      <span className="absolute bottom-3 right-3 inline-flex items-center gap-1.5 rounded-[10px] bg-white/90 px-2.5 py-1.5 text-[12px] font-semibold text-ink shadow-soft backdrop-blur transition group-hover:bg-brand-deep group-hover:text-white">
+      <span className="absolute bottom-3 right-3 inline-flex items-center gap-1.5 rounded-[10px] bg-surface/90 px-2.5 py-1.5 text-[12px] font-semibold text-ink shadow-soft backdrop-blur transition group-hover:bg-brand-deep group-hover:text-white">
         <Navigation className="size-3.5" /> Abrir en mapas
       </span>
-      <span className="absolute bottom-3 left-3 rounded-md bg-white/80 px-2 py-1 text-[11px] text-subtle backdrop-blur">Croquis ilustrativo</span>
+      <span className="absolute bottom-3 left-3 rounded-md bg-surface/80 px-2 py-1 text-[11px] text-subtle backdrop-blur">Croquis ilustrativo</span>
     </div>
   );
 }

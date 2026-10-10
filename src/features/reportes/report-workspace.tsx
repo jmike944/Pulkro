@@ -189,7 +189,7 @@ export function ReportWorkspace({ bundle }: { bundle: OrderBundle }) {
                 disabled={!canShare}
                 aria-pressed={editing && desktop}
                 onClick={() => (desktop ? setEditing((e) => !e) : setDescOpen(true))}
-                className={cn("h-11 rounded-[12px] px-3.5 font-semibold lg:h-10", !(editing && desktop) && "border-[#dfe3ea]")}
+                className={cn("h-11 rounded-[12px] px-3.5 font-semibold lg:h-10", !(editing && desktop) && "border-line")}
               >
                 {editing && desktop ? <Check /> : <Pencil />}
                 {editing && desktop ? "Listo" : "Editar descripción"}
@@ -284,7 +284,7 @@ export function ReportWorkspace({ bundle }: { bundle: OrderBundle }) {
       description={description}
       actions={
         desktop ? (
-          <Button asChild variant="outline" className="h-10 rounded-[12px] border-[#dfe3ea] px-4 font-semibold">
+          <Button asChild variant="outline" className="h-10 rounded-[12px] border-line px-4 font-semibold">
             <Link href={`/ordenes/${order.folio}`}>
               <Images /> Ver orden
             </Link>

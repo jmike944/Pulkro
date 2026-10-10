@@ -88,7 +88,7 @@ function BoardColumn({
       initial={{ opacity: 0, y: 14 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.5, ease: EASE, delay: 0.1 + index * 0.07 }}
-      className="flex min-w-0 flex-col rounded-[22px] bg-[#f5f7f9] p-2.5"
+      className="flex min-w-0 flex-col rounded-[22px] bg-soft p-2.5"
       aria-label={`${meta.label}: ${rows.length}`}
     >
       <header className="flex items-center justify-between px-2 pb-3 pt-1.5">
@@ -101,7 +101,7 @@ function BoardColumn({
           initial={{ scale: 1.35 }}
           animate={{ scale: 1 }}
           transition={{ type: "spring", stiffness: 500, damping: 18 }}
-          className="inline-flex h-6 min-w-6 items-center justify-center rounded-full bg-white px-2 text-[12px] font-semibold text-subtle shadow-[0_1px_2px_rgb(16_24_40/0.06)] tabular"
+          className="inline-flex h-6 min-w-6 items-center justify-center rounded-full bg-surface px-2 text-[12px] font-semibold text-subtle shadow-[0_1px_2px_rgb(16_24_40/0.06)] tabular"
         >
           {rows.length}
         </motion.span>
@@ -111,7 +111,7 @@ function BoardColumn({
           <CaseCard key={r.c.id} layoutId={`case-${r.c.id}`} row={r} canManage={canManage} onMove={onMove} highlight={!!focusOrderId && r.c.orderId === focusOrderId} />
         ))}
         {rows.length === 0 && (
-          <motion.div layout className="flex min-h-[120px] flex-col items-center justify-center gap-2 rounded-[18px] border border-dashed border-[#d9dfe7] px-4 text-center text-[13px] text-subtle">
+          <motion.div layout className="flex min-h-[120px] flex-col items-center justify-center gap-2 rounded-[18px] border border-dashed border-line-strong px-4 text-center text-[13px] text-subtle">
             <span className="relative">
               <span className="absolute -left-3 -top-1 size-2.5 rounded-full border border-sky/60 bg-sky-soft animate-float" />
               <span className="inline-block size-4 rounded-full border border-sky/60 bg-sky-soft animate-float [animation-delay:1.1s]" />
@@ -124,7 +124,7 @@ function BoardColumn({
             layout
             type="button"
             onClick={() => setExpanded((v) => !v)}
-            className="h-10 rounded-[14px] text-[13.5px] font-semibold text-link transition hover:bg-white"
+            className="h-10 rounded-[14px] text-[13.5px] font-semibold text-link transition hover:bg-surface"
           >
             {expanded ? "Mostrar menos" : `Ver ${rows.length - cap} más`}
           </motion.button>
@@ -197,7 +197,7 @@ function MobileCaseList({
           ))}
         </AnimatePresence>
         {shown.length === 0 && (
-          <p className="rounded-[18px] border border-dashed border-[#d9dfe7] px-4 py-8 text-center text-[14px] text-subtle">
+          <p className="rounded-[18px] border border-dashed border-line-strong px-4 py-8 text-center text-[14px] text-subtle">
             {EMPTY_COPY[filter] ?? "Sin casos en este estado."}
           </p>
         )}

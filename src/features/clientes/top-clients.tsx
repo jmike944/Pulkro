@@ -23,7 +23,7 @@ export function CornerArrow({ href, label, dark }: { href: string; label: string
       aria-label={label}
       className={cn(
         "relative z-[1] inline-flex size-10 shrink-0 items-center justify-center rounded-full transition hover:scale-105",
-        dark ? "bg-brand-deep text-white shadow-[0_8px_18px_-8px_rgb(2_58_99/0.7)]" : "bg-[#f2f4f7] text-ink hover:bg-brand-deep hover:text-white",
+        dark ? "bg-brand-deep text-white shadow-[0_8px_18px_-8px_rgb(2_58_99/0.7)]" : "bg-tile text-ink hover:bg-brand-deep hover:text-white",
       )}
     >
       <ArrowUpRight className="size-[18px]" />
@@ -55,11 +55,11 @@ export function TopClients({ rows }: { rows: ClientStats[] }) {
           ]}
           value={rank}
           onChange={setRank}
-          className="bg-white/55 backdrop-blur"
+          className="bg-surface/55 backdrop-blur"
         />
       </div>
       {top.length === 0 ? (
-        <p className="rounded-[22px] bg-white/70 px-6 py-10 text-center text-[14px] text-subtle">Aún no hay servicios terminados en su alcance.</p>
+        <p className="rounded-[22px] bg-surface/70 px-6 py-10 text-center text-[14px] text-subtle">Aún no hay servicios terminados en su alcance.</p>
       ) : (
         <div className="scrollbar-none -mx-3 flex snap-x gap-3 overflow-x-auto px-3 pb-1 sm:mx-0 sm:grid sm:grid-cols-2 sm:overflow-visible sm:px-0 sm:pb-0 xl:grid-cols-4">
           {top.map((r, i) => (
@@ -80,7 +80,7 @@ function TopClientCard({ r, index }: { r: ClientStats; index: number }) {
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.55, ease: EASE, delay: 0.15 + index * 0.08, layout: { type: "spring", stiffness: 300, damping: 30 } }}
       whileHover={{ y: -3 }}
-      className="relative flex w-[78vw] max-w-[300px] shrink-0 snap-start flex-col rounded-[22px] bg-white p-5 shadow-glass sm:w-auto sm:max-w-none"
+      className="relative flex w-[78vw] max-w-[300px] shrink-0 snap-start flex-col rounded-[22px] bg-surface p-5 shadow-glass sm:w-auto sm:max-w-none"
     >
       <Link href={`/clientes/${client.id}`} className="absolute inset-0 rounded-[22px]" aria-label={`Ver ${client.name}`} />
       <div className="pointer-events-none flex items-start justify-between gap-3">
@@ -113,7 +113,7 @@ function TopClientCard({ r, index }: { r: ClientStats; index: number }) {
           </div>
           <div>
             <dt className="text-subtle">Quejas</dt>
-            <dd className={cn("mt-0.5 text-[17px] font-medium tabular", r.cases.length ? "text-st-red" : "text-ink")}>{r.cases.length}</dd>
+            <dd className={cn("mt-0.5 text-[17px] font-medium tabular", r.cases.length ? "text-red-fg" : "text-ink")}>{r.cases.length}</dd>
           </div>
         </dl>
       </div>

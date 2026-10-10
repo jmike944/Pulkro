@@ -188,7 +188,7 @@ export function GalleryTab({ photos, orders, now }: { photos: Photo[]; orders: O
                 <Button
                   variant="outline"
                   onClick={() => setLimit((n) => n + PAGE)}
-                  className="h-11 rounded-full border-[#dfe3ea] px-6 font-semibold shadow-[0_1px_2px_rgb(16_24_40/0.05)]"
+                  className="h-11 rounded-full border-line px-6 font-semibold shadow-[0_1px_2px_rgb(16_24_40/0.05)]"
                 >
                   Mostrar más <ChevronDown />
                 </Button>
@@ -232,7 +232,7 @@ function GalleryTile({
       whileTap={{ scale: 0.98 }}
       aria-label={`Foto ${k.label} · ${photo.area}${order ? ` · ${order.folio}` : ""}`}
       className={cn(
-        "group relative w-full overflow-hidden rounded-[18px] bg-[#eef1f5] text-left ring-1 ring-black/5 transition-shadow hover:shadow-lift",
+        "group relative w-full overflow-hidden rounded-[18px] bg-well text-left ring-1 ring-edge transition-shadow hover:shadow-lift",
         shape.cls,
       )}
     >
@@ -240,12 +240,12 @@ function GalleryTile({
         <PhotoImage photo={photo} />
       </span>
       <span className="pointer-events-none absolute inset-x-0 bottom-0 h-2/3 bg-gradient-to-t from-black/60 via-black/15 to-transparent" />
-      <span className="absolute left-2.5 top-2.5 inline-flex items-center gap-1.5 rounded-full bg-white/90 px-2 py-0.5 text-[10.5px] font-bold tracking-[0.08em] text-ink backdrop-blur">
+      <span className="absolute left-2.5 top-2.5 inline-flex items-center gap-1.5 rounded-full bg-surface/90 px-2 py-0.5 text-[10.5px] font-bold tracking-[0.08em] text-ink backdrop-blur">
         <span className={cn("size-1.5 rounded-full", toneDot[k.tone])} />
         {k.label.toUpperCase()}
       </span>
       {pending ? (
-        <span className="absolute right-2.5 top-2.5 inline-flex items-center gap-1 rounded-full bg-[#fff6e6] px-2 py-0.5 text-[10.5px] font-semibold text-[#b86e00]">
+        <span className="absolute right-2.5 top-2.5 inline-flex items-center gap-1 rounded-full bg-amber-soft px-2 py-0.5 text-[10.5px] font-semibold text-amber-fg">
           <CloudOff className="size-3" /> Pendiente
         </span>
       ) : (
@@ -276,7 +276,7 @@ function DatePill({ filters, onChange, now }: { filters: Filters; onChange: (pat
       : PRESETS.find((p) => p.value === filters.preset)?.label;
   return (
     <Popover open={open} onOpenChange={setOpen}>
-      <PopoverTrigger className={cn(pillClass, active ? "border-[#cfe3fb] bg-[#f4f8fe]" : "border-hairline")} aria-label="Filtrar por fechas">
+      <PopoverTrigger className={cn(pillClass, active ? "border-blue-mid bg-blue-wash" : "border-hairline")} aria-label="Filtrar por fechas">
         <CalendarRange className="size-4 shrink-0 text-subtle" />
         <span className={cn("shrink-0", active ? "text-subtle" : "font-medium")}>Fechas</span>
         {active && (
@@ -299,7 +299,7 @@ function DatePill({ filters, onChange, now }: { filters: Filters; onChange: (pat
                 }}
                 className={cn(
                   "min-h-10 rounded-[10px] px-3 text-left text-[13.5px] transition",
-                  filters.preset === p.value ? "bg-ink font-semibold text-white" : "text-ink hover:bg-muted",
+                  filters.preset === p.value ? "bg-ink font-semibold text-on-ink" : "text-ink hover:bg-muted",
                 )}
               >
                 {p.label}

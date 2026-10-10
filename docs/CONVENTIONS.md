@@ -72,7 +72,7 @@ Read `src/features/inicio/dashboard-view.tsx` — it is the reference implementa
 | Excel | `exportToExcel(filename, sheets)` (`@/lib/export`) |
 
 Visual rules:
-- Canvas `bg-canvas`, the white work panel is provided by the shell. Cards: `rounded-[22px] border border-hairline bg-white shadow-soft` (or `Panel`).
+- Canvas `bg-canvas`, the work panel (`bg-panel`) is provided by the shell. Cards: `rounded-[22px] border border-hairline bg-surface shadow-soft` (or `Panel`).
 - Ink `text-ink`, secondary `text-subtle`, links `text-link`. Primary buttons are navy (`Button` default), secondary = `variant="outline"`. Buttons in tables: `h-10 rounded-[12px] px-4 font-semibold`.
 - Section titles: `text-[19px] font-medium`. Table headers: `text-[12px] font-semibold uppercase tracking-[0.1em] text-subtle`. Rows separated by `border-b border-hairline`, generous `py-4`.
 - Two-column content under a hero: `grid lg:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)]` with a vertical `lg:border-r` divider.
@@ -82,6 +82,28 @@ Visual rules:
 - **Mobile-first**: the doc says the product is used on phones by all roles. Every screen must work at 375px: stack columns, tables become cards (`md:` breakpoints), tap targets ≥ 40px, no horizontal page scroll. The shell adds `pb-28` for the bottom nav.
 - Copy: Spanish, sentence case, numbers `tabular`. Dates via `fmtDay`, `fmtDate`, `fmtTime`, `fmtRelativeDay`, `fmtAgo`, `fmtDaysLeft`. Durations via `fmtDuration` / `fmtHours`.
 - Accessibility: buttons have labels, icons-only buttons get `aria-label`, color is never the only signal.
+
+## Theming (Claro / Oscuro / Sistema)
+The app has a dark mode (next-themes, class `.dark` on `<html>`, default "Sistema", switch in the sidebar user menu, the phone Menú and Perfil).
+Light must look exactly as designed; dark is a deliberate navy palette. Both live in `src/app/globals.css` as CSS variables, so **components never
+branch on the theme: they use semantic color utilities and never a literal color**.
+
+- **Never** write `bg-white`, `bg-[#f2f4f7]`, `text-[#b86e00]`, `border-[#dfe3ea]`, `ring-black/5`, inline `style={{ color: "#…" }}` or `fill="#…"` for UI colors. Use a token.
+- Surfaces: `bg-canvas` (outer chrome) < `bg-panel` (work panel) < `bg-surface` (cards, inputs, popovers, what used to be `bg-white`). Neutral fills step away from it:
+  `bg-wash` < `bg-soft` < `bg-tile` < `bg-well` < `bg-press` < `bg-track` < `bg-track-strong` (hover = one step up). `bg-sand` is the warm tile; `bg-field` the sand input fill.
+- Lines: `border-hairline` (default) · `border-line` (card borders, was #dfe3ea) · `border-line-strong` · `border-line-heavy` · `border-input` · `ring-edge` / `border-edge` (faint 5% edge) · `border-edge-strong`.
+- Text: `text-ink` > `text-ink-soft` > `text-ink-muted` > `text-subtle` > `text-faint` > `text-ghost`. Links `text-link`; action blue `text-azure-fg` / fills `bg-azure`.
+- Tones `blue | amber | red | teal | violet`: tinted backgrounds/borders `bg-amber-wash < -soft < -tint < -mid`, `border-amber-line` (`-line-strong`), text `text-amber-fg` (`-ink`, `-deep` darker).
+  Same for `red-*`, `teal-*`, `violet-*`, `blue-*`; sky text is `text-sky-fg`. Solid dots/bars stay `bg-st-*` (`bg-st-red text-white` is fine); but **text** in a tone is `text-red-fg` / `text-teal-fg` / `text-violet-fg`, never `text-st-red|teal|violet`.
+  Prefer `toneText` / `toneSoftBg` / `toneDot` from `@/lib/status`; for inline `style` use `toneHex` (CSS variables).
+- Navy: `bg-brand-deep text-white` = navy button/card (brighter navy in dark, white text stays). Navy **as text** (wordmark, headings) is `text-brand-ink`, never `text-brand-deep`.
+  `bg-ink` (inverted chip) needs `text-on-ink`; a fill that stays light in both themes (`bg-sky`, `bg-white`, light gradients) needs `text-on-light`.
+- `text-white` and translucent white overlays (`bg-white/10`, `ring-white/10`) are only for navy/aurora/photo surfaces that stay dark in both themes. `bg-white` is only for things that must stay white (photos, the report paper, white knobs on aurora). Use `bg-surface/70` for frosted cards.
+- Photos and illustrations (`SceneSvg`, client logos, the PDF paper) keep their own colors. The report sheet is wrapped in `.theme-light` (re-declares the light palette for its whole subtree and disables `dark:` variants); wrap any other "paper" surface the same way.
+- Charts / SVG: use classes (`stroke-well`, `fill-azure`, `text-ink-muted`) or `var(--token)` strings (`"var(--st-blue)"`), not hex.
+- Gradients/shadows: `bg-aurora`, `bg-aurora-frame`, `glass-card`, `shimmer`, `shadow-soft|lift|glass` already re-theme. For a one-off inset highlight use `shadow-[0_1px_0_var(--hl)_inset]`.
+- `dark:` variants are allowed only to adjust something a token cannot (e.g. `dark:bg-black/55` overlays); the shadcn components already carry theirs.
+- Check both themes: `npx playwright` screenshots with `colorScheme: "dark"` (Sistema follows `prefers-color-scheme`), at 390 and 1440. Text must keep WCAG AA contrast.
 
 ## Ground rules for builder agents
 - **Only create/edit files you own** (listed in your brief). Shared files (`src/lib/**`, `src/components/**`, `src/app/layout.tsx`, `src/app/(app)/layout.tsx`, `globals.css`) are read-only. If you truly need a shared helper, put it inside your feature folder.

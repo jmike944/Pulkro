@@ -38,7 +38,7 @@ export function KindTile({ kind, size, className }: { kind: PendingKind; size: n
 function WhenLine({ w, className }: { w: When; className?: string }) {
   return (
     <span className={cn("inline-flex items-center gap-1.5", whenClass(w.level), className)}>
-      <span className={cn("size-[6px] shrink-0 rounded-full", w.level === "late" ? "bg-st-red" : w.level === "soon" ? "bg-st-amber" : "bg-[#c5ccd6]")} />
+      <span className={cn("size-[6px] shrink-0 rounded-full", w.level === "late" ? "bg-st-red" : w.level === "soon" ? "bg-st-amber" : "bg-ghost")} />
       {w.text}
     </span>
   );
@@ -115,7 +115,7 @@ export function QueueSummary({ sentence, groups, onJump }: { sentence: string; g
                 onFocus={focus(g.kind)}
                 onBlur={() => setHot(null)}
                 className={cn(
-                  "relative inline-flex h-9 items-center gap-2 rounded-full bg-[#f3f5f8] pl-3 pr-3.5 text-[13.5px] text-ink outline-none transition-[background-color,opacity] after:absolute after:inset-x-0 after:-inset-y-1 after:content-[''] hover:bg-[#e8ecf1] focus-visible:ring-3 focus-visible:ring-ring/50 motion-reduce:transition-none",
+                  "relative inline-flex h-9 items-center gap-2 rounded-full bg-soft pl-3 pr-3.5 text-[13.5px] text-ink outline-none transition-[background-color,opacity] after:absolute after:inset-x-0 after:-inset-y-1 after:content-[''] hover:bg-press focus-visible:ring-3 focus-visible:ring-ring/50 motion-reduce:transition-none",
                   dim(g.kind) && "opacity-45",
                 )}
               >
@@ -137,7 +137,7 @@ export function QueueSummary({ sentence, groups, onJump }: { sentence: string; g
 export function LeadCard({ it, now, client, person, className }: { it: PendingItem; now: Date; client?: Client; person?: User; className?: string }) {
   const w = whenOf(it, now);
   return (
-    <div className={cn("flex flex-col rounded-[22px] bg-white p-6 shadow-[0_1px_2px_rgb(16_24_40/0.05),0_22px_44px_-24px_rgb(2_58_99/0.45)]", className)}>
+    <div className={cn("flex flex-col rounded-[22px] bg-surface p-6 shadow-[0_1px_2px_rgb(16_24_40/0.05),0_22px_44px_-24px_rgb(2_58_99/0.45)]", className)}>
       <div className="flex items-start gap-3.5">
         <ClientTile it={it} client={client} size={44} />
         <div className="min-w-0 flex-1">
@@ -158,7 +158,7 @@ export function LeadCard({ it, now, client, person, className }: { it: PendingIt
           </Button>
         ) : (
           <>
-            <Button asChild variant="outline" className="h-11 rounded-[12px] border-[#dfe3ea] px-5 text-[15px] font-semibold">
+            <Button asChild variant="outline" className="h-11 rounded-[12px] border-line px-5 text-[15px] font-semibold">
               <Link href={it.href}>Ver detalle</Link>
             </Button>
             <ActorLine it={it} person={person} className="text-[13.5px] text-subtle" />
@@ -176,7 +176,7 @@ export function FollowList({ items, now, clients }: { items: PendingItem[]; now:
       <ul className="divide-y divide-hairline">
         {items.map((it) => (
           <li key={it.id}>
-            <Link href={it.href} className="group flex items-center gap-3.5 rounded-[18px] px-3.5 py-3 outline-none transition-colors hover:bg-white focus-visible:ring-3 focus-visible:ring-ring/50">
+            <Link href={it.href} className="group flex items-center gap-3.5 rounded-[18px] px-3.5 py-3 outline-none transition-colors hover:bg-surface focus-visible:ring-3 focus-visible:ring-ring/50">
               <ClientTile it={it} client={it.clientId ? clients.get(it.clientId) : undefined} size={40} />
               <span className="min-w-0 flex-1">
                 <span className="block truncate text-[14.5px] font-semibold text-ink group-hover:text-link">{it.title}</span>
@@ -288,7 +288,7 @@ function DesktopRow({ it, now, client, person, badge }: { it: PendingItem; now: 
         <span
           className={cn(
             buttonVariants({ variant: "outline" }),
-            "h-10 min-w-[96px] rounded-[12px] border-[#dfe3ea] px-4 text-[14px] font-semibold shadow-[0_1px_2px_rgb(16_24_40/0.05)] group-hover:border-brand-deep group-hover:bg-brand-deep group-hover:text-white",
+            "h-10 min-w-[96px] rounded-[12px] border-line px-4 text-[14px] font-semibold shadow-[0_1px_2px_rgb(16_24_40/0.05)] group-hover:border-brand-deep group-hover:bg-brand-deep group-hover:text-white",
           )}
         >
           {it.ctaShort}
@@ -315,7 +315,7 @@ function PhoneRow({ it, now, client, badge }: { it: PendingItem; now: Date; clie
             <span className="font-medium text-ink/80 tabular">{it.folio}</span> · {it.client}
           </span>
           <span className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-0.5">
-            {it.kind === "incidencia" && it.blocksClosure && <span className="whitespace-nowrap font-medium text-st-red">Impide el cierre</span>}
+            {it.kind === "incidencia" && it.blocksClosure && <span className="whitespace-nowrap font-medium text-red-fg">Impide el cierre</span>}
             <WhenLine w={w} className="whitespace-nowrap" />
             {it.actionable ? badge && <SoftBadge tone="blue">A mi cargo</SoftBadge> : <span className="whitespace-nowrap">A cargo de {it.actor}</span>}
           </span>
@@ -342,7 +342,7 @@ export function TypeRail({ groups, now, active, onJump }: { groups: Group[]; now
                 aria-current={on ? "location" : undefined}
                 className={cn(
                   "flex w-full items-center gap-3 rounded-[16px] px-3 py-2.5 text-left outline-none transition-colors focus-visible:ring-3 focus-visible:ring-ring/50",
-                  on ? "bg-[#f1f6fd]" : "hover:bg-[#f6f8fa]",
+                  on ? "bg-blue-wash" : "hover:bg-soft",
                 )}
               >
                 <KindTile kind={g.kind} size={36} />

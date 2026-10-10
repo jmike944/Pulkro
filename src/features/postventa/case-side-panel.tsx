@@ -84,18 +84,18 @@ export function CaseSidePanel({
               {meta.label}
             </p>
           </div>
-          <span className="rounded-[10px] bg-[#f2f4f7] px-2.5 py-1 text-[13px] font-semibold text-ink tabular">{c.folio}</span>
+          <span className="rounded-[10px] bg-tile px-2.5 py-1 text-[13px] font-semibold text-ink tabular">{c.folio}</span>
         </div>
 
         {/* lifecycle meter */}
         <div className="mt-5 grid grid-cols-4 gap-1.5" aria-hidden>
           {CASE_FLOW.map((st, i) => (
-            <div key={st} className="h-[6px] overflow-hidden rounded-full bg-[#eef1f5]">
+            <div key={st} className="h-[6px] overflow-hidden rounded-full bg-well">
               <motion.div
                 initial={{ width: 0 }}
                 animate={{ width: i <= step ? "100%" : "0%" }}
                 transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1], delay: 0.2 + i * 0.12 }}
-                className={cn("h-full rounded-full", i === step ? "bg-[#1667e0]" : "bg-[#b9d8fb]")}
+                className={cn("h-full rounded-full", i === step ? "bg-azure" : "bg-blue-line")}
               />
             </div>
           ))}
@@ -138,8 +138,8 @@ export function CaseSidePanel({
         />
 
         {c.resolution && (
-          <div className="mt-6 rounded-[16px] bg-[#e7f7f4] p-4">
-            <p className="flex items-center gap-2 text-[12px] font-semibold uppercase tracking-[0.1em] text-st-teal">
+          <div className="mt-6 rounded-[16px] bg-teal-soft p-4">
+            <p className="flex items-center gap-2 text-[12px] font-semibold uppercase tracking-[0.1em] text-teal-fg">
               <CircleCheck className="size-4" /> Resolución
             </p>
             <p className="mt-1.5 text-[14px] leading-relaxed text-ink">{c.resolution}</p>
@@ -157,7 +157,7 @@ export function CaseSidePanel({
             </Gate>
           )}
           {c.status === "cerrado" && (
-            <p className="flex items-center gap-2 rounded-[14px] bg-[#f4f8fd] px-4 py-3 text-[14px] text-ink">
+            <p className="flex items-center gap-2 rounded-[14px] bg-blue-wash px-4 py-3 text-[14px] text-ink">
               <BadgeCheckIcon /> Caso cerrado con conformidad del cliente.
             </p>
           )}
@@ -203,7 +203,7 @@ export function CaseSidePanel({
       </AuroraFrame>
 
       {client && (
-        <div className="rounded-[22px] border border-hairline bg-white p-5 shadow-soft">
+        <div className="rounded-[22px] border border-hairline bg-surface p-5 shadow-soft">
           <div className="flex items-center gap-3">
             <ClientMark name={client.name} hue={client.hue} size={44} />
             <div className="min-w-0 flex-1">
@@ -246,7 +246,7 @@ export function CaseSidePanel({
 
 function BadgeCheckIcon() {
   return (
-    <span className="inline-flex size-7 shrink-0 items-center justify-center rounded-full bg-[#dcf4ef] text-st-teal">
+    <span className="inline-flex size-7 shrink-0 items-center justify-center rounded-full bg-teal-tint text-teal-fg">
       <Check className="size-4" strokeWidth={2.5} />
     </span>
   );

@@ -24,7 +24,7 @@ export function SiteQuickCard({ className }: { className?: string }) {
   const crew = d.currentCrew;
   const phone = order.siteContact.phone;
   return (
-    <section aria-label="Sitio y contacto" className={cn("rounded-[22px] border border-hairline bg-white p-4 shadow-soft sm:p-5 lg:hidden", className)}>
+    <section aria-label="Sitio y contacto" className={cn("rounded-[22px] border border-hairline bg-surface p-4 shadow-soft sm:p-5 lg:hidden", className)}>
       <div className="flex items-start gap-3">
         <IconTile>
           <MapPin />
@@ -42,13 +42,13 @@ export function SiteQuickCard({ className }: { className?: string }) {
         </div>
       </div>
       <div className="mt-3.5 flex gap-2">
-        <Button asChild variant="outline" className="h-11 min-w-0 flex-1 rounded-[12px] border-[#dfe3ea] font-semibold">
+        <Button asChild variant="outline" className="h-11 min-w-0 flex-1 rounded-[12px] border-line font-semibold">
           <a href={mapsLink(site.lat, site.lng)} target="_blank" rel="noreferrer">
             <Navigation /> Cómo llegar
           </a>
         </Button>
         {phone && (
-          <Button asChild variant="outline" className="h-11 min-w-0 flex-1 rounded-[12px] border-[#dfe3ea] font-semibold">
+          <Button asChild variant="outline" className="h-11 min-w-0 flex-1 rounded-[12px] border-line font-semibold">
             <a href={`tel:${phone.replace(/\s/g, "")}`} aria-label={`Llamar a ${order.siteContact.name || "contacto en sitio"}`}>
               <Phone /> Llamar
             </a>
@@ -127,13 +127,13 @@ export function CrewPanel() {
       <div className="mb-3 flex items-center justify-between gap-3">
         <Eyebrow>Cuadrilla · {crew.length}</Eyebrow>
         <Gated gate={d.gates.crew}>
-          <Button variant="outline" disabled={!d.gates.crew.ok} onClick={() => ui.openCrew()} className="h-9 rounded-[11px] border-[#dfe3ea] px-3 text-[13px] font-semibold">
+          <Button variant="outline" disabled={!d.gates.crew.ok} onClick={() => ui.openCrew()} className="h-9 rounded-[11px] border-line px-3 text-[13px] font-semibold">
             <UserRoundPlus className="size-4" /> Cambiar cuadrilla
           </Button>
         </Gated>
       </div>
       {crew.length === 0 ? (
-        <p className="flex items-center gap-2 rounded-[16px] border border-dashed border-[#d9dfe7] px-4 py-4 text-[14px] text-subtle">
+        <p className="flex items-center gap-2 rounded-[16px] border border-dashed border-line-strong px-4 py-4 text-[14px] text-subtle">
           <Users className="size-4" /> Sin personal asignado
         </p>
       ) : (
@@ -190,8 +190,8 @@ export function CrewHistory() {
                 </p>
                 {(added.length > 0 || removed.length > 0) && (
                   <p className="mt-0.5 flex flex-wrap gap-x-2 text-[12.5px]">
-                    {added.length > 0 && <span className="text-st-teal">+ {added.map((w) => firstName(w.name)).join(", ")}</span>}
-                    {removed.length > 0 && <span className="text-st-red">− {removed.map((w) => firstName(w.name)).join(", ")}</span>}
+                    {added.length > 0 && <span className="text-teal-fg">+ {added.map((w) => firstName(w.name)).join(", ")}</span>}
+                    {removed.length > 0 && <span className="text-red-fg">− {removed.map((w) => firstName(w.name)).join(", ")}</span>}
                   </p>
                 )}
                 <p className="mt-0.5 text-subtle">

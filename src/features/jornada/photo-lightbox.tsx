@@ -135,7 +135,7 @@ function LightboxBody({
           <span
             className={cn(
               "inline-flex h-7 shrink-0 items-center gap-1.5 rounded-full px-2.5 text-[12px] font-semibold",
-              pending ? "bg-[#fff6e6] text-[#b86e00]" : "bg-[#e7f7f4] text-st-teal",
+              pending ? "bg-amber-soft text-amber-fg" : "bg-teal-soft text-teal-fg",
             )}
           >
             {pending ? <CloudOff className="size-3.5" /> : <CloudCheck className="size-3.5" />}
@@ -162,7 +162,7 @@ function LightboxBody({
         />
 
         <Gate reason={selectReason} className="w-full">
-          <label className={cn("flex min-h-12 w-full items-center justify-between gap-4 rounded-[16px] bg-[#f6f8fb] px-4 py-3", selectReason ? "opacity-60" : "cursor-pointer")}>
+          <label className={cn("flex min-h-12 w-full items-center justify-between gap-4 rounded-[16px] bg-soft px-4 py-3", selectReason ? "opacity-60" : "cursor-pointer")}>
             <span className="min-w-0">
               <span className="block text-[14px] font-semibold text-ink">Incluir en reporte</span>
               <span className="block text-[12.5px] text-subtle">Se preselecciona para el PDF que recibe el cliente.</span>
@@ -178,7 +178,7 @@ function LightboxBody({
               initial={{ opacity: 0, y: 6 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -6 }}
-              className="flex flex-col gap-3 rounded-[16px] bg-[#fdeeee] p-4 sm:flex-row sm:items-center sm:justify-between"
+              className="flex flex-col gap-3 rounded-[16px] bg-red-soft p-4 sm:flex-row sm:items-center sm:justify-between"
             >
               <p className="text-[13.5px] text-ink">
                 <b className="font-semibold">¿Eliminar esta foto?</b> Queda registrado en la bitácora de auditoría.
@@ -195,7 +195,7 @@ function LightboxBody({
           ) : (
             <motion.div key="actions" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="flex justify-between gap-3">
               <Gate reason={deleteReason}>
-                <Button variant="ghost" disabled={!canDelete} onClick={() => setConfirming(true)} className="h-10 rounded-[12px] px-3.5 text-st-red hover:bg-[#fdeeee] hover:text-st-red">
+                <Button variant="ghost" disabled={!canDelete} onClick={() => setConfirming(true)} className="h-10 rounded-[12px] px-3.5 text-red-fg hover:bg-red-soft hover:text-red-fg">
                   <Trash2 /> Eliminar foto
                 </Button>
               </Gate>

@@ -29,9 +29,9 @@ export function SyncChip({ collapsed, compact, slim }: { collapsed?: boolean; co
       className={cn(
         "flex w-full items-center text-left transition",
         row
-          ? "h-8 gap-3.5 rounded-[10px] px-3.5 text-[12.5px] hover:bg-white/70"
+          ? "h-8 gap-3.5 rounded-[10px] px-3.5 text-[12.5px] hover:bg-surface/70"
           : cn(
-              "gap-2.5 rounded-[14px] bg-white/80 px-3.5 text-[13.5px] shadow-[0_1px_2px_rgb(16_24_40/0.04)] ring-1 ring-black/[0.03] hover:bg-white",
+              "gap-2.5 rounded-[14px] bg-surface/80 px-3.5 text-[13.5px] shadow-[0_1px_2px_rgb(16_24_40/0.04)] ring-1 ring-edge hover:bg-surface",
               slim ? "py-2 leading-5" : "py-3",
             ),
         collapsed && "justify-center px-0",
@@ -131,12 +131,12 @@ export function MobileSyncPill({ hidden }: { hidden?: boolean }) {
             aria-label={`${label}, ${detail}. Abrir la cola de sincronización`}
             className={cn(
               "pointer-events-auto inline-flex min-h-11 max-w-full items-center gap-2.5 rounded-full py-2 pl-4 pr-3 text-[13.5px] shadow-lift ring-1",
-              warn ? "bg-[#fff6e6] text-[#7a5a1e] ring-[#f6dfb4]" : "bg-sky-soft text-[#1667e0] ring-[#cfe3fb]",
+              warn ? "bg-amber-soft text-amber-olive ring-amber-line" : "bg-sky-soft text-azure-fg ring-blue-mid",
             )}
           >
             <span className={cn("size-2.5 shrink-0 rounded-full", warn ? "bg-st-amber" : "bg-sky animate-pulse")} />
             <span className="min-w-0 truncate">
-              <b className={cn("font-semibold", warn ? "text-[#5e4410]" : "text-[#1667e0]")}>{label}</b> · {detail}
+              <b className={cn("font-semibold", warn ? "text-amber-olive-ink" : "text-azure-fg")}>{label}</b> · {detail}
             </span>
             <ChevronRight className="size-4 shrink-0 opacity-60" />
           </motion.button>
@@ -168,8 +168,8 @@ export function SyncSheet() {
           </SheetDescription>
         </SheetHeader>
         <div className="space-y-4 border-b border-hairline p-6">
-          <div className={cn("flex items-center gap-3 rounded-[16px] p-4", offline ? "bg-[#fff6e6]" : "bg-[#edf4ff]")}>
-            <span className={cn("inline-flex size-10 items-center justify-center rounded-[12px]", offline ? "bg-[#ffe7bd] text-[#b86e00]" : "bg-[#cfe3fb] text-[#1667e0]")}>
+          <div className={cn("flex items-center gap-3 rounded-[16px] p-4", offline ? "bg-amber-soft" : "bg-blue-soft")}>
+            <span className={cn("inline-flex size-10 items-center justify-center rounded-[12px]", offline ? "bg-amber-mid text-amber-fg" : "bg-blue-mid text-azure-fg")}>
               {offline ? <WifiOff className="size-5" /> : <CloudUpload className="size-5" />}
             </span>
             <div className="min-w-0 flex-1 text-[14px]">
@@ -209,10 +209,10 @@ export function SyncSheet() {
                   <span
                     className={cn(
                       "inline-flex size-7 shrink-0 items-center justify-center rounded-full",
-                      q.state === "sincronizado" && "bg-[#e7f7f4] text-st-teal",
-                      q.state === "sincronizando" && "bg-[#edf4ff] text-link",
-                      q.state === "pendiente" && "bg-[#fff6e6] text-[#b86e00]",
-                      q.state === "error" && "bg-[#fdeeee] text-st-red",
+                      q.state === "sincronizado" && "bg-teal-soft text-teal-fg",
+                      q.state === "sincronizando" && "bg-blue-soft text-link",
+                      q.state === "pendiente" && "bg-amber-soft text-amber-fg",
+                      q.state === "error" && "bg-red-soft text-red-fg",
                     )}
                   >
                     {q.state === "sincronizado" && <Check className="size-3.5" />}

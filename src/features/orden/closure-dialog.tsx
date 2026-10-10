@@ -201,11 +201,11 @@ function ClosureForm({ onDone }: { onDone: () => void }) {
             exit={{ opacity: 0, height: 0 }}
             className="overflow-hidden"
           >
-            <div className="rounded-[18px] border border-[#f3d7a1] bg-[#fffaf0] p-4">
-              <p className="flex items-center gap-2 text-[14px] font-semibold text-[#8a5300]">
+            <div className="rounded-[18px] border border-amber-line bg-amber-wash p-4">
+              <p className="flex items-center gap-2 text-[14px] font-semibold text-amber-ink">
                 <ShieldAlert className="size-4" /> Excepción autorizada
               </p>
-              <p className="mt-1 text-[13px] leading-relaxed text-[#8a5300]/90">
+              <p className="mt-1 text-[13px] leading-relaxed text-amber-ink/90">
                 Faltan fotografías obligatorias. Solo puede cerrar con una justificación documentada; quedará autorizada por <b className="font-semibold">{user.name}</b>{" "}
                 y visible en el reporte y la auditoría.
               </p>
@@ -215,9 +215,9 @@ function ClosureForm({ onDone }: { onDone: () => void }) {
                 rows={3}
                 placeholder="Ej. El cliente bloqueó el área al terminar; se envió confirmación por correo."
                 aria-label="Justificación de la excepción"
-                className="mt-3 w-full resize-none rounded-[14px] border border-[#f0d39c] bg-white px-3.5 py-3 text-[15px] leading-relaxed outline-none placeholder:text-[#c9a86a] focus-visible:border-st-amber focus-visible:ring-3 focus-visible:ring-st-amber/25"
+                className="mt-3 w-full resize-none rounded-[14px] border border-amber-line bg-surface px-3.5 py-3 text-[15px] leading-relaxed outline-none placeholder:text-[#c9a86a] focus-visible:border-st-amber focus-visible:ring-3 focus-visible:ring-st-amber/25"
               />
-              <p className={cn("mt-1 text-[12px]", exceptionOk ? "text-st-teal" : "text-[#b86e00]")}>
+              <p className={cn("mt-1 text-[12px]", exceptionOk ? "text-teal-fg" : "text-amber-fg")}>
                 {exceptionOk ? "Justificación lista" : `Mínimo 15 caracteres · ${exception.trim().length}/15`}
               </p>
             </div>
@@ -226,7 +226,7 @@ function ClosureForm({ onDone }: { onDone: () => void }) {
       </AnimatePresence>
 
       {hardBlock && (
-        <div className="flex gap-3 rounded-[18px] bg-[#fdeeee] p-4 text-[13.5px] text-[#9b1c1f]">
+        <div className="flex gap-3 rounded-[18px] bg-red-soft p-4 text-[13.5px] text-red-ink">
           <TriangleAlert className="mt-0.5 size-4 shrink-0" />
           <p>
             Las jornadas sin salida y las incidencias que impiden el cierre <b className="font-semibold">no admiten excepción</b>. Resuélvalas y vuelva a validar.
@@ -258,12 +258,12 @@ function ClosureForm({ onDone }: { onDone: () => void }) {
                 key={m.value}
                 className={cn(
                   "relative flex min-h-[52px] cursor-pointer items-center gap-3 rounded-[16px] border p-3 transition sm:flex-col sm:items-start sm:gap-2",
-                  active ? "border-transparent bg-[#f2f8fe] ring-2 ring-[#1667e0]" : "border-hairline hover:bg-muted",
+                  active ? "border-transparent bg-blue-wash ring-2 ring-azure" : "border-hairline hover:bg-muted",
                   "has-[:focus-visible]:outline-none has-[:focus-visible]:ring-3 has-[:focus-visible]:ring-ring/60",
                 )}
               >
                 <RadioGroupItem value={m.value} className="sr-only" />
-                <span className={cn("inline-flex size-8 shrink-0 items-center justify-center rounded-[10px]", active ? "bg-[#1667e0] text-white" : "bg-[#f2f4f7] text-ink")}>
+                <span className={cn("inline-flex size-8 shrink-0 items-center justify-center rounded-[10px]", active ? "bg-azure text-white" : "bg-tile text-ink")}>
                   <Icon className="size-4" />
                 </span>
                 <span className="min-w-0">
@@ -312,12 +312,12 @@ function ClosureForm({ onDone }: { onDone: () => void }) {
           value={summary}
           onChange={(e) => setSummary(e.target.value)}
           rows={4}
-          className="w-full resize-none rounded-[14px] border border-input bg-white px-3.5 py-3 text-[15px] leading-relaxed outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
+          className="w-full resize-none rounded-[14px] border border-input bg-surface px-3.5 py-3 text-[15px] leading-relaxed outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
         />
       </Field>
 
       {offline && (
-        <p className="flex items-center gap-2 rounded-[14px] bg-[#f2f4f7] px-3.5 py-2.5 text-[13px] text-subtle">
+        <p className="flex items-center gap-2 rounded-[14px] bg-tile px-3.5 py-2.5 text-[13px] text-subtle">
           <WifiOff className="size-4 shrink-0" /> Sin conexión: el cierre se guarda en el dispositivo y se sincroniza después.
         </p>
       )}
@@ -327,7 +327,7 @@ function ClosureForm({ onDone }: { onDone: () => void }) {
       </ConfirmCheck>
 
       <DialogActions hint={missingReason}>
-        <Button variant="outline" onClick={onDone} className="h-11 rounded-[12px] border-[#dfe3ea] px-5 font-semibold">
+        <Button variant="outline" onClick={onDone} className="h-11 rounded-[12px] border-line px-5 font-semibold">
           Cancelar
         </Button>
         <Button onClick={submit} disabled={!valid} className="h-11 rounded-[12px] px-5 font-semibold">
@@ -340,10 +340,10 @@ function ClosureForm({ onDone }: { onDone: () => void }) {
 
 function ChecklistRow({ row, index, onNavigate }: { row: CheckRow; index: number; onNavigate: () => void }) {
   const tone = {
-    ok: { bg: "bg-[#e7f7f4]", fg: "text-st-teal", icon: <Check className="size-3.5" strokeWidth={3} /> },
-    block: { bg: "bg-[#fdeeee]", fg: "text-st-red", icon: <X className="size-3.5" strokeWidth={3} /> },
-    warn: { bg: "bg-[#fff6e6]", fg: "text-[#b86e00]", icon: <span className="text-[13px] font-bold leading-none">!</span> },
-    excepted: { bg: "bg-[#fff6e6]", fg: "text-[#b86e00]", icon: <ShieldAlert className="size-3.5" /> },
+    ok: { bg: "bg-teal-soft", fg: "text-teal-fg", icon: <Check className="size-3.5" strokeWidth={3} /> },
+    block: { bg: "bg-red-soft", fg: "text-red-fg", icon: <X className="size-3.5" strokeWidth={3} /> },
+    warn: { bg: "bg-amber-soft", fg: "text-amber-fg", icon: <span className="text-[13px] font-bold leading-none">!</span> },
+    excepted: { bg: "bg-amber-soft", fg: "text-amber-fg", icon: <ShieldAlert className="size-3.5" /> },
   }[row.state];
   return (
     <motion.li
@@ -369,7 +369,7 @@ function ChecklistRow({ row, index, onNavigate }: { row: CheckRow; index: number
             {row.state === "ok" ? " · cumplido" : row.state === "block" ? " · bloquea" : row.state === "excepted" ? " · con excepción" : " · aviso"}
           </span>
         </p>
-        {row.detail && <p className={cn("mt-0.5 text-[13px]", row.state === "block" ? "text-st-red" : "text-subtle")}>{row.state === "excepted" ? `${row.detail} · cubierto por la excepción` : row.detail}</p>}
+        {row.detail && <p className={cn("mt-0.5 text-[13px]", row.state === "block" ? "text-red-fg" : "text-subtle")}>{row.state === "excepted" ? `${row.detail} · cubierto por la excepción` : row.detail}</p>}
         {row.links && row.links.length > 0 && row.state !== "ok" && (
           <div className="mt-1.5 flex flex-wrap gap-x-4 gap-y-1">
             {row.links.map((l) => (

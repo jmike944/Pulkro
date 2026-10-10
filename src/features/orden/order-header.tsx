@@ -15,7 +15,7 @@ import { Button } from "@/components/ui/button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { REOPENABLE, useOrder, type Gate, type OrderDetail } from "./order-context";
 
-const Dot = () => <span className="hidden text-[#c5ccd6] sm:inline" aria-hidden>·</span>;
+const Dot = () => <span className="hidden text-ghost sm:inline" aria-hidden>·</span>;
 
 /** One-line narrative with bold numbers (reference header style). */
 function narrative(d: OrderDetail) {
@@ -86,7 +86,7 @@ export function OrderHeader() {
   const actions = menuInActions ? (
     <>
       {showJornada && active && (
-        <Button asChild variant="outline" className="h-10 rounded-[12px] border-[#dfe3ea] px-4 font-semibold shadow-[0_1px_2px_rgb(16_24_40/0.05)]">
+        <Button asChild variant="outline" className="h-10 rounded-[12px] border-line px-4 font-semibold shadow-[0_1px_2px_rgb(16_24_40/0.05)]">
           <Link href={`/jornada/${active.id}`}>
             <Navigation className="size-4" /> Abrir jornada <span className="font-normal text-subtle">J{active.dayIndex}</span>
           </Link>
@@ -130,7 +130,7 @@ function OrderMoreMenu() {
   return (
     <DropdownMenu modal={false}>
       <DropdownMenuTrigger asChild>
-        <Button variant="outline" size="icon" aria-label="Más acciones" className="size-10 rounded-[12px] border-[#dfe3ea] shadow-[0_1px_2px_rgb(16_24_40/0.05)]">
+        <Button variant="outline" size="icon" aria-label="Más acciones" className="size-10 rounded-[12px] border-line shadow-[0_1px_2px_rgb(16_24_40/0.05)]">
           <Ellipsis className="size-[18px]" />
         </Button>
       </DropdownMenuTrigger>
@@ -196,9 +196,9 @@ function MenuAction({
       }}
       className={cn("min-h-11 items-start gap-3 rounded-[10px] px-2.5 py-2", !gate.ok && "cursor-not-allowed focus:bg-muted")}
     >
-      <Icon className={cn("mt-0.5 size-4", !gate.ok ? "text-[#c5ccd6]" : destructive ? "text-st-red" : "text-subtle")} />
+      <Icon className={cn("mt-0.5 size-4", !gate.ok ? "text-ghost" : destructive ? "text-red-fg" : "text-subtle")} />
       <span className="min-w-0">
-        <span className={cn("block text-[14px] font-medium", !gate.ok ? "text-subtle" : destructive ? "text-st-red" : "text-ink")}>{label}</span>
+        <span className={cn("block text-[14px] font-medium", !gate.ok ? "text-subtle" : destructive ? "text-red-fg" : "text-ink")}>{label}</span>
         {(gate.ok ? hint : gate.reason) && <span className="block text-[12px] leading-snug text-subtle">{gate.ok ? hint : gate.reason}</span>}
       </span>
     </DropdownMenuItem>

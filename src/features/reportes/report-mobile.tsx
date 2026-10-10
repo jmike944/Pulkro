@@ -63,7 +63,7 @@ export function MobileReportCard({
       name="Reporte final"
       sub={`${status.label}${latest?.shares.length ? " · sin confirmación" : ""}`}
       value={
-        <span className={cn("rounded-[10px] px-2 py-1 text-[15px] font-bold", needsGenerate ? "border border-dashed border-[#b9c7d6] text-subtle" : "bg-brand-deep text-white")}>
+        <span className={cn("rounded-[10px] px-2 py-1 text-[15px] font-bold", needsGenerate ? "border border-dashed border-line-dash text-subtle" : "bg-brand-deep text-white")}>
           v{needsGenerate ? nextVersion : latest?.version}
         </span>
       }
@@ -121,7 +121,7 @@ export function MobileReportCard({
                   </p>
                 </>
               )}
-              {task?.step === "error" && <p className="text-[13.5px] leading-snug text-st-red">{task.error} Intente de nuevo.</p>}
+              {task?.step === "error" && <p className="text-[13.5px] leading-snug text-red-fg">{task.error} Intente de nuevo.</p>}
             </div>
           )}
         </>
@@ -229,15 +229,15 @@ export function ReportFlow({
             Elija cómo enviarlo. El envío es manual: se registra el intento, nunca la entrega.
           </FlowHeading>
           {task?.step === "listo" && (
-            <motion.div initial={{ opacity: 0, y: -6 }} animate={{ opacity: 1, y: 0 }} className="mb-4 flex items-center gap-3 rounded-[16px] bg-[#e7f7f4] px-4 py-3 text-[14.5px] text-ink">
-              <CircleCheck className="size-5 shrink-0 text-st-teal" />
+            <motion.div initial={{ opacity: 0, y: -6 }} animate={{ opacity: 1, y: 0 }} className="mb-4 flex items-center gap-3 rounded-[16px] bg-teal-soft px-4 py-3 text-[14.5px] text-ink">
+              <CircleCheck className="size-5 shrink-0 text-teal-fg" />
               <span>
                 <b className="font-semibold">PDF v{task.version} listo.</b> Revíselo y compártalo.
               </span>
             </motion.div>
           )}
           {task?.step === "error" && (
-            <p className="mb-4 flex items-start gap-3 rounded-[16px] bg-[#fdeeee] px-4 py-3 text-[14.5px] leading-snug text-st-red">
+            <p className="mb-4 flex items-start gap-3 rounded-[16px] bg-red-soft px-4 py-3 text-[14.5px] leading-snug text-red-fg">
               <CircleAlert className="mt-0.5 size-5 shrink-0" />
               <span>{task.error} Intente de nuevo.</span>
             </p>
@@ -322,7 +322,7 @@ function ShareOption({
         <span className="block text-[16px] font-semibold text-ink">{title}</span>
         <span className="block truncate text-[13.5px] text-subtle">{reason ?? meta}</span>
       </span>
-      <ChevronRight className="size-[18px] shrink-0 text-[#98a2b3]" />
+      <ChevronRight className="size-[18px] shrink-0 text-faint" />
     </button>
   );
 }
@@ -361,20 +361,20 @@ function SentScreen({ sent, folio, title, client, contactName, closedAt }: { sen
 function PaperLoop() {
   return (
     <div className="mx-auto mt-2 w-[150px]" aria-hidden>
-      <div className="relative aspect-[210/297] overflow-hidden rounded-[4px] bg-white p-3.5 shadow-[0_18px_36px_-18px_rgb(2_58_99/0.45)] ring-1 ring-black/5">
+      <div className="theme-light relative aspect-[210/297] overflow-hidden rounded-[4px] bg-white p-3.5 shadow-[0_18px_36px_-18px_rgb(2_58_99/0.45)] ring-1 ring-black/5">
         <div className="flex items-center gap-1.5">
           <span className="size-3.5 rounded-[4px] bg-brand-deep" />
-          <span className="h-1.5 w-10 rounded-full bg-[#dfe6ee]" />
+          <span className="h-1.5 w-10 rounded-full bg-track" />
         </div>
         <div className="mt-2 h-[2px] rounded-full bg-gradient-to-r from-brand via-sky to-[#b9c7ff]" />
         <div className="mt-2.5 space-y-1.5">
           {[90, 70, 84, 56].map((w, i) => (
-            <div key={i} className="h-1 rounded-full bg-[#eef1f5]" style={{ width: `${w}%` }} />
+            <div key={i} className="h-1 rounded-full bg-well" style={{ width: `${w}%` }} />
           ))}
         </div>
         <div className="mt-3 grid grid-cols-2 gap-1.5">
           {[0, 1, 2, 3].map((i) => (
-            <div key={i} className={cn("aspect-[4/3] rounded-[3px]", i % 2 ? "bg-[#dcf4ef]" : "bg-[#fff1d6]")} />
+            <div key={i} className={cn("aspect-[4/3] rounded-[3px]", i % 2 ? "bg-teal-tint" : "bg-amber-tint")} />
           ))}
         </div>
         <motion.span
@@ -383,7 +383,7 @@ function PaperLoop() {
           animate={{ x: "110%" }}
           transition={{ duration: 1.6, repeat: Infinity, repeatDelay: 0.3, ease: [0.65, 0, 0.35, 1] }}
         >
-          <span className="absolute inset-y-0 right-[5px] w-2/3 bg-gradient-to-r from-transparent via-sky/15 to-white/90" />
+          <span className="absolute inset-y-0 right-[5px] w-2/3 bg-gradient-to-r from-transparent via-sky/15 to-surface/90" />
           <span className="absolute inset-y-[-6%] right-0 w-[5px] rounded-full bg-brand/85 shadow-[0_0_16px_rgb(122_209_244/0.95)]" />
         </motion.span>
       </div>
@@ -434,7 +434,7 @@ export function DescriptionFlow({
         rows={9}
         aria-label="Descripción del servicio"
         placeholder="Describa el trabajo realizado para el cliente…"
-        className="block w-full resize-none rounded-[14px] border border-[#e2e0da] bg-[#faf9f6] px-4 py-3.5 text-[16px] leading-relaxed text-ink outline-none placeholder:text-[#98a2b3] focus:border-sky focus:ring-3 focus:ring-sky/30 disabled:opacity-60"
+        className="block w-full resize-none rounded-[14px] border border-field-line bg-field px-4 py-3.5 text-[16px] leading-relaxed text-ink outline-none placeholder:text-faint focus:border-sky focus:ring-3 focus:ring-sky/30 disabled:opacity-60"
       />
       <p className="mt-2 text-right text-[12.5px] text-subtle tabular">{value.trim().length} caracteres</p>
     </FlowScreen>

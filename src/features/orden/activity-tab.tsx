@@ -38,10 +38,10 @@ const GROUP: Record<AuditEntity, Filter> = {
 };
 
 const SYNC: Record<SyncState, { label: string; cls: string; icon: React.ReactNode }> = {
-  sincronizado: { label: "Sincronizado", cls: "bg-[#e7f7f4] text-st-teal", icon: <Cloud className="size-3" /> },
-  sincronizando: { label: "Sincronizando", cls: "bg-[#edf4ff] text-link", icon: <LoaderCircle className="size-3 animate-spin" /> },
-  pendiente: { label: "Pendiente", cls: "bg-[#fff6e6] text-[#b86e00]", icon: <CloudOff className="size-3" /> },
-  error: { label: "Error", cls: "bg-[#fdeeee] text-st-red", icon: <TriangleAlert className="size-3" /> },
+  sincronizado: { label: "Sincronizado", cls: "bg-teal-soft text-teal-fg", icon: <Cloud className="size-3" /> },
+  sincronizando: { label: "Sincronizando", cls: "bg-blue-soft text-link", icon: <LoaderCircle className="size-3 animate-spin" /> },
+  pendiente: { label: "Pendiente", cls: "bg-amber-soft text-amber-fg", icon: <CloudOff className="size-3" /> },
+  error: { label: "Error", cls: "bg-red-soft text-red-fg", icon: <TriangleAlert className="size-3" /> },
 };
 
 /** Actividad: audit trail — who, what, why and when, plus its sync state (doc §3, §6). */
@@ -81,7 +81,7 @@ export function ActivityTab() {
           <h2 className="text-[19px] font-medium tracking-[-0.01em] text-ink">Actividad · {audit.length}</h2>
           <p className="mt-1 text-[13.5px] text-subtle">
             Cada cambio queda registrado con usuario, fecha y motivo.
-            {pending > 0 && <b className="ml-1 font-semibold text-[#b86e00]">{pending} sin sincronizar.</b>}
+            {pending > 0 && <b className="ml-1 font-semibold text-amber-fg">{pending} sin sincronizar.</b>}
           </p>
         </div>
         <div className="scrollbar-none -mx-4 overflow-x-auto px-4 sm:mx-0 sm:px-0">
@@ -109,14 +109,14 @@ export function ActivityTab() {
                       {user ? (
                         <PersonAvatar name={user.name} initials={user.initials} hue={user.hue} size={36} />
                       ) : (
-                        <span className="inline-flex size-9 items-center justify-center rounded-full bg-sky-soft text-[11px] font-semibold text-[#1667e0]">CL</span>
+                        <span className="inline-flex size-9 items-center justify-center rounded-full bg-sky-soft text-[11px] font-semibold text-azure-fg">CL</span>
                       )}
                       <div className="min-w-0">
                         <p className="text-[14.5px] leading-snug text-ink">
                           <span className="font-semibold">{name}</span> <span className="text-ink/85">{lowerFirst(a.action)}</span>
                         </p>
                         {a.reason && (
-                          <p className="mt-1.5 border-l-2 border-[#d6e6fb] pl-3 text-[13.5px] leading-relaxed text-subtle">
+                          <p className="mt-1.5 border-l-2 border-blue-mid pl-3 text-[13.5px] leading-relaxed text-subtle">
                             <span className="font-medium text-ink/70">Motivo:</span> {a.reason}
                           </p>
                         )}

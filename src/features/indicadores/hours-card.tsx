@@ -55,19 +55,19 @@ export function HoursCard({ ind }: { ind: Indicators }) {
                       <span
                         className={cn(
                           "w-[46px] text-right text-[12px] font-semibold tabular",
-                          over ? "text-[#b86e00]" : under ? "text-st-teal" : "text-subtle",
+                          over ? "text-amber-fg" : under ? "text-teal-fg" : "text-subtle",
                         )}
                       >
                         {Math.abs(r.delta) < 0.005 ? "en plan" : `${r.delta > 0 ? "+" : "−"}${fmtPct(Math.abs(r.delta))}`}
                       </span>
                     </span>
                   </div>
-                  <div className="relative mt-2 h-[7px] w-full rounded-full bg-[#eef1f5]">
+                  <div className="relative mt-2 h-[7px] w-full rounded-full bg-well">
                     <motion.div
                       initial={{ width: 0 }}
                       animate={{ width: `${(r.avgReal / scale) * 100}%` }}
                       transition={{ duration: 0.9, ease: EASE, delay: 0.2 + i * 0.07 }}
-                      className={cn("h-full rounded-full", i === 0 ? "bg-[#1667e0]" : "bg-[#b9d8fb]")}
+                      className={cn("h-full rounded-full", i === 0 ? "bg-azure" : "bg-blue-line")}
                     />
                     <motion.span
                       initial={{ opacity: 0, scaleY: 0 }}

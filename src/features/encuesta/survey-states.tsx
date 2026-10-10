@@ -25,7 +25,7 @@ export function SurveyThanks({ answers, name, respondedAt, fresh }: { answers: S
             initial={{ x: "-120%" }}
             animate={{ x: "220%" }}
             transition={{ duration: 1.4, ease: [0.65, 0, 0.35, 1], delay: 0.35 }}
-            className="pointer-events-none absolute inset-y-0 left-0 w-1/2 -skew-x-12 bg-gradient-to-r from-transparent via-white/90 to-transparent motion-reduce:hidden"
+            className="pointer-events-none absolute inset-y-0 left-0 w-1/2 -skew-x-12 bg-gradient-to-r from-transparent via-white/90 dark:via-white/25 to-transparent motion-reduce:hidden"
           />
         )}
 
@@ -71,7 +71,7 @@ export function SurveyThanks({ answers, name, respondedAt, fresh }: { answers: S
           initial={{ opacity: 0, y: 8 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5, ease: EASE, delay: 0.5 }}
-          className="mx-auto mt-6 flex w-fit items-center gap-3 rounded-[16px] bg-[#f4f8fd] px-4 py-3"
+          className="mx-auto mt-6 flex w-fit items-center gap-3 rounded-[16px] bg-blue-wash px-4 py-3"
         >
           <Stars value={answers.overall} size={20} delay={0.6} />
           <span className="text-[14px] font-medium text-ink">{RATING_LABELS[answers.overall - 1]}</span>
@@ -89,7 +89,7 @@ export function SurveyThanks({ answers, name, respondedAt, fresh }: { answers: S
         >
           Si piensas en limpio…
           <br />
-          <span className="italic text-brand">¡piensa en Pulkro!</span>
+          <span className="italic text-brand-ink">¡piensa en Pulkro!</span>
         </motion.p>
       </motion.section>
       <p className="mt-5 text-center text-[13px] text-ink/60">Ya puede cerrar esta ventana.</p>
@@ -110,7 +110,7 @@ export function SurveyMissing({ token }: { token: string }) {
         <div className="relative mx-auto w-fit">
           <span className="absolute -left-4 -top-2 size-4 rounded-full border border-sky/60 bg-sky-soft animate-float" />
           <span className="absolute -right-3 top-8 size-2.5 rounded-full border border-sky/60 bg-sky-soft animate-float [animation-delay:1.2s]" />
-          <span className="inline-flex size-16 items-center justify-center rounded-[20px] bg-sky-soft text-[#1667e0]">
+          <span className="inline-flex size-16 items-center justify-center rounded-[20px] bg-sky-soft text-azure-fg">
             <Smartphone className="size-7" />
           </span>
         </div>
@@ -118,10 +118,10 @@ export function SurveyMissing({ token }: { token: string }) {
         <p className="mx-auto mt-3 max-w-sm text-[15px] leading-relaxed text-ink/70">
           Este prototipo guarda la información en el dispositivo donde se generó el enlace. Ábralo en el mismo navegador donde el equipo de Pulkro lo creó, o pida un enlace nuevo a su supervisor.
         </p>
-        <p className="mx-auto mt-5 w-fit rounded-[10px] bg-[#f2f4f7] px-3 py-1.5 text-[12.5px] text-subtle">
+        <p className="mx-auto mt-5 w-fit rounded-[10px] bg-tile px-3 py-1.5 text-[12.5px] text-subtle">
           Código <span className="font-semibold text-ink tabular">{token}</span>
         </p>
-        <p className="mt-8 font-serif text-[20px] italic text-brand">Si piensas en limpio… ¡piensa en Pulkro!</p>
+        <p className="mt-8 font-serif text-[20px] italic text-brand-ink">Si piensas en limpio… ¡piensa en Pulkro!</p>
       </motion.section>
     </div>
   );

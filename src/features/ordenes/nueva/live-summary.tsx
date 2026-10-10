@@ -113,7 +113,7 @@ function Placeholder({ icon, active }: { icon: React.ReactNode; active?: boolean
     <span
       className={cn(
         "inline-flex size-[38px] shrink-0 items-center justify-center rounded-[12px] transition-colors",
-        active ? "bg-[#e3f1fd] text-[#1667e0]" : "border border-dashed border-[#cfd6df] text-[#98a2b3]",
+        active ? "bg-blue-tint text-azure-fg" : "border border-dashed border-line-heavy text-faint",
       )}
     >
       {icon}

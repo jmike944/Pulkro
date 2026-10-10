@@ -33,7 +33,7 @@ export function Stars({
         const fill = Math.max(0, Math.min(1, v - i));
         return (
           <span key={i} className="relative inline-flex" style={{ width: size, height: size }}>
-            <Star className="absolute inset-0 fill-[#e7eaf0] text-[#e7eaf0]" style={{ width: size, height: size }} strokeWidth={1.5} />
+            <Star className="absolute inset-0 fill-track text-track" style={{ width: size, height: size }} strokeWidth={1.5} />
             {fill > 0 && (
               <motion.span
                 className="absolute inset-y-0 left-0 overflow-hidden"
@@ -184,9 +184,9 @@ function SparkleBurst({ big }: { big: boolean }) {
 /* ───────────── NPS 0–10 ───────────── */
 
 const NPS_ON = {
-  detractor: "bg-[#fdeeee] text-st-red ring-st-red/40",
-  pasivo: "bg-[#fff6e6] text-[#b86e00] ring-st-amber/50",
-  promotor: "bg-[#e7f7f4] text-st-teal ring-st-teal/40",
+  detractor: "bg-red-soft text-red-fg ring-st-red/40",
+  pasivo: "bg-amber-soft text-amber-fg ring-st-amber/50",
+  promotor: "bg-teal-soft text-teal-fg ring-st-teal/40",
 } as const;
 
 /** "¿Qué tan probable es que nos recomiende?" chips 0–10. */
@@ -210,7 +210,7 @@ export function NpsPicker({ value, onChange, className }: { value: number | null
               transition={{ type: "spring", stiffness: 500, damping: 22 }}
               className={cn(
                 "flex h-11 items-center justify-center rounded-[12px] text-[15px] font-semibold tabular ring-1 transition-colors",
-                on ? cn(NPS_ON[npsGroup(n)], "ring-2 shadow-[0_8px_18px_-10px_rgb(2_58_99/0.45)]") : "bg-white text-ink ring-[#e3e7ed] hover:bg-[#f5f8fc]",
+                on ? cn(NPS_ON[npsGroup(n)], "ring-2 shadow-[0_8px_18px_-10px_rgb(2_58_99/0.45)]") : "bg-surface text-ink ring-input hover:bg-blue-wash",
               )}
             >
               {n}
@@ -241,7 +241,7 @@ export function NpsValue({ value, className, showLabel }: { value: number; class
       aria-label={`${value} de 10, ${label.toLowerCase()}`}
       className={cn(
         "inline-flex h-6 min-w-7 items-center justify-center gap-1 rounded-md px-1.5 text-[12.5px] font-semibold tabular",
-        g === "promotor" ? "bg-[#e7f7f4] text-st-teal" : g === "pasivo" ? "bg-[#fff6e6] text-[#b86e00]" : "bg-[#fdeeee] text-st-red",
+        g === "promotor" ? "bg-teal-soft text-teal-fg" : g === "pasivo" ? "bg-amber-soft text-amber-fg" : "bg-red-soft text-red-fg",
         className,
       )}
       title={label}

@@ -49,7 +49,7 @@ export function SqueegeeWipe({ trigger }: { trigger: number }) {
               transition={{ duration: 1.05, ease: [0.65, 0, 0.35, 1] }}
             >
               <div className="absolute inset-y-0 left-0 w-[120px] -skew-x-6">
-                <div className="absolute inset-y-0 right-0 w-[70px] bg-gradient-to-l from-white/85 via-[#e6f5fd]/60 to-transparent backdrop-blur-[2px]" />
+                <div className="absolute inset-y-0 right-0 w-[70px] bg-gradient-to-l from-white/85 via-sky-soft/60 to-transparent backdrop-blur-[2px]" />
                 <div className="absolute inset-y-0 right-0 w-[7px] rounded-full bg-gradient-to-b from-brand via-brand-deep to-brand shadow-[0_0_24px_rgb(122_209_244/0.9)]" />
                 <div className="absolute inset-y-0 right-[7px] w-[2px] bg-sky/80" />
               </div>

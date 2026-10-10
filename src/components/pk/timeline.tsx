@@ -32,17 +32,17 @@ export function Timeline({ steps, className }: { steps: TimelineStep[]; classNam
               <span
                 className={cn(
                   "absolute left-[17px] top-10 bottom-1 w-px",
-                  s.state === "done" ? "bg-[#d6e6fb]" : "border-l border-dashed border-[#d5dbe3] bg-transparent",
+                  s.state === "done" ? "bg-blue-mid" : "border-l border-dashed border-line-strong bg-transparent",
                 )}
               />
             )}
             <span
               className={cn(
                 "relative z-[1] inline-flex size-9 shrink-0 items-center justify-center rounded-[11px] [&_svg]:size-[17px]",
-                s.state === "done" && "bg-[#eaf3fe] text-[#1667e0]",
-                s.state === "current" && "bg-[#cfe3fb] text-[#1667e0] shadow-[0_0_0_4px_rgb(207_227_251/0.45)]",
-                s.state === "upcoming" && "border border-dashed border-[#cfd6df] bg-white text-[#98a2b3]",
-                s.state === "alert" && "bg-[#fde8e8] text-st-red",
+                s.state === "done" && "bg-blue-soft text-azure-fg",
+                s.state === "current" && "bg-blue-mid text-azure-fg shadow-[0_0_0_4px_rgb(207_227_251/0.45)]",
+                s.state === "upcoming" && "border border-dashed border-line-heavy bg-surface text-faint",
+                s.state === "alert" && "bg-red-tint text-red-fg",
               )}
             >
               {s.icon ?? (s.state === "done" ? <Check strokeWidth={2.5} /> : <span className="size-2 rounded-full bg-current" />)}

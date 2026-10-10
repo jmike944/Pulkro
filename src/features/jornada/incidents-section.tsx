@@ -42,7 +42,7 @@ export function IncidentsSection({ f, onNew }: { f: FieldReady; onNew: () => voi
         action={
           !readOnly && (
             <Gate reason={f.recordBlock}>
-              <Button variant="outline" onClick={onNew} disabled={!!f.recordBlock} className="h-10 rounded-[12px] border-[#dfe3ea] px-3.5 font-semibold shadow-[0_1px_2px_rgb(16_24_40/0.05)]">
+              <Button variant="outline" onClick={onNew} disabled={!!f.recordBlock} className="h-10 rounded-[12px] border-line px-3.5 font-semibold shadow-[0_1px_2px_rgb(16_24_40/0.05)]">
                 <Plus /> <span className="hidden min-[400px]:inline">Registrar</span>
                 <span className="min-[400px]:hidden">Nueva</span>
               </Button>
@@ -52,8 +52,8 @@ export function IncidentsSection({ f, onNew }: { f: FieldReady; onNew: () => voi
       />
 
       {list.length === 0 ? (
-        <div className="flex items-center gap-4 rounded-[20px] border border-dashed border-[#d9dfe7] px-5 py-5">
-          <span className="inline-flex size-11 shrink-0 items-center justify-center rounded-[14px] bg-[#e7f7f4] text-st-teal">
+        <div className="flex items-center gap-4 rounded-[20px] border border-dashed border-line-strong px-5 py-5">
+          <span className="inline-flex size-11 shrink-0 items-center justify-center rounded-[14px] bg-teal-soft text-teal-fg">
             <CircleCheck className="size-5" />
           </span>
           <p className="text-[14px] text-subtle">
@@ -61,7 +61,7 @@ export function IncidentsSection({ f, onNew }: { f: FieldReady; onNew: () => voi
           </p>
         </div>
       ) : (
-        <motion.ul variants={staggerContainer(0.05, 0.05)} initial="hidden" animate="show" className="divide-y divide-hairline rounded-[22px] border border-hairline bg-white shadow-soft">
+        <motion.ul variants={staggerContainer(0.05, 0.05)} initial="hidden" animate="show" className="divide-y divide-hairline rounded-[22px] border border-hairline bg-surface shadow-soft">
           {list.map((inc) => (
             <IncidentRow key={inc.id} f={f} inc={inc} photos={inc.photoIds.map((id) => photosById.get(id)).filter((p): p is Photo => !!p)} />
           ))}
@@ -109,14 +109,14 @@ function IncidentRow({ f, inc, photos }: { f: FieldReady; inc: Incident; photos:
           </div>
           <p className="mt-1 text-[12.5px] text-subtle tabular">
             {inc.folio} · {fmtTime(inc.createdAt)} · {users.get(inc.createdBy)?.name ?? "—"}
-            {f.pendingIds.has(inc.id) && <span className="ml-1.5 font-semibold text-[#b86e00]">· pendiente de sincronizar</span>}
+            {f.pendingIds.has(inc.id) && <span className="ml-1.5 font-semibold text-amber-fg">· pendiente de sincronizar</span>}
           </p>
           <p className="mt-2 text-[14px] leading-relaxed text-ink">{inc.description}</p>
 
           {photos.length > 0 && (
             <div className="mt-3 flex gap-2">
               {photos.slice(0, 4).map((p) => (
-                <span key={p.id} className="relative block size-14 overflow-hidden rounded-[10px] ring-1 ring-black/5">
+                <span key={p.id} className="relative block size-14 overflow-hidden rounded-[10px] ring-1 ring-edge">
                   <PhotoImage photo={p} />
                 </span>
               ))}
@@ -124,8 +124,8 @@ function IncidentRow({ f, inc, photos }: { f: FieldReady; inc: Incident; photos:
           )}
 
           {!isOpen && inc.resolution && (
-            <p className="mt-3 rounded-[14px] bg-[#f2faf8] px-3.5 py-2.5 text-[13.5px] text-ink">
-              <span className="font-semibold text-st-teal">Resuelta</span>
+            <p className="mt-3 rounded-[14px] bg-teal-wash px-3.5 py-2.5 text-[13.5px] text-ink">
+              <span className="font-semibold text-teal-fg">Resuelta</span>
               {inc.resolvedAt && <span className="text-subtle"> · {fmtDateTime(inc.resolvedAt)}</span>} — {inc.resolution}
             </p>
           )}
@@ -167,7 +167,7 @@ function IncidentRow({ f, inc, photos }: { f: FieldReady; inc: Incident; photos:
                 transition={{ duration: 0.3, ease: EASE }}
                 className="overflow-hidden"
               >
-                <div className="mt-3 space-y-2.5 rounded-[16px] bg-[#f6f8fb] p-3.5">
+                <div className="mt-3 space-y-2.5 rounded-[16px] bg-soft p-3.5">
                   <label htmlFor={`res-${inc.id}`} className="block text-[13px] font-semibold text-ink">
                     ¿Cómo se resolvió?
                   </label>
@@ -176,7 +176,7 @@ function IncidentRow({ f, inc, photos }: { f: FieldReady; inc: Incident; photos:
                     value={text}
                     onChange={(e) => setText(e.target.value)}
                     placeholder="Ej. Se repuso material con entrega urgente y se informó al contacto."
-                    className="min-h-[76px] rounded-[14px] bg-white text-[16px] sm:text-[15px]"
+                    className="min-h-[76px] rounded-[14px] bg-surface text-[16px] sm:text-[15px]"
                   />
                   <div className="flex justify-end">
                     <Button onClick={resolve} disabled={text.trim().length < 6} className="h-10 rounded-[12px] px-4 font-semibold">

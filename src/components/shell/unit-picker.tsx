@@ -46,14 +46,14 @@ function UnitOption({ code, title, sub, active, onPick }: { code: string; title:
         role="radio"
         aria-checked={active}
         onClick={onPick}
-        className={cn("flex h-[60px] w-full items-center gap-3.5 rounded-[14px] px-2.5 text-left transition active:bg-sand", active && "bg-[#f2f8fe]")}
+        className={cn("flex h-[60px] w-full items-center gap-3.5 rounded-[14px] px-2.5 text-left transition active:bg-sand", active && "bg-blue-wash")}
       >
-        <span className={cn("inline-flex size-10 shrink-0 items-center justify-center rounded-[12px] text-[13px] font-bold tracking-wide", active ? "bg-[#e3f1fd] text-[#1667e0]" : "bg-sand text-ink")}>{code}</span>
+        <span className={cn("inline-flex size-10 shrink-0 items-center justify-center rounded-[12px] text-[13px] font-bold tracking-wide", active ? "bg-blue-tint text-azure-fg" : "bg-sand text-ink")}>{code}</span>
         <span className="min-w-0 flex-1">
           <span className="block truncate text-[16px] font-semibold text-ink">{title}</span>
           <span className="block truncate text-[13.5px] text-subtle">{sub}</span>
         </span>
-        {active && <Check className="size-5 shrink-0 text-[#1667e0]" />}
+        {active && <Check className="size-5 shrink-0 text-azure-fg" />}
       </button>
     </li>
   );
@@ -78,7 +78,7 @@ export function MobileUnitButton({ className, phoneScopedOnly = false }: { class
         aria-haspopup="dialog"
         className={cn(
           "inline-flex h-11 min-w-11 shrink-0 items-center justify-center gap-1 rounded-full px-3 text-[13px] font-bold tracking-wide transition active:scale-95 lg:hidden",
-          selected ? "bg-[#e3f1fd] text-[#1667e0]" : "bg-sand text-ink",
+          selected ? "bg-blue-tint text-azure-fg" : "bg-sand text-ink",
           phoneScopedOnly && !selected && "max-sm:hidden",
           className,
         )}

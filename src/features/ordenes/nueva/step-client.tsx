@@ -69,7 +69,7 @@ export function StepClient({ draft, setDraft, issues, errorOf, touch, clients, o
         description="Solo aparecen los clientes de su unidad."
         aside={
           client && !picking ? (
-            <Button type="button" variant="outline" onClick={() => setPicking(true)} className="h-10 rounded-[12px] border-[#dfe3ea] px-3.5 font-semibold">
+            <Button type="button" variant="outline" onClick={() => setPicking(true)} className="h-10 rounded-[12px] border-line px-3.5 font-semibold">
               Cambiar
             </Button>
           ) : undefined
@@ -83,7 +83,7 @@ export function StepClient({ draft, setDraft, issues, errorOf, touch, clients, o
               animate={{ opacity: 1, y: 0, scale: 1 }}
               exit={{ opacity: 0, y: -6, scale: 0.98 }}
               transition={{ duration: 0.35, ease: EASE }}
-              className="flex items-center gap-4 rounded-[20px] border border-[#cfe2fb] bg-[#f6faff] p-4"
+              className="flex items-center gap-4 rounded-[20px] border border-blue-mid bg-blue-wash p-4"
             >
               <ClientMark name={client.name} hue={client.hue} size={52} />
               <div className="min-w-0 flex-1">
@@ -92,7 +92,7 @@ export function StepClient({ draft, setDraft, issues, errorOf, touch, clients, o
                   {client.segment} · cliente desde {fmtDate(client.since)} · {plural(ordersByClient.get(client.id) ?? 0, "orden previa", "órdenes previas")}
                 </p>
               </div>
-              <span className="hidden size-8 items-center justify-center rounded-full bg-[#1667e0] text-white sm:inline-flex">
+              <span className="hidden size-8 items-center justify-center rounded-full bg-azure text-white sm:inline-flex">
                 <Check className="size-4" strokeWidth={3} />
               </span>
             </motion.div>
@@ -109,7 +109,7 @@ export function StepClient({ draft, setDraft, issues, errorOf, touch, clients, o
                 />
               </div>
               {list.length === 0 ? (
-                <p className="rounded-[16px] border border-dashed border-[#d9dfe7] px-4 py-8 text-center text-[14px] text-subtle">
+                <p className="rounded-[16px] border border-dashed border-line-strong px-4 py-8 text-center text-[14px] text-subtle">
                   Sin clientes que coincidan con «{query}».
                 </p>
               ) : (
@@ -135,7 +135,7 @@ export function StepClient({ draft, setDraft, issues, errorOf, touch, clients, o
                               whileTap={{ scale: 0.98 }}
                               className={cn(
                                 "relative flex w-full items-center gap-3 rounded-[16px] border p-3 text-left transition-[border-color,box-shadow,background-color] duration-200",
-                                on ? "border-[#bcd8fb] bg-[#f6faff]" : "border-hairline bg-white hover:border-[#d5dbe3] hover:shadow-soft",
+                                on ? "border-blue-line bg-blue-wash" : "border-hairline bg-surface hover:border-line-strong hover:shadow-soft",
                               )}
                             >
                               <ClientMark name={c.name} hue={c.hue} size={42} />
@@ -147,7 +147,7 @@ export function StepClient({ draft, setDraft, issues, errorOf, touch, clients, o
                                 </span>
                               </span>
                               {on && (
-                                <motion.span layoutId="client-check" className="inline-flex size-6 items-center justify-center rounded-full bg-[#1667e0] text-white">
+                                <motion.span layoutId="client-check" className="inline-flex size-6 items-center justify-center rounded-full bg-azure text-white">
                                   <Check className="size-3.5" strokeWidth={3} />
                                 </motion.span>
                               )}
@@ -183,17 +183,17 @@ export function StepClient({ draft, setDraft, issues, errorOf, touch, clients, o
                           onClick={() => setDraft((d) => ({ ...d, siteId: s.id }))}
                           className={cn(
                             "relative flex w-full items-start gap-3 rounded-[16px] border p-3.5 text-left transition-colors",
-                            on ? "border-transparent" : "border-hairline bg-white hover:border-[#d5dbe3]",
+                            on ? "border-transparent" : "border-hairline bg-surface hover:border-line-strong",
                           )}
                         >
                           {on && (
                             <motion.span
                               layoutId="site-ring"
-                              className="absolute inset-0 rounded-[16px] bg-[#f6faff] ring-[1.5px] ring-[#1667e0]"
+                              className="absolute inset-0 rounded-[16px] bg-blue-wash ring-[1.5px] ring-azure"
                               transition={{ type: "spring", stiffness: 480, damping: 36 }}
                             />
                           )}
-                          <span className={cn("relative mt-0.5 inline-flex size-9 shrink-0 items-center justify-center rounded-[11px]", on ? "bg-[#1667e0] text-white" : "bg-[#f2f4f7] text-subtle")}>
+                          <span className={cn("relative mt-0.5 inline-flex size-9 shrink-0 items-center justify-center rounded-[11px]", on ? "bg-azure text-white" : "bg-tile text-subtle")}>
                             <MapPin className="size-[17px]" />
                           </span>
                           <span className="relative min-w-0">
@@ -215,7 +215,7 @@ export function StepClient({ draft, setDraft, issues, errorOf, touch, clients, o
                     interactive={false}
                   />
                   {!site && sites.length > 1 && (
-                    <span className="pointer-events-none absolute inset-x-3 bottom-3 z-[500] rounded-[12px] bg-white/90 px-3 py-2 text-center text-[12.5px] font-medium text-ink shadow-soft backdrop-blur">
+                    <span className="pointer-events-none absolute inset-x-3 bottom-3 z-[500] rounded-[12px] bg-surface/90 px-3 py-2 text-center text-[12.5px] font-medium text-ink shadow-soft backdrop-blur">
                       Elija un sitio para fijar la ubicación
                     </span>
                   )}
@@ -231,7 +231,7 @@ export function StepClient({ draft, setDraft, issues, errorOf, touch, clients, o
                   <button
                     type="button"
                     onClick={() => setDraft((d) => ({ ...d, contactName: client.contactName, contactPhone: client.contactPhone }))}
-                    className="inline-flex h-10 shrink-0 items-center gap-1.5 rounded-[12px] px-2.5 text-[13px] font-medium text-link hover:bg-[#f2f8fe]"
+                    className="inline-flex h-10 shrink-0 items-center gap-1.5 rounded-[12px] px-2.5 text-[13px] font-medium text-link hover:bg-blue-wash"
                   >
                     <RotateCcw className="size-3.5" />
                     <span className="hidden sm:inline">Usar contacto del cliente</span>
@@ -322,7 +322,7 @@ export function StepClient({ draft, setDraft, issues, errorOf, touch, clients, o
                         initial={{ opacity: 0, height: 0 }}
                         animate={{ opacity: 1, height: "auto" }}
                         exit={{ opacity: 0, height: 0 }}
-                        className="flex items-center gap-1.5 overflow-hidden pt-1.5 text-[12.5px] text-st-red"
+                        className="flex items-center gap-1.5 overflow-hidden pt-1.5 text-[12.5px] text-red-fg"
                       >
                         <motion.span animate={{ rotate: [0, -12, 10, 0] }} transition={{ duration: 0.5 }} className="inline-flex">
                           <Flame className="size-3.5" />

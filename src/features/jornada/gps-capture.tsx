@@ -140,7 +140,7 @@ export function GpsFlow({
           sub={`${f.order.folio} · Jornada ${f.index} de ${f.total}`}
           value={<span className="tabular">{fmtClock(done.at)}</span>}
           status={
-            <span className={cn("inline-flex h-6 shrink-0 items-center gap-1 rounded-md px-2 text-[12px] font-semibold", done.offline ? "bg-[#fff6e6] text-[#b86e00]" : "bg-[#e7f7f4] text-st-teal")}>
+            <span className={cn("inline-flex h-6 shrink-0 items-center gap-1 rounded-md px-2 text-[12px] font-semibold", done.offline ? "bg-amber-soft text-amber-fg" : "bg-teal-soft text-teal-fg")}>
               {done.offline ? <CloudOff className="size-3.5" /> : <Wifi className="size-3.5" />}
               {done.offline ? "Por sincronizar" : "Sincronizada"}
             </span>
@@ -168,7 +168,7 @@ export function GpsFlow({
               <MobileRow
                 key={n.key}
                 onClick={() => onNext(n.key)}
-                leading={<span className="inline-flex size-[46px] shrink-0 items-center justify-center rounded-[14px] bg-sky-soft text-[#1667e0] [&_svg]:size-5">{n.icon}</span>}
+                leading={<span className="inline-flex size-[46px] shrink-0 items-center justify-center rounded-[14px] bg-sky-soft text-azure-fg [&_svg]:size-5">{n.icon}</span>}
                 title={n.title}
                 meta={<span className="truncate">{n.meta}</span>}
               />
@@ -258,7 +258,7 @@ export function GpsFlow({
 
       <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4, ease: EASE }} className="space-y-4">
         <div className="flex flex-wrap items-center justify-between gap-2">
-          <span className={cn("inline-flex h-8 items-center gap-2 rounded-full px-3 text-[13px] font-semibold", needsNote ? "bg-[#fff6e6] text-[#b86e00]" : "bg-[#e7f7f4] text-st-teal")}>
+          <span className={cn("inline-flex h-8 items-center gap-2 rounded-full px-3 text-[13px] font-semibold", needsNote ? "bg-amber-soft text-amber-fg" : "bg-teal-soft text-teal-fg")}>
             {needsNote ? <CircleAlert className="size-4" /> : <ShieldCheck className="size-4" />}
             {needsNote ? "Requiere justificación" : "Ubicación verificada"}
           </span>
@@ -277,7 +277,7 @@ export function GpsFlow({
             label="Se guarda"
             value={
               <span className="inline-flex items-center gap-1.5">
-                {offline ? <CloudOff className="size-4 text-[#b86e00]" /> : <Wifi className="size-4 text-st-teal" />}
+                {offline ? <CloudOff className="size-4 text-amber-fg" /> : <Wifi className="size-4 text-teal-fg" />}
                 {offline ? "En el teléfono" : "En línea"}
               </span>
             }
@@ -299,8 +299,8 @@ export function GpsFlow({
             transition={{ duration: 0.35, ease: EASE }}
             className="overflow-hidden"
           >
-            <div className="mt-5 space-y-3 rounded-[20px] bg-[#fff8ec] p-4 ring-1 ring-[#f6e0b8]">
-              <ul className="space-y-1.5 text-[13.5px] text-[#7a5a1e]">
+            <div className="mt-5 space-y-3 rounded-[20px] bg-amber-soft p-4 ring-1 ring-amber-line">
+              <ul className="space-y-1.5 text-[13.5px] text-amber-olive">
                 {issues.map((t) => (
                   <li key={t} className="flex gap-2">
                     <CircleAlert className="mt-0.5 size-4 shrink-0 text-[#d38a12]" />
@@ -308,7 +308,7 @@ export function GpsFlow({
                   </li>
                 ))}
               </ul>
-              <label htmlFor="gps-note" className="block text-[12px] font-semibold uppercase tracking-[0.1em] text-[#7a5a1e]">
+              <label htmlFor="gps-note" className="block text-[12px] font-semibold uppercase tracking-[0.1em] text-amber-olive">
                 Justificación · obligatoria
               </label>
               <Textarea
@@ -316,7 +316,7 @@ export function GpsFlow({
                 value={note}
                 onChange={(e) => setNote(e.target.value)}
                 placeholder="¿Por qué no hay lectura GPS confiable en el sitio?"
-                className="min-h-[84px] rounded-[14px] border-[#ecd9b4] bg-white text-[16px]"
+                className="min-h-[84px] rounded-[14px] border-amber-line bg-surface text-[16px]"
               />
               <div className="scrollbar-none -mx-1 flex gap-2 overflow-x-auto px-1 pb-0.5">
                 {REASONS.map((r) => (
@@ -332,7 +332,7 @@ export function GpsFlow({
                     setUseSite(true);
                     if (!note.trim()) setNote("Ubicación del sitio usada en la demostración (sin lectura GPS).");
                   }}
-                  className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-[12px] border border-[#ecd9b4] bg-white text-[14px] font-semibold text-ink transition hover:bg-[#fffdf8]"
+                  className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-[12px] border border-amber-line bg-surface text-[14px] font-semibold text-ink transition hover:bg-amber-wash"
                 >
                   <MapPinned className="size-4" /> Usar ubicación del sitio (demo)
                 </button>
@@ -345,21 +345,21 @@ export function GpsFlow({
       {warnings.length > 0 && (
         <ul className="mt-5 space-y-2">
           {warnings.map((w) => (
-            <li key={w.text} className={cn("flex gap-2.5 rounded-[16px] px-3.5 py-3 text-[13.5px] leading-snug", w.tone === "amber" ? "bg-[#fff6e6] text-[#7a5a1e]" : "bg-[#f4f8fd] text-ink")}>
-              {w.tone === "amber" ? <CircleAlert className="mt-0.5 size-4 shrink-0 text-[#d38a12]" /> : <Info className="mt-0.5 size-4 shrink-0 text-[#1667e0]" />}
+            <li key={w.text} className={cn("flex gap-2.5 rounded-[16px] px-3.5 py-3 text-[13.5px] leading-snug", w.tone === "amber" ? "bg-amber-soft text-amber-olive" : "bg-blue-wash text-ink")}>
+              {w.tone === "amber" ? <CircleAlert className="mt-0.5 size-4 shrink-0 text-[#d38a12]" /> : <Info className="mt-0.5 size-4 shrink-0 text-azure-fg" />}
               {w.text}
             </li>
           ))}
         </ul>
       )}
 
-      <label className={cn("mt-5 flex min-h-12 cursor-pointer items-start gap-3 rounded-[16px] border p-4 transition", ack ? "border-[#bcd8fb] bg-[#f2f8fe]" : "border-hairline hover:bg-sand/40")}>
+      <label className={cn("mt-5 flex min-h-12 cursor-pointer items-start gap-3 rounded-[16px] border p-4 transition", ack ? "border-blue-line bg-blue-wash" : "border-hairline hover:bg-sand/40")}>
         <Checkbox checked={ack} onCheckedChange={(v) => setAck(v === true)} className="mt-0.5 size-5 rounded-[6px]" />
         <span className="text-[15px] leading-snug text-ink">{copy.ack}</span>
       </label>
 
       {error && (
-        <p role="alert" className="mt-4 rounded-[14px] bg-[#fdeeee] px-3.5 py-3 text-[13.5px] font-medium text-st-red">
+        <p role="alert" className="mt-4 rounded-[14px] bg-red-soft px-3.5 py-3 text-[13.5px] font-medium text-red-fg">
           {error}
         </p>
       )}
@@ -380,9 +380,9 @@ function ReadingMap({ site, point, useSite, mode }: { site: FieldReady["site"]; 
 
 function Stat({ label, value, sub, tone }: { label: string; value: React.ReactNode; sub?: string; tone?: "ok" | "amber" | "red" }) {
   return (
-    <div className="bg-white px-4 py-3.5">
+    <div className="bg-surface px-4 py-3.5">
       <dt className="text-[12px] text-subtle">{label}</dt>
-      <dd className={cn("mt-1 text-[18px] font-medium tracking-[-0.01em] tabular", tone === "red" ? "text-st-red" : tone === "amber" ? "text-[#b86e00]" : "text-ink")}>{value}</dd>
+      <dd className={cn("mt-1 text-[18px] font-medium tracking-[-0.01em] tabular", tone === "red" ? "text-red-fg" : tone === "amber" ? "text-amber-fg" : "text-ink")}>{value}</dd>
       {sub && <p className="mt-0.5 text-[11.5px] leading-snug text-subtle">{sub}</p>}
     </div>
   );
@@ -442,7 +442,7 @@ export function Radar() {
           />
         ))}
 
-        <span className="absolute left-1/2 top-1/2 inline-flex size-14 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full bg-white text-brand-deep shadow-[0_8px_24px_-6px_rgb(0_0_0/0.45)]">
+        <span className="absolute left-1/2 top-1/2 inline-flex size-14 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full bg-surface text-brand-ink shadow-[0_8px_24px_-6px_rgb(0_0_0/0.45)]">
           <LocateFixed className="size-6" />
         </span>
       </div>

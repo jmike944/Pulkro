@@ -36,7 +36,7 @@ export function DueLabel({ c, className }: { c: Pick<PostSaleCase, "status" | "d
   if (!isCaseOpen(c)) {
     return (
       <span className={cn("inline-flex items-center gap-1.5 text-[12.5px] text-subtle", className)}>
-        <CircleCheck className="size-3.5 text-st-teal" />
+        <CircleCheck className="size-3.5 text-teal-fg" />
         {c.status === "resuelto" ? "Resuelto" : "Cerrado"} {fmtDay(c.updatedAt)}
       </span>
     );
@@ -44,7 +44,7 @@ export function DueLabel({ c, className }: { c: Pick<PostSaleCase, "status" | "d
   const n = daysUntil(c.dueDate);
   const txt = n < 0 ? `Vencido ${fmtDaysLeft(c.dueDate).replace("vencido ", "")}` : n === 0 ? "Vence hoy" : `Vence en ${fmtDaysLeft(c.dueDate)}`;
   return (
-    <span className={cn("inline-flex items-center gap-1.5 whitespace-nowrap text-[12.5px] font-medium", n < 0 ? "text-st-red" : n === 0 ? "text-[#b86e00]" : "text-ink/80", className)}>
+    <span className={cn("inline-flex items-center gap-1.5 whitespace-nowrap text-[12.5px] font-medium", n < 0 ? "text-red-fg" : n === 0 ? "text-amber-fg" : "text-ink/80", className)}>
       <span className={cn("size-[6px] shrink-0 rounded-full", n < 0 ? "bg-st-red" : n === 0 ? "bg-st-amber" : "bg-st-slate")} />
       {txt}
     </span>
@@ -78,7 +78,7 @@ export function CaseCard({
       transition={{ layout: { type: "spring", stiffness: 380, damping: 34 } }}
       whileHover={{ y: -2 }}
       className={cn(
-        "group relative rounded-[18px] border border-hairline bg-white p-4 shadow-[0_1px_2px_rgb(16_24_40/0.04)] transition-shadow duration-300 hover:shadow-lift",
+        "group relative rounded-[18px] border border-hairline bg-surface p-4 shadow-[0_1px_2px_rgb(16_24_40/0.04)] transition-shadow duration-300 hover:shadow-lift",
         highlight && "ring-2 ring-sky ring-offset-2",
         className,
       )}
@@ -129,7 +129,7 @@ function CaseMenu({ row, canManage, onMove }: { row: CaseRow; canManage: boolean
     <DropdownMenu>
       <DropdownMenuTrigger
         aria-label={`Acciones del caso ${c.folio}`}
-        className="pointer-events-auto relative z-[1] -mr-1.5 -mt-1.5 inline-flex size-10 items-center justify-center rounded-[12px] text-subtle outline-none transition hover:bg-[#f2f4f7] hover:text-ink focus-visible:ring-2 focus-visible:ring-sky data-[state=open]:bg-[#f2f4f7] data-[state=open]:text-ink"
+        className="pointer-events-auto relative z-[1] -mr-1.5 -mt-1.5 inline-flex size-10 items-center justify-center rounded-[12px] text-subtle outline-none transition hover:bg-tile hover:text-ink focus-visible:ring-2 focus-visible:ring-sky data-[state=open]:bg-tile data-[state=open]:text-ink"
       >
         <Ellipsis className="size-[18px]" />
       </DropdownMenuTrigger>

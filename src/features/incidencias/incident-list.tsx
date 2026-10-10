@@ -67,7 +67,7 @@ function Thumbs({ photos, size = 36 }: { photos: Photo[]; size?: number }) {
   return (
     <span className="flex items-center gap-1.5">
       {shown.map((p) => (
-        <span key={p.id} className="relative overflow-hidden rounded-[8px] ring-1 ring-black/5" style={{ width: size, height: Math.round(size * 0.75) }}>
+        <span key={p.id} className="relative overflow-hidden rounded-[8px] ring-1 ring-edge" style={{ width: size, height: Math.round(size * 0.75) }}>
           <PhotoImage photo={p} />
         </span>
       ))}
@@ -115,17 +115,17 @@ function Row({ r, selected, onOpen }: { r: IncidentRow; selected: boolean; onOpe
         trailing={
           <span className="flex shrink-0 items-center gap-2">
             {photos[0] && (
-              <span className="relative size-11 overflow-hidden rounded-[12px] ring-1 ring-black/5">
+              <span className="relative size-11 overflow-hidden rounded-[12px] ring-1 ring-edge">
                 <PhotoImage photo={photos[0]} />
                 {photos.length > 1 && (
-                  <span className="absolute bottom-0.5 right-0.5 rounded-[6px] bg-ink/70 px-1 text-[11px] font-semibold leading-4 text-white tabular">
+                  <span className="absolute bottom-0.5 right-0.5 rounded-[6px] bg-black/55 px-1 text-[11px] font-semibold leading-4 text-white tabular">
                     <span aria-hidden>+{photos.length - 1}</span>
                     <span className="sr-only">{plural(photos.length, "foto", "fotos")}</span>
                   </span>
                 )}
               </span>
             )}
-            <ChevronRight className="size-[18px] text-[#98a2b3]" />
+            <ChevronRight className="size-[18px] text-faint" />
           </span>
         }
       />
@@ -136,9 +136,9 @@ function Row({ r, selected, onOpen }: { r: IncidentRow; selected: boolean; onOpe
         onClick={onOpen}
         aria-label={`${inc.folio} · ${type.label}`}
         className={cn(
-          "group -mx-3 hidden w-[calc(100%+1.5rem)] items-center gap-4 rounded-[14px] border-b border-hairline px-3 py-4 text-left transition-colors hover:bg-[#fafbfc] lg:grid",
+          "group -mx-3 hidden w-[calc(100%+1.5rem)] items-center gap-4 rounded-[14px] border-b border-hairline px-3 py-4 text-left transition-colors hover:bg-wash lg:grid",
           GRID,
-          selected && "bg-[#f4f8fe] hover:bg-[#f4f8fe]",
+          selected && "bg-blue-wash hover:bg-blue-wash",
         )}
       >
         <span className="flex min-w-0 items-center gap-3">
@@ -166,7 +166,7 @@ function Row({ r, selected, onOpen }: { r: IncidentRow; selected: boolean; onOpe
         </span>
         <span className="min-w-0">
           <StatePill inc={inc} />
-          <span className={cn("mt-1 block truncate text-[12px]", open && inc.blocksClosure ? "font-medium text-st-red" : "text-subtle")}>
+          <span className={cn("mt-1 block truncate text-[12px]", open && inc.blocksClosure ? "font-medium text-red-fg" : "text-subtle")}>
             {open ? (inc.blocksClosure ? "Impide el cierre" : "No bloquea") : inc.resolvedAt ? fmtRelativeDay(inc.resolvedAt) : ""}
           </span>
         </span>

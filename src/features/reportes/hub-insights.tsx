@@ -37,7 +37,7 @@ export function HubInsights({ m, clients, wide }: { m: HubMetrics; clients: Map<
             <h2 className="text-[19px] font-medium tracking-[-0.01em] text-ink">Cierre → envío</h2>
             <p className="mt-1 text-[13.5px] text-subtle">Promedio en {plural(m.measured, "servicio", "servicios")}</p>
           </div>
-          <span className="inline-flex size-10 items-center justify-center rounded-[12px] bg-[#e3f1fd] text-[#1667e0]">
+          <span className="inline-flex size-10 items-center justify-center rounded-[12px] bg-blue-tint text-azure-fg">
             <Clock3 className="size-5" />
           </span>
         </div>
@@ -48,13 +48,13 @@ export function HubInsights({ m, clients, wide }: { m: HubMetrics; clients: Map<
           <>
             <div className="mt-5 flex h-[10px] w-full gap-1 overflow-hidden rounded-full">
               <motion.span
-                className="h-full rounded-full bg-[#1667e0]"
+                className="h-full rounded-full bg-azure"
                 initial={{ width: 0 }}
                 animate={{ width: `${(m.toPdfMinutes / halves) * 100}%` }}
                 transition={{ duration: 0.9, ease: EASE, delay: 0.2 }}
               />
               <motion.span
-                className="h-full rounded-full bg-[#b9d8fb]"
+                className="h-full rounded-full bg-blue-line"
                 initial={{ width: 0 }}
                 animate={{ width: `${(m.toShareMinutes / halves) * 100}%` }}
                 transition={{ duration: 0.9, ease: EASE, delay: 0.3 }}
@@ -63,13 +63,13 @@ export function HubInsights({ m, clients, wide }: { m: HubMetrics; clients: Map<
             <dl className="mt-3 grid grid-cols-2 gap-4 text-[13.5px]">
               <div>
                 <dt className="flex items-center gap-2 text-subtle">
-                  <span className="size-[7px] rounded-full bg-[#1667e0]" /> Cierre → PDF
+                  <span className="size-[7px] rounded-full bg-azure" /> Cierre → PDF
                 </dt>
                 <dd className="mt-0.5 font-semibold text-ink tabular">{fmtDuration(toPdf)}</dd>
               </div>
               <div>
                 <dt className="flex items-center gap-2 text-subtle">
-                  <span className="size-[7px] rounded-full bg-[#b9d8fb]" /> PDF → primer envío
+                  <span className="size-[7px] rounded-full bg-blue-line" /> PDF → primer envío
                 </dt>
                 <dd className="mt-0.5 font-semibold text-ink tabular">{fmtDuration(toShare)}</dd>
               </div>

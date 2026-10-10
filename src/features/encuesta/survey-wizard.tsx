@@ -75,9 +75,9 @@ export function SurveyWizard({ token, onSubmitted }: { token: string; onSubmitte
       {/* progress */}
       <div className="flex items-center gap-1.5 px-6 pt-5 sm:px-8 sm:pt-6" aria-hidden>
         {STEPS.map((s, i) => (
-          <div key={s} className="h-[5px] flex-1 overflow-hidden rounded-full bg-[#e9eef5]">
+          <div key={s} className="h-[5px] flex-1 overflow-hidden rounded-full bg-press">
             <motion.div
-              className="h-full rounded-full bg-gradient-to-r from-sky to-[#1667e0]"
+              className="h-full rounded-full bg-gradient-to-r from-sky to-azure"
               initial={false}
               animate={{ width: i < step ? "100%" : i === step ? "45%" : "0%" }}
               transition={{ type: "spring", stiffness: 160, damping: 24 }}
@@ -143,11 +143,11 @@ export function SurveyWizard({ token, onSubmitted }: { token: string; onSubmitte
                   placeholder={overall >= 4 ? "Lo que más le gustó…" : "Qué podemos mejorar…"}
                   aria-label="Comentario"
                   maxLength={600}
-                  className="min-h-[112px] rounded-[16px] border-[#e3e7ed] bg-white px-4 py-3 text-[16px]"
+                  className="min-h-[112px] rounded-[16px] border-input bg-surface px-4 py-3 text-[16px]"
                 />
                 <div>
                   <label htmlFor="sv-name" className="mb-2 block text-[13px] font-medium text-subtle">
-                    Su nombre <span className="font-normal text-[#98a2b3]">· opcional</span>
+                    Su nombre <span className="font-normal text-faint">· opcional</span>
                   </label>
                   <Input
                     id="sv-name"
@@ -155,7 +155,7 @@ export function SurveyWizard({ token, onSubmitted }: { token: string; onSubmitte
                     onChange={(e) => setName(e.target.value)}
                     autoComplete="name"
                     placeholder="¿Con quién tenemos el gusto?"
-                    className="h-12 rounded-[14px] border-[#e3e7ed] bg-white px-4 text-[16px]"
+                    className="h-12 rounded-[14px] border-input bg-surface px-4 text-[16px]"
                   />
                 </div>
               </div>
@@ -164,7 +164,7 @@ export function SurveyWizard({ token, onSubmitted }: { token: string; onSubmitte
         </AnimatePresence>
       </div>
 
-      <div className="flex items-center gap-3 border-t border-hairline bg-white/70 px-6 py-4 sm:px-8">
+      <div className="flex items-center gap-3 border-t border-hairline bg-surface/70 px-6 py-4 sm:px-8">
         {step > 0 && (
           <Button variant="ghost" onClick={() => go(step - 1)} className="h-12 rounded-[14px] px-4 text-[15px]">
             <ArrowLeft /> Atrás

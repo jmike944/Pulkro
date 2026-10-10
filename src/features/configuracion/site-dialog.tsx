@@ -140,15 +140,15 @@ export function SiteDialog({ client, site, open, onOpenChange }: { client: Clien
             <Field label="Longitud" htmlFor="s-lng">
               <Input id="s-lng" inputMode="decimal" value={lng} onChange={(e) => { setLng(e.target.value); setAccuracy(null); }} placeholder="-100.316100" className={`${inputCls} tabular`} aria-invalid={!!show("coords")} />
             </Field>
-            <Button type="button" variant="outline" onClick={locate} disabled={locating} className="h-11 rounded-[12px] border-[#dfe3ea] px-4 font-semibold">
+            <Button type="button" variant="outline" onClick={locate} disabled={locating} className="h-11 rounded-[12px] border-line px-4 font-semibold">
               {locating ? <Loader2 className="size-4 animate-spin" /> : <LocateFixed className="size-4" />}
               Usar mi ubicación
             </Button>
           </div>
-          {show("coords") && <p className="mt-2 text-[12.5px] font-medium text-st-red">{errors.coords}</p>}
+          {show("coords") && <p className="mt-2 text-[12.5px] font-medium text-red-fg">{errors.coords}</p>}
           <AnimatePresence initial={false}>
             {outsideMexico && (
-              <motion.p initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} exit={{ opacity: 0, height: 0 }} className="mt-2 flex items-center gap-2 overflow-hidden text-[12.5px] text-[#b86e00]">
+              <motion.p initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} exit={{ opacity: 0, height: 0 }} className="mt-2 flex items-center gap-2 overflow-hidden text-[12.5px] text-amber-fg">
                 <TriangleAlert className="size-3.5 shrink-0" /> Las coordenadas quedan fuera de México. Verifica el signo de la longitud (debe ser negativa).
               </motion.p>
             )}
@@ -162,8 +162,8 @@ export function SiteDialog({ client, site, open, onOpenChange }: { client: Clien
                 zoom={16}
               />
             ) : (
-              <div className="flex h-[200px] flex-col items-center justify-center gap-2 rounded-[20px] bg-[#f4f6f8] text-center text-[13.5px] text-subtle sm:h-[230px]">
-                <MapPin className="size-6 text-[#98a2b3]" />
+              <div className="flex h-[200px] flex-col items-center justify-center gap-2 rounded-[20px] bg-soft text-center text-[13.5px] text-subtle sm:h-[230px]">
+                <MapPin className="size-6 text-faint" />
                 Captura coordenadas para ver la vista previa del mapa.
               </div>
             )}

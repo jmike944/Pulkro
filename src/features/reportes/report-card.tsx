@@ -87,7 +87,7 @@ export function ReportCard({
             transition={{ type: "spring", stiffness: 420, damping: 22 }}
             className={cn(
               "relative inline-flex h-8 items-center rounded-[10px] px-2.5 text-[14px] font-bold tabular",
-              needsGenerate ? "border border-dashed border-[#b9c7d6] text-subtle" : "bg-brand-deep text-white shadow-[0_8px_18px_-10px_rgb(7_36_63/0.8)]",
+              needsGenerate ? "border border-dashed border-line-dash text-subtle" : "bg-brand-deep text-white shadow-[0_8px_18px_-10px_rgb(7_36_63/0.8)]",
             )}
           >
             {badge}
@@ -121,7 +121,7 @@ export function ReportCard({
             exit={{ opacity: 0, height: 0 }}
             className="overflow-hidden"
           >
-            <p className="mt-4 flex gap-2.5 rounded-[14px] bg-[#f1edff] px-3.5 py-3 text-[13.5px] leading-snug text-[#4b33b5]">
+            <p className="mt-4 flex gap-2.5 rounded-[14px] bg-violet-soft px-3.5 py-3 text-[13.5px] leading-snug text-violet-ink">
               <RotateCcw className="mt-0.5 size-4 shrink-0" />
               <span>
                 {reopened ? "Orden reabierta tras el cierre." : "Hay cambios sin generar."} Se creará la <b className="font-semibold">v{nextVersion}</b>; la v{latest.version} queda
@@ -147,7 +147,7 @@ export function ReportCard({
                   </Button>
                 </motion.div>
               </WithReason>
-              {task?.step === "error" && <p className="mt-2 text-[13px] text-st-red">{task.error} Intente de nuevo.</p>}
+              {task?.step === "error" && <p className="mt-2 text-[13px] text-red-fg">{task.error} Intente de nuevo.</p>}
             </motion.div>
           ) : (
             <motion.div
@@ -156,9 +156,9 @@ export function ReportCard({
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -6 }}
               transition={{ duration: 0.25, ease: EASE }}
-              className="flex items-center gap-3 rounded-[14px] bg-[#e7f7f4] px-3.5 py-3"
+              className="flex items-center gap-3 rounded-[14px] bg-teal-soft px-3.5 py-3"
             >
-              <CircleCheck className="size-5 shrink-0 text-st-teal" />
+              <CircleCheck className="size-5 shrink-0 text-teal-fg" />
               <div className="min-w-0 text-[13.5px] leading-snug">
                 <p className="font-semibold text-ink">Versión v{latest?.version} lista para compartir</p>
                 <p className="text-subtle">Edite la descripción o las fotos para crear una nueva versión.</p>
@@ -178,18 +178,18 @@ export function ReportCard({
             onClick={onWhatsApp}
             disabled={!!shareReason || busy}
             variant={needsGenerate ? "outline" : "default"}
-            className={cn("h-12 w-full rounded-[14px] text-[15px] font-semibold", needsGenerate && "border-[#dfe3ea]")}
+            className={cn("h-12 w-full rounded-[14px] text-[15px] font-semibold", needsGenerate && "border-line")}
           >
             <MessageCircle /> Compartir por WhatsApp{latest && needsGenerate ? ` · v${latest.version}` : ""}
           </Button>
         </WithReason>
         <WithReason reason={shareReason} className="w-full">
-          <Button onClick={onEmail} disabled={!!shareReason || busy} variant="outline" className="h-11 w-full rounded-[14px] border-[#dfe3ea] font-semibold">
+          <Button onClick={onEmail} disabled={!!shareReason || busy} variant="outline" className="h-11 w-full rounded-[14px] border-line font-semibold">
             <Mail /> Enviar por correo
           </Button>
         </WithReason>
         <WithReason reason={downloadReason} className="w-full">
-          <Button onClick={onDownload} disabled={!!downloadReason || busy} variant="outline" className="h-11 w-full rounded-[14px] border-[#dfe3ea] font-semibold">
+          <Button onClick={onDownload} disabled={!!downloadReason || busy} variant="outline" className="h-11 w-full rounded-[14px] border-line font-semibold">
             <Download /> Descargar PDF
           </Button>
         </WithReason>

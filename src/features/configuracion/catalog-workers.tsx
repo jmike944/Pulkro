@@ -123,12 +123,12 @@ export function WorkersCatalog() {
                 <span className="hidden text-right text-[15px] font-semibold text-ink tabular xl:block">{recent.get(w.id) ?? 0}</span>
                 <div className="col-start-2 row-start-1 flex items-center justify-end gap-1 xl:col-start-auto xl:row-start-auto xl:justify-center">
                   <InlineSwitch checked={w.active} onChange={(v) => toggle(w, v)} label={`${w.active ? "Desactivar" : "Activar"} a ${w.name}`} disabled={!canEdit} reason={NO_CATALOGS} />
-                  <GatedButton allowed={canEdit} reason={NO_CATALOGS} variant="outline" size="icon" onClick={() => dlg.show(w)} aria-label={`Editar a ${w.name}`} className="size-11 min-w-0 border-[#dfe3ea] px-0 xl:hidden">
+                  <GatedButton allowed={canEdit} reason={NO_CATALOGS} variant="outline" size="icon" onClick={() => dlg.show(w)} aria-label={`Editar a ${w.name}`} className="size-11 min-w-0 border-line px-0 xl:hidden">
                     <Pencil className="size-4" />
                   </GatedButton>
                 </div>
                 <div className="hidden justify-end xl:flex">
-                  <GatedButton allowed={canEdit} reason={NO_CATALOGS} variant="outline" onClick={() => dlg.show(w)} className="min-w-[84px] border-[#dfe3ea]">
+                  <GatedButton allowed={canEdit} reason={NO_CATALOGS} variant="outline" onClick={() => dlg.show(w)} className="min-w-[84px] border-line">
                     Editar
                   </GatedButton>
                 </div>
@@ -193,7 +193,7 @@ function WorkerDialog({ worker, defaultUnit, open, onOpenChange }: { worker: Wor
       }}
     >
       <div className="space-y-5">
-        <div className="flex items-center gap-3 rounded-[16px] bg-[#f6f8fa] p-3">
+        <div className="flex items-center gap-3 rounded-[16px] bg-soft p-3">
           <PersonAvatar name={preview} initials={initialsOf(preview)} hue={worker?.hue ?? hueFrom(preview)} size={44} />
           <div className="min-w-0">
             <p className="truncate text-[16px] font-semibold text-ink xl:text-[15px]">{preview}</p>

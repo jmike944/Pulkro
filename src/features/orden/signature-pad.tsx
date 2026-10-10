@@ -156,7 +156,7 @@ export function SignaturePad({
     <div className={className}>
       <div className="mb-2 flex items-center justify-between gap-3">
         <span className="text-[13px] font-medium text-ink">
-          {label} <span className="text-st-red">*</span>
+          {label} <span className="text-red-fg">*</span>
         </span>
         <button
           type="button"
@@ -171,7 +171,7 @@ export function SignaturePad({
         ref={wrapRef}
         className={cn(
           "relative h-[170px] overflow-hidden rounded-[18px] border bg-[linear-gradient(180deg,#fbfcfe,#f5f8fc)] transition-colors",
-          hasInk ? "border-[#bcd8fb]" : "border-dashed border-[#cfd6df]",
+          hasInk ? "border-blue-line" : "border-dashed border-line-heavy",
         )}
       >
         <canvas
@@ -186,9 +186,9 @@ export function SignaturePad({
           aria-label={hasInk ? "Firma capturada" : "Área para firmar con el dedo o el mouse"}
         />
         {/* baseline + "X" like a paper form */}
-        <div className="pointer-events-none absolute inset-x-6 bottom-9 flex items-end gap-2 text-[#b8c2cf]" aria-hidden>
+        <div className="pointer-events-none absolute inset-x-6 bottom-9 flex items-end gap-2 text-ghost" aria-hidden>
           <span className="font-serif text-[20px] leading-none">×</span>
-          <span className="mb-[3px] h-px flex-1 bg-[#d5dce5]" />
+          <span className="mb-[3px] h-px flex-1 bg-line-strong" />
         </div>
         <AnimatePresence>
           {!hasInk && (
@@ -196,7 +196,7 @@ export function SignaturePad({
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0, scale: 0.96 }}
-              className="pointer-events-none absolute inset-0 flex items-center justify-center gap-2 text-[14px] text-[#98a2b3]"
+              className="pointer-events-none absolute inset-0 flex items-center justify-center gap-2 text-[14px] text-faint"
             >
               <PenLine className="size-4" /> Firme aquí
             </motion.span>

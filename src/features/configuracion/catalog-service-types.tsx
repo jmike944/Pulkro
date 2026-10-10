@@ -18,11 +18,11 @@ export function HueSwatch({ hue, size = 36 }: { hue: number; size?: number }) {
   return (
     <span
       aria-hidden
-      className="relative inline-flex shrink-0 items-center justify-center overflow-hidden rounded-[12px] ring-1 ring-black/5"
+      className="relative inline-flex shrink-0 items-center justify-center overflow-hidden rounded-[12px] ring-1 ring-edge"
       style={{ width: size, height: size, background: `linear-gradient(135deg, oklch(0.95 0.04 ${hue}), oklch(0.8 0.11 ${hue}))` }}
     >
-      <span className="absolute left-[18%] top-[16%] size-[28%] rounded-full bg-white/70" />
-      <span className="absolute bottom-[20%] right-[22%] size-[14%] rounded-full bg-white/50" />
+      <span className="absolute left-[18%] top-[16%] size-[28%] rounded-full bg-surface/70" />
+      <span className="absolute bottom-[20%] right-[22%] size-[14%] rounded-full bg-surface/50" />
     </span>
   );
 }
@@ -80,7 +80,7 @@ export function ServiceTypesCatalog() {
               </span>
             </span>
             <div className="hidden items-center gap-3 xl:flex">
-              <div className="h-[7px] flex-1 overflow-hidden rounded-full bg-[#eef1f5]">
+              <div className="h-[7px] flex-1 overflow-hidden rounded-full bg-well">
                 <motion.div
                   initial={{ width: 0 }}
                   animate={{ width: `${(st.defaultHoursPerDay / maxHours) * 100}%` }}
@@ -93,7 +93,7 @@ export function ServiceTypesCatalog() {
             </div>
             <span className="hidden text-right text-[15px] font-semibold text-ink tabular xl:block">{usage.get(st.id) ?? 0}</span>
             <div className="col-start-2 row-start-1 flex justify-end xl:col-start-auto xl:row-start-auto">
-              <GatedButton allowed={canEdit} reason={NO_CATALOGS} variant="outline" onClick={() => dlg.show(st)} className="w-11 border-[#dfe3ea] px-0 xl:w-auto xl:min-w-[84px] xl:px-4" aria-label={`Editar ${st.name}`}>
+              <GatedButton allowed={canEdit} reason={NO_CATALOGS} variant="outline" onClick={() => dlg.show(st)} className="w-11 border-line px-0 xl:w-auto xl:min-w-[84px] xl:px-4" aria-label={`Editar ${st.name}`}>
                 <Pencil className="size-4 xl:hidden" />
                 <span className="max-xl:sr-only">Editar</span>
               </GatedButton>
@@ -141,7 +141,7 @@ function ServiceTypeDialog({ serviceType, open, onOpenChange }: { serviceType: S
       }}
     >
       <div className="space-y-5">
-        <div className="flex items-center gap-4 rounded-[16px] bg-[#f6f8fa] p-3">
+        <div className="flex items-center gap-4 rounded-[16px] bg-soft p-3">
           <HueSwatch hue={hue} size={48} />
           <div className="min-w-0">
             <p className="truncate text-[16px] font-semibold text-ink xl:text-[15px]">{name.trim() || "Nuevo servicio"}</p>
@@ -166,13 +166,13 @@ function ServiceTypeDialog({ serviceType, open, onOpenChange }: { serviceType: S
         </Field>
         <Field label="Horas por jornada" hint="Duración sugerida al programar cada jornada (1 a 12 h).">
           <div className="flex items-center gap-3">
-            <Button type="button" variant="outline" size="icon" onClick={() => setHours((h) => Math.max(1, h - 1))} aria-label="Menos horas" className="size-11 rounded-[12px] border-[#dfe3ea]">
+            <Button type="button" variant="outline" size="icon" onClick={() => setHours((h) => Math.max(1, h - 1))} aria-label="Menos horas" className="size-11 rounded-[12px] border-line">
               <Minus className="size-4" />
             </Button>
             <motion.span key={hours} initial={{ y: -6, opacity: 0 }} animate={{ y: 0, opacity: 1 }} className="w-16 text-center text-[24px] font-medium tracking-[-0.02em] text-ink tabular">
               {hours} h
             </motion.span>
-            <Button type="button" variant="outline" size="icon" onClick={() => setHours((h) => Math.min(12, h + 1))} aria-label="Más horas" className="size-11 rounded-[12px] border-[#dfe3ea]">
+            <Button type="button" variant="outline" size="icon" onClick={() => setHours((h) => Math.min(12, h + 1))} aria-label="Más horas" className="size-11 rounded-[12px] border-line">
               <Plus className="size-4" />
             </Button>
           </div>
@@ -189,7 +189,7 @@ const HUE_GRADIENT =
 function HueRange({ value, onChange }: { value: number; onChange: (v: number) => void }) {
   return (
     <div className="relative h-10">
-      <span aria-hidden className="absolute inset-x-0 top-1/2 h-3 -translate-y-1/2 rounded-full ring-1 ring-black/5" style={{ background: HUE_GRADIENT }} />
+      <span aria-hidden className="absolute inset-x-0 top-1/2 h-3 -translate-y-1/2 rounded-full ring-1 ring-edge" style={{ background: HUE_GRADIENT }} />
       <input
         type="range"
         min={0}
@@ -197,7 +197,7 @@ function HueRange({ value, onChange }: { value: number; onChange: (v: number) =>
         value={value}
         onChange={(e) => onChange(Number(e.target.value))}
         aria-label="Tono del color"
-        className="absolute inset-0 h-10 w-full cursor-pointer appearance-none bg-transparent outline-none [&::-moz-range-thumb]:size-5 [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:border-[3px] [&::-moz-range-thumb]:border-white [&::-moz-range-thumb]:bg-brand-deep [&::-moz-range-track]:bg-transparent [&::-webkit-slider-thumb]:size-6 [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:border-[3px] [&::-webkit-slider-thumb]:border-white [&::-webkit-slider-thumb]:bg-brand-deep [&::-webkit-slider-thumb]:shadow-[0_2px_8px_rgb(2_58_99/0.4)] focus-visible:[&::-webkit-slider-thumb]:ring-4 focus-visible:[&::-webkit-slider-thumb]:ring-sky/50"
+        className="absolute inset-0 h-10 w-full cursor-pointer appearance-none bg-transparent outline-none [&::-moz-range-thumb]:size-5 [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:border-[3px] [&::-moz-range-thumb]:border-surface [&::-moz-range-thumb]:bg-brand-deep [&::-moz-range-track]:bg-transparent [&::-webkit-slider-thumb]:size-6 [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:border-[3px] [&::-webkit-slider-thumb]:border-surface [&::-webkit-slider-thumb]:bg-brand-deep [&::-webkit-slider-thumb]:shadow-[0_2px_8px_rgb(2_58_99/0.4)] focus-visible:[&::-webkit-slider-thumb]:ring-4 focus-visible:[&::-webkit-slider-thumb]:ring-sky/50"
       />
     </div>
   );

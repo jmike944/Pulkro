@@ -48,10 +48,10 @@ export function SyncPipeline({ offline, queued, syncing, stored, lastSyncAt }: P
 
 const TONES = {
   navy: "bg-brand-deep text-white",
-  sky: "bg-[#e3f1fd] text-[#1667e0]",
-  amber: "bg-[#fff1d6] text-[#b86e00]",
-  teal: "bg-[#dcf4ef] text-st-teal",
-  slate: "bg-[#eef1f5] text-subtle",
+  sky: "bg-blue-tint text-azure-fg",
+  amber: "bg-amber-tint text-amber-fg",
+  teal: "bg-teal-tint text-teal-fg",
+  slate: "bg-well text-subtle",
 } as const;
 
 function Station({
@@ -81,7 +81,7 @@ function Station({
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.4, opacity: 0 }}
               transition={{ type: "spring", stiffness: 600, damping: 24 }}
-              className="absolute -right-2 -top-2 inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-st-amber px-1 text-[11px] font-bold text-white ring-2 ring-white tabular"
+              className="absolute -right-2 -top-2 inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-st-amber px-1 text-[11px] font-bold text-white ring-2 ring-surface tabular"
             >
               {badge > 99 ? "99+" : badge}
             </motion.span>
@@ -138,7 +138,7 @@ function Conduit({ horizontal, state, slow, label }: { horizontal: boolean; stat
                 : "bg-[repeating-linear-gradient(180deg,#f0a020_0_6px,transparent_6px_11px)]"
               : state === "idle"
                 ? "bg-st-teal/50"
-                : "bg-white/80",
+                : "bg-surface/80",
           )}
         />
       </div>
@@ -167,8 +167,8 @@ function Conduit({ horizontal, state, slow, label }: { horizontal: boolean; stat
             animate={{ scale: 1, opacity: 1 }}
             exit={{ scale: 0.5, opacity: 0 }}
             className={cn(
-              "absolute inline-flex size-6 items-center justify-center rounded-full ring-2 ring-white",
-              state === "offline" ? "bg-[#fff1d6] text-[#b86e00]" : "bg-[#dcf4ef] text-st-teal",
+              "absolute inline-flex size-6 items-center justify-center rounded-full ring-2 ring-surface",
+              state === "offline" ? "bg-amber-tint text-amber-fg" : "bg-teal-tint text-teal-fg",
               !horizontal && "left-[22px]",
             )}
           >

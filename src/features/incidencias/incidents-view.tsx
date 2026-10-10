@@ -235,7 +235,7 @@ export function IncidentsView() {
                 variant="outline"
                 disabled={!canExport || exporting || filtered.length === 0}
                 onClick={() => void doExport()}
-                className="h-11 rounded-[12px] border-[#dfe3ea] px-4 text-[15px] font-semibold lg:h-10 lg:text-[14px]"
+                className="h-11 rounded-[12px] border-line px-4 text-[15px] font-semibold lg:h-10 lg:text-[14px]"
               >
                 {exporting ? <Loader2 className="animate-spin" /> : <FileSpreadsheet />} Exportar
               </Button>
@@ -251,10 +251,10 @@ export function IncidentsView() {
             initial={{ opacity: 0, y: -6 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -6 }}
-            className="mb-6 flex items-center gap-3 rounded-[16px] bg-[#fff6e6] py-2 pl-4 pr-1.5 text-[14px] text-[#8a5300]"
+            className="mb-6 flex items-center gap-3 rounded-[16px] bg-amber-soft py-2 pl-4 pr-1.5 text-[14px] text-amber-ink"
           >
             <span className="min-w-0 flex-1">La incidencia solicitada no existe o no está en tu alcance.</span>
-            <button type="button" onClick={closeIncident} aria-label="Cerrar aviso" className="inline-flex size-10 shrink-0 items-center justify-center rounded-full hover:bg-white/70">
+            <button type="button" onClick={closeIncident} aria-label="Cerrar aviso" className="inline-flex size-10 shrink-0 items-center justify-center rounded-full hover:bg-surface/70">
               <X className="size-4" />
             </button>
           </motion.div>
@@ -287,7 +287,7 @@ export function IncidentsView() {
               onChange={(e) => update({ q: e.target.value })}
               placeholder="Buscar folio, orden o texto"
               aria-label="Buscar incidencias"
-              className="h-full w-full rounded-full border border-hairline bg-white pl-10 pr-4 text-[15px] text-ink outline-none transition placeholder:text-[#98a2b3] focus:border-sky focus:ring-3 focus:ring-sky/30 lg:text-[14px]"
+              className="h-full w-full rounded-full border border-hairline bg-surface pl-10 pr-4 text-[15px] text-ink outline-none transition placeholder:text-faint focus:border-sky focus:ring-3 focus:ring-sky/30 lg:text-[14px]"
             />
           </label>
           <FilterPill label="Tipo" value={f.type} onChange={(v) => update({ type: v })} options={options.types} allLabel="Todos los tipos" />
@@ -326,7 +326,7 @@ export function IncidentsView() {
                     <Button
                       variant="outline"
                       onClick={() => setLimit((n) => n + PAGE)}
-                      className="h-11 rounded-full border-[#dfe3ea] px-6 font-semibold shadow-[0_1px_2px_rgb(16_24_40/0.05)]"
+                      className="h-11 rounded-full border-line px-6 font-semibold shadow-[0_1px_2px_rgb(16_24_40/0.05)]"
                     >
                       Mostrar más <ChevronDown />
                     </Button>

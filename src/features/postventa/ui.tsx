@@ -10,10 +10,10 @@ export const REASON_ORDER_CREATE = "Solo Administración y Supervisores dan de a
 export const REASON_EXPORT = "Exportar a Excel está disponible para Dirección y Administración.";
 
 /** Shared field styles (taller than shadcn defaults: ≥ 44px tap targets on phones). */
-export const inputCls = "h-11 rounded-[12px] border-[#e3e7ed] bg-white px-3.5 text-[15px] shadow-[0_1px_2px_rgb(16_24_40/0.03)]";
-export const textareaCls = "min-h-[104px] rounded-[14px] border-[#e3e7ed] bg-white px-3.5 py-3 text-[15px]";
+export const inputCls = "h-11 rounded-[12px] border-input bg-surface px-3.5 text-[15px] shadow-[0_1px_2px_rgb(16_24_40/0.03)]";
+export const textareaCls = "min-h-[104px] rounded-[14px] border-input bg-surface px-3.5 py-3 text-[15px]";
 export const menuItemCls = "min-h-10 gap-2.5 rounded-[10px] px-2.5 text-[14px]";
-export const outlineBtnCls = "h-10 rounded-[12px] border-[#dfe3ea] px-4 text-[14px] font-semibold shadow-[0_1px_2px_rgb(16_24_40/0.05)]";
+export const outlineBtnCls = "h-10 rounded-[12px] border-line px-4 text-[14px] font-semibold shadow-[0_1px_2px_rgb(16_24_40/0.05)]";
 
 /**
  * Wraps a (disabled) control in a tooltip (tap bubble on touch) that explains who can use it.
@@ -37,7 +37,7 @@ export function FieldLabel({ children, htmlFor, hint, className }: { children: R
       <label htmlFor={htmlFor} className="text-[13px] font-medium text-subtle">
         {children}
       </label>
-      {hint && <span className="text-[12px] text-[#98a2b3]">{hint}</span>}
+      {hint && <span className="text-[12px] text-faint">{hint}</span>}
     </div>
   );
 }
@@ -71,7 +71,7 @@ export function DialogPanel({
         {description && <DialogDescription className="text-[14px] text-subtle">{description}</DialogDescription>}
       </DialogHeader>
       <div className="min-h-0 flex-1 overflow-y-auto px-6 py-5">{children}</div>
-      {footer && <div className="flex flex-col-reverse gap-2 border-t border-hairline bg-[#fafbfc] px-6 py-4 sm:flex-row sm:items-center sm:justify-end">{footer}</div>}
+      {footer && <div className="flex flex-col-reverse gap-2 border-t border-hairline bg-wash px-6 py-4 sm:flex-row sm:items-center sm:justify-end">{footer}</div>}
     </DialogContent>
   );
 }
@@ -95,7 +95,7 @@ export function FilterChip({
       aria-pressed={active}
       className={cn(
         "inline-flex h-10 shrink-0 items-center gap-2 rounded-full border px-4 text-[14px] transition-colors max-md:h-11",
-        active ? "border-ink bg-ink font-semibold text-white" : "border-hairline bg-white text-ink hover:bg-[#f5f7fa]",
+        active ? "border-ink bg-ink font-semibold text-on-ink" : "border-hairline bg-surface text-ink hover:bg-soft",
       )}
     >
       {children}

@@ -106,7 +106,7 @@ export function buildTimeline(d: OrderDetail): TimelineStep[] {
         detail: (
           <span className="inline-flex flex-wrap items-center gap-x-1.5">
             Entrada {fmtTime(j.checkIn.deviceAt)} · {stampSource(j.checkIn)}
-            <ArrowRight className="size-3.5 text-[#98a2b3]" aria-label="a" />
+            <ArrowRight className="size-3.5 text-faint" aria-label="a" />
             Salida {fmtTime(j.checkOut.deviceAt)} · <Strong>{fmtDuration(jornadaMinutes(j, now))}</Strong>
           </span>
         ),
@@ -168,7 +168,7 @@ export function buildTimeline(d: OrderDetail): TimelineStep[] {
               · conformidad {CONFORMITY_LABEL[closure.conformity.method].toLowerCase()} de {closure.conformity.name}
             </>
           )}
-          {closure.exception && <span className="mt-1 block text-[#b86e00]">Excepción autorizada: {closure.exception.reason}</span>}
+          {closure.exception && <span className="mt-1 block text-amber-fg">Excepción autorizada: {closure.exception.reason}</span>}
           {!d.isDone && <span className="mt-1 block">Quedó sin efecto al reabrir la orden.</span>}
         </>
       ),
@@ -209,7 +209,7 @@ export function buildTimeline(d: OrderDetail): TimelineStep[] {
         <>
           {SHARE_CHANNEL[firstShare.channel]} a {firstShare.to} · v{firstShare.version}
           {shares.length > 1 && ` · ${plural(shares.length, "envío", "envíos")}`}
-          <span className="mt-0.5 block text-[13px] text-[#98a2b3]">Envío iniciado desde el dispositivo · sin confirmación de entrega</span>
+          <span className="mt-0.5 block text-[13px] text-faint">Envío iniciado desde el dispositivo · sin confirmación de entrega</span>
         </>
       ),
     });

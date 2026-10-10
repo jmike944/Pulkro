@@ -125,7 +125,7 @@ export function ComplianceTab({
             <motion.ul variants={staggerContainer(0.05, 0.15)} initial="hidden" animate="show" className="divide-y divide-hairline">
               {supervisors.map((s, i) => {
                 const u = lk.users.get(s.id);
-                const color = s.rate >= 0.95 ? "bg-[#1667e0]" : s.rate >= 0.85 ? "bg-st-amber" : "bg-st-red";
+                const color = s.rate >= 0.95 ? "bg-azure" : s.rate >= 0.85 ? "bg-st-amber" : "bg-st-red";
                 return (
                   <motion.li key={s.id} variants={rowVariants} className="grid grid-cols-[minmax(0,1fr)_56px] items-center gap-x-4 gap-y-2 py-3.5 sm:grid-cols-[minmax(0,200px)_minmax(0,1fr)_56px]">
                     <span className="flex min-w-0 items-center gap-3">
@@ -137,7 +137,7 @@ export function ComplianceTab({
                         </span>
                       </span>
                     </span>
-                    <span className="col-span-2 row-start-2 h-[7px] overflow-hidden rounded-full bg-[#eef1f5] sm:col-span-1 sm:row-start-auto">
+                    <span className="col-span-2 row-start-2 h-[7px] overflow-hidden rounded-full bg-well sm:col-span-1 sm:row-start-auto">
                       <motion.span
                         initial={{ width: 0 }}
                         animate={{ width: `${s.rate * 100}%` }}
@@ -178,7 +178,7 @@ export function ComplianceTab({
                           <span className="truncate text-[14.5px] font-semibold text-ink group-hover:text-link">
                             {o.folio} · {client?.shortName}
                           </span>
-                          <ArrowUpRight className="size-4 shrink-0 text-[#98a2b3] transition group-hover:text-ink" />
+                          <ArrowUpRight className="size-4 shrink-0 text-faint transition group-hover:text-ink" />
                         </span>
                         <span className="mt-1 line-clamp-2 text-[13.5px] leading-relaxed text-subtle">{exc.reason}</span>
                         {by && (
@@ -221,12 +221,12 @@ export function ComplianceTab({
                       </span>
                       <span className="mt-1.5 flex flex-wrap gap-1.5">
                         {gaps.map((g) => (
-                          <span key={g} className="rounded-md bg-[#fdeeee] px-1.5 py-0.5 text-[11px] font-bold tracking-[0.04em] text-st-red">
+                          <span key={g} className="rounded-md bg-red-soft px-1.5 py-0.5 text-[11px] font-bold tracking-[0.04em] text-red-fg">
                             Falta {g}
                           </span>
                         ))}
                         {unexecuted > 0 && (
-                          <span className="rounded-md bg-[#f2f4f7] px-1.5 py-0.5 text-[11px] font-bold tracking-[0.04em] text-subtle">
+                          <span className="rounded-md bg-tile px-1.5 py-0.5 text-[11px] font-bold tracking-[0.04em] text-subtle">
                             {plural(unexecuted, "jornada sin entrada", "jornadas sin entrada")}
                           </span>
                         )}
@@ -236,12 +236,12 @@ export function ComplianceTab({
                       <Button
                         variant="outline"
                         onClick={() => onOpenOrder(o.folio)}
-                        className="h-11 shrink-0 rounded-[12px] border-[#dfe3ea] px-4 font-semibold lg:h-10"
+                        className="h-11 shrink-0 rounded-[12px] border-line px-4 font-semibold lg:h-10"
                       >
                         Ver solicitud
                       </Button>
                     ) : (
-                      <Button asChild variant="outline" className="h-11 shrink-0 rounded-[12px] border-[#dfe3ea] px-4 font-semibold lg:h-10">
+                      <Button asChild variant="outline" className="h-11 shrink-0 rounded-[12px] border-line px-4 font-semibold lg:h-10">
                         <Link href={`/ordenes/${o.folio}?tab=jornadas`}>Ver orden</Link>
                       </Button>
                     )}

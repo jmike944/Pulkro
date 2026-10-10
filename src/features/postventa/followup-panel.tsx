@@ -134,16 +134,16 @@ export function FollowUpPanel({
                           <SoftBadge tone="teal" className="mr-auto md:mr-1">
                             <Sparkles className="size-3" /> Encuesta generada
                           </SoftBadge>
-                          <Button variant="outline" size="icon" aria-label="Enviar por WhatsApp" className="size-10 rounded-[12px] border-[#dfe3ea]" onClick={() => shareSurveyWhatsapp(target)}>
+                          <Button variant="outline" size="icon" aria-label="Enviar por WhatsApp" className="size-10 rounded-[12px] border-line" onClick={() => shareSurveyWhatsapp(target)}>
                             <MessageCircle />
                           </Button>
-                          <Button variant="outline" size="icon" aria-label="Enviar por correo" className="size-10 rounded-[12px] border-[#dfe3ea]" onClick={() => shareSurveyEmail(target)}>
+                          <Button variant="outline" size="icon" aria-label="Enviar por correo" className="size-10 rounded-[12px] border-line" onClick={() => shareSurveyEmail(target)}>
                             <Mail />
                           </Button>
-                          <Button variant="outline" size="icon" aria-label="Copiar enlace" className="size-10 rounded-[12px] border-[#dfe3ea]" onClick={() => void copySurveyLink(target.s.token)}>
+                          <Button variant="outline" size="icon" aria-label="Copiar enlace" className="size-10 rounded-[12px] border-line" onClick={() => void copySurveyLink(target.s.token)}>
                             <Copy />
                           </Button>
-                          <Button variant="outline" size="icon" aria-label="Ver QR" className="size-10 rounded-[12px] border-[#dfe3ea]" onClick={() => setQr(target)}>
+                          <Button variant="outline" size="icon" aria-label="Ver QR" className="size-10 rounded-[12px] border-line" onClick={() => setQr(target)}>
                             <QrCode />
                           </Button>
                           {!target.s.respondedAt && (

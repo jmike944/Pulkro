@@ -62,7 +62,7 @@ export function ComplianceBlock({ ind, clientName }: { ind: Indicators; clientNa
                       </span>
                       <span className="block text-[12.5px] text-subtle">{g.what}</span>
                     </span>
-                    <ChevronRight className="size-4 text-[#c5ccd6] transition group-hover:translate-x-0.5 group-hover:text-ink" />
+                    <ChevronRight className="size-4 text-ghost transition group-hover:translate-x-0.5 group-hover:text-ink" />
                   </Link>
                 </motion.li>
               ))}
@@ -145,7 +145,7 @@ export function ComplaintsBlock({ ind, win }: { ind: Indicators; win: PeriodWind
               <p className="mt-1.5 text-[12.5px] text-subtle">de {plural(closed, "terminado", "terminados")}</p>
             </div>
             <div className="pl-3 sm:pl-5">
-              <AnimatedNumber value={c.open} className={cn("block text-[34px] font-medium leading-none tracking-[-0.04em]", c.open ? "text-st-red" : "text-ink")} />
+              <AnimatedNumber value={c.open} className={cn("block text-[34px] font-medium leading-none tracking-[-0.04em]", c.open ? "text-red-fg" : "text-ink")} />
               <p className="mt-1.5 text-[12.5px] text-subtle">{c.open === 1 ? "caso abierto" : "casos abiertos"}</p>
             </div>
           </div>

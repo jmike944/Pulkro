@@ -9,7 +9,7 @@ export function ClientMark({ name, hue, size = 40, className }: { name: string; 
   const letters = words.length > 1 ? (words[0][0] + words[1][0]).toUpperCase() : (words[0] ?? name).slice(0, 2).toUpperCase();
   return (
     <span
-      className={cn("inline-flex shrink-0 select-none items-center justify-center rounded-[12px] font-brand font-extrabold tracking-wide ring-1 ring-black/5", className)}
+      className={cn("inline-flex shrink-0 select-none items-center justify-center rounded-[12px] font-brand font-extrabold tracking-wide ring-1 ring-edge", className)}
       style={{
         width: size,
         height: size,

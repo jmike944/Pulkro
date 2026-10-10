@@ -54,7 +54,7 @@ function SurveyContent({ token }: { token: string }) {
         <h1 className="font-serif text-[40px] font-medium leading-[1.04] tracking-[-0.02em] text-ink sm:text-[48px]">
           ¿Cómo quedó
           <br />
-          <span className="italic text-brand">su servicio?</span>
+          <span className="italic text-brand-ink">su servicio?</span>
         </h1>
         <p className="mt-3 max-w-md text-[15.5px] leading-relaxed text-ink/70">Su opinión nos ayuda a dejar todo impecable. Le toma menos de un minuto.</p>
       </motion.div>
@@ -63,7 +63,7 @@ function SurveyContent({ token }: { token: string }) {
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.6, ease: EASE, delay: 0.15 }}
-        className="mt-6 flex items-center gap-3.5 rounded-[20px] border border-white/80 bg-white/60 p-3.5 backdrop-blur-md"
+        className="mt-6 flex items-center gap-3.5 rounded-[20px] border border-surface/80 bg-surface/60 p-3.5 backdrop-blur-md"
       >
         {client && <ClientMark name={client.name} hue={client.hue} size={46} />}
         <div className="min-w-0 flex-1">

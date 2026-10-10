@@ -74,7 +74,7 @@ export function PhotoLightbox({
       <DialogContent
         showCloseButton={false}
         onKeyDown={onKeyDown}
-        className="max-h-[94dvh] gap-0 overflow-y-auto rounded-[26px] p-0 ring-black/5 sm:max-w-[min(1100px,calc(100%-3rem))] lg:grid-cols-[minmax(0,1fr)_340px] lg:overflow-hidden"
+        className="max-h-[94dvh] gap-0 overflow-y-auto rounded-[26px] p-0 ring-edge sm:max-w-[min(1100px,calc(100%-3rem))] lg:grid-cols-[minmax(0,1fr)_340px] lg:overflow-hidden"
       >
         {photo ? (
           <LightboxBody
@@ -268,10 +268,10 @@ function LightboxBody({
           {showCompare && <p className="mt-2 text-[12.5px] text-subtle">Arrastra el jalador para comparar.</p>}
 
           <KeyValues className="mt-6" rows={rows} />
-          {photo.note && <p className="mt-5 rounded-[14px] bg-[#f5f7fa] p-3.5 text-[13.5px] leading-relaxed text-ink">{photo.note}</p>}
+          {photo.note && <p className="mt-5 rounded-[14px] bg-soft p-3.5 text-[13.5px] leading-relaxed text-ink">{photo.note}</p>}
 
           {order && (
-            <Button asChild variant="outline" className="mt-6 h-10 rounded-[12px] border-[#dfe3ea] px-4 font-semibold">
+            <Button asChild variant="outline" className="mt-6 h-10 rounded-[12px] border-line px-4 font-semibold">
               <Link href={`/ordenes/${order.folio}?tab=evidencia`}>
                 Evidencia de la orden <ArrowUpRight />
               </Link>

@@ -57,7 +57,7 @@ export function Fase2Section() {
     <section className="mt-14 border-t border-hairline pt-10 print:hidden" aria-labelledby="fase2-title">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div className="max-w-2xl">
-          <span className="inline-flex h-6 items-center gap-1.5 rounded-md bg-[#f1edff] px-2 text-[12px] font-semibold text-st-violet">
+          <span className="inline-flex h-6 items-center gap-1.5 rounded-md bg-violet-soft px-2 text-[12px] font-semibold text-violet-fg">
             <Lock className="size-3.5" /> Fase 2
           </span>
           <h2 id="fase2-title" className="mt-3 font-serif text-[26px] font-medium leading-tight tracking-[-0.01em] text-ink">
@@ -93,18 +93,18 @@ function LockedCard({ spec }: { spec: LockedSpec }) {
     <motion.article
       variants={rowVariants}
       whileHover="hover"
-      className="group relative flex flex-col overflow-hidden rounded-[22px] border border-hairline bg-white shadow-soft"
+      className="group relative flex flex-col overflow-hidden rounded-[22px] border border-hairline bg-surface shadow-soft"
     >
       {/* frosted placeholder chart — deliberately unreadable */}
-      <div aria-hidden className="relative h-[148px] overflow-hidden border-b border-hairline bg-[#f8fafc]">
+      <div aria-hidden className="relative h-[148px] overflow-hidden border-b border-hairline bg-wash">
         <div className="absolute inset-0 scale-105 opacity-80 blur-[3px]">
           <SkeletonChart kind={spec.chart} />
         </div>
-        <div className="absolute inset-0 bg-gradient-to-b from-white/10 via-white/40 to-white/80 backdrop-blur-[1.5px]" />
+        <div className="absolute inset-0 bg-gradient-to-b from-white/10 via-surface/40 to-surface/80 backdrop-blur-[1.5px]" />
         <div className="absolute inset-0 flex items-center justify-center">
           <motion.span
             variants={{ hover: { rotate: [0, -12, 10, -6, 0], transition: { duration: 0.6 } } }}
-            className="inline-flex size-12 items-center justify-center rounded-[16px] bg-white text-ink shadow-glass"
+            className="inline-flex size-12 items-center justify-center rounded-[16px] bg-surface text-ink shadow-glass"
           >
             <Lock className="size-5" />
           </motion.span>
@@ -112,7 +112,7 @@ function LockedCard({ spec }: { spec: LockedSpec }) {
       </div>
       <div className="flex flex-1 flex-col p-5">
         <div className="flex items-center gap-2.5">
-          <span className="inline-flex size-8 items-center justify-center rounded-[10px] bg-[#f2f4f7] text-subtle [&_svg]:size-[17px]">
+          <span className="inline-flex size-8 items-center justify-center rounded-[10px] bg-tile text-subtle [&_svg]:size-[17px]">
             <Icon />
           </span>
           <h3 className="text-[16px] font-semibold text-ink">{spec.title}</h3>
@@ -159,7 +159,7 @@ function SkeletonChart({ kind }: { kind: LockedSpec["chart"] }) {
             whileInView={{ height: `${h}%` }}
             viewport={{ once: true }}
             transition={{ duration: 0.8, ease: EASE, delay: 0.1 + i * 0.05 }}
-            className={cn("shimmer flex-1 rounded-full", i === 7 && "bg-[#b9d8fb] [animation:none]")}
+            className={cn("shimmer flex-1 rounded-full", i === 7 && "bg-blue-line [animation:none]")}
           />
         ))}
       </div>

@@ -135,7 +135,7 @@ export function IndicadoresView() {
     <div className="print:[-webkit-print-color-adjust:exact] print:[print-color-adjust:exact]">
       {/* print-only letterhead (the shell hides itself on print) */}
       <div className="hidden print:mb-6 print:block">
-        <p className="font-brand text-[12px] font-extrabold tracking-[0.18em] text-brand-deep">PULKRO</p>
+        <p className="font-brand text-[12px] font-extrabold tracking-[0.18em] text-brand-ink">PULKRO</p>
         <h1 className="mt-1 font-serif text-[28px] font-medium text-ink">
           Indicadores · {win.label} · {TAB_LABEL[tab]}
         </h1>

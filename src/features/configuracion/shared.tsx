@@ -84,7 +84,7 @@ export const NO_EXCEL = "Exportar Excel está habilitado para Dirección y Admin
 /** Soft banner that tells mobile users (no hover tooltips) why controls are read-only. */
 export function ReadOnlyNote({ children, className }: { children: React.ReactNode; className?: string }) {
   return (
-    <div className={cn("flex items-start gap-3 rounded-[16px] bg-[#f4f6f8] px-4 py-3 text-[13.5px] text-subtle", className)}>
+    <div className={cn("flex items-start gap-3 rounded-[16px] bg-soft px-4 py-3 text-[13.5px] text-subtle", className)}>
       <Lock className="mt-0.5 size-4 shrink-0 text-ink/60" />
       <p>{children}</p>
     </div>
@@ -118,7 +118,7 @@ export function Field({
       </Label>
       {children}
       {error ? (
-        <motion.p initial={{ opacity: 0, y: -3 }} animate={{ opacity: 1, y: 0 }} className="text-[12.5px] font-medium text-st-red" role="alert">
+        <motion.p initial={{ opacity: 0, y: -3 }} animate={{ opacity: 1, y: 0 }} className="text-[12.5px] font-medium text-red-fg" role="alert">
           {error}
         </motion.p>
       ) : hint ? (
@@ -155,7 +155,7 @@ export function ChipSelect<T extends string>({
             onClick={() => onChange(o.value)}
             className={cn(
               "inline-flex h-10 items-center gap-1.5 rounded-[12px] border px-3.5 text-[14px] transition",
-              active ? "border-brand-deep bg-brand-deep font-semibold text-white shadow-[0_6px_14px_-8px_rgb(2_58_99/0.7)]" : "border-hairline bg-white text-ink hover:border-[#d5dbe3]",
+              active ? "border-brand-deep bg-brand-deep font-semibold text-white shadow-[0_6px_14px_-8px_rgb(2_58_99/0.7)]" : "border-hairline bg-surface text-ink hover:border-line-strong",
             )}
           >
             {o.label}
@@ -222,7 +222,7 @@ export function FormDialog({
             </DialogClose>
           </header>
           <div className="min-h-0 flex-1 overflow-y-auto px-5 py-5 sm:px-6">{children}</div>
-          <footer className="flex flex-col-reverse gap-2.5 border-t border-hairline bg-[#fafbfc] px-5 py-4 sm:flex-row sm:items-center sm:justify-end sm:px-6">
+          <footer className="flex flex-col-reverse gap-2.5 border-t border-hairline bg-wash px-5 py-4 sm:flex-row sm:items-center sm:justify-end sm:px-6">
             {footerNote && <p className="text-[12.5px] leading-snug text-subtle sm:mr-auto">{footerNote}</p>}
             <DialogClose asChild>
               <Button type="button" variant="outline" className="h-11 rounded-[12px] px-5 text-[14px] font-semibold">
@@ -339,7 +339,7 @@ function ConfirmBody({
         ))}
       </dl>
       {children && <div className="mx-6 mt-4">{children}</div>}
-      <label className="mx-6 mt-5 flex min-h-11 cursor-pointer items-start gap-3 rounded-[14px] bg-[#f6f8fa] px-4 py-3 text-[14px] text-ink">
+      <label className="mx-6 mt-5 flex min-h-11 cursor-pointer items-start gap-3 rounded-[14px] bg-soft px-4 py-3 text-[14px] text-ink">
         <Checkbox checked={checked} onCheckedChange={(v) => setChecked(v === true)} className="mt-0.5 size-[18px] rounded-[5px]" />
         <span className="leading-snug">{checkboxLabel}</span>
       </label>
@@ -439,7 +439,7 @@ export function SearchField({
   className?: string;
 }) {
   return (
-    <label className={cn("relative flex h-11 min-w-0 items-center rounded-[14px] border border-hairline bg-white pl-10 pr-3 transition focus-within:border-sky focus-within:ring-3 focus-within:ring-sky/30", className)}>
+    <label className={cn("relative flex h-11 min-w-0 items-center rounded-[14px] border border-hairline bg-surface pl-10 pr-3 transition focus-within:border-sky focus-within:ring-3 focus-within:ring-sky/30", className)}>
       <svg aria-hidden viewBox="0 0 24 24" className="absolute left-3.5 size-[17px] text-subtle" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
         <circle cx="11" cy="11" r="7" />
         <path d="m20 20-3.5-3.5" />
@@ -449,7 +449,7 @@ export function SearchField({
         value={value}
         onChange={(e) => onChange(e.target.value)}
         placeholder={placeholder}
-        className="h-full w-full min-w-0 bg-transparent text-[14.5px] text-ink outline-none placeholder:text-[#98a2b3]"
+        className="h-full w-full min-w-0 bg-transparent text-[14.5px] text-ink outline-none placeholder:text-faint"
       />
       {value && (
         <button type="button" onClick={() => onChange("")} aria-label="Limpiar búsqueda" className="inline-flex size-8 shrink-0 items-center justify-center rounded-full text-subtle hover:bg-muted hover:text-ink">
@@ -506,13 +506,13 @@ export function SwitchLite({ checked, onChange, disabled, label }: { checked: bo
       onClick={() => onChange(!checked)}
       className={cn(
         "relative inline-flex h-[24px] w-[42px] shrink-0 items-center rounded-full p-[3px] outline-none transition-colors focus-visible:ring-3 focus-visible:ring-ring/50 disabled:opacity-50",
-        checked ? "bg-brand-deep" : "bg-[#dfe3ea]",
+        checked ? "bg-brand-deep" : "bg-line",
       )}
     >
       <motion.span
         layout
         transition={{ type: "spring", stiffness: 600, damping: 34 }}
-        className={cn("block size-[18px] rounded-full bg-white shadow-[0_1px_3px_rgb(16_24_40/0.25)]", checked ? "ml-auto" : "mr-auto")}
+        className={cn("block size-[18px] rounded-full bg-surface shadow-[0_1px_3px_rgb(16_24_40/0.25)]", checked ? "ml-auto" : "mr-auto")}
       />
     </button>
   );

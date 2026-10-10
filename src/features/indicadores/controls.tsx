@@ -19,9 +19,9 @@ import {
 import { GRANULARITIES, periodLabel, periodRangeLabel, samePeriod, type Granularity, type Period } from "./period";
 
 const menuTrigger =
-  "inline-flex h-11 items-center gap-2 rounded-[12px] bg-[#f2f4f7] px-3.5 text-[14px] font-medium text-ink outline-none transition hover:bg-[#e9edf2] focus-visible:ring-2 focus-visible:ring-sky data-[state=open]:bg-[#e9edf2] lg:h-10";
+  "inline-flex h-11 items-center gap-2 rounded-[12px] bg-tile px-3.5 text-[14px] font-medium text-ink outline-none transition hover:bg-press focus-visible:ring-2 focus-visible:ring-sky data-[state=open]:bg-press lg:h-10";
 const stepBtn =
-  "inline-flex size-11 shrink-0 items-center justify-center rounded-[12px] text-subtle transition hover:bg-[#f2f4f7] hover:text-ink disabled:pointer-events-none disabled:opacity-35 lg:size-10";
+  "inline-flex size-11 shrink-0 items-center justify-center rounded-[12px] text-subtle transition hover:bg-tile hover:text-ink disabled:pointer-events-none disabled:opacity-35 lg:size-10";
 
 export function Controls({
   granularity,
@@ -105,14 +105,14 @@ export function Controls({
 
       <div className="grid grid-cols-2 gap-2.5 lg:ml-auto lg:flex">
         {canExcel ? (
-          <Button variant="outline" onClick={onExport} disabled={exporting} className="h-11 rounded-[12px] border-[#dfe3ea] px-4 text-[14px] font-semibold shadow-[0_1px_2px_rgb(16_24_40/0.05)] lg:h-10">
+          <Button variant="outline" onClick={onExport} disabled={exporting} className="h-11 rounded-[12px] border-line px-4 text-[14px] font-semibold shadow-[0_1px_2px_rgb(16_24_40/0.05)] lg:h-10">
             {exporting ? <Spinner /> : <Download className="size-4" />}
             {exporting ? "Generando…" : "Exportar"}
           </Button>
         ) : (
           <ReasonTip side="bottom" reason="El Excel de indicadores lo exportan Dirección y Administración (doc §2). Puede usar Imprimir / PDF." contentClassName="max-w-[260px] text-[12.5px] leading-snug">
             <span tabIndex={0} className="inline-flex rounded-[12px] outline-none focus-visible:ring-2 focus-visible:ring-sky">
-              <Button variant="outline" disabled className="h-11 w-full rounded-[12px] border-[#dfe3ea] px-4 text-[14px] font-semibold lg:h-10">
+              <Button variant="outline" disabled className="h-11 w-full rounded-[12px] border-line px-4 text-[14px] font-semibold lg:h-10">
                 <Download className="size-4" /> Exportar
               </Button>
             </span>
@@ -122,7 +122,7 @@ export function Controls({
           variant="outline"
           onClick={onPrint}
           disabled={!canPdf}
-          className="h-11 rounded-[12px] border-[#dfe3ea] px-4 text-[14px] font-semibold shadow-[0_1px_2px_rgb(16_24_40/0.05)] lg:h-10"
+          className="h-11 rounded-[12px] border-line px-4 text-[14px] font-semibold shadow-[0_1px_2px_rgb(16_24_40/0.05)] lg:h-10"
         >
           <Printer className="size-4" /> Imprimir / PDF
         </Button>
@@ -158,7 +158,7 @@ function ScopePicker({ scope }: { scope: Parameters<typeof Controls>[0]["scope"]
   }
   return (
     <DropdownMenu>
-      <DropdownMenuTrigger className={cn(menuTrigger, "w-full min-w-0 bg-transparent ring-1 ring-hairline hover:bg-[#f6f8fb] lg:w-auto")} aria-label="Elegir unidad">
+      <DropdownMenuTrigger className={cn(menuTrigger, "w-full min-w-0 bg-transparent ring-1 ring-hairline hover:bg-soft lg:w-auto")} aria-label="Elegir unidad">
         {chip}
         <ChevronDown className="ml-auto size-4 shrink-0 lg:ml-0" />
       </DropdownMenuTrigger>

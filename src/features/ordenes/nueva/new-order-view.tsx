@@ -261,7 +261,7 @@ function NewOrderWizard() {
               initial={{ opacity: 0, height: 0 }}
               animate={{ opacity: 1, height: "auto" }}
               exit={{ opacity: 0, height: 0 }}
-              className={cn("flex items-center justify-center gap-1.5 overflow-hidden pb-2.5 text-center text-[13.5px]", attempted.has(step) ? "text-st-red" : "text-subtle")}
+              className={cn("flex items-center justify-center gap-1.5 overflow-hidden pb-2.5 text-center text-[13.5px]", attempted.has(step) ? "text-red-fg" : "text-subtle")}
             >
               <CircleAlert className="size-3.5 shrink-0" />
               {issues.first}
@@ -343,7 +343,7 @@ function NewOrderWizard() {
           </>
         }
         actions={
-          <Button asChild variant="outline" className="h-11 rounded-[14px] border-[#dfe3ea] px-4 text-[14.5px] font-semibold">
+          <Button asChild variant="outline" className="h-11 rounded-[14px] border-line px-4 text-[14.5px] font-semibold">
             <Link href="/ordenes">Cancelar</Link>
           </Button>
         }
@@ -363,10 +363,10 @@ function NewOrderWizard() {
           {animatedBody}
 
           <div className="sticky bottom-[calc(96px+env(safe-area-inset-bottom))] z-30 mt-8 lg:bottom-4">
-            <div className="flex items-center gap-2.5 rounded-[20px] border border-hairline bg-white/92 p-2.5 pl-4 shadow-lift backdrop-blur-xl">
+            <div className="flex items-center gap-2.5 rounded-[20px] border border-hairline bg-surface/92 p-2.5 pl-4 shadow-lift backdrop-blur-xl">
               <div className="min-w-0 flex-1 text-[13.5px]" aria-live="polite">
                 {issues.first ? (
-                  <p className={cn("flex items-center gap-1.5 truncate", attempted.has(step) ? "text-st-red" : "text-subtle")}>
+                  <p className={cn("flex items-center gap-1.5 truncate", attempted.has(step) ? "text-red-fg" : "text-subtle")}>
                     <CircleAlert className="size-4 shrink-0" />
                     <span className="truncate">{issues.first}</span>
                   </p>
@@ -392,7 +392,7 @@ function NewOrderWizard() {
                 type="button"
                 variant="outline"
                 onClick={() => setSummaryOpen(true)}
-                className="h-11 rounded-[14px] border-[#dfe3ea] px-4 text-[14.5px] font-semibold xl:hidden"
+                className="h-11 rounded-[14px] border-line px-4 text-[14.5px] font-semibold xl:hidden"
               >
                 <ClipboardList className="size-4" />
                 Resumen
@@ -402,7 +402,7 @@ function NewOrderWizard() {
                 variant="outline"
                 onClick={() => go(step - 1)}
                 disabled={step === 0}
-                className="h-11 rounded-[14px] border-[#dfe3ea] px-4 text-[14.5px] font-semibold"
+                className="h-11 rounded-[14px] border-line px-4 text-[14.5px] font-semibold"
               >
                 <ChevronLeft className="size-4" />
                 Atrás

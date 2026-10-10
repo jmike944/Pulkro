@@ -37,7 +37,7 @@ export function ServiceIcon({ id, hue, size = 40, className }: { id: string; hue
   const Icon = SERVICE_ICONS[id] ?? Sparkles;
   return (
     <span
-      className={cn("inline-flex shrink-0 items-center justify-center rounded-[12px] ring-1 ring-black/5", className)}
+      className={cn("inline-flex shrink-0 items-center justify-center rounded-[12px] ring-1 ring-edge", className)}
       style={{
         width: size,
         height: size,
@@ -104,8 +104,8 @@ export function FieldMessage({ error, warning, hint, id }: { error?: string; war
           transition={{ duration: 0.22, ease: EASE }}
           className={cn(
             "flex items-start gap-1.5 overflow-hidden pt-1.5 text-[12.5px] leading-snug",
-            kind === "error" && "text-st-red",
-            kind === "warning" && "text-[#b86e00]",
+            kind === "error" && "text-red-fg",
+            kind === "warning" && "text-amber-fg",
             kind === "hint" && "text-subtle",
           )}
         >
@@ -120,7 +120,7 @@ export function FieldMessage({ error, warning, hint, id }: { error?: string; war
 }
 
 export const inputClass =
-  "h-11 rounded-[13px] border-hairline bg-white px-3.5 text-[15px] shadow-[0_1px_2px_rgb(16_24_40/0.03)] transition hover:border-[#d5dbe3] md:text-[14.5px]";
+  "h-11 rounded-[13px] border-hairline bg-surface px-3.5 text-[15px] shadow-[0_1px_2px_rgb(16_24_40/0.03)] transition hover:border-line-strong md:text-[14.5px]";
 
 /* ───────────── quantity stepper ───────────── */
 
@@ -134,7 +134,7 @@ export function QtyStepper({ value, onChange, unit, label, max = 999 }: { value:
         onClick={() => set(value - 1)}
         disabled={value <= 0}
         aria-label={`Quitar 1 ${unit} de ${label}`}
-        className="inline-flex size-11 items-center justify-center rounded-[12px] border border-hairline bg-white text-ink transition hover:bg-muted disabled:opacity-40 md:size-10"
+        className="inline-flex size-11 items-center justify-center rounded-[12px] border border-hairline bg-surface text-ink transition hover:bg-muted disabled:opacity-40 md:size-10"
       >
         <Minus className="size-4" />
       </motion.button>
@@ -148,8 +148,8 @@ export function QtyStepper({ value, onChange, unit, label, max = 999 }: { value:
           onChange={(e) => set(Number(e.target.value) || 0)}
           aria-label={`Cantidad de ${label} (${unit})`}
           className={cn(
-            "h-11 w-full rounded-[12px] border bg-white pr-6 text-center md:h-10 text-[15px] font-semibold tabular outline-none transition [appearance:textfield] focus-visible:ring-3 focus-visible:ring-ring/50 [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none",
-            value > 0 ? "border-[#bcd8fb] bg-[#f6faff] text-ink" : "border-hairline text-subtle",
+            "h-11 w-full rounded-[12px] border bg-surface pr-6 text-center md:h-10 text-[15px] font-semibold tabular outline-none transition [appearance:textfield] focus-visible:ring-3 focus-visible:ring-ring/50 [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none",
+            value > 0 ? "border-blue-line bg-blue-wash text-ink" : "border-hairline text-subtle",
           )}
         />
         <span className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-[11px] text-subtle">{unit}</span>
@@ -160,7 +160,7 @@ export function QtyStepper({ value, onChange, unit, label, max = 999 }: { value:
         onClick={() => set(value + 1)}
         disabled={value >= max}
         aria-label={`Agregar 1 ${unit} de ${label}`}
-        className="inline-flex size-11 items-center justify-center rounded-[12px] border border-hairline bg-white text-ink transition hover:bg-muted disabled:opacity-40 md:size-10"
+        className="inline-flex size-11 items-center justify-center rounded-[12px] border border-hairline bg-surface text-ink transition hover:bg-muted disabled:opacity-40 md:size-10"
       >
         <Plus className="size-4" />
       </motion.button>
@@ -176,7 +176,7 @@ export function CheckMark({ on, className }: { on: boolean; className?: string }
       aria-hidden
       className={cn(
         "inline-flex size-[22px] shrink-0 items-center justify-center rounded-[7px] border transition-colors duration-200",
-        on ? "border-[#1667e0] bg-[#1667e0] text-white" : "border-[#d0d6de] bg-white",
+        on ? "border-azure bg-azure text-white" : "border-line-strong bg-surface",
         className,
       )}
     >

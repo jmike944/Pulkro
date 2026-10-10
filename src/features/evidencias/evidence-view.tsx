@@ -110,7 +110,7 @@ export function EvidenceView() {
             transition={{ duration: 0.3, ease: EASE }}
             className="overflow-hidden"
           >
-            <div className="mt-5 flex min-w-0 items-center gap-3 rounded-[16px] bg-[#f4f8fe] py-2 pl-2 pr-1.5">
+            <div className="mt-5 flex min-w-0 items-center gap-3 rounded-[16px] bg-blue-wash py-2 pl-2 pr-1.5">
               {client ? <ClientMark name={client.name} hue={client.hue} size={36} /> : null}
               <p className="min-w-0 flex-1 truncate text-[14px] text-ink">
                 <span className="text-subtle">Orden </span>
@@ -121,7 +121,7 @@ export function EvidenceView() {
                 type="button"
                 onClick={() => setOrderParam(null)}
                 aria-label="Quitar filtro de orden"
-                className="inline-flex size-10 shrink-0 items-center justify-center rounded-full text-subtle transition hover:bg-white hover:text-ink"
+                className="inline-flex size-10 shrink-0 items-center justify-center rounded-full text-subtle transition hover:bg-surface hover:text-ink"
               >
                 <X className="size-4" />
               </button>

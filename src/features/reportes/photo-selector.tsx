@@ -107,7 +107,7 @@ export function PhotoSelector({
             exit={{ opacity: 0, height: 0 }}
             className="overflow-hidden"
           >
-            <div className="mt-4 flex gap-3 rounded-[16px] bg-[#fff6e6] px-4 py-3 text-[13.5px] leading-snug text-[#8a5300]">
+            <div className="mt-4 flex gap-3 rounded-[16px] bg-amber-soft px-4 py-3 text-[13.5px] leading-snug text-amber-ink">
               <TriangleAlert className="mt-0.5 size-4 shrink-0" />
               <p>
                 {over ? (
@@ -204,7 +204,7 @@ function SelectableThumb({ photo, canEdit, pending, onToggle }: { photo: Photo; 
         <Check className="size-4" strokeWidth={3} />
       </motion.span>
       {pending && (
-        <span className="absolute right-11 top-3 inline-flex items-center gap-1 rounded-full bg-[#fff6e6] px-1.5 py-0.5 text-[10px] font-semibold text-[#b86e00]">
+        <span className="absolute right-11 top-3 inline-flex items-center gap-1 rounded-full bg-amber-soft px-1.5 py-0.5 text-[10px] font-semibold text-amber-fg">
           <CloudOff className="size-3" />
           <span className="sr-only">Pendiente de sincronizar</span>
         </span>
@@ -227,7 +227,7 @@ function SlotMeter({ count, className }: { count: number; className?: string }) 
           transition={{ duration: 0.25, delay: i * 0.015 }}
         />
       ))}
-      <span className={cn("ml-1.5 text-[12px] font-semibold tabular", extra ? "text-[#b86e00]" : "text-subtle")}>
+      <span className={cn("ml-1.5 text-[12px] font-semibold tabular", extra ? "text-amber-fg" : "text-subtle")}>
         {extra ? `+${extra}` : `${Math.min(count, RECOMMENDED_MAX_PHOTOS)}/${RECOMMENDED_MAX_PHOTOS}`}
       </span>
     </div>

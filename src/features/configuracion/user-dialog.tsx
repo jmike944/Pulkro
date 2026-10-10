@@ -81,7 +81,7 @@ export function UserDialog({ user, open, onOpenChange }: { user: User | null; op
       }}
     >
       <div className="space-y-5">
-        <div className="flex items-center gap-3 rounded-[16px] bg-[#f6f8fa] p-3">
+        <div className="flex items-center gap-3 rounded-[16px] bg-soft p-3">
           <PersonAvatar name={preview} initials={initialsOf(preview)} hue={user?.hue ?? hueFrom(preview)} size={44} />
           <div className="min-w-0">
             <p className="truncate text-[15px] font-semibold text-ink">{preview}</p>
