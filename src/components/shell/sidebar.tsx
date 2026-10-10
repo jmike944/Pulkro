@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import { AnimatePresence, LayoutGroup, motion } from "motion/react";
 import { Check, ChevronDown, EllipsisVertical, LogOut, PanelLeft, Plus, RotateCcw, UserRound } from "lucide-react";
 import { toast } from "sonner";
@@ -21,7 +21,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
-import { NAV_FOOT, NAV_MAIN, isActive, type NavItem } from "./nav";
+import { NAV_FOOT, NAV_GROUPS, NAV_HOME, isActive, type NavGroup, type NavItem } from "./nav";
 import { useNavBadges } from "./use-nav-badges";
 import { SyncChip } from "./sync-indicator";
 
@@ -63,15 +63,19 @@ export function Sidebar() {
         <NewOrderButton collapsed={collapsed} />
       </div>
 
-      <nav className="scrollbar-none mt-6 flex-1 overflow-y-auto">
+      <NavScroller>
+        {/* One LayoutGroup for every group so the active pill glides between sections. */}
         <LayoutGroup id="sidebar">
           <ul className="space-y-1">
-            {NAV_MAIN.map((item) => (
+            {NAV_HOME.map((item) => (
               <NavLink key={item.key} item={item} collapsed={collapsed} />
             ))}
           </ul>
+          {NAV_GROUPS.map((group) => (
+            <NavSection key={group.key} group={group} collapsed={collapsed} />
+          ))}
         </LayoutGroup>
-      </nav>
+      </NavScroller>
 
       <div className="mt-4 space-y-1">
         <LayoutGroup id="sidebar-foot">
@@ -90,17 +94,80 @@ export function Sidebar() {
   );
 }
 
+/** Scrolling middle of the sidebar (the footer stays pinned). Fades out the edge(s) where more sections are hidden. */
+function NavScroller({ children }: { children: React.ReactNode }) {
+  const navRef = useRef<HTMLElement>(null);
+  const innerRef = useRef<HTMLDivElement>(null);
+  const [more, setMore] = useState(false);
+  const [scrolled, setScrolled] = useState(false);
+  useEffect(() => {
+    const nav = navRef.current;
+    const inner = innerRef.current;
+    if (!nav || !inner) return;
+    const update = () => {
+      setMore(nav.scrollHeight - nav.scrollTop - nav.clientHeight > 4);
+      setScrolled(nav.scrollTop > 4);
+    };
+    const ro = new ResizeObserver(update);
+    ro.observe(nav);
+    ro.observe(inner);
+    nav.addEventListener("scroll", update, { passive: true });
+    return () => {
+      ro.disconnect();
+      nav.removeEventListener("scroll", update);
+    };
+  }, []);
+  return (
+    <nav
+      ref={navRef}
+      aria-label="Secciones"
+      className={cn(
+        "scrollbar-none mt-6 flex-1 overflow-y-auto",
+        more && !scrolled && "[mask-image:linear-gradient(to_bottom,#000_calc(100%-36px),transparent)]",
+        !more && scrolled && "[mask-image:linear-gradient(to_bottom,transparent,#000_28px)]",
+        more && scrolled && "[mask-image:linear-gradient(to_bottom,transparent,#000_28px,#000_calc(100%-36px),transparent)]",
+      )}
+    >
+      <div ref={innerRef}>{children}</div>
+    </nav>
+  );
+}
+
+/** Labeled block of links. Collapsed (84px) the heading text gives way to a short hairline (kept as sr-only text for the list's label). */
+function NavSection({ group, collapsed }: { group: NavGroup; collapsed: boolean }) {
+  const headingId = useId();
+  return (
+    <div>
+      {collapsed && <div aria-hidden className="mb-3 mt-4 flex justify-center"><span className="block h-px w-6 bg-black/10" /></div>}
+      <p id={headingId} className={cn(collapsed ? "sr-only" : "mb-1.5 mt-5 px-3.5 text-[11.5px] font-semibold uppercase tracking-[0.12em] text-subtle/80")}>
+        {group.label}
+      </p>
+      <ul aria-labelledby={headingId} className="space-y-1">
+        {group.items.map((item) => (
+          <NavLink key={item.key} item={item} collapsed={collapsed} />
+        ))}
+      </ul>
+    </div>
+  );
+}
+
 function NavLink({ item, collapsed }: { item: NavItem; collapsed: boolean }) {
   const pathname = usePathname();
   const badges = useNavBadges();
   const active = isActive(pathname, item.href);
   const Icon = item.icon;
   const count = item.badge ? badges[item.badge] : 0;
+  // The middle of the sidebar scrolls on short windows: keep the current section in view.
+  const ref = useRef<HTMLAnchorElement>(null);
+  useEffect(() => {
+    if (active) ref.current?.scrollIntoView({ block: "nearest" });
+  }, [active]);
   const link = (
     <Link
+      ref={ref}
       href={item.href}
       className={cn(
-        "group relative flex h-11 items-center gap-3.5 rounded-[14px] px-3.5 text-[15px] transition-colors",
+        "group relative scroll-my-10 flex h-11 items-center gap-3.5 rounded-[14px] px-3.5 text-[15px] transition-colors",
         active ? "font-semibold text-ink" : "text-[#3b4554] hover:text-ink",
         collapsed && "justify-center px-0",
       )}
