@@ -10,6 +10,8 @@ import { Sidebar } from "./sidebar";
 import { MobileNav } from "./mobile-nav";
 import { CommandMenu } from "./command-menu";
 import { SyncSheet } from "./sync-indicator";
+import { MainScroller } from "./main-scroll";
+import { CardHeader } from "./card-header";
 
 /**
  * Authenticated chrome: canvas + sidebar (desktop) / top+bottom bars (mobile) + white work panel.
@@ -27,14 +29,22 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
   if (!hydrated || !signedIn) return <ShellSkeleton />;
 
+  // --pk-pane-h is the height of the scrolling viewport the page content sees: the whole window below lg; from lg up the work panel
+  // minus its fixed card header (window minus the lg:py-3 margins of <main>, minus --pk-card-header-h). Size sticky asides with
+  // it — `max-h-[calc(var(--pk-pane-h)-48px)]`.
   return (
-    <div className="flex min-h-dvh bg-canvas">
+    <div className="flex min-h-dvh bg-canvas [--pk-card-header-h:4rem] [--pk-pane-h:100dvh] lg:h-dvh lg:overflow-hidden lg:[--pk-pane-h:calc(100dvh-1.5rem-var(--pk-card-header-h))] print:h-auto print:overflow-visible">
       <Sidebar />
-      <div className="flex min-w-0 flex-1 flex-col">
+      <div className="flex min-w-0 flex-1 flex-col print:block">
         <MobileNav />
-        <main className="min-w-0 flex-1 px-2 pb-[calc(92px+env(safe-area-inset-bottom))] pt-[max(8px,env(safe-area-inset-top))] lg:py-3 lg:pb-3 lg:pl-0 lg:pr-3 print:p-0">
-          <div className="min-h-[calc(100dvh-108px)] rounded-[28px] bg-surface px-5 py-6 shadow-[0_1px_2px_rgb(16_24_40/0.04)] sm:px-7 lg:min-h-full lg:px-10 lg:py-9 lg:shadow-soft lg:ring-1 lg:ring-edge print:rounded-none print:p-0 print:shadow-none print:ring-0">
-            {children}
+        <main className="min-w-0 flex-1 px-2 pb-[calc(92px+env(safe-area-inset-bottom))] pt-[max(8px,env(safe-area-inset-top))] lg:flex lg:min-h-0 lg:flex-col lg:py-3 lg:pb-3 lg:pl-0 lg:pr-3 print:block print:p-0">
+          {/* From lg the panel is fixed in the window (rounded, clipping): a fixed card header (breadcrumbs, search, notifications) on
+              top and the page scrolling inside it, underneath — see card-header.tsx and main-scroll.tsx. */}
+          <div className="min-h-[calc(100dvh-108px)] rounded-[28px] bg-surface shadow-[0_1px_2px_rgb(16_24_40/0.04)] lg:flex lg:min-h-0 lg:flex-1 lg:flex-col lg:overflow-hidden lg:shadow-soft lg:ring-1 lg:ring-edge print:block print:min-h-0 print:overflow-visible print:rounded-none print:shadow-none print:ring-0">
+            <CardHeader />
+            <MainScroller className="px-5 py-6 sm:px-7 lg:min-h-0 lg:flex-1 lg:overflow-y-auto lg:overscroll-y-contain lg:px-10 lg:py-9 lg:outline-none lg:scrollbar-panel print:overflow-visible print:p-0">
+              {children}
+            </MainScroller>
           </div>
         </main>
       </div>

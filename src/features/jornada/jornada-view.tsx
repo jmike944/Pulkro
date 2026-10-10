@@ -125,7 +125,7 @@ function FieldScreen({ f }: { f: FieldReady }) {
         </div>
 
         {wide && (
-          <aside aria-label="Datos de la orden" className="min-w-0 @min-[880px]:sticky @min-[880px]:top-6 @min-[880px]:max-h-[calc(100dvh-48px)] @min-[880px]:self-start @min-[880px]:overflow-y-auto @min-[880px]:scrollbar-none">
+          <aside aria-label="Datos de la orden" className="min-w-0 @min-[880px]:sticky @min-[880px]:top-6 @min-[880px]:max-h-[calc(var(--pk-pane-h)-48px)] @min-[880px]:self-start @min-[880px]:overflow-y-auto @min-[880px]:scrollbar-none">
             <OrderRail f={f} />
           </aside>
         )}

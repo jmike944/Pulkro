@@ -101,7 +101,7 @@ export function UnassignedRail(props: Props) {
           {props.orders.length}
         </span>
       </div>
-      <div className="mt-2 max-h-[calc(100dvh-220px)] overflow-y-auto pr-1">
+      <div className="mt-2 max-h-[calc(var(--pk-pane-h)-220px)] overflow-y-auto pr-1">
         <UnassignedList {...props} />
       </div>
     </AuroraFrame>

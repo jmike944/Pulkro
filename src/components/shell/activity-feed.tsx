@@ -52,17 +52,21 @@ export function ActivityList({ className, onNavigate }: { className?: string; on
   );
 }
 
-/** Desktop: bell popover with the recent-activity feed. */
-export function ActivityBell() {
+/** Desktop: bell popover with the recent-activity feed (the card header's right edge). `compact` is the 40px size of that bar. */
+export function ActivityBell({ compact = false, className }: { compact?: boolean; className?: string }) {
   const { fresh } = useRecentActivity();
   return (
     <Popover>
       <PopoverTrigger
-        aria-label="Actividad reciente"
-        className="relative inline-flex size-12 items-center justify-center rounded-[16px] border border-hairline bg-surface shadow-[0_1px_2px_rgb(16_24_40/0.03)] transition hover:border-line-strong max-md:size-11 max-md:rounded-[14px]"
+        aria-label={fresh ? "Actividad reciente · hay cambios en la última hora" : "Actividad reciente"}
+        className={cn(
+          "relative inline-flex items-center justify-center border border-hairline bg-surface shadow-[0_1px_2px_rgb(16_24_40/0.03)] transition hover:border-line-strong",
+          compact ? "size-10 rounded-[14px]" : "size-12 rounded-[16px] max-md:size-11 max-md:rounded-[14px]",
+          className,
+        )}
       >
-        <Bell className="size-[19px] text-ink" />
-        {fresh && <span className="absolute right-3 top-2.5 size-2 rounded-full bg-st-red ring-2 ring-surface" />}
+        <Bell className={cn("text-ink", compact ? "size-[18px]" : "size-[19px]")} />
+        {fresh && <span className={cn("absolute size-2 rounded-full bg-st-red ring-2 ring-surface", compact ? "right-2 top-1.5" : "right-3 top-2.5")} />}
       </PopoverTrigger>
       <PopoverContent align="end" className="w-[min(360px,calc(100vw-24px))] p-0">
         <div className="border-b border-hairline px-4 py-3">

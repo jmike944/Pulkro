@@ -10,6 +10,7 @@ import { fmtDuration, fmtLongDay, fmtTime, plural } from "@/lib/format";
 import { TonePill } from "@/components/pk/status";
 import { EASE } from "@/components/pk/motion";
 import { HeaderTools } from "@/components/shell/header-tools";
+import { usePublishCrumbs } from "@/components/shell/crumbs";
 import type { FieldReady } from "./use-field-state";
 
 const JORNADA_PILL = {
@@ -18,14 +19,18 @@ const JORNADA_PILL = {
   cerrada: { tone: "teal", label: "Cerrada" },
 } as const;
 
-/** Back link to the order, eyebrow "Jornada 2 de 3 · jueves 9 de octubre", serif title, site line, narrative. */
+/**
+ * Back link to the order, eyebrow "Jornada 2 de 3 · jueves 9 de octubre", serif title, site line, narrative.
+ * From `lg` the card header carries the trail (Operación › Órdenes › OS-24391 › Jornada 2) and the tools, so the back-link row is phone/tablet only.
+ */
 export function FieldHeader({ f }: { f: FieldReady }) {
   const { order, client, site, jornada } = f;
   const pill = JORNADA_PILL[jornada.status];
+  usePublishCrumbs([{ label: "Órdenes", href: "/ordenes" }, { label: order.folio, href: `/ordenes/${order.folio}` }, { label: `Jornada ${f.index}` }]);
 
   return (
     <header className="mb-6 sm:mb-8">
-      <div className="flex items-center justify-between gap-3">
+      <div className="flex items-center justify-between gap-3 lg:hidden">
         <motion.div initial={{ opacity: 0, x: -6 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.4, ease: EASE }}>
           <Link
             href={`/ordenes/${order.folio}`}
@@ -40,7 +45,7 @@ export function FieldHeader({ f }: { f: FieldReady }) {
       </div>
 
       <motion.div initial={{ opacity: 0, y: 10, filter: "blur(6px)" }} animate={{ opacity: 1, y: 0, filter: "blur(0px)" }} transition={{ duration: 0.6, ease: EASE }}>
-        <p className="mt-4 text-[14.5px] text-subtle sm:mt-5">
+        <p className="mt-4 text-[14.5px] text-subtle sm:mt-5 lg:mt-0">
           Jornada {f.index} de {f.total} · {fmtLongDay(jornada.plannedStart)}
         </p>
         <h1 className="mt-1.5 font-serif text-[30px] font-medium leading-[1.1] tracking-[-0.015em] text-ink sm:text-[40px] sm:leading-[1.08]">{order.title}</h1>

@@ -13,6 +13,7 @@ import { MobileRow, NextStepCard, BigButton } from "@/components/pk/mobile";
 import { SoftBadge } from "@/components/pk/status";
 import { PersonAvatar } from "@/components/pk/bits";
 import { EASE, rowVariants, staggerContainer } from "@/components/pk/motion";
+import { getScrollport, onMainScroll } from "@/components/shell/main-scroll";
 import { KIND_ICON, KIND_SHORT, KIND_SINGULAR, KIND_TONE, kindHex, leadNote, oldestNote, tileTone, whenClass, whenOf, type When } from "./pending-meta";
 import type { PendingGroupMeta, PendingItem, PendingKind } from "./use-pending-items";
 
@@ -361,8 +362,9 @@ export function TypeRail({ groups, now, active, onJump }: { groups: Group[]; now
 }
 
 /**
- * Which group's list the reader is in: the last one whose top has passed 40% of the viewport.
+ * Which group's list the reader is in: the last one whose top has passed 40% of the scrolling viewport.
  * (That line, not the very top, so a group near the end of the page can still be the current one.)
+ * The viewport is the main scroller's box from lg up (the work panel scrolls, not the window) and the window below.
  */
 export function useScrollSpy(kinds: PendingKind[]) {
   const [active, setActive] = useState<PendingKind | null>(null);
@@ -373,10 +375,11 @@ export function useScrollSpy(kinds: PendingKind[]) {
     let raf = 0;
     const measure = () => {
       raf = 0;
+      const { top, height } = getScrollport();
       let cur: PendingKind | null = null;
       for (const k of list) {
         const el = document.getElementById(`pend-${k}`);
-        if (el && el.getBoundingClientRect().top <= window.innerHeight * 0.4) cur = k;
+        if (el && el.getBoundingClientRect().top <= top + height * 0.4) cur = k;
       }
       setActive(cur);
     };
@@ -384,11 +387,9 @@ export function useScrollSpy(kinds: PendingKind[]) {
       if (!raf) raf = requestAnimationFrame(measure);
     };
     measure();
-    window.addEventListener("scroll", schedule, { passive: true });
-    window.addEventListener("resize", schedule);
+    const off = onMainScroll(schedule);
     return () => {
-      window.removeEventListener("scroll", schedule);
-      window.removeEventListener("resize", schedule);
+      off();
       if (raf) cancelAnimationFrame(raf);
     };
   }, [key]);
