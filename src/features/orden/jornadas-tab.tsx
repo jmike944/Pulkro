@@ -14,7 +14,7 @@ import { distanceMeters } from "@/components/pk/geo-map";
 import { rowVariants, staggerContainer } from "@/components/pk/motion";
 import { SoftBadge, TonePill } from "@/components/pk/status";
 import { Button } from "@/components/ui/button";
-import { JORNADA_STATUS, compact, fmtSeconds, fmtTimeRange, fmtWeekdayDay, jornadaPlanned } from "./orden-format";
+import { JORNADA_STATUS, compact, crewNames, fmtSeconds, fmtTimeRange, fmtWeekdayDay, jornadaPlanned } from "./orden-format";
 import { DENY, useOrder, type Gate, type Lookups } from "./order-context";
 import { Gated } from "./ui";
 
@@ -182,6 +182,12 @@ function JornadaCard({ j, today }: { j: Jornada; today: boolean }) {
             </Button>
           </Gated>
         </div>
+        {/* names are title-only on avatars: spell out who worked this day on touch screens (the stack opens the full list) */}
+        {crew.length > 0 && (
+          <p className="col-span-2 -mt-1.5 text-[13px] leading-snug text-subtle sm:basis-full lg:hidden">
+            Cuadrilla: <span className="font-medium text-ink">{crewNames(crew)}</span>
+          </p>
+        )}
       </div>
 
       {j.log.length > 0 && <Bitacora j={j} lk={lk} />}

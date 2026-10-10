@@ -167,7 +167,11 @@ export function DeviceData() {
         <Button onClick={exportBackup} className="h-11 w-full rounded-[12px] text-[14.5px] font-semibold">
           <Download className="size-4" /> Exportar respaldo (JSON)
         </Button>
-        <p className="text-center text-[12.5px] text-subtle">Incluye solo la información que tu rol puede ver.</p>
+        <p className="text-center text-[12.5px] text-subtle">
+          Incluye solo la información que tu rol puede ver
+          {/* the global unit filter narrows Dirección's backup, and on a phone that filter is easy to forget */}
+          {user.role === "direccion" && <> · alcance: {unitFilter === "all" ? "todas las unidades" : (lk.units.get(unitFilter)?.name ?? unitFilter)}</>}.
+        </p>
         <Button variant="outline" onClick={() => setConfirmReset(true)} className="h-11 w-full rounded-[12px] border-[#dfe3ea] text-[14.5px] font-semibold text-st-red hover:text-st-red">
           <RotateCcw className="size-4" /> Restablecer datos de demostración
         </Button>

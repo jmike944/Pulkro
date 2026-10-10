@@ -12,8 +12,8 @@ import type { Order, User } from "@/lib/types";
 import { AnimatedNumber, DateBadge, PersonAvatar } from "@/components/pk/bits";
 import { CrewPicker } from "@/components/pk/crew-picker";
 import { EASE } from "@/components/pk/motion";
+import { ReasonTip } from "@/components/pk/reason-tip";
 import { Select, SelectContent, SelectItem, SelectTrigger } from "@/components/ui/select";
-import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { MAX_DAYS, dateKey, dayId, dayMinutes, nextWorkingDay, workingDaysFrom, type DraftDay } from "./draft";
 import { FieldLabel, FieldMessage, FormSection } from "./form-bits";
 import type { StepProps } from "./step-types";
@@ -172,22 +172,19 @@ export function StepSchedule({
                         {day.date ? fmtLongDay(day.date) : "Sin fecha"} · {fmtDuration(dayMinutes(day))}
                       </p>
                     </div>
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <span>
-                          <button
-                            type="button"
-                            onClick={() => removeDay(day.id)}
-                            disabled={draft.days.length === 1}
-                            aria-label={`Quitar jornada ${i + 1}`}
-                            className="inline-flex size-10 items-center justify-center rounded-[12px] text-subtle transition hover:bg-[#fdeeee] hover:text-st-red disabled:pointer-events-none disabled:opacity-40"
-                          >
-                            <Trash className="size-4" />
-                          </button>
-                        </span>
-                      </TooltipTrigger>
-                      {draft.days.length === 1 && <TooltipContent>La orden necesita al menos una jornada</TooltipContent>}
-                    </Tooltip>
+                    <ReasonTip reason={draft.days.length === 1 ? "La orden necesita al menos una jornada" : null}>
+                      <span>
+                        <button
+                          type="button"
+                          onClick={() => removeDay(day.id)}
+                          disabled={draft.days.length === 1}
+                          aria-label={`Quitar jornada ${i + 1}`}
+                          className="inline-flex size-10 items-center justify-center rounded-[12px] text-subtle transition hover:bg-[#fdeeee] hover:text-st-red disabled:pointer-events-none disabled:opacity-40"
+                        >
+                          <Trash className="size-4" />
+                        </button>
+                      </span>
+                    </ReasonTip>
                   </div>
                   <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-[minmax(0,1.35fr)_minmax(0,1fr)_minmax(0,1fr)]">
                     <label className="col-span-2 block sm:col-span-1">
@@ -217,24 +214,21 @@ export function StepSchedule({
           </AnimatePresence>
         </ul>
 
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <span className="mt-3 block">
-              <motion.button
-                type="button"
-                whileTap={{ scale: 0.985 }}
-                onClick={addDay}
-                disabled={draft.days.length >= MAX_DAYS}
-                className="group flex h-12 w-full items-center justify-center gap-2 rounded-[16px] border border-dashed border-[#cfd6df] text-[14px] font-semibold text-ink transition hover:border-[#1667e0] hover:bg-[#f6faff] hover:text-link disabled:pointer-events-none disabled:opacity-50"
-              >
-                <CalendarPlus className="size-[18px] transition-transform group-hover:-rotate-6 group-hover:scale-110" />
-                Agregar jornada
-                {draft.days.at(-1)?.date && <span className="font-normal text-subtle">· {fmtDay(dateKey(nextWorkingDay(parseISO(draft.days.at(-1)!.date))))}</span>}
-              </motion.button>
-            </span>
-          </TooltipTrigger>
-          {draft.days.length >= MAX_DAYS && <TooltipContent>Máximo {MAX_DAYS} jornadas por orden</TooltipContent>}
-        </Tooltip>
+        <ReasonTip reason={draft.days.length >= MAX_DAYS ? `Máximo ${MAX_DAYS} jornadas por orden` : null}>
+          <span className="mt-3 block">
+            <motion.button
+              type="button"
+              whileTap={{ scale: 0.985 }}
+              onClick={addDay}
+              disabled={draft.days.length >= MAX_DAYS}
+              className="group flex h-12 w-full items-center justify-center gap-2 rounded-[16px] border border-dashed border-[#cfd6df] text-[14px] font-semibold text-ink transition hover:border-[#1667e0] hover:bg-[#f6faff] hover:text-link disabled:pointer-events-none disabled:opacity-50"
+            >
+              <CalendarPlus className="size-[18px] transition-transform group-hover:-rotate-6 group-hover:scale-110" />
+              Agregar jornada
+              {draft.days.at(-1)?.date && <span className="font-normal text-subtle">· {fmtDay(dateKey(nextWorkingDay(parseISO(draft.days.at(-1)!.date))))}</span>}
+            </motion.button>
+          </span>
+        </ReasonTip>
         <FieldMessage error={issues.errors.days} />
       </FormSection>
 
@@ -263,7 +257,11 @@ export function StepSchedule({
             </div>
             <FieldMessage
               warning={conflicts > 0 ? `${plural(conflicts, "persona seleccionada ya tiene", "personas seleccionadas ya tienen")} otra jornada en esas fechas.` : undefined}
-              hint={draft.workerIds.length === 0 ? "Sin cuadrilla la orden se guarda como Borrador; podrá asignarla después desde la orden." : undefined}
+              hint={
+                draft.workerIds.length === 0
+                  ? "Sin cuadrilla la orden se guarda como Borrador; podrá asignarla después desde la orden."
+                  : "Con cuadrilla la orden se guarda como Programada y aparece en la agenda."
+              }
             />
           </>
         ) : (

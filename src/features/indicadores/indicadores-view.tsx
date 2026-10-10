@@ -174,7 +174,10 @@ export function IndicadoresView() {
           selected: unitFilter,
           onPick: (id) => {
             setUnitFilter(id);
-            toast(id === "all" ? "Indicadores de todas las unidades" : `Indicadores de ${units.find((u) => u.id === id)?.name ?? "la unidad"}`);
+            // The unit filter is global (Equipo, Clientes, Hoy, Catálogos), not just this screen.
+            toast(id === "all" ? "Viendo todas las unidades" : `Viendo ${units.find((u) => u.id === id)?.name ?? "la unidad"}`, {
+              description: "El filtro de unidad aplica a toda la aplicación, no solo a Indicadores.",
+            });
           },
           hint:
             user.role === "supervisor"

@@ -6,10 +6,11 @@ import { useCan, useLookups, useMediaQuery, useNow, useScopedData, useSyncSummar
 import { plural } from "@/lib/format";
 import type { Report } from "@/lib/types";
 import { PageHeader, UnderlineTabs } from "@/components/pk/page";
+import { AuroraPanel } from "@/components/pk/aurora";
 import { AnimatedNumber } from "@/components/pk/bits";
 import { AuroraStat } from "@/components/pk/mobile";
 import { HUB_TABS, buildHubRows, hubMetrics, sortRows, type HubRow, type HubTab } from "./hub-data";
-import { HubHero } from "./hub-hero";
+import { DeltaChip, HubHero, HubTrend } from "./hub-hero";
 import { HubList } from "./hub-list";
 import { HubInsights } from "./hub-insights";
 import { useReportOutputs } from "./use-report-outputs";
@@ -123,8 +124,27 @@ export function ReportsHubView() {
               <span className="text-[18px] font-normal tracking-normal text-subtle">{m.thisWeek === 1 ? "reporte" : "reportes"}</span>
             </span>
           }
-          sub={`${m.counts.por_compartir} por compartir · ${m.counts.por_generar} por generar · ${m.lastWeek} la semana pasada`}
+          sub={
+            <>
+              <span className="flex flex-wrap items-center gap-x-2.5 gap-y-1.5">
+                {m.lastWeek > 0 ? (
+                  <>
+                    <DeltaChip delta={m.delta} /> vs {m.lastWeek} la semana pasada
+                  </>
+                ) : (
+                  "Sin reportes la semana pasada"
+                )}
+              </span>
+              <span className="mt-2 block">
+                {m.counts.por_compartir} por compartir · {m.counts.por_generar} por generar
+              </span>
+            </>
+          }
         />
+        {/* The pipeline tiles of the desktop hero are the tabs below; only the weekly trend needs its own block. */}
+        <AuroraPanel bubbles={false} className="mt-3 p-4">
+          <HubTrend m={m} compact />
+        </AuroraPanel>
         <section className="mt-8">
           {tabs}
           {list}

@@ -368,9 +368,11 @@ function Detail({
       </div>
 
       <div className="border-t border-hairline p-4">
-        {!canAssign && (
+        {(crewReason ?? moveReason) && (
+          // the dimmed buttons below can't explain themselves on touch (no hover): say why in plain sight
           <p className="mb-3 flex items-start gap-2 text-[12.5px] leading-snug text-subtle">
-            <Lock className="mt-0.5 size-3.5 shrink-0" /> Solo consulta. {REASON_CREW}
+            <Lock className="mt-0.5 size-3.5 shrink-0" />
+            <span>{!canAssign ? `Solo consulta. ${REASON_CREW}` : (crewReason ?? `Reprogramar no disponible. ${moveReason}`)}</span>
           </p>
         )}
         <div className="grid grid-cols-2 gap-2">

@@ -1,7 +1,7 @@
 "use client";
 
 import { cn } from "@/lib/utils";
-import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { ReasonTip } from "@/components/pk/reason-tip";
 import { DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 
 /** Copy for actions a role can't perform (doc §2 "Gestionar quejas/encuestas"). */
@@ -16,20 +16,17 @@ export const menuItemCls = "min-h-10 gap-2.5 rounded-[10px] px-2.5 text-[14px]";
 export const outlineBtnCls = "h-10 rounded-[12px] border-[#dfe3ea] px-4 text-[14px] font-semibold shadow-[0_1px_2px_rgb(16_24_40/0.05)]";
 
 /**
- * Wraps a (disabled) control in a tooltip that explains who can use it.
+ * Wraps a (disabled) control in a tooltip (tap bubble on touch) that explains who can use it.
  * When `allowed` the child renders untouched.
  */
 export function Gate({ allowed, reason, children, className }: { allowed: boolean; reason: string; children: React.ReactNode; className?: string }) {
   if (allowed) return <>{children}</>;
   return (
-    <Tooltip>
-      <TooltipTrigger asChild>
-        <span tabIndex={0} className={cn("inline-flex cursor-not-allowed rounded-[12px] outline-none focus-visible:ring-2 focus-visible:ring-sky", className)}>
-          {children}
-        </span>
-      </TooltipTrigger>
-      <TooltipContent className="max-w-[260px] text-[12.5px]">{reason}</TooltipContent>
-    </Tooltip>
+    <ReasonTip reason={reason} contentClassName="max-w-[260px] text-[12.5px]">
+      <span tabIndex={0} className={cn("inline-flex cursor-not-allowed rounded-[12px] outline-none focus-visible:ring-2 focus-visible:ring-sky", className)}>
+        {children}
+      </span>
+    </ReasonTip>
   );
 }
 
@@ -87,7 +84,7 @@ export function FilterChip({
   count,
 }: {
   active: boolean;
-  onClick: () => void;
+  onClick: (e: React.MouseEvent<HTMLButtonElement>) => void;
   children: React.ReactNode;
   count?: number;
 }) {
@@ -97,7 +94,7 @@ export function FilterChip({
       onClick={onClick}
       aria-pressed={active}
       className={cn(
-        "inline-flex h-10 shrink-0 items-center gap-2 rounded-full border px-4 text-[14px] transition-colors",
+        "inline-flex h-10 shrink-0 items-center gap-2 rounded-full border px-4 text-[14px] transition-colors max-md:h-11",
         active ? "border-ink bg-ink font-semibold text-white" : "border-hairline bg-white text-ink hover:bg-[#f5f7fa]",
       )}
     >

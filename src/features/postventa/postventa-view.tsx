@@ -13,6 +13,7 @@ import type { CaseChannel, PostSaleCase } from "@/lib/types";
 import { PageHeader, UnderlineTabs } from "@/components/pk/page";
 import { FadeIn } from "@/components/pk/motion";
 import { ClientMark } from "@/components/pk/client-mark";
+import { useUnitScope } from "@/components/shell/header-tools";
 import { Button } from "@/components/ui/button";
 import { CaseBoard } from "./case-board";
 import { FollowUpPanel, pendingFollowUps } from "./followup-panel";
@@ -40,6 +41,7 @@ function PostventaInner({ folio }: { folio: string | null }) {
   const router = useRouter();
   const lk = useLookups();
   const now = useNow(60_000);
+  const { allUnits, selected } = useUnitScope();
 
   const focus = folio ? orders.find((o) => o.folio === folio) : undefined;
   const pending = useMemo(() => pendingFollowUps(followUps, now, focus?.id), [followUps, now, focus?.id]);
@@ -153,6 +155,8 @@ function PostventaInner({ folio }: { folio: string | null }) {
 
   const description = (
     <>
+      {/* below lg the sidebar's unit switcher is gone: say which unit these numbers belong to (as Órdenes does) */}
+      {allUnits && <span className="lg:hidden">{selected?.name ?? "Todas las unidades"}: </span>}
       <b>{plural(openCases.length, "caso abierto", "casos abiertos")}</b>
       {dueToday > 0 && `, ${plural(dueToday, "vence", "vencen")} hoy`}
       {overdue > 0 && (

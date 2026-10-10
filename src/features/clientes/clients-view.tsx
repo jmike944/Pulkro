@@ -9,6 +9,7 @@ import { fmtDate, fmtNum, fmtPct, plural } from "@/lib/format";
 import { exportToExcel } from "@/lib/export";
 import { PageHeader } from "@/components/pk/page";
 import { BarList, CornerLink, Insight } from "@/components/pk/bits";
+import { useUnitScope } from "@/components/shell/header-tools";
 import { Button } from "@/components/ui/button";
 import { casesByCategory } from "@/features/postventa/lib";
 import { Gate, REASON_EXPORT, REASON_ORDER_CREATE, outlineBtnCls } from "@/features/postventa/ui";
@@ -21,6 +22,7 @@ export function ClientsView() {
   const { rows, cases, now } = useClientDirectory();
   const canCreate = useCan("order.create");
   const canExport = useCan("export.excel");
+  const { allUnits, selected } = useUnitScope();
 
   const summary = useMemo(() => {
     const services = rows.reduce((s, r) => s + r.services.length, 0);
@@ -84,6 +86,8 @@ export function ClientsView() {
 
   const description = (
     <>
+      {/* below lg the sidebar's unit switcher is gone: say which unit the directory is scoped to */}
+      {allUnits && <span className="lg:hidden">{selected?.name ?? "Todas las unidades"}. </span>}
       Últimos 12 meses: <b>{plural(summary.services, "servicio", "servicios")}</b> para <b>{plural(rows.length, "cliente", "clientes")}</b>.
       {summary.top && (
         <>

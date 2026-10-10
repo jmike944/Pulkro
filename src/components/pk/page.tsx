@@ -1,5 +1,6 @@
 "use client";
 
+import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { motion, LayoutGroup } from "motion/react";
 import { ChevronLeft } from "lucide-react";
@@ -122,6 +123,9 @@ export function PageHeader({
 
 export type TabItem = { value: string; label: string; count?: React.ReactNode };
 
+/** Width of the edge fade that hints at tabs hidden beyond a scrolled strip. */
+const TAB_FADE_PX = 36;
+
 export function UnderlineTabs({
   items,
   value,
@@ -135,9 +139,58 @@ export function UnderlineTabs({
   className?: string;
   id?: string;
 }) {
+  const listRef = useRef<HTMLDivElement>(null);
+  const firstScroll = useRef(true);
+  const [fade, setFade] = useState({ start: false, end: false });
+
+  // Which sides still have tabs beyond them (neither when the strip fits, as on desktop).
+  const measure = useCallback(() => {
+    const el = listRef.current;
+    if (!el) return;
+    const start = el.scrollLeft > 2;
+    const end = el.scrollLeft + el.clientWidth < el.scrollWidth - 2;
+    setFade((f) => (f.start === start && f.end === end ? f : { start, end }));
+  }, []);
+
+  useEffect(() => {
+    const el = listRef.current;
+    if (!el) return;
+    el.addEventListener("scroll", measure, { passive: true });
+    const ro = new ResizeObserver(measure);
+    ro.observe(el);
+    return () => {
+      el.removeEventListener("scroll", measure);
+      ro.disconnect();
+    };
+  }, [measure]);
+  // Labels and counts change the strip's width without resizing the box.
+  useEffect(measure);
+
+  // Bring the active tab into view (deep links, programmatic switches, remounts). Scrolls the strip only,
+  // never the page: scrollIntoView would also move the window vertically.
+  useEffect(() => {
+    const el = listRef.current;
+    const tab = el?.querySelector<HTMLElement>('[aria-selected="true"]');
+    const first = firstScroll.current;
+    firstScroll.current = false;
+    if (!el || !tab || el.scrollWidth <= el.clientWidth) return;
+    const box = el.getBoundingClientRect();
+    const t = tab.getBoundingClientRect();
+    if (t.left >= box.left + TAB_FADE_PX && t.right <= box.right - TAB_FADE_PX) return;
+    const smooth = !first && !window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    el.scrollTo({ left: el.scrollLeft + (t.left - box.left) - (box.width - t.width) / 2, behavior: smooth ? "smooth" : "auto" });
+  }, [value]);
+
+  const stops = [fade.start ? `transparent, #000 ${TAB_FADE_PX}px` : "#000", fade.end ? `#000 calc(100% - ${TAB_FADE_PX}px), transparent` : "#000"].join(", ");
+  const mask = fade.start || fade.end ? `linear-gradient(to right, ${stops})` : undefined;
   return (
     <LayoutGroup id={id}>
-      <div role="tablist" className={cn("scrollbar-none -mx-1 flex gap-7 overflow-x-auto border-b border-hairline px-1", className)}>
+      <div
+        ref={listRef}
+        role="tablist"
+        style={{ maskImage: mask, WebkitMaskImage: mask }}
+        className={cn("scrollbar-none -mx-1 flex gap-7 overflow-x-auto border-b border-hairline px-1", className)}
+      >
         {items.map((t) => {
           const active = t.value === value;
           return (

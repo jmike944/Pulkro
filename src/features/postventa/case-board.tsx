@@ -133,7 +133,15 @@ function BoardColumn({
   );
 }
 
-type MobileFilter = "activos" | "resuelto" | "cerrado";
+/** "activos" keeps the old combined view (abierto + en proceso); each status also has its own chip. */
+type MobileFilter = "activos" | CaseStatus;
+
+const CHIP_LABEL: Record<CaseStatus, string> = { abierto: "Abiertos", en_proceso: "En proceso", resuelto: "Resueltos", cerrado: "Cerrados" };
+const EMPTY_COPY: Partial<Record<MobileFilter, string>> = {
+  activos: "No hay casos abiertos ni en proceso. ¡Impecable!",
+  abierto: "Nada pendiente de atender. ¡Impecable!",
+  en_proceso: "Ningún caso en proceso.",
+};
 
 function MobileCaseList({
   rows,
@@ -146,29 +154,30 @@ function MobileCaseList({
   onMove: (row: CaseRow, to: CaseStatus) => void;
   focusOrderId?: string;
 }) {
-  const counts = useMemo(
-    () => ({
-      activos: rows.filter((r) => isCaseOpen(r.c)).length,
-      resuelto: rows.filter((r) => r.c.status === "resuelto").length,
-      cerrado: rows.filter((r) => r.c.status === "cerrado").length,
-    }),
-    [rows],
-  );
+  const counts = useMemo(() => {
+    const by = Object.fromEntries(CASE_FLOW.map((st) => [st, rows.filter((r) => r.c.status === st).length])) as Record<CaseStatus, number>;
+    return { ...by, activos: by.abierto + by.en_proceso };
+  }, [rows]);
   const [filter, setFilter] = useState<MobileFilter>(() => (counts.activos || !counts.resuelto ? "activos" : "resuelto"));
   const shown = rows.filter((r) => (filter === "activos" ? isCaseOpen(r.c) : r.c.status === filter));
+
+  // five chips overflow a phone: keep the tapped one in view
+  const pick = (f: MobileFilter) => (e: React.MouseEvent<HTMLButtonElement>) => {
+    setFilter(f);
+    e.currentTarget.scrollIntoView({ behavior: "smooth", block: "nearest", inline: "center" });
+  };
 
   return (
     <div className="mt-5 md:hidden">
       <div className="scrollbar-none -mx-4 flex gap-2 overflow-x-auto px-4 pb-1">
-        <FilterChip active={filter === "activos"} onClick={() => setFilter("activos")} count={counts.activos}>
+        <FilterChip active={filter === "activos"} onClick={pick("activos")} count={counts.activos}>
           Activos
         </FilterChip>
-        <FilterChip active={filter === "resuelto"} onClick={() => setFilter("resuelto")} count={counts.resuelto}>
-          Resueltos
-        </FilterChip>
-        <FilterChip active={filter === "cerrado"} onClick={() => setFilter("cerrado")} count={counts.cerrado}>
-          Cerrados
-        </FilterChip>
+        {CASE_FLOW.map((st) => (
+          <FilterChip key={st} active={filter === st} onClick={pick(st)} count={counts[st]}>
+            {CHIP_LABEL[st]}
+          </FilterChip>
+        ))}
       </div>
       <motion.div layout className="mt-4 flex flex-col gap-3">
         <AnimatePresence mode="popLayout" initial={false}>
@@ -186,7 +195,7 @@ function MobileCaseList({
         </AnimatePresence>
         {shown.length === 0 && (
           <p className="rounded-[18px] border border-dashed border-[#d9dfe7] px-4 py-8 text-center text-[14px] text-subtle">
-            {filter === "activos" ? "No hay casos abiertos ni en proceso. ¡Impecable!" : "Sin casos en este estado."}
+            {EMPTY_COPY[filter] ?? "Sin casos en este estado."}
           </p>
         )}
       </motion.div>

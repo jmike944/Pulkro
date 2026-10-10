@@ -7,7 +7,7 @@ import { cn } from "@/lib/utils";
 import { useCurrentUser, useLookups } from "@/lib/hooks";
 import { fmtDay, fmtNum, fmtPct, fmtTime, plural } from "@/lib/format";
 import { PersonAvatar, AnimatedNumber } from "@/components/pk/bits";
-import { StatusDot, ToneText } from "@/components/pk/status";
+import { SoftBadge, StatusDot, ToneText } from "@/components/pk/status";
 import { EmptyState } from "@/components/pk/feedback";
 import { MobileRow } from "@/components/pk/mobile";
 import { rowVariants, staggerContainer } from "@/components/pk/motion";
@@ -211,10 +211,30 @@ function RequestRow({ r, selected, onOpen }: { r: EvidenceRequest; selected: boo
         className="lg:hidden"
         onClick={onOpen}
         leading={sup && <PersonAvatar name={sup.name} initials={sup.initials} hue={sup.hue} size={44} />}
-        title={neededLabel(r)}
+        title={
+          <>
+            {neededLabel(r)}
+            {/* compliance exception: the order was already validated without this photo */}
+            {r.closed && (
+              <>
+                {/* a plain space (not a margin) so the badge sits flush left when it wraps to the second line */}{" "}
+                <SoftBadge tone="amber" className="whitespace-nowrap align-middle">
+                  {need}
+                </SoftBadge>
+              </>
+            )}
+          </>
+        }
         meta={
-          <span className="truncate">
-            {r.order.folio} · {client?.shortName} · {fmtDay(r.since)}, {fmtTime(r.since)}
+          // two lines so the "since" time is never ellipsized (MobileRow meta is single-line); service type goes last so it truncates first
+          <span className="min-w-0 whitespace-normal">
+            <span className="block truncate">
+              {r.order.folio} · {client?.shortName}
+              {st ? ` · ${st.name}` : ""}
+            </span>
+            <span className="block tabular">
+              Desde {fmtDay(r.since)}, {fmtTime(r.since)}
+            </span>
           </span>
         }
         status={{ tone, label: `${dueLabel(r)} · ${supShort ?? "Supervisor"}`, live: r.overdue }}

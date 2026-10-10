@@ -7,7 +7,7 @@ import { CASE_CATEGORY, CASE_STATUS, SHARE_CHANNEL } from "@/lib/status";
 import type { TimelineStep } from "@/components/pk/timeline";
 import { Timeline } from "@/components/pk/timeline";
 import { AvatarStack } from "@/components/pk/bits";
-import { CONFORMITY_LABEL, compact, fmtTimeRange, jornadaTitle, stampSource } from "./orden-format";
+import { CONFORMITY_LABEL, compact, crewNames, fmtTimeRange, jornadaTitle, stampSource } from "./orden-format";
 import { useOrder, type OrderDetail } from "./order-context";
 
 /** Lifecycle timeline built from real records (doc §3 main flow). */
@@ -76,6 +76,7 @@ export function buildTimeline(d: OrderDetail): TimelineStep[] {
             {plural(crew.length, "persona", "personas")} · {userName(first.by)}
             {changes > 0 && ` · ${plural(changes, "reasignación", "reasignaciones")}`}
           </span>
+          {crew.length > 0 && <span className="basis-full lg:hidden">{crewNames(crew)}</span>}
         </span>
       ),
       when: fmtDateTime(first.at),

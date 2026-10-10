@@ -33,6 +33,14 @@ function FitBounds({ points }: { points: [number, number][] }) {
   return null;
 }
 
+/**
+ * Leaflet gives a draggable map `touch-action: none`, so on a touch screen a one-finger swipe that starts
+ * on it pans the map instead of scrolling the page (a scroll trap in long phone pages). Touch screens get a
+ * map that doesn't drag: the page scrolls over it and pinch / the zoom buttons still work ("Abrir en Maps"
+ * is the way to roam). Mouse keeps dragging.
+ */
+const touchScreen = () => L.Browser.mobile || window.matchMedia("(pointer: coarse)").matches;
+
 export default function GeoMapInner({ markers, accuracy, zoom = 16, className, interactive = true, connect }: GeoMapProps) {
   const points = markers.map((m) => [m.lat, m.lng] as [number, number]);
   const center = points[0] ?? [25.6866, -100.3161];
@@ -41,7 +49,7 @@ export default function GeoMapInner({ markers, accuracy, zoom = 16, className, i
       center={center}
       zoom={zoom}
       scrollWheelZoom={false}
-      dragging={interactive}
+      dragging={interactive && !touchScreen()}
       zoomControl={interactive}
       attributionControl
       className={className}

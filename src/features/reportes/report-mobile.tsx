@@ -1,7 +1,7 @@
 "use client";
 
 import { motion } from "motion/react";
-import { ChevronRight, CircleCheck, Download, Info, Mail, MessageCircle, RotateCcw, Send, Sparkles } from "lucide-react";
+import { ChevronRight, CircleAlert, CircleCheck, Download, Info, Mail, MessageCircle, RotateCcw, Send, Sparkles } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { fmtDuration, fmtTime, minutesBetween, plural } from "@/lib/format";
 import type { Report, ShareChannel } from "@/lib/types";
@@ -22,30 +22,41 @@ import { REASON } from "./guard";
 export function MobileReportCard({
   latest,
   dirty,
+  reopened,
   nextVersion,
   stats,
   canShare,
   canExport,
   busy,
+  task,
+  gate,
   contactName,
   onGenerate,
   onShare,
   onDownload,
+  onOpenSync,
 }: {
   latest?: Report;
   dirty: boolean;
+  /** order reopened after closure: a new version is due even without visible changes */
+  reopened?: boolean;
   nextVersion: number;
   stats: ReportStats;
   canShare: boolean;
   canExport: boolean;
   busy: boolean;
+  task: OutputTask | null;
+  gate: SyncGate;
   contactName: string;
   onGenerate: () => void;
   onShare: () => void;
   onDownload: () => void;
+  onOpenSync: () => void;
 }) {
   const status = reportStatus(latest);
   const needsGenerate = dirty || !latest;
+  // Same rule as the desktop card: no definitive PDF out of the device while records of the order are unsynced.
+  const downloadBlocked = !latest || !canExport || gate.kind !== "ok";
   return (
     <NextStepCard
       avatar={<PulkroMark className="size-11 rounded-[13px]" animated={busy} />}
@@ -66,45 +77,54 @@ export function MobileReportCard({
             "Sin fotos seleccionadas"
           )}
           {" · "}
-          {plural(stats.jornadas, "jornada", "jornadas")} · {plural(stats.pages || 1, "página", "páginas")}.{" "}
+          {plural(stats.jornadas, "jornada", "jornadas")} · {stats.incidents ? plural(stats.incidents, "incidencia", "incidencias") : "sin incidencias"} ·{" "}
+          {plural(stats.pages || 1, "página", "páginas")}.{" "}
           {needsGenerate
             ? latest
-              ? `Hay cambios: se creará la v${nextVersion}.`
+              ? `${reopened ? "Orden reabierta tras el cierre" : "Hay cambios"}: se creará la v${nextVersion}.`
               : `Genere el PDF y compártalo con ${contactName}.`
             : `Listo para compartir con ${contactName}.`}
         </>
       }
       action={
-        <div className="grid gap-2.5">
-          {canShare ? (
-            needsGenerate ? (
-              <>
-                <BigButton onClick={onGenerate} disabled={busy}>
-                  <Sparkles /> Generar PDF v{nextVersion}
-                </BigButton>
-                {latest && (
-                  <BigButton variant="outline" onClick={onShare} disabled={busy}>
-                    <Send /> Compartir v{latest.version}
-                  </BigButton>
-                )}
-              </>
-            ) : (
-              <BigButton onClick={onShare} disabled={busy}>
-                <Send /> Compartir reporte
-              </BigButton>
-            )
+        <>
+          <SyncGatePanel gate={gate} onOpenSync={onOpenSync} className="mb-3" />
+          {busy && task ? (
+            <TaskProgress task={task} />
           ) : (
-            <>
-              <BigButton variant="outline" onClick={onDownload} disabled={!latest || !canExport || busy}>
-                <Download /> {latest ? `Descargar PDF v${latest.version}` : "Aún sin PDF"}
-              </BigButton>
-              <p className="flex items-start gap-2 text-[13.5px] leading-snug text-subtle">
-                <Info className="mt-0.5 size-4 shrink-0" />
-                {REASON.share}
-              </p>
-            </>
+            <div className="grid gap-2.5">
+              {canShare ? (
+                needsGenerate ? (
+                  <>
+                    <BigButton onClick={onGenerate}>
+                      <Sparkles /> Generar PDF v{nextVersion}
+                    </BigButton>
+                    {latest && (
+                      <BigButton variant="outline" onClick={onShare}>
+                        <Send /> Compartir v{latest.version}
+                      </BigButton>
+                    )}
+                  </>
+                ) : (
+                  <BigButton onClick={onShare}>
+                    <Send /> Compartir reporte
+                  </BigButton>
+                )
+              ) : (
+                <>
+                  <BigButton variant="outline" onClick={onDownload} disabled={downloadBlocked}>
+                    <Download /> {latest ? `Descargar PDF v${latest.version}` : "Aún sin PDF"}
+                  </BigButton>
+                  <p className="flex items-start gap-2 text-[13.5px] leading-snug text-subtle">
+                    <Info className="mt-0.5 size-4 shrink-0" />
+                    {REASON.share}
+                  </p>
+                </>
+              )}
+              {task?.step === "error" && <p className="text-[13.5px] leading-snug text-st-red">{task.error} Intente de nuevo.</p>}
+            </div>
           )}
-        </div>
+        </>
       }
     />
   );
@@ -215,6 +235,12 @@ export function ReportFlow({
                 <b className="font-semibold">PDF v{task.version} listo.</b> Revíselo y compártalo.
               </span>
             </motion.div>
+          )}
+          {task?.step === "error" && (
+            <p className="mb-4 flex items-start gap-3 rounded-[16px] bg-[#fdeeee] px-4 py-3 text-[14.5px] leading-snug text-st-red">
+              <CircleAlert className="mt-0.5 size-5 shrink-0" />
+              <span>{task.error} Intente de nuevo.</span>
+            </p>
           )}
           <SyncGatePanel gate={gate} onOpenSync={onOpenSync} className="mb-4" />
           {!latest ? (

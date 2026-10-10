@@ -202,19 +202,26 @@ function PhoneIncident({
       title="Incidencia"
       description={`${inc.folio} · ${type.label}`}
       footer={
-        isOpen ? (
-          m.canCapture ? (
-            <BigButton disabled={text.trim().length < 6} onClick={() => setOutcome(m.resolve(text))}>
-              <CheckCircle2 /> Marcar como resuelta
-            </BigButton>
+        <div className="space-y-2.5">
+          {isOpen ? (
+            m.canCapture ? (
+              <BigButton disabled={text.trim().length < 6} onClick={() => setOutcome(m.resolve(text))}>
+                <CheckCircle2 /> Marcar como resuelta
+              </BigButton>
+            ) : (
+              <p className="rounded-[14px] bg-[#f5f7fa] px-4 py-3 text-center text-[13.5px] leading-snug text-subtle">{RESOLVE_REASON}</p>
+            )
           ) : (
-            <p className="rounded-[14px] bg-[#f5f7fa] px-4 py-3 text-center text-[13.5px] leading-snug text-subtle">{RESOLVE_REASON}</p>
-          )
-        ) : (
-          <BigButton variant="outline" href={`/ordenes/${order.folio}?tab=incidencias`}>
-            Ver orden {order.folio}
-          </BigButton>
-        )
+            m.canClose &&
+            (order.status === "pendiente_validacion" || order.status === "reabierta") && <BigButton href={`/ordenes/${order.folio}?cerrar=1`}>Ir al cierre</BigButton>
+          )}
+          {/* An open incident the user can resolve keeps a single primary action; its order is one tap away in "Detalle". */}
+          {(!isOpen || !m.canCapture) && (
+            <BigButton variant="outline" href={`/ordenes/${order.folio}?tab=incidencias`}>
+              Ver orden {order.folio}
+            </BigButton>
+          )}
+        </div>
       }
     >
       <FlowHeading

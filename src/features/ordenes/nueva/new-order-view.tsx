@@ -5,7 +5,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { AnimatePresence, motion, useAnimate, type Variants } from "motion/react";
 import { toast } from "sonner";
-import { ArrowRight, ChevronLeft, CircleAlert, Lock, Sparkles } from "lucide-react";
+import { ArrowRight, ChevronLeft, CircleAlert, ClipboardList, Lock, Sparkles } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAppStore, useCan, useCurrentUser, useIsOffline, useLookups, useMediaQuery, useScopedData, useShallow } from "@/lib/hooks";
 import { useUi } from "@/lib/ui-store";
@@ -33,6 +33,7 @@ import {
   suggestedTitle,
   toInput,
   validateStep,
+  willBeScheduled,
   type Draft,
 } from "./draft";
 import { Stepper } from "./stepper";
@@ -41,6 +42,7 @@ import { StepService } from "./step-service";
 import { StepSchedule } from "./step-schedule";
 import { StepReview } from "./step-review";
 import { LiveSummary } from "./live-summary";
+import { SummaryButton, SummarySheet } from "./summary-sheet";
 import type { StepProps } from "./step-types";
 
 const STEP_COPY = [
@@ -111,6 +113,7 @@ function NewOrderWizard() {
   const [touched, setTouched] = useState<Set<string>>(() => new Set());
   const [attempted, setAttempted] = useState<Set<number>>(() => new Set());
   const [created, setCreated] = useState<Order | null>(null);
+  const [summaryOpen, setSummaryOpen] = useState(false);
   const topRef = useRef<HTMLDivElement>(null);
   const [nextScope, animateNext] = useAnimate<HTMLSpanElement>();
 
@@ -218,6 +221,16 @@ function NewOrderWizard() {
   const isLast = step === STEPS.length - 1;
   const primaryLabel = isLast ? "Crear orden" : `Siguiente`;
 
+  const assignNote = !canAssign && (
+    <p className="mt-4 px-2 text-[13px] leading-relaxed text-subtle">
+      Como {user.role === "administracion" ? "Administración" : "este rol"} da de alta la orden; el supervisor asigna la cuadrilla y la programa.
+    </p>
+  );
+  /* Below xl the sticky aside is hidden: the same summary opens on demand. */
+  const summarySheet = (
+    <SummarySheet open={summaryOpen} onOpenChange={setSummaryOpen} draft={draft} title={title} folio={folio} canAssign={canAssign} done={complete} current={step} note={assignNote} />
+  );
+
   const animatedBody = (
     <AnimatePresence mode="wait" custom={dir} initial={false}>
       <motion.div key={step} custom={dir} variants={slide} initial="enter" animate="center" exit="exit">
@@ -291,10 +304,11 @@ function NewOrderWizard() {
             <>
               <div ref={topRef} className="scroll-mt-4" />
               <Stepper current={step} done={complete} reachable={reachable} onSelect={go} />
+              <SummaryButton className="mt-4" scheduled={willBeScheduled(draft, canAssign)} onClick={() => setSummaryOpen(true)} />
               <AnimatePresence mode="wait" initial={false}>
                 <motion.div key={step} initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} transition={{ duration: 0.3, ease: EASE }}>
                   <FlowHeading
-                    className="mb-4 mt-6"
+                    className="mb-4 mt-5"
                     eyebrow={
                       <>
                         <PulkroMark className="size-5 rounded-[6px]" />
@@ -308,6 +322,7 @@ function NewOrderWizard() {
                 </motion.div>
               </AnimatePresence>
               {animatedBody}
+              {summarySheet}
             </>
           )}
         </FlowScreen>
@@ -376,6 +391,15 @@ function NewOrderWizard() {
               <Button
                 type="button"
                 variant="outline"
+                onClick={() => setSummaryOpen(true)}
+                className="h-11 rounded-[14px] border-[#dfe3ea] px-4 text-[14.5px] font-semibold xl:hidden"
+              >
+                <ClipboardList className="size-4" />
+                Resumen
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
                 onClick={() => go(step - 1)}
                 disabled={step === 0}
                 className="h-11 rounded-[14px] border-[#dfe3ea] px-4 text-[14.5px] font-semibold"
@@ -407,14 +431,11 @@ function NewOrderWizard() {
         <aside className="hidden min-w-0 xl:block xl:pl-10">
           <div className="sticky top-6">
             <LiveSummary draft={draft} title={title} folio={folio} canAssign={canAssign} done={complete} current={step} />
-            {!canAssign && (
-              <p className="mt-4 px-2 text-[13px] leading-relaxed text-subtle">
-                Como {user.role === "administracion" ? "Administración" : "este rol"} da de alta la orden; el supervisor asigna la cuadrilla y la programa.
-              </p>
-            )}
+            {assignNote}
           </div>
         </aside>
       </div>
+      {summarySheet}
     </div>
   );
 }

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useLayoutEffect, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { AnimatePresence, motion, type Variants } from "motion/react";
 import { addDays, parseISO, startOfDay } from "date-fns";
@@ -25,6 +25,7 @@ import { useAgendaData } from "./use-agenda";
 import { WeekView } from "./week-view";
 import { DayView } from "./day-view";
 import { ListView } from "./list-view";
+import { LaneFilter } from "./lane-filter";
 import { ConflictsNote, WorkloadStrip } from "./workload-strip";
 import { UnassignedRail, UnassignedSection } from "./unassigned-panel";
 import { JornadaSheet, type SheetState } from "./jornada-sheet";
@@ -44,6 +45,27 @@ const labelSlide: Variants = {
 };
 
 /**
+ * Once the week/day switch has settled, bring the freshly scheduled or moved block on screen:
+ * below the Por asignar header the calendar can sit a full screen down, and the toast alone is easy to miss.
+ * Skips the scroll when the block is already comfortably visible (desktop), and waits for the new week to mount.
+ */
+function revealOrder(orderId: string) {
+  let tries = 0;
+  const seek = () => {
+    const el = Array.from(document.querySelectorAll<HTMLElement>(`[data-order-id="${orderId}"]`)).find((e) => e.getClientRects().length > 0);
+    if (!el) {
+      if (++tries < 12) window.setTimeout(seek, 120);
+      return;
+    }
+    const r = el.getBoundingClientRect();
+    // 110px at the bottom keeps clear of the tab bar
+    if (r.top >= 16 && r.bottom <= window.innerHeight - 110) return;
+    el.scrollIntoView({ block: "center", behavior: "smooth" });
+  };
+  window.setTimeout(seek, 300);
+}
+
+/**
  * Agenda y asignación (doc §7): the supervisor plans crews and dates; Dirección and
  * Administración consult. `?fecha=yyyy-MM-dd` anchors the week/day.
  */
@@ -54,6 +76,7 @@ export function AgendaView() {
   const focus = parseFecha(searchParams.get("fecha"), now);
   const focusKey = dayKey(focus);
   const isDesktop = useMediaQuery("(min-width: 768px)");
+  const isWide = useMediaQuery("(min-width: 1024px)");
   const canPlan = useCan("crew.assign");
 
   const [viewChoice, setViewChoice] = useState<View | null>(null);
@@ -62,8 +85,15 @@ export function AgendaView() {
   const [sheet, setSheet] = useState<SheetState>(null);
   const [sched, setSched] = useState<ScheduleState>(null);
   const [highlight, setHighlight] = useState<string | null>(null);
+  const [laneChoice, setLaneChoice] = useState("all");
 
-  const data = useAgendaData(focusKey, now);
+  const agenda = useAgendaData(focusKey, now);
+  // Below lg the supervisors' lanes collapse into one column: Dirección/Administración can narrow it to one supervisor.
+  const laneFilter = agenda.multiLane && agenda.lanes.length > 1 && !isWide;
+  const lane = laneFilter && agenda.lanes.some((l) => l.id === laneChoice) ? laneChoice : "all";
+  const laneItems = useMemo(() => (lane === "all" ? agenda.items : agenda.items.filter((i) => i.order.supervisorId === lane)), [agenda.items, lane]);
+  const laneLanes = useMemo(() => (lane === "all" ? agenda.lanes : agenda.lanes.filter((l) => l.id === lane)), [agenda.lanes, lane]);
+  const data = lane === "all" ? agenda : { ...agenda, items: laneItems, lanes: laneLanes };
   const weekKey = dayKey(weekStartOf(focus));
   const isThisWeek = weekKey === dayKey(weekStartOf(now));
 
@@ -97,6 +127,7 @@ export function AgendaView() {
   const flash = (orderId: string) => {
     setHighlight(orderId);
     window.setTimeout(() => setHighlight((h) => (h === orderId ? null : h)), 2600);
+    revealOrder(orderId);
   };
 
   // ← → move through weeks/days, T jumps to today (when no overlay or field has focus).
@@ -225,6 +256,8 @@ export function AgendaView() {
             onPick={pickDay}
           />
           <ConflictsNote conflicts={data.conflicts} onOpen={openJornada} when={isThisWeek ? "esta semana" : `la semana del ${fmtDay(data.days[0])}`} />
+
+          {laneFilter && <LaneFilter lanes={agenda.lanes} total={agenda.items.length} value={lane} onChange={setLaneChoice} />}
 
           <div className="-mx-4 overflow-x-clip px-4 pb-2 sm:-mx-7 sm:px-7 md:mx-0 md:px-0">
             <AnimatePresence mode="wait" custom={dir}>

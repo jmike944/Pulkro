@@ -12,7 +12,7 @@ import { ORDER_STATUS } from "@/lib/status";
 import { EASE, rowVariants, staggerContainer } from "@/components/pk/motion";
 import { Button } from "@/components/ui/button";
 import type { OrderRow } from "./order-rows";
-import { EvidenceBadges, JornadaProgress, NextActionButton, RealHours } from "./row-bits";
+import { EvidenceBadges, JornadaProgress, NextActionButton, RealHours, RowBreakdown } from "./row-bits";
 
 export const PAGE_SIZE = 30;
 
@@ -231,19 +231,22 @@ function OrderCard({ row, role }: { row: OrderRow; role: Role }) {
         <StatusHint row={row} className="text-[13.5px]" />
       </div>
 
-      <div className="mt-3.5 grid grid-cols-[minmax(0,0.8fr)_minmax(0,1.5fr)_minmax(0,0.7fr)] gap-3 rounded-[16px] bg-sand/70 px-3.5 py-3">
-        <div className="min-w-0">
-          <p className="text-[10.5px] font-semibold uppercase tracking-[0.1em] text-subtle">Jornadas</p>
-          <JornadaProgress row={row} compact className="mt-1" />
+      <div className="mt-3.5 rounded-[16px] bg-sand/70 px-3.5 py-3">
+        <div className="grid grid-cols-[minmax(0,0.8fr)_minmax(0,1.5fr)_minmax(0,0.7fr)] gap-3">
+          <div className="min-w-0">
+            <p className="text-[10.5px] font-semibold uppercase tracking-[0.1em] text-subtle">Jornadas</p>
+            <JornadaProgress row={row} compact className="mt-1" />
+          </div>
+          <div className="min-w-0">
+            <p className="text-[10.5px] font-semibold uppercase tracking-[0.1em] text-subtle">Evidencia</p>
+            <EvidenceBadges row={row} className="mt-1 gap-1" />
+          </div>
+          <div className="min-w-0 text-right">
+            <p className="text-[10.5px] font-semibold uppercase tracking-[0.1em] text-subtle">Horas</p>
+            <RealHours row={row} className="mt-1 text-[14px]" />
+          </div>
         </div>
-        <div className="min-w-0">
-          <p className="text-[10.5px] font-semibold uppercase tracking-[0.1em] text-subtle">Evidencia</p>
-          <EvidenceBadges row={row} className="mt-1 gap-1" />
-        </div>
-        <div className="min-w-0 text-right">
-          <p className="text-[10.5px] font-semibold uppercase tracking-[0.1em] text-subtle">Horas</p>
-          <RealHours row={row} className="mt-1 text-[14px]" />
-        </div>
+        <RowBreakdown row={row} className="mt-2.5" />
       </div>
 
       <div className="mt-3.5 flex items-center justify-between gap-3">

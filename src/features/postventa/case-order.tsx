@@ -159,10 +159,10 @@ export function CaseOrderSurvey({ bundle }: { bundle: OrderBundle }) {
       </div>
       {sv.answers ? (
         <>
-          <div className="mt-3 flex items-center gap-3">
+          <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-2">
             <span className="text-[30px] font-medium leading-none tracking-[-0.03em] text-ink tabular">{sv.answers.overall.toFixed(1)}</span>
             <Stars value={sv.answers.overall} size={18} />
-            <NpsValue value={sv.answers.nps} className="ml-auto" />
+            <NpsValue value={sv.answers.nps} showLabel className="ml-auto" />
           </div>
           {sv.answers.comment && <p className="mt-3 font-serif text-[16px] italic leading-snug text-ink">“{sv.answers.comment}”</p>}
           <p className="mt-2 text-[12.5px] text-subtle">

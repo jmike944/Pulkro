@@ -183,10 +183,12 @@ export function SurveysPanel({
                       <StateCell r={r} />
                     </div>
                     {r.s.answers && (
-                      <div className="mt-3 flex items-center gap-3">
+                      <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-2">
                         <Stars value={r.s.answers.overall} size={16} />
-                        <NpsValue value={r.s.answers.nps} />
-                        <span className="text-[12.5px] text-subtle">NPS</span>
+                        <span className="inline-flex items-center gap-1.5">
+                          <span className="text-[12.5px] text-subtle">NPS</span>
+                          <NpsValue value={r.s.answers.nps} showLabel />
+                        </span>
                       </div>
                     )}
                     <div className="mt-3 flex-1">

@@ -9,7 +9,7 @@ import { ROLE_LABEL } from "@/lib/status";
 import type { Role } from "@/lib/types";
 import { SectionHeader } from "@/components/pk/bits";
 import { EASE } from "@/components/pk/motion";
-import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { ReasonTip } from "@/components/pk/reason-tip";
 import { DOC_STATUS, DocTag, ROLES, ROLE_SHORT, type DocStatus } from "./shared";
 
 /**
@@ -123,6 +123,10 @@ export function PermissionMatrix() {
           </span>
         ))}
       </div>
+      {/* the per-cell qualifier is a tap / hover bubble; this is the same information in plain text */}
+      <p className="mt-2 text-[12.5px] leading-snug text-subtle">
+        El ojo es solo consulta, salvo en «Ver todas las unidades»: Administración ve únicamente su unidad y Supervisor únicamente sus asignaciones.
+      </p>
 
       <div className="mt-8 rounded-[22px] bg-[#fff8eb] p-5 sm:p-6">
         <div className="flex items-start gap-4">
@@ -164,16 +168,11 @@ export function PermissionMatrix() {
 function Mark({ yes, partial, role, label, delay }: { yes: boolean; partial: string | null; role: Role; label: string; delay: number }) {
   const text = yes ? "Permitido" : partial ?? "Sin acceso";
   return (
-    <Tooltip>
-      <TooltipTrigger asChild>
-        <span tabIndex={0} aria-label={`${ROLE_LABEL[role]} · ${label}: ${text}`} className="inline-flex size-10 items-center justify-center rounded-full outline-none focus-visible:ring-3 focus-visible:ring-ring/50">
-          <MarkGlyph kind={yes ? "yes" : partial ? "partial" : "no"} delay={delay} animated />
-        </span>
-      </TooltipTrigger>
-      <TooltipContent className="text-[12.5px]">
-        {ROLE_LABEL[role]} · {text}
-      </TooltipContent>
-    </Tooltip>
+    <ReasonTip reason={`${ROLE_LABEL[role]} · ${text}`} icon={null} contentClassName="text-[12.5px]">
+      <span tabIndex={0} aria-label={`${ROLE_LABEL[role]} · ${label}: ${text}`} className="inline-flex size-10 items-center justify-center rounded-full outline-none focus-visible:ring-3 focus-visible:ring-ring/50">
+        <MarkGlyph kind={yes ? "yes" : partial ? "partial" : "no"} delay={delay} animated />
+      </span>
+    </ReasonTip>
   );
 }
 

@@ -56,3 +56,12 @@ export function isActive(pathname: string, href: string) {
   if (href === "/") return pathname === "/";
   return pathname === href || pathname.startsWith(`${href}/`);
 }
+
+/** Sections only reached from Perfil › Secciones (everything that is not one of the 4 phone tabs). */
+const PHONE_TABS = ["/", "/ordenes", "/pendientes", "/perfil"];
+const SECONDARY = [...NAV_MAIN, ...NAV_FOOT].filter((n) => !PHONE_TABS.includes(n.href));
+
+/** True inside a secondary section — the phone tab bar lights the Perfil tab there ("you are in Más"). */
+export function isSecondaryRoute(pathname: string) {
+  return SECONDARY.some((n) => isActive(pathname, n.href));
+}

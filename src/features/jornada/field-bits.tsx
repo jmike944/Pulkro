@@ -6,7 +6,7 @@ import { es } from "date-fns/locale";
 import { cn } from "@/lib/utils";
 import { d } from "@/lib/format";
 import { GeoMap } from "@/components/pk/geo-map";
-import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { ReasonTip } from "@/components/pk/reason-tip";
 
 /* ───────────── formatting helpers local to the field screen ───────────── */
 
@@ -29,7 +29,7 @@ export const StableMap = memo(GeoMap);
 /* ───────────── permission gate ───────────── */
 
 /**
- * Wraps a (disabled) control with a tooltip that explains why it is unavailable and who can do it.
+ * Wraps a (disabled) control with a tooltip (tap bubble on touch) that explains why it is unavailable and who can do it.
  * Renders the child untouched when `reason` is empty.
  */
 export function Gate({
@@ -45,16 +45,11 @@ export function Gate({
 }) {
   if (!reason) return <>{children}</>;
   return (
-    <Tooltip>
-      <TooltipTrigger asChild>
-        <span tabIndex={0} aria-label={reason} className={cn("inline-flex cursor-not-allowed rounded-[12px] outline-none focus-visible:ring-3 focus-visible:ring-ring/50", className)}>
-          {children}
-        </span>
-      </TooltipTrigger>
-      <TooltipContent side={side} className="max-w-[260px] text-[12.5px] leading-snug">
-        {reason}
-      </TooltipContent>
-    </Tooltip>
+    <ReasonTip reason={reason} side={side} contentClassName="max-w-[260px] text-[12.5px] leading-snug">
+      <span tabIndex={0} aria-label={reason} className={cn("inline-flex cursor-not-allowed rounded-[12px] outline-none focus-visible:ring-3 focus-visible:ring-ring/50", className)}>
+        {children}
+      </span>
+    </ReasonTip>
   );
 }
 

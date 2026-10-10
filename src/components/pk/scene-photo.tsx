@@ -350,6 +350,8 @@ export function PhotoThumb({
 
 /**
  * Drag the squeegee to wipe from ANTES to DESPUÉS. On mount it performs one "wipe" pass.
+ * Touch: the photo only claims horizontal drags (`touch-pan-y`), so a vertical swipe that starts
+ * on it still scrolls the page; the handle claims every drag that starts on it (`touch-none`).
  */
 export function BeforeAfter({ before, after, className }: { before: Photo; after: Photo; className?: string }) {
   const ref = useRef<HTMLDivElement>(null);
@@ -371,12 +373,14 @@ export function BeforeAfter({ before, after, className }: { before: Photo; after
   return (
     <div
       ref={ref}
-      className={cn("relative aspect-[4/3] w-full touch-none select-none overflow-hidden rounded-[20px] ring-1 ring-black/5", className)}
+      className={cn("relative aspect-[4/3] w-full touch-pan-y select-none overflow-hidden rounded-[20px] ring-1 ring-black/5", className)}
       onPointerDown={(e) => {
         (e.target as HTMLElement).setPointerCapture?.(e.pointerId);
-        setFromClient(e.clientX);
+        // touch waits for a horizontal drag or a tap: a vertical page scroll starting here must not move the slider
+        if (e.pointerType !== "touch") setFromClient(e.clientX);
       }}
       onPointerMove={(e) => e.buttons && setFromClient(e.clientX)}
+      onPointerUp={(e) => e.pointerType === "touch" && setFromClient(e.clientX)}
       role="slider"
       aria-label="Comparar antes y después"
       aria-valuemin={0}
@@ -395,7 +399,8 @@ export function BeforeAfter({ before, after, className }: { before: Photo; after
       </motion.div>
       <span className="absolute left-3 top-3 rounded-full bg-black/45 px-2.5 py-1 text-[11px] font-bold tracking-[0.1em] text-white backdrop-blur">ANTES</span>
       <span className="absolute right-3 top-3 rounded-full bg-white/85 px-2.5 py-1 text-[11px] font-bold tracking-[0.1em] text-ink backdrop-blur">DESPUÉS</span>
-      <motion.div className="absolute inset-y-0 -ml-[3px] w-[6px] cursor-ew-resize" style={{ left }}>
+      {/* touch-none: dragging the handle never turns into a page scroll; 44px grab zone on touch screens */}
+      <motion.div className="absolute inset-y-0 -ml-[3px] w-[6px] cursor-ew-resize touch-none pointer-coarse:-ml-[22px] pointer-coarse:w-11" style={{ left }}>
         <div className="absolute inset-y-0 left-1/2 w-[3px] -translate-x-1/2 bg-white shadow-[0_0_14px_rgb(122_209_244/0.9)]" />
         <div className="absolute left-1/2 top-1/2 flex h-14 w-7 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full bg-white shadow-lift">
           <span className="h-7 w-[3px] rounded-full bg-brand" />

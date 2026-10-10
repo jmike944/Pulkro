@@ -2,15 +2,15 @@
 
 import Link from "next/link";
 import { useMemo, useState } from "react";
-import { isSameDay, parseISO, startOfMonth, endOfMonth, setMonth } from "date-fns";
+import { isSameDay, parseISO } from "date-fns";
 import { motion } from "motion/react";
 import { Camera, ChevronDown, Clock, MapPin, Sparkles, TrendingDown, TrendingUp } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useLookups, useMediaQuery, useNow, useScopedData } from "@/lib/hooks";
 import { TodayMobile } from "./today-mobile";
+import { MONTHS_ES, useAttention, useHoyStats, useIncidentYear } from "./use-hoy-stats";
 import { firstName, fmtDaysLeft, fmtDuration, fmtHours, fmtNum, fmtPct, fmtTime, greeting, daysUntil, plural } from "@/lib/format";
-import { closedAt, hoursPerService, incidentsByType, photoCompliance, servicesByMonth, servicesInRange, statusBuckets } from "@/lib/metrics";
-import { jornadaMinutes, nextAction, orderEvidence } from "@/lib/domain";
+import { jornadaMinutes } from "@/lib/domain";
 import { ROLE_LABEL } from "@/lib/status";
 import type { Jornada, Order } from "@/lib/types";
 import { PageHeader } from "@/components/pk/page";
@@ -23,21 +23,6 @@ import { EASE, rowVariants, staggerContainer } from "@/components/pk/motion";
 import { Button } from "@/components/ui/button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 
-const MONTHS_ES = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
-
-/** Attention priority for the "requieren atención" list. */
-const PRIORITY: Partial<Record<Order["status"], number>> = {
-  con_incidencia: 0,
-  pendiente_validacion: 1,
-  reabierta: 1,
-  en_ejecucion: 2,
-  finalizada: 3,
-  programada: 4,
-  jornada_cerrada: 5,
-  borrador: 6,
-  reprogramada: 7,
-};
-
 export function DashboardView() {
   const desktop = useMediaQuery("(min-width: 1024px)");
   return desktop ? <DesktopDashboard /> : <TodayMobile />;
@@ -45,39 +30,12 @@ export function DashboardView() {
 
 function DesktopDashboard() {
   const data = useScopedData();
-  const { user, orders, jornadas, photos, incidents, reports, surveys, cases } = data;
+  const { user, orders, jornadas, photos } = data;
   const lk = useLookups();
   const now = useNow(60_000);
   const [month, setMonthIdx] = useState(now.getMonth());
 
-  const stats = useMemo(() => {
-    const ref = setMonth(now, month);
-    const start = startOfMonth(ref);
-    const end = month === now.getMonth() ? now : endOfMonth(ref);
-    const prevStart = startOfMonth(setMonth(ref, month - 1));
-    const prevEnd = endOfMonth(prevStart);
-    const current = servicesInRange(orders, start, end).length;
-    const prev = servicesInRange(orders, prevStart, prevEnd).length;
-    const buckets = statusBuckets(orders);
-    const yearClosed = orders.filter((o) => {
-      const c = closedAt(o);
-      return c && c.getFullYear() === now.getFullYear();
-    });
-    const hours = hoursPerService(yearClosed, jornadas);
-    const compliance = photoCompliance(yearClosed, jornadas, photos);
-    return {
-      current,
-      prev,
-      delta: prev ? (current - prev) / prev : 0,
-      prevLabel: MONTHS_ES[(month + 11) % 12].toLowerCase(),
-      buckets,
-      byMonth: servicesByMonth(orders, now),
-      yearClosed: yearClosed.length,
-      totalHours: hours.totalMinutes / 60,
-      compliance,
-      incidentsOpen: incidents.filter((i) => i.status === "abierta").length,
-    };
-  }, [orders, jornadas, photos, incidents, month, now]);
+  const stats = useHoyStats(data, now, month);
 
   const today = useMemo(
     () =>
@@ -87,20 +45,11 @@ function DesktopDashboard() {
     [jornadas, now],
   );
 
-  const attention = useMemo(() => {
-    const ctx = { jornadas, photos, incidents, reports, surveys, cases };
-    return orders
-      .filter((o) => PRIORITY[o.status] !== undefined)
-      .filter((o) => o.status !== "programada" || daysUntil(o.scheduledStart) <= 1)
-      .map((o) => ({ o, a: nextAction(o, ctx, now), ev: orderEvidence(o, jornadas, photos) }))
-      .sort((x, y) => (PRIORITY[x.o.status]! - PRIORITY[y.o.status]!) || x.o.scheduledStart.localeCompare(y.o.scheduledStart))
-      .slice(0, 6);
-  }, [orders, jornadas, photos, incidents, reports, surveys, cases, now]);
+  const { top: attention } = useAttention(data, now);
 
   const readyToClose = attention.filter((x) => x.a.status === "Lista para cierre").length;
 
-  const incidentYear = useMemo(() => incidents.filter((i) => parseISO(i.createdAt).getFullYear() === now.getFullYear()), [incidents, now]);
-  const incidentBars = useMemo(() => incidentsByType(incidentYear).slice(0, 5), [incidentYear]);
+  const { incidentYear, incidentBars } = useIncidentYear(data, now);
 
   const description = (
     <>
@@ -230,10 +179,9 @@ function DesktopDashboard() {
                 <span />
               </div>
               <motion.ul variants={staggerContainer(0.05, 0.25)} initial="hidden" animate="show">
-                {attention.map(({ o, a }) => {
+                {attention.map(({ o, a, minutes }) => {
                   const client = lk.clients.get(o.clientId);
                   const st = lk.serviceTypes.get(o.serviceTypeId);
-                  const minutes = jornadas.filter((j) => j.orderId === o.id).reduce((s, j) => s + jornadaMinutes(j, now), 0);
                   const dl = daysUntil(o.scheduledEnd);
                   return (
                     <motion.li
@@ -342,7 +290,7 @@ function TodayCard({
                 <p className="text-[24px] font-medium tracking-tight tabular">{fmtDuration(jornadaMinutes(j, now))}</p>
               </>
             ) : (
-              <AvatarStack people={crew} size={28} />
+              <AvatarStack people={crew} size={28} interactive={false} />
             )}
           </div>
           <div className="flex gap-1.5 text-[11px] font-bold tracking-[0.06em]">

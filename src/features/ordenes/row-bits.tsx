@@ -2,14 +2,16 @@
 
 import Link from "next/link";
 import { motion } from "motion/react";
+import { Lock } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { can, type Action } from "@/lib/permissions";
-import { fmtHours } from "@/lib/format";
+import { fmtHours, plural } from "@/lib/format";
+import { useMediaQuery } from "@/lib/hooks";
 import type { Jornada, Role } from "@/lib/types";
 import { EASE } from "@/components/pk/motion";
+import { ReasonTip } from "@/components/pk/reason-tip";
 import { StatusDot } from "@/components/pk/status";
 import { Button } from "@/components/ui/button";
-import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import type { OrderRow } from "./order-rows";
 
 /* ───────────── next action (role-aware) ───────────── */
@@ -39,18 +41,13 @@ export function NextActionButton({ row, role, className }: { row: OrderRow; role
   if (!allowed) {
     // The role only consults: offer the detail and explain who acts.
     return (
-      <Tooltip>
-        <TooltipTrigger asChild>
-          <Button asChild size="lg" variant="outline" className={cn(base, outline, className)}>
-            <Link href={`/ordenes/${row.order.folio}`} aria-label={`Ver ${row.order.folio}. ${a.status}: ${rule.who}`}>
-              Ver
-            </Link>
-          </Button>
-        </TooltipTrigger>
-        <TooltipContent side="left" className="max-w-[240px]">
-          {a.status} · {rule.who}
-        </TooltipContent>
-      </Tooltip>
+      <ViewOnlyAction row={row} who={rule.who}>
+        <Button asChild size="lg" variant="outline" className={cn(base, outline, className)}>
+          <Link href={`/ordenes/${row.order.folio}`} aria-label={`Ver ${row.order.folio}. ${a.status}: ${rule.who}`}>
+            Ver
+          </Link>
+        </Button>
+      </ViewOnlyAction>
     );
   }
 
@@ -60,6 +57,30 @@ export function NextActionButton({ row, role, className }: { row: OrderRow; role
         {a.label}
       </Link>
     </Button>
+  );
+}
+
+/**
+ * Explains who acts next. Hover devices get a tooltip; on touch a tap on the link navigates, so a tip
+ * would never be read: the sentence is printed under the card's button instead (the table row keeps it
+ * out, it only shows below the container breakpoint where the cards render).
+ */
+function ViewOnlyAction({ row, who, children }: { row: OrderRow; who: string; children: React.ReactElement }) {
+  const touch = useMediaQuery("(hover: none)");
+  if (touch)
+    return (
+      <>
+        {children}
+        <p className="mt-2 flex items-center justify-center gap-1.5 text-center text-[12.5px] leading-snug text-subtle @4xl:hidden">
+          <Lock className="size-3.5 shrink-0" />
+          {who}
+        </p>
+      </>
+    );
+  return (
+    <ReasonTip reason={`${row.action.status} · ${who}`} side="left" contentClassName="max-w-[240px]">
+      {children}
+    </ReasonTip>
   );
 }
 
@@ -134,6 +155,39 @@ export function EvidenceBadges({ row, className }: { row: OrderRow; className?: 
       <EvidenceChip label="ANTES" count={row.antes} missing={row.antesMissing} required={required} />
       <EvidenceChip label="DESPUÉS" count={row.despues} missing={row.despuesMissing} required={row.closedDays > 0} />
     </div>
+  );
+}
+
+/* ───────────── card breakdown ───────────── */
+
+/**
+ * The words behind the card's bar, chips and hours. The table cells keep them in `title=`, which touch
+ * never shows, and the bar alone tells closed / in progress / pending apart by colour. Only what is
+ * not obvious from the numbers is printed: mixed jornada states, missing photos, live hours.
+ */
+export function RowBreakdown({ row, className }: { row: OrderRow; className?: string }) {
+  const total = row.jornadas.length || row.order.plannedDays;
+  const pending = Math.max(0, total - row.closedDays - row.liveDays);
+  const states = [row.closedDays, row.liveDays, pending].filter((n) => n > 0).length;
+  const jornadas =
+    states > 1 || row.liveDays > 0
+      ? [
+          row.closedDays > 0 && plural(row.closedDays, "cerrada", "cerradas"),
+          row.liveDays > 0 && `${row.liveDays} en curso`,
+          pending > 0 && plural(pending, "pendiente", "pendientes"),
+        ]
+          .filter(Boolean)
+          .join(" · ")
+      : "";
+  const missing = [row.antesMissing && "ANTES", row.despuesMissing && "DESPUÉS"].filter(Boolean).join(" y ");
+  const liveHours = row.live && row.minutes > 0;
+  if (!jornadas && !missing && !liveHours) return null;
+  return (
+    <ul className={cn("space-y-0.5 border-t border-hairline pt-2.5 text-[12.5px] leading-snug text-subtle", className)}>
+      {jornadas && <li>Jornadas: {jornadas}</li>}
+      {missing && <li className="font-medium text-[#b86e00]">Falta foto {missing}</li>}
+      {liveHours && <li>Las horas incluyen la jornada en curso</li>}
+    </ul>
   );
 }
 

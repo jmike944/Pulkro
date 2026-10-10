@@ -73,23 +73,51 @@ export function HubList({
         {rows.map((r) => {
           const client = clients.get(r.order.clientId);
           const st = STAGE[r.stage];
+          const reopened = r.stage === "por_generar" && r.order.status === "reabierta";
+          const reason = !canExport ? REASON.export : blockedOrderIds.has(r.order.id) ? REASON.sync : null;
+          const busy = busyId === r.order.id;
+          // The row link and the download button are siblings: a button inside an anchor is invalid and its tap would navigate.
           return (
-            <motion.div key={r.order.id} variants={rowVariants}>
+            <motion.div key={r.order.id} variants={rowVariants} className="flex items-center border-b border-hairline last:border-0">
               <MobileRow
+                className="min-w-0 flex-1 border-b-0"
                 href={`/ordenes/${r.order.folio}/reporte`}
                 leading={<DateBadge date={r.date} className="size-[54px]" />}
                 title={r.order.title}
                 meta={
-                  <span className="truncate">
-                    {r.order.folio} · {client?.shortName}
-                    {r.latest && ` · v${r.latest.version}`}
-                  </span>
+                  <>
+                    <span className="truncate">
+                      {r.order.folio} · {client?.shortName}
+                      {r.latest && ` · v${r.latest.version}`}
+                    </span>
+                    {reopened && <span className="shrink-0 font-medium text-st-violet">· reabierta</span>}
+                  </>
                 }
                 status={{
                   tone: st.tone,
-                  label: r.lastShare && r.stage === "enviados" ? `${CHANNEL_TO_LABEL[r.lastShare.channel]} · ${fmtRelativeDay(r.lastShare.at)} ${fmtTime(r.lastShare.at)} · sin confirmación` : st.label,
+                  label:
+                    r.lastShare && r.stage === "enviados"
+                      ? `${CHANNEL_TO_LABEL[r.lastShare.channel]} · ${fmtRelativeDay(r.lastShare.at)} ${fmtTime(r.lastShare.at)} · sin confirmación${r.shareCount > 1 ? ` · ${r.shareCount} intentos` : ""}`
+                      : st.label,
                 }}
+                trailing={r.latest ? <></> : undefined /* the download button takes the chevron's place */}
               />
+              {r.latest && (
+                <div className="-mr-3 shrink-0">
+                  <WithReason reason={reason}>
+                    <Button
+                      variant="ghost"
+                      size="icon-lg"
+                      disabled={!!reason || busy}
+                      onClick={() => onDownload(r)}
+                      aria-label={`Descargar PDF v${r.latest.version} de ${r.order.folio}`}
+                      className="size-11 rounded-[12px] text-subtle"
+                    >
+                      {busy ? <LoaderCircle className="size-5 animate-spin" /> : <Download className="size-5" />}
+                    </Button>
+                  </WithReason>
+                </div>
+              )}
             </motion.div>
           );
         })}

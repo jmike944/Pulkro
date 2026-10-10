@@ -61,6 +61,8 @@ export function PersonalTab({
     });
   }, [data.stats, q, unit, spec, avail, showInactive]);
 
+  // Phone cards have no room for the number: show it when the search is by phone so the match is explainable.
+  const phoneQuery = /\d{3,}/.test(q);
   const filtered = q || unit !== "all" || spec !== "all" || avail !== "todos";
   const reset = () => {
     setQ("");
@@ -194,7 +196,7 @@ export function PersonalTab({
           <motion.ul initial="hidden" animate="show" className="max-md:space-y-2.5">
             <AnimatePresence>
               {rows.map((s, i) => (
-                <WorkerRow key={s.worker.id} s={s} i={i} onOpen={onOpen} multiUnit={data.multiUnit} cols={cn(mdCols, lgCols)} />
+                <WorkerRow key={s.worker.id} s={s} i={i} onOpen={onOpen} multiUnit={data.multiUnit} showPhone={phoneQuery} cols={cn(mdCols, lgCols)} />
               ))}
             </AnimatePresence>
           </motion.ul>
@@ -208,7 +210,7 @@ export function PersonalTab({
   );
 }
 
-function WorkerRow({ s, i, onOpen, multiUnit, cols }: { s: WorkerStat; i: number; onOpen: (id: string) => void; multiUnit: boolean; cols: string }) {
+function WorkerRow({ s, i, onOpen, multiUnit, showPhone, cols }: { s: WorkerStat; i: number; onOpen: (id: string) => void; multiUnit: boolean; showPhone: boolean; cols: string }) {
   const { worker: w, today } = s;
   return (
     <motion.li
@@ -243,6 +245,9 @@ function WorkerRow({ s, i, onOpen, multiUnit, cols }: { s: WorkerStat; i: number
               </span>
               <span className="hidden md:inline">{w.phone}</span>
             </span>
+            {showPhone && <span className="block truncate text-[12.5px] text-subtle tabular md:hidden">{w.phone}</span>}
+            {/* the md grid has no Unidad column and the Persona cell is too narrow to share the phone's line */}
+            {multiUnit && s.unit && <span className="hidden truncate text-[12.5px] text-subtle md:block lg:hidden">{s.unit.name}</span>}
             <span className="mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-1 md:hidden">
               <TonePill tone={today.tone} live={today.live} className="text-[12px]">
                 {today.label}
@@ -250,6 +255,12 @@ function WorkerRow({ s, i, onOpen, multiUnit, cols }: { s: WorkerStat; i: number
               <span className="text-[12px] text-subtle tabular">
                 {s.weekJornadas} jor. · {fmtHours(s.weekMinutes)}
               </span>
+            </span>
+            {/* phones: the order(s) behind today's pill (from md the "Hoy" cell has it) */}
+            {today.detail && <span className="mt-1 block text-[12.5px] leading-snug text-subtle tabular md:hidden">{today.detail}</span>}
+            {/* phones: the "Último servicio" column only exists from lg (at md it rides the "Hoy" cell) */}
+            <span className="mt-1 line-clamp-2 text-[12.5px] leading-snug text-subtle tabular md:hidden">
+              {s.last ? `Último: ${[s.last.client, fmtDay(s.last.date), s.last.folio].filter(Boolean).join(" · ")}` : "Último: sin servicios"}
             </span>
           </span>
         </span>
@@ -260,6 +271,10 @@ function WorkerRow({ s, i, onOpen, multiUnit, cols }: { s: WorkerStat; i: number
             <span className="truncate">{today.label}</span>
           </TonePill>
           {today.detail && <span className="mt-1 block truncate text-[12px] text-subtle">{today.detail}</span>}
+          {/* md only: date first so it survives the truncation */}
+          <span className="mt-0.5 block truncate text-[12px] text-subtle tabular lg:hidden">
+            {s.last ? `Último: ${[fmtDay(s.last.date), s.last.client].filter(Boolean).join(" · ")}` : "Último: sin servicios"}
+          </span>
         </span>
         <span className="hidden text-right text-[15px] font-semibold text-ink tabular md:block">{s.weekJornadas || "—"}</span>
         <span className="hidden text-right text-[15px] font-semibold text-ink tabular md:block">{s.weekMinutes ? fmtHours(s.weekMinutes) : "—"}</span>

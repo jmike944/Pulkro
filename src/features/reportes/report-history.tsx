@@ -71,7 +71,7 @@ export function VersionsList({
               disabled={!!downloadReason || busyId === r.id}
               onClick={() => onDownload(r)}
               aria-label={`Descargar PDF versión ${r.version}`}
-              className="size-10 rounded-[12px] border-[#dfe3ea]"
+              className="size-11 rounded-[12px] border-[#dfe3ea] lg:size-10"
             >
               {busyId === r.id ? <LoaderCircle className="animate-spin" /> : <Download />}
             </Button>

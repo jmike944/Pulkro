@@ -43,8 +43,12 @@ export function HoursCard({ ind }: { ind: Indicators }) {
               return (
                 <li key={r.serviceType.id}>
                   <div className="flex items-baseline justify-between gap-3">
-                    <span className="min-w-0 truncate text-[14px] text-ink">
-                      {r.serviceType.name} <span className="text-subtle">· {r.services}</span>
+                    <span className="min-w-0 text-[14px] text-ink">
+                      <span className="block truncate">
+                        {r.serviceType.name} <span className="text-subtle">· {r.services}</span>
+                      </span>
+                      {/* the plan marker's value is title-only (no hover on touch) */}
+                      <span className="block text-[12px] text-subtle tabular lg:hidden">Plan {fmtHours(r.avgPlanned)}</span>
                     </span>
                     <span className="flex shrink-0 items-baseline gap-2">
                       <span className="text-[14px] font-semibold text-ink tabular">{fmtHours(r.avgReal)}</span>

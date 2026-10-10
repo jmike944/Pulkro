@@ -11,6 +11,12 @@ import { CardHead, DeltaChip } from "./bits";
 
 const HEIGHT = 184;
 
+/** Phones: bars are ~6px wide, so a finger scrubs across the plot and the bucket under it is picked by x position. */
+const pickBucket = (e: React.PointerEvent<HTMLDivElement>, count: number) => {
+  const r = e.currentTarget.getBoundingClientRect();
+  return Math.min(count - 1, Math.max(0, Math.floor(((e.clientX - r.left) / r.width) * count)));
+};
+
 /** §5 "Servicios por día/semana/mes": closures with a validated date, bucketed to the period. */
 export function ServicesChart({ ind, win }: { ind: Indicators; win: PeriodWindow }) {
   const { data, avg, peak, unit, title } = ind.series;
@@ -39,6 +45,18 @@ export function ServicesChart({ ind, win }: { ind: Indicators; win: PeriodWindow
         </div>
       </CardHead>
 
+      {/* phones: the finger covers the floating tooltip, so the picked bar is read out above the plot */}
+      <p className="mb-6 flex h-6 items-center text-[13.5px] text-subtle sm:hidden">
+        {hover !== null && data[hover] ? (
+          <span className="truncate">
+            <b className="font-semibold text-ink tabular">{plural(data[hover].value, "servicio", "servicios")}</b> · {data[hover].tip}
+            {!data[hover].inPeriod && " (fuera del periodo)"}
+          </span>
+        ) : (
+          <span className="truncate">Toque o deslice sobre las barras</span>
+        )}
+      </p>
+
       <div className="relative" style={{ height: HEIGHT }}>
         {/* average guide */}
         {avg > 0 && (
@@ -54,7 +72,13 @@ export function ServicesChart({ ind, win }: { ind: Indicators; win: PeriodWindow
             </span>
           </motion.div>
         )}
-        <div className="flex h-full items-end gap-[3px] sm:gap-1.5" onMouseLeave={() => setHover(null)}>
+        <div
+          className="flex h-full touch-pan-y items-end gap-[3px] sm:gap-1.5"
+          onMouseLeave={() => setHover(null)}
+          // touch / pen only: the mouse keeps the per-bar hover below
+          onPointerDown={(e) => e.pointerType !== "mouse" && setHover(pickBucket(e, data.length))}
+          onPointerMove={(e) => e.pointerType !== "mouse" && setHover(pickBucket(e, data.length))}
+        >
           {data.map((b, i) => {
             const h = b.value ? Math.max(0.05, b.value / max) : 0.025;
             const isPeak = !!peak && b.key === peak.key && b.value > 0;
@@ -77,7 +101,7 @@ export function ServicesChart({ ind, win }: { ind: Indicators; win: PeriodWindow
                       exit={{ opacity: 0, y: 4 }}
                       transition={{ duration: 0.18 }}
                       className={cn(
-                        "pointer-events-none absolute z-10 whitespace-nowrap rounded-[10px] bg-brand-deep px-2.5 py-1.5 text-[12px] text-white shadow-lift",
+                        "pointer-events-none absolute z-10 whitespace-nowrap rounded-[10px] bg-brand-deep px-2.5 py-1.5 text-[12px] text-white shadow-lift max-sm:hidden",
                         i < data.length / 3 ? "left-0" : i > (data.length * 2) / 3 ? "right-0" : "left-1/2 -translate-x-1/2",
                       )}
                       style={{ bottom: `calc(${h * 100}% + 8px)` }}

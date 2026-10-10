@@ -189,7 +189,7 @@ export function ReportWorkspace({ bundle }: { bundle: OrderBundle }) {
                 disabled={!canShare}
                 aria-pressed={editing && desktop}
                 onClick={() => (desktop ? setEditing((e) => !e) : setDescOpen(true))}
-                className={cn("h-10 rounded-[12px] px-3.5 font-semibold", !(editing && desktop) && "border-[#dfe3ea]")}
+                className={cn("h-11 rounded-[12px] px-3.5 font-semibold lg:h-10", !(editing && desktop) && "border-[#dfe3ea]")}
               >
                 {editing && desktop ? <Check /> : <Pencil />}
                 {editing && desktop ? "Listo" : "Editar descripción"}
@@ -198,8 +198,15 @@ export function ReportWorkspace({ bundle }: { bundle: OrderBundle }) {
             <AnimatePresence initial={false}>
               {summaryChanged && canShare && (
                 <motion.span initial={{ opacity: 0, x: -6 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -6 }}>
-                  <Button variant="ghost" onClick={() => setSummary(closure.summary)} title="Restaurar el texto del cierre validado" className="h-10 rounded-[12px] px-3 text-subtle">
-                    <RotateCcw /> Restaurar
+                  <Button
+                    variant="ghost"
+                    onClick={() => setSummary(closure.summary)}
+                    title="Restaurar el texto del cierre validado"
+                    aria-label="Restaurar texto del cierre validado"
+                    className="h-11 rounded-[12px] px-3 text-subtle lg:h-10"
+                  >
+                    <RotateCcw /> <span className="lg:hidden">Restaurar texto del cierre</span>
+                    <span className="max-lg:hidden">Restaurar</span>
                   </Button>
                 </motion.span>
               )}
@@ -294,15 +301,19 @@ export function ReportWorkspace({ bundle }: { bundle: OrderBundle }) {
         <MobileReportCard
           latest={latest}
           dirty={dirty}
+          reopened={reopened}
           nextVersion={nextVersion}
           stats={stats}
           canShare={canShare}
           canExport={canExport}
           busy={busy}
+          task={task}
+          gate={gate}
           contactName={order.siteContact.name}
           onGenerate={() => void onGenerate()}
           onShare={openShareFlow}
           onDownload={() => latest && void outputs.download(ctx, latest, { root: root() })}
+          onOpenSync={openSync}
         />
         <section className="mt-9">{workArea}</section>
         <div className="mt-10 space-y-9">{history}</div>

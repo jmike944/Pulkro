@@ -8,6 +8,7 @@ import { fmtTime, plural } from "@/lib/format";
 import { PersonAvatar } from "@/components/pk/bits";
 import { EmptyState } from "@/components/pk/feedback";
 import { staggerContainer } from "@/components/pk/motion";
+import { ReasonTip } from "@/components/pk/reason-tip";
 import { dayKey, dowShort, type AgendaItem } from "./agenda-model";
 import { JornadaBlock } from "./jornada-block";
 import type { AgendaData, Lane } from "./use-agenda";
@@ -152,14 +153,17 @@ function WeekGrid({ data, now, onOpen, onPickDay, highlightOrderId }: Props) {
 
 function LaneLabel({ lane, last }: { lane: Lane; last: boolean }) {
   const u = lane.user;
+  // below xl only the avatar fits: hover shows the tooltip, a tap on touch tablets opens the same text
   return (
-    <div className={cn("flex items-start gap-2.5 px-3 py-3 xl:px-4", !last && "border-b border-hairline")} title={u ? `${u.name} · ${plural(lane.items, "jornada", "jornadas")}` : undefined}>
-      {u && <PersonAvatar name={u.name} initials={u.initials} hue={u.hue} size={30} />}
-      <div className="hidden min-w-0 xl:block">
-        <p className="truncate text-[13.5px] font-semibold leading-tight text-ink">{u ? u.name.split(" ").slice(0, 2).join(" ") : "Sin supervisor"}</p>
-        <p className="mt-0.5 text-[12px] text-subtle">{plural(lane.items, "jornada", "jornadas")}</p>
+    <ReasonTip reason={u ? `${u.name} · ${plural(lane.items, "jornada", "jornadas")}` : undefined} side="right" icon={null} contentClassName="max-w-[260px] text-[12.5px]">
+      <div tabIndex={u ? 0 : undefined} className={cn("flex items-start gap-2.5 px-3 py-3 outline-none focus-visible:bg-[#f6f8fa] xl:px-4", !last && "border-b border-hairline")}>
+        {u && <PersonAvatar initials={u.initials} hue={u.hue} size={30} />}
+        <div className="hidden min-w-0 xl:block">
+          <p className="truncate text-[13.5px] font-semibold leading-tight text-ink">{u ? u.name.split(" ").slice(0, 2).join(" ") : "Sin supervisor"}</p>
+          <p className="mt-0.5 text-[12px] text-subtle">{plural(lane.items, "jornada", "jornadas")}</p>
+        </div>
       </div>
-    </div>
+    </ReasonTip>
   );
 }
 

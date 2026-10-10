@@ -3,7 +3,7 @@
 import { AnimatePresence, motion } from "motion/react";
 import { ChevronRight } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { fmtDay, fmtRelativeDay, fmtTime } from "@/lib/format";
+import { fmtDay, fmtRelativeDay, fmtTime, plural } from "@/lib/format";
 import { INCIDENT_TYPE, SEVERITY, toneSoftBg, toneText } from "@/lib/status";
 import type { Incident, Photo } from "@/lib/types";
 import { SoftBadge, TonePill } from "@/components/pk/status";
@@ -80,6 +80,7 @@ function Row({ r, selected, onOpen }: { r: IncidentRow; selected: boolean; onOpe
   const { inc, order, client, photos } = r;
   const type = INCIDENT_TYPE[inc.type];
   const sev = SEVERITY[inc.severity];
+  const sevLabel = sev.label.toLowerCase();
   const open = inc.status === "abierta";
   return (
     <motion.li layout="position" variants={rowVariants} exit={{ opacity: 0, x: 24, transition: { duration: 0.22 } }}>
@@ -90,20 +91,38 @@ function Row({ r, selected, onOpen }: { r: IncidentRow; selected: boolean; onOpe
         leading={<TypeTile type={inc.type} size={44} />}
         title={inc.description}
         meta={
-          <span className="truncate">
-            {inc.folio} · {type.label} · {order?.folio ?? "—"}
+          // Two short lines instead of one truncated one: the folios stay whole and the date can never be cut off.
+          <span className="flex min-w-0 flex-col">
+            <span className="truncate tabular">
+              <span className="sr-only">{type.label} · </span>
+              {inc.folio} · {order?.folio ?? "—"}
+            </span>
+            <span className="truncate tabular">
+              {fmtDay(inc.createdAt)} {fmtTime(inc.createdAt)}
+              {client && ` · ${client.shortName}`}
+            </span>
           </span>
         }
         status={
           open
-            ? { tone: inc.blocksClosure ? "red" : sev.tone === "slate" ? "amber" : sev.tone, label: inc.blocksClosure ? "Abierta · impide el cierre" : `Abierta · severidad ${sev.label.toLowerCase()}`, live: inc.blocksClosure }
-            : { tone: "teal", label: `Resuelta ${inc.resolvedAt ? fmtRelativeDay(inc.resolvedAt).toLowerCase() : ""}`.trim() }
+            ? {
+                tone: inc.blocksClosure ? "red" : sev.tone === "slate" ? "amber" : sev.tone,
+                label: `Abierta · severidad ${sevLabel}${inc.blocksClosure ? " · impide el cierre" : ""}`,
+                live: inc.blocksClosure,
+              }
+            : { tone: "teal", label: `Resuelta ${inc.resolvedAt ? `${fmtRelativeDay(inc.resolvedAt).toLowerCase()} ` : ""}· severidad ${sevLabel}` }
         }
         trailing={
           <span className="flex shrink-0 items-center gap-2">
             {photos[0] && (
               <span className="relative size-11 overflow-hidden rounded-[12px] ring-1 ring-black/5">
                 <PhotoImage photo={photos[0]} />
+                {photos.length > 1 && (
+                  <span className="absolute bottom-0.5 right-0.5 rounded-[6px] bg-ink/70 px-1 text-[11px] font-semibold leading-4 text-white tabular">
+                    <span aria-hidden>+{photos.length - 1}</span>
+                    <span className="sr-only">{plural(photos.length, "foto", "fotos")}</span>
+                  </span>
+                )}
               </span>
             )}
             <ChevronRight className="size-[18px] text-[#98a2b3]" />
