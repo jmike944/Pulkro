@@ -2,6 +2,7 @@
 
 import { cn } from "@/lib/utils";
 import { PersonAvatar } from "@/components/pk/bits";
+import { useEdgeFade } from "@/components/pk/edge-fade";
 import type { Lane } from "./use-agenda";
 
 /** First name; adds the surname initial when two lanes would read the same. */
@@ -17,11 +18,14 @@ function laneName(lane: Lane, lanes: Lane[]) {
  * column per day. These pills narrow the calendar to a single supervisor ("Todos" = everyone).
  */
 export function LaneFilter({ lanes, total, value, onChange }: { lanes: Lane[]; total: number; value: string; onChange: (id: string) => void }) {
+  const { ref, style } = useEdgeFade();
   return (
     <div
+      ref={ref}
+      style={style}
       role="group"
       aria-label="Filtrar por supervisor"
-      className="scrollbar-none -mx-4 mb-4 flex gap-2 overflow-x-auto px-4 sm:-mx-7 sm:px-7 md:mx-0 md:px-0 lg:hidden"
+      className="scrollbar-none -mx-5 mb-4 flex gap-2 overflow-x-auto px-5 sm:-mx-7 sm:px-7 md:mx-0 md:px-0 lg:hidden"
     >
       <Pill active={value === "all"} onClick={() => onChange("all")} count={total}>
         Todos

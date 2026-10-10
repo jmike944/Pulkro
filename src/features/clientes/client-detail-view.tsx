@@ -136,7 +136,7 @@ function ClientDetail({ client }: { client: Client }) {
         <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.15fr)] lg:gap-10">
           <GlassCard className="p-5 sm:p-7">
             <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-3">
-              <div className="flex min-w-0 flex-1 basis-[9.5rem] items-center gap-3">
+              <div className="flex min-w-0 flex-1 basis-[8.5rem] items-center gap-3">
                 <IconTile>
                   <Building />
                 </IconTile>
