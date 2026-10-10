@@ -1,10 +1,9 @@
 "use client";
 
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { motion } from "motion/react";
-import { ChevronRight, CloudUpload, Download, LogOut, RotateCcw, Share, Smartphone, WifiOff } from "lucide-react";
+import { CloudUpload, Download, LogOut, RotateCcw, Share, Smartphone, WifiOff } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { useAppStore, useCurrentUser, useLookups, useSyncSummary } from "@/lib/hooks";
@@ -15,12 +14,10 @@ import type { Role } from "@/lib/types";
 import { PersonAvatar } from "@/components/pk/bits";
 import { Segmented } from "@/components/pk/page";
 import { MobileGreeting } from "@/components/pk/mobile";
-import { EASE, staggerContainer, fadeUp } from "@/components/pk/motion";
+import { staggerContainer, fadeUp } from "@/components/pk/motion";
 import { Switch } from "@/components/ui/switch";
 import { MobileToolbar } from "@/components/shell/header-tools";
 import { UnitPickerSheet, useUnitScope } from "@/components/shell/unit-picker";
-import { NAV_FOOT, NAV_MAIN } from "@/components/shell/nav";
-import { useNavBadges } from "@/components/shell/use-nav-badges";
 import { useInstallPrompt } from "@/components/shell/pwa";
 
 function Card({ children, className }: { children: React.ReactNode; className?: string }) {
@@ -31,7 +28,7 @@ function Card({ children, className }: { children: React.ReactNode; className?: 
   );
 }
 
-/** Perfil — identity, unit scope (Dirección), sync, install, demo role switch and every section of the app (mobile "more"). */
+/** Perfil — identity, unit scope (Dirección), sync, install and demo role switch. Section navigation lives in the phone Menú sheet. */
 export function PerfilView() {
   const user = useCurrentUser();
   const lk = useLookups();
@@ -43,7 +40,6 @@ export function PerfilView() {
   const setForced = useAppStore((s) => s.setForcedOffline);
   const { offline, pending, lastSyncAt } = useSyncSummary();
   const setSyncOpen = useUi((s) => s.setSyncOpen);
-  const badges = useNavBadges();
   const { canPrompt, standalone, ios, install } = useInstallPrompt();
   const unit = lk.units.get(user.unitId);
   const { allUnits, selected } = useUnitScope();
@@ -149,27 +145,6 @@ export function PerfilView() {
               toast.success(`Ahora ves Pulkro como ${ROLE_LABEL[r]}`);
             }}
           />
-        </Card>
-
-        <Card className="p-2">
-          <p className="px-3 pb-1 pt-3 text-[12px] font-semibold uppercase tracking-[0.1em] text-subtle">Secciones</p>
-          <ul>
-            {[...NAV_MAIN.filter((n) => n.key !== "inicio"), ...NAV_FOOT].map((n, i) => {
-              const count = n.badge ? badges[n.badge] : 0;
-              return (
-                <motion.li key={n.key} initial={{ opacity: 0, x: 8 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.15 + i * 0.025, ease: EASE }}>
-                  <Link href={n.href} className="flex h-[52px] items-center gap-3.5 rounded-[14px] px-3 text-[15.5px] text-ink active:bg-sand">
-                    <span className="inline-flex size-9 items-center justify-center rounded-[11px] bg-sand text-[#3b4554]">
-                      <n.icon className="size-[18px]" strokeWidth={1.8} />
-                    </span>
-                    <span className="flex-1">{n.label}</span>
-                    {count > 0 && <span className="rounded-md bg-[#e9edf2] px-1.5 text-[12px] font-semibold tabular">{count}</span>}
-                    <ChevronRight className="size-4 text-[#98a2b3]" />
-                  </Link>
-                </motion.li>
-              );
-            })}
-          </ul>
         </Card>
 
         <Card className="p-2">

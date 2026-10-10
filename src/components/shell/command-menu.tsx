@@ -19,7 +19,7 @@ import {
   CommandShortcut,
 } from "@/components/ui/command";
 import { StatusDot } from "@/components/pk/status";
-import { NAV_FOOT, NAV_MAIN } from "./nav";
+import { NAV_FOOT, NAV_GROUPS, NAV_HOME, type NavItem } from "./nav";
 
 /**
  * Phones: expose the *visual* viewport height (it shrinks when the on-screen keyboard opens, unlike dvh) as --pk-vvh
@@ -77,6 +77,12 @@ export function CommandMenu() {
     setOpen(false);
     router.push(href);
   };
+
+  const sectionItem = (n: NavItem) => (
+    <CommandItem key={n.key} className={ITEM} onSelect={() => go(n.href)}>
+      <n.icon /> {n.label}
+    </CommandItem>
+  );
 
   return (
     <CommandDialog
@@ -149,13 +155,13 @@ export function CommandMenu() {
             </CommandItem>
           ))}
         </CommandGroup>
-        <CommandGroup heading="Secciones">
-          {[...NAV_MAIN, ...NAV_FOOT].map((n) => (
-            <CommandItem key={n.key} className={ITEM} onSelect={() => go(n.href)}>
-              <n.icon /> {n.label}
-            </CommandItem>
-          ))}
-        </CommandGroup>
+        <CommandGroup heading="Principal">{NAV_HOME.map(sectionItem)}</CommandGroup>
+        {NAV_GROUPS.map((g) => (
+          <CommandGroup key={g.key} heading={g.label}>
+            {g.items.map(sectionItem)}
+          </CommandGroup>
+        ))}
+        <CommandGroup heading="Configuración y ayuda">{NAV_FOOT.map(sectionItem)}</CommandGroup>
       </CommandList>
       </Command>
     </CommandDialog>

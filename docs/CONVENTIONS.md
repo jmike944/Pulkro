@@ -91,8 +91,19 @@ Visual rules:
 ## Mobile / PWA language (phones & tablets < 1024 px)
 The product is an installable PWA (manifest, `public/sw.js` offline shell, icons in `public/icons`). Below `lg` the shell
 switches to the **mobile reference** (Today · Labor breakdown · Sent screens):
-- Sand chrome (`bg-sand`, `--sand #f3f2ee`), the white panel is inset with 28px radius; 4-tab bar **Hoy · Órdenes · Pendientes · Perfil**
-  (`/`, `/ordenes`, `/pendientes`, `/perfil`). No top bar — `PageHeader` shows a round search button + initials avatar (→ Perfil, sync dot).
+- Sand chrome (`bg-sand`, `--sand #f3f2ee`), the white panel is inset with 28px radius; 5-tab bar **Hoy · Órdenes · Agenda · Pendientes · Menú**
+  (`/`, `/ordenes`, `/agenda`, `/pendientes` + a Menú *button*, `mobile-nav.tsx`). No top bar — `PageHeader` shows a round search button +
+  initials avatar (→ Perfil, sync dot).
+- **Menú** (`mobile-menu.tsx`, vaul `Drawer` bottom sheet, drag to dismiss, closes on navigation/any action) reaches everything else:
+  profile row (→ Perfil), unit scope (Dirección), Nueva orden + Buscar (⌘K palette), every nav group as a 4-column tile grid with badge
+  chips, Configuración / Centro de ayuda rows and a sync status row. The Menú tab is lit while the sheet is open or inside any route that is
+  not a tab (`isSecondaryRoute`, Perfil included) and carries a red dot when a section that lives only in the sheet has a badge count.
+  Perfil no longer lists sections.
+- **Navigation model:** `src/components/shell/nav.ts` is the single source of truth — `NAV_HOME` (Inicio, Pendientes), `NAV_GROUPS`
+  (Operación · Seguimiento · Gestión, each `{ key, label, icon, items }`), `NAV_FOOT` (Configuración, Centro de ayuda) and the flat `NAV_ALL`.
+  The desktop sidebar, the Menú sheet and the ⌘K palette all render from it; add a section there, never in a component. In the sidebar a group is
+  a collapsible row (group `icon` · label · chevron; open state saved in `pk.sidebar.groups`, the current route's group always opens) with
+  icon-less page rows along a guide line; collapsed (84px) it is a single group icon that opens a flyout menu with its pages.
 - `/` renders `TodayMobile` (`src/features/inicio/today-mobile.tsx`): date eyebrow, serif greeting, aurora next-step card, "Jornadas de hoy" list.
 - Primitives in `@/components/pk/mobile`:
   `TimeTile` (sand "9:00 / a. m."), `MobileRow` (leading tile · bold title · meta · status dot · chevron), `NextStepCard` (aurora-framed
