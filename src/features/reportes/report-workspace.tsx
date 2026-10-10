@@ -351,7 +351,7 @@ export function ReportWorkspace({ bundle }: { bundle: OrderBundle }) {
       {header}
       <div className="grid gap-10 xl:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)] xl:gap-0">
         <aside className="min-w-0 xl:col-start-2 xl:row-start-1 xl:pl-10">
-          <div className="scrollbar-none space-y-9 xl:sticky xl:top-6 xl:max-h-[calc(100dvh-48px)] xl:overflow-y-auto xl:overscroll-contain xl:pb-2">
+          <div className="scrollbar-none space-y-9 xl:sticky xl:top-6 xl:max-h-[calc(var(--pk-pane-h)-48px)] xl:overflow-y-auto xl:overscroll-contain xl:pb-2">
             <ReportCard
               latest={latest}
               dirty={dirty}
