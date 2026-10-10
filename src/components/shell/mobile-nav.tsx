@@ -23,14 +23,12 @@ const TABS = [
  */
 export function MobileNav() {
   const pathname = usePathname();
-  const { actionable, items } = usePendingItems();
+  const { actionable } = usePendingItems();
   const { jornadas } = useScopedData();
   const live = jornadas.some((j) => j.status === "en_curso");
   const inMore = isSecondaryRoute(pathname);
   // Perfil has its own sync card, jornadas their own banner, and the new-order wizard a sticky action bar above the tab bar.
   const hideSync = pathname === "/perfil" || pathname === "/ordenes/nueva" || pathname.startsWith("/jornada/");
-  // Consulta roles (Dirección, Administración) have nothing actionable: show what they follow as a neutral count instead of red.
-  const neutral = actionable === 0;
 
   return (
     <nav
@@ -43,13 +41,14 @@ export function MobileNav() {
           {TABS.map((t) => {
             const active = t.href === "/perfil" ? isActive(pathname, t.href) || inMore : isActive(pathname, t.href);
             const Icon = t.icon;
-            const badge = t.href === "/pendientes" ? actionable || items.length : 0;
+            // Only what the user can act on (same count as the Pendientes page's "Para mí"); consulta roles with nothing actionable get no badge.
+            const badge = t.href === "/pendientes" ? actionable : 0;
             return (
               <li key={t.href}>
                 <Link
                   href={t.href}
                   aria-current={active ? "page" : undefined}
-                  aria-label={badge > 0 ? `${t.label}, ${badge} ${neutral ? "por revisar" : "por atender"}` : undefined}
+                  aria-label={badge > 0 ? `${t.label}, ${badge} por atender` : undefined}
                   className="relative flex h-[62px] flex-col items-center justify-center gap-1 rounded-[16px]"
                 >
                   {active && (
@@ -68,10 +67,7 @@ export function MobileNav() {
                         key={badge}
                         initial={{ scale: 0.5 }}
                         animate={{ scale: 1 }}
-                        className={cn(
-                          "absolute -right-2.5 -top-1.5 inline-flex h-[17px] min-w-[17px] items-center justify-center rounded-full px-1 text-[10px] font-bold ring-2 ring-sand",
-                          neutral ? "bg-[#e9edf2] text-ink" : "bg-st-red text-white",
-                        )}
+                        className="absolute -right-2.5 -top-1.5 inline-flex h-[17px] min-w-[17px] items-center justify-center rounded-full bg-st-red px-1 text-[10px] font-bold text-white ring-2 ring-sand"
                       >
                         {badge}
                       </motion.span>

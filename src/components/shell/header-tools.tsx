@@ -15,8 +15,9 @@ export { MobileUnitButton, UnitPickerSheet, useUnitScope } from "./unit-picker";
 /**
  * Desktop: search pill (⌘K) + recent-activity bell.
  * Phone/tablet (mobile reference): compact search + round initials avatar → Perfil, with a sync dot.
- * Dirección also gets the unit pill (row 2 on phones so the title keeps its width; inline from 640px,
- * where the activity bell joins too). Phone bell/unit also live in `MobileToolbar` (Hoy, Perfil).
+ * Dirección also gets the unit pill: inline from 640px (where the activity bell joins too); on phones only while a
+ * single unit is selected (row 2, as a scope reminder that opens the picker) so sub-page titles keep their space.
+ * The phone unit control with all units visible lives in `MobileToolbar` (Hoy) and the Perfil unit card.
  */
 export function HeaderTools() {
   const setCommandOpen = useUi((s) => s.setCommandOpen);
@@ -31,7 +32,7 @@ export function HeaderTools() {
         <Kbd className="bg-[#f2f4f7] text-[11px]">⌘K</Kbd>
       </button>
       <SearchButton className="order-1 sm:order-none" />
-      <MobileUnitButton className="order-3 col-span-2 sm:order-none" />
+      <MobileUnitButton phoneScopedOnly className="order-3 col-span-2 sm:order-none" />
       <MobileActivityButton className="max-sm:hidden" />
       <span className="hidden lg:block">
         <ActivityBell />

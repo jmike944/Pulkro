@@ -21,6 +21,11 @@ type Avail = "todos" | "disponibles" | "asignados";
 
 export const REASON_CATALOG = "Solo Dirección y Administración administran el catálogo de personal.";
 
+/**
+ * Rows drive their own entrance (initial/animate on the <motion.li>, stagger via `custom` index) instead of inheriting "show" from the <ul>.
+ * The inner <AnimatePresence> resets the presence context, so under the page's `<AnimatePresence initial={false}>` a parent-driven list
+ * deadlocks: the <ul> is initial-blocked (never animates) while its rows start hidden and wait for it to push "show".
+ */
 const rowIn = {
   hidden: { opacity: 0, y: 8 },
   show: (i: number = 0) => ({ opacity: 1, y: 0, transition: { duration: 0.4, ease: EASE, delay: Math.min(0.5, i * 0.03) } }),
@@ -193,13 +198,13 @@ export function PersonalTab({
             <span className="hidden lg:block">Último servicio</span>
             <span />
           </div>
-          <motion.ul initial="hidden" animate="show" className="max-md:space-y-2.5">
+          <ul className="max-md:space-y-2.5">
             <AnimatePresence>
               {rows.map((s, i) => (
                 <WorkerRow key={s.worker.id} s={s} i={i} onOpen={onOpen} multiUnit={data.multiUnit} showPhone={phoneQuery} cols={cn(mdCols, lgCols)} />
               ))}
             </AnimatePresence>
-          </motion.ul>
+          </ul>
           <p className="mt-4 text-[12.5px] text-subtle">
             <b className="font-semibold text-ink">Horas asig.</b> = horas de jornada asignada: suma de la duración de las jornadas de la semana donde la persona está en la cuadrilla (real si
             la jornada cerró, planeada si no). No mide tiempo individual.
@@ -217,6 +222,8 @@ function WorkerRow({ s, i, onOpen, multiUnit, showPhone, cols }: { s: WorkerStat
       layout="position"
       custom={i}
       variants={rowIn}
+      initial="hidden"
+      animate="show"
       exit={{ opacity: 0, scale: 0.98, transition: { duration: 0.15 } }}
       transition={{ type: "spring", stiffness: 420, damping: 34 }}
     >

@@ -155,8 +155,7 @@ export function PerfilView() {
           <p className="px-3 pb-1 pt-3 text-[12px] font-semibold uppercase tracking-[0.1em] text-subtle">Secciones</p>
           <ul>
             {[...NAV_MAIN.filter((n) => n.key !== "inicio"), ...NAV_FOOT].map((n, i) => {
-              // Consulta roles have nothing actionable in Pendientes, but still see how many items they follow.
-              const count = n.badge ? (n.badge === "pendientes" ? badges.pendientes || badges.pendientesTotal : badges[n.badge]) : 0;
+              const count = n.badge ? badges[n.badge] : 0;
               return (
                 <motion.li key={n.key} initial={{ opacity: 0, x: 8 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.15 + i * 0.025, ease: EASE }}>
                   <Link href={n.href} className="flex h-[52px] items-center gap-3.5 rounded-[14px] px-3 text-[15.5px] text-ink active:bg-sand">

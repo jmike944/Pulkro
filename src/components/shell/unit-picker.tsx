@@ -62,8 +62,10 @@ function UnitOption({ code, title, sub, active, onPick }: { code: string; title:
 /**
  * Round-ish 44px pill with the active unit code ("PK" = todas); opens the unit picker sheet.
  * Renders nothing for roles without view.allUnits. Tinted blue while a single unit is scoping the data.
+ * `phoneScopedOnly`: below 640px show it only while a single unit is selected (a scope reminder for page headers);
+ * with "todas las unidades" it is hidden there (the control still lives in the Hoy/Perfil toolbars). From sm up it is unchanged.
  */
-export function MobileUnitButton({ className }: { className?: string }) {
+export function MobileUnitButton({ className, phoneScopedOnly = false }: { className?: string; phoneScopedOnly?: boolean }) {
   const { allUnits, selected } = useUnitScope();
   const [open, setOpen] = useState(false);
   if (!allUnits) return null;
@@ -77,6 +79,7 @@ export function MobileUnitButton({ className }: { className?: string }) {
         className={cn(
           "inline-flex h-11 min-w-11 shrink-0 items-center justify-center gap-1 rounded-full px-3 text-[13px] font-bold tracking-wide transition active:scale-95 lg:hidden",
           selected ? "bg-[#e3f1fd] text-[#1667e0]" : "bg-sand text-ink",
+          phoneScopedOnly && !selected && "max-sm:hidden",
           className,
         )}
       >
