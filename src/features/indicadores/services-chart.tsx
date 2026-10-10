@@ -64,10 +64,10 @@ export function ServicesChart({ ind, win }: { ind: Indicators; win: PeriodWindow
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ delay: 0.9 }}
-            className="pointer-events-none absolute inset-x-0 z-[1] border-t border-dashed border-[#9fb3c8]"
+            className="pointer-events-none absolute inset-x-0 z-[1] border-t border-dashed border-[#9fb3c8] dark:border-faint"
             style={{ bottom: `${(avg / max) * 100}%` }}
           >
-            <span className="absolute -top-[22px] right-0 rounded-md bg-white/90 px-1.5 text-[11.5px] font-medium text-subtle tabular">
+            <span className="absolute -top-[22px] right-0 rounded-md bg-surface/90 px-1.5 text-[11.5px] font-medium text-subtle tabular">
               prom. {avg.toFixed(1)} / {unit}
             </span>
           </motion.div>
@@ -118,15 +118,15 @@ export function ServicesChart({ ind, win }: { ind: Indicators; win: PeriodWindow
                     "block w-full max-w-[34px] rounded-full transition-colors duration-200",
                     !b.inPeriod
                       ? active
-                        ? "bg-[#d5dde8]"
-                        : "bg-[#eef1f5]"
+                        ? "bg-line-strong"
+                        : "bg-well"
                       : isPeak
-                        ? "bg-[#1667e0]"
+                        ? "bg-azure"
                         : b.isNow
                           ? "bg-brand-deep"
                           : active
-                            ? "bg-[#7fb5f5]"
-                            : "bg-[#b9d8fb]",
+                            ? "bg-blue-bar"
+                            : "bg-blue-line",
                   )}
                 />
               </button>
@@ -140,7 +140,7 @@ export function ServicesChart({ ind, win }: { ind: Indicators; win: PeriodWindow
             key={b.key}
             className={cn(
               "min-w-0 flex-1 overflow-visible whitespace-nowrap text-center text-[11px] tabular",
-              hover === i || b.isNow ? "font-semibold text-ink" : b.inPeriod ? "text-subtle" : "text-[#b4bdc9]",
+              hover === i || b.isNow ? "font-semibold text-ink" : b.inPeriod ? "text-subtle" : "text-ghost",
             )}
           >
             {i % every === 0 || b.isNow || hover === i ? b.label : ""}
@@ -148,9 +148,9 @@ export function ServicesChart({ ind, win }: { ind: Indicators; win: PeriodWindow
         ))}
       </div>
       <div className="mt-5 flex flex-wrap items-center gap-x-5 gap-y-2 border-t border-hairline pt-4 text-[13px] text-subtle">
-        <Legend className="bg-[#1667e0]" label={peak && peak.value > 0 ? `Pico: ${plural(peak.value, "servicio", "servicios")} · ${peak.tip}` : "Sin cierres en el periodo"} />
+        <Legend className="bg-azure" label={peak && peak.value > 0 ? `Pico: ${plural(peak.value, "servicio", "servicios")} · ${peak.tip}` : "Sin cierres en el periodo"} />
         {data.some((b) => b.isNow) && <Legend className="bg-brand-deep" label={unit === "día" ? "Hoy" : unit === "semana" ? "Semana en curso" : "Mes en curso"} />}
-        {padded && <Legend className="bg-[#eef1f5]" label="Fuera del periodo (contexto)" />}
+        {padded && <Legend className="bg-well" label="Fuera del periodo (contexto)" />}
       </div>
     </Panel>
   );

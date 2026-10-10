@@ -53,7 +53,7 @@ export function PageHeader({
               )}
               {breadcrumb.map((b, i) => (
                 <span key={i} className="flex items-center gap-2">
-                  {i > 0 && <span className="text-[#c5ccd6]">/</span>}
+                  {i > 0 && <span className="text-ghost">/</span>}
                   {b.href && i < breadcrumb.length - 1 ? (
                     <Link href={b.href} className="text-subtle hover:text-ink">
                       {b.label}
@@ -138,7 +138,7 @@ export function MetaList({ children, className }: { children: React.ReactNode; c
         {Children.toArray(children).map((c, i) => (
           <li
             key={i}
-            className="relative flex items-center pl-7 before:absolute before:left-[12px] before:top-1/2 before:-translate-y-1/2 before:text-[#c5ccd6] before:leading-none before:content-['·']"
+            className="relative flex items-center pl-7 before:absolute before:left-[12px] before:top-1/2 before:-translate-y-1/2 before:text-ghost before:leading-none before:content-['·']"
           >
             {c}
           </li>
@@ -206,7 +206,7 @@ export function UnderlineTabs({
               )}
             >
               {t.label}
-              {t.count !== undefined && <span className={cn("text-[12.5px] tabular", active ? "text-subtle" : "text-[#98a2b3]")}>{t.count}</span>}
+              {t.count !== undefined && <span className={cn("text-[12.5px] tabular", active ? "text-subtle" : "text-faint")}>{t.count}</span>}
               {active && (
                 <motion.span layoutId="underline" className="absolute inset-x-0 -bottom-px h-[2.5px] rounded-full bg-ink" transition={{ type: "spring", stiffness: 500, damping: 38 }} />
               )}
@@ -235,7 +235,7 @@ export function Segmented<T extends string>({
 }) {
   return (
     <LayoutGroup id={id}>
-      <div className={cn("inline-flex rounded-[12px] bg-[#f2f4f7] p-1", className)}>
+      <div className={cn("inline-flex rounded-[12px] bg-tile p-1", className)}>
         {items.map((it) => {
           const active = it.value === value;
           return (
@@ -247,7 +247,7 @@ export function Segmented<T extends string>({
               {active && (
                 <motion.span
                   layoutId="thumb"
-                  className="absolute inset-0 rounded-[9px] bg-white shadow-[0_1px_2px_rgb(16_24_40/0.08),0_2px_8px_-2px_rgb(16_24_40/0.08)]"
+                  className="absolute inset-0 rounded-[9px] bg-surface shadow-[0_1px_2px_rgb(16_24_40/0.08),0_2px_8px_-2px_rgb(16_24_40/0.08)] dark:bg-press"
                   transition={{ type: "spring", stiffness: 500, damping: 36 }}
                 />
               )}

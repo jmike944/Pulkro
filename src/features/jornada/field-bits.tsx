@@ -103,12 +103,12 @@ export function Chip({
       aria-pressed={active}
       className={cn(
         "inline-flex h-10 shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full border px-3.5 text-[13.5px] transition active:scale-[0.97]",
-        active ? "border-brand-deep bg-brand-deep font-medium text-white" : "border-hairline bg-white text-ink hover:border-[#d5dbe3] hover:bg-[#f7f9fb]",
+        active ? "border-brand-deep bg-brand-deep font-medium text-white" : "border-hairline bg-surface text-ink hover:border-line-strong hover:bg-soft",
         className,
       )}
     >
       {children}
-      {hint && <span className={cn("text-[11.5px] font-semibold", active ? "text-sky" : "text-[#b86e00]")}>{hint}</span>}
+      {hint && <span className={cn("text-[11.5px] font-semibold", active ? "text-sky" : "text-amber-fg")}>{hint}</span>}
     </button>
   );
 }

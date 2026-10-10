@@ -17,12 +17,13 @@ import { MobileGreeting } from "@/components/pk/mobile";
 import { staggerContainer, fadeUp } from "@/components/pk/motion";
 import { Switch } from "@/components/ui/switch";
 import { MobileToolbar } from "@/components/shell/header-tools";
+import { ThemeSegmented, useThemeChoice } from "@/components/shell/theme-switcher";
 import { UnitPickerSheet, useUnitScope } from "@/components/shell/unit-picker";
 import { useInstallPrompt } from "@/components/shell/pwa";
 
 function Card({ children, className }: { children: React.ReactNode; className?: string }) {
   return (
-    <motion.section variants={fadeUp} className={cn("rounded-[22px] border border-hairline bg-white p-5", className)}>
+    <motion.section variants={fadeUp} className={cn("rounded-[22px] border border-hairline bg-surface p-5", className)}>
       {children}
     </motion.section>
   );
@@ -44,6 +45,13 @@ export function PerfilView() {
   const unit = lk.units.get(user.unitId);
   const { allUnits, selected } = useUnitScope();
   const [unitOpen, setUnitOpen] = useState(false);
+  const theme = useThemeChoice();
+  const themeHint =
+    theme.value === "system"
+      ? `Sigue el modo del dispositivo${theme.resolved ? ` (ahora ${theme.resolved === "dark" ? "oscuro" : "claro"})` : ""}.`
+      : theme.value === "dark"
+        ? "Fondo oscuro: más cómodo de noche y en campo."
+        : "Fondo claro, como en papel.";
   // Dirección's eyebrow shows the unit it is currently looking at, not its home unit.
   const scopeName = allUnits ? (selected?.name ?? "Todas las unidades") : (unit?.name ?? "");
 
@@ -78,7 +86,7 @@ export function PerfilView() {
 
         <Card>
           <div className="flex items-center gap-3">
-            <span className={cn("inline-flex size-10 items-center justify-center rounded-[12px]", offline ? "bg-[#fff1d6] text-[#b86e00]" : "bg-[#e3f1fd] text-[#1667e0]")}>
+            <span className={cn("inline-flex size-10 items-center justify-center rounded-[12px]", offline ? "bg-amber-tint text-amber-fg" : "bg-blue-tint text-azure-fg")}>
               {offline ? <WifiOff className="size-5" /> : <CloudUpload className="size-5" />}
             </span>
             <div className="min-w-0 flex-1">
@@ -100,7 +108,7 @@ export function PerfilView() {
 
         {!standalone && (
           <Card className="bg-aurora-frame grain relative overflow-hidden border-0 p-2.5">
-            <div className="relative z-[2] flex items-center gap-4 rounded-[18px] bg-white p-4">
+            <div className="relative z-[2] flex items-center gap-4 rounded-[18px] bg-surface p-4">
               <span className="inline-flex size-11 shrink-0 items-center justify-center rounded-[13px] bg-brand-deep text-white">
                 <Smartphone className="size-5" />
               </span>
@@ -147,6 +155,14 @@ export function PerfilView() {
           />
         </Card>
 
+        <Card>
+          <p className="mb-1 text-[12px] font-semibold uppercase tracking-[0.1em] text-subtle">Apariencia</p>
+          <p className="mb-3 text-[13.5px] leading-snug text-subtle">
+            {themeHint}
+          </p>
+          <ThemeSegmented />
+        </Card>
+
         <Card className="p-2">
           <button
             onClick={() => {
@@ -165,9 +181,9 @@ export function PerfilView() {
               signOut();
               router.push("/login");
             }}
-            className="flex h-[52px] w-full items-center gap-3.5 rounded-[14px] px-3 text-left text-[15.5px] text-st-red active:bg-sand"
+            className="flex h-[52px] w-full items-center gap-3.5 rounded-[14px] px-3 text-left text-[15.5px] text-red-fg active:bg-sand"
           >
-            <span className="inline-flex size-9 items-center justify-center rounded-[11px] bg-[#fdeeee]">
+            <span className="inline-flex size-9 items-center justify-center rounded-[11px] bg-red-soft">
               <LogOut className="size-[18px]" />
             </span>
             Cerrar sesión

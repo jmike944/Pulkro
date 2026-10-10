@@ -84,7 +84,7 @@ function DesktopDashboard() {
                 <span className="text-[15px] font-medium text-ink">Servicios terminados</span>
               </div>
               <DropdownMenu>
-                <DropdownMenuTrigger className="inline-flex h-9 items-center gap-2 rounded-[10px] bg-[#f2f4f7] px-3 text-[14px] font-medium text-ink outline-none transition hover:bg-[#e9edf2]">
+                <DropdownMenuTrigger className="inline-flex h-9 items-center gap-2 rounded-[10px] bg-tile px-3 text-[14px] font-medium text-ink outline-none transition hover:bg-press">
                   {MONTHS_ES[month]}
                   <ChevronDown className="size-4" />
                 </DropdownMenuTrigger>
@@ -105,7 +105,7 @@ function DesktopDashboard() {
               <span
                 className={cn(
                   "inline-flex items-center gap-1.5 rounded-[8px] px-2 py-1 text-[13px] font-semibold",
-                  stats.delta >= 0 ? "bg-[#e6f0fd] text-[#1667e0]" : "bg-[#fdeeee] text-st-red",
+                  stats.delta >= 0 ? "bg-blue-tint text-azure-fg" : "bg-red-soft text-red-fg",
                 )}
               >
                 {stats.delta >= 0 ? <TrendingUp className="size-4" /> : <TrendingDown className="size-4" />}
@@ -207,7 +207,7 @@ function DesktopDashboard() {
                           asChild
                           size="lg"
                           variant={a.variant === "primary" ? "default" : "outline"}
-                          className={cn("h-10 min-w-[84px] rounded-[12px] px-4 text-[14px] font-semibold", a.variant !== "primary" && "border-[#dfe3ea] shadow-[0_1px_2px_rgb(16_24_40/0.05)]")}
+                          className={cn("h-10 min-w-[84px] rounded-[12px] px-4 text-[14px] font-semibold", a.variant !== "primary" && "border-line shadow-[0_1px_2px_rgb(16_24_40/0.05)]")}
                         >
                           <Link href={a.href}>{a.label}</Link>
                         </Button>
@@ -265,7 +265,7 @@ function TodayCard({
         href={`/jornada/${j.id}`}
         className={cn(
           "group relative flex w-[290px] flex-col overflow-hidden rounded-[22px] border p-5 transition-all duration-300 hover:-translate-y-1 hover:shadow-lift",
-          live ? "border-transparent bg-brand-deep text-white" : "border-hairline bg-white",
+          live ? "border-transparent bg-brand-deep text-white" : "border-hairline bg-surface",
         )}
       >
         {live && <span className="pointer-events-none absolute -right-16 -top-16 size-48 rounded-full bg-sky/25 blur-2xl" />}
@@ -294,10 +294,10 @@ function TodayCard({
             )}
           </div>
           <div className="flex gap-1.5 text-[11px] font-bold tracking-[0.06em]">
-            <span className={cn("rounded-md px-1.5 py-0.5", antes ? (live ? "bg-white/15 text-white" : "bg-[#fff6e6] text-[#b86e00]") : live ? "bg-white/5 text-white/40" : "bg-muted text-[#98a2b3]")}>
+            <span className={cn("rounded-md px-1.5 py-0.5", antes ? (live ? "bg-white/15 text-white" : "bg-amber-soft text-amber-fg") : live ? "bg-white/5 text-white/40" : "bg-muted text-faint")}>
               ANTES {antes || ""}
             </span>
-            <span className={cn("rounded-md px-1.5 py-0.5", despues ? (live ? "bg-white/15 text-white" : "bg-[#e7f7f4] text-st-teal") : live ? "bg-white/5 text-white/40" : "bg-muted text-[#98a2b3]")}>
+            <span className={cn("rounded-md px-1.5 py-0.5", despues ? (live ? "bg-white/15 text-white" : "bg-teal-soft text-teal-fg") : live ? "bg-white/5 text-white/40" : "bg-muted text-faint")}>
               DESPUÉS {despues || ""}
             </span>
           </div>

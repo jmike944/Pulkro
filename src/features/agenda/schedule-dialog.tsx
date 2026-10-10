@@ -207,7 +207,7 @@ function ScheduleBody({
                     aria-current={active ? "step" : undefined}
                     className="group flex w-full flex-col gap-1.5 text-left disabled:cursor-not-allowed"
                   >
-                    <span className="relative h-[4px] overflow-hidden rounded-full bg-[#e9edf2]">
+                    <span className="relative h-[4px] overflow-hidden rounded-full bg-press">
                       {(done || active) && (
                         <motion.span
                           initial={{ width: 0 }}
@@ -218,7 +218,7 @@ function ScheduleBody({
                       )}
                     </span>
                     <span className={cn("flex items-center gap-1 text-[12.5px]", active ? "font-semibold text-ink" : "text-subtle")}>
-                      {done && <Check className="size-3.5 text-st-teal" strokeWidth={3} />}
+                      {done && <Check className="size-3.5 text-teal-fg" strokeWidth={3} />}
                       {i + 1}. {label}
                     </span>
                   </button>
@@ -268,10 +268,10 @@ function ScheduleBody({
                             animate={{ opacity: 1, y: 0, scale: 1 }}
                             exit={{ opacity: 0, x: 20, transition: { duration: 0.18 } }}
                             transition={{ type: "spring", stiffness: 420, damping: 32 }}
-                            className={cn("rounded-[16px] border p-3", err ? "border-[#f7c8ca] bg-[#fffafa]" : "border-hairline bg-[#fafbfc]")}
+                            className={cn("rounded-[16px] border p-3", err ? "border-red-line bg-red-wash" : "border-hairline bg-wash")}
                           >
                             <div className="grid grid-cols-[auto_minmax(0,1fr)_40px] items-center gap-2 sm:grid-cols-[auto_minmax(0,1.3fr)_minmax(0,1fr)_minmax(0,1fr)_40px]">
-                              <span className="inline-flex h-11 min-w-11 items-center justify-center rounded-[12px] bg-white px-2 text-[13px] font-semibold text-ink shadow-[0_1px_2px_rgb(16_24_40/0.06)] tabular">
+                              <span className="inline-flex h-11 min-w-11 items-center justify-center rounded-[12px] bg-surface px-2 text-[13px] font-semibold text-ink shadow-[0_1px_2px_rgb(16_24_40/0.06)] tabular">
                                 J{i + 1}
                               </span>
                               <DateTimeInput type="date" aria-label={`Fecha jornada ${i + 1}`} min={todayKey} value={r.date} onChange={(e) => update(r.k, { date: e.target.value })} invalid={!!err && /fecha|día|pasó/i.test(err)} />
@@ -280,7 +280,7 @@ function ScheduleBody({
                                 onClick={() => removeRow(r.k)}
                                 disabled={rows.length === 1}
                                 aria-label={`Quitar jornada ${i + 1}`}
-                                className="inline-flex size-10 items-center justify-center rounded-[12px] text-subtle transition hover:bg-white hover:text-st-red disabled:opacity-30 sm:order-last"
+                                className="inline-flex size-10 items-center justify-center rounded-[12px] text-subtle transition hover:bg-surface hover:text-red-fg disabled:opacity-30 sm:order-last"
                               >
                                 <X className="size-4" />
                               </button>
@@ -295,7 +295,7 @@ function ScheduleBody({
                                 {valid && isSunday(parseISO(r.date)) ? " · domingo" : ""}
                                 {dur > 0 ? ` · ${fmtDuration(dur)}` : ""}
                               </span>
-                              {r.note && !err && <span className="text-[#b86e00]">{r.note}</span>}
+                              {r.note && !err && <span className="text-amber-fg">{r.note}</span>}
                             </div>
                             <FieldError>{err}</FieldError>
                           </motion.li>
@@ -353,8 +353,8 @@ function ScheduleBody({
                   className="rounded-[18px] border border-hairline p-5"
                 />
                 {busy.size > 0 && (
-                  <div className="flex gap-3 rounded-[16px] bg-[#fff6e6] p-4 text-[13px] leading-snug text-[#6b4200]">
-                    <TriangleAlert className="mt-0.5 size-4 shrink-0 text-[#b86e00]" />
+                  <div className="flex gap-3 rounded-[16px] bg-amber-soft p-4 text-[13px] leading-snug text-amber-deep">
+                    <TriangleAlert className="mt-0.5 size-4 shrink-0 text-amber-fg" />
                     <span>
                       <b className="font-semibold">{plural(busy.size, "persona tiene", "personas tienen")} otra jornada</b> {rows.length === 1 ? "ese día" : "esos días"}:{" "}
                       {[...busy.entries()]
@@ -376,7 +376,7 @@ function ScheduleBody({
         </AnimatePresence>
       </div>
 
-      <div className="flex items-center justify-between gap-2 border-t border-hairline bg-[#fafbfc] p-4">
+      <div className="flex items-center justify-between gap-2 border-t border-hairline bg-wash p-4">
         {step > 0 ? (
           <Button variant="outline" onClick={() => go(step - 1)} className="h-11 rounded-[12px] px-4">
             <ArrowLeft className="size-4" /> Atrás

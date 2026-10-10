@@ -129,7 +129,7 @@ function ScheduleForm({ mode, onDone }: { mode: Mode; onDone: () => void }) {
       {kept.length > 0 && (
         <ul className="space-y-1.5">
           {kept.map((j) => (
-            <li key={j.id} className="flex items-center gap-3 rounded-[14px] bg-[#f7f9fb] px-3.5 py-2.5 text-[13.5px]">
+            <li key={j.id} className="flex items-center gap-3 rounded-[14px] bg-soft px-3.5 py-2.5 text-[13.5px]">
               <Lock className="size-3.5 shrink-0 text-subtle" />
               <span className="font-medium text-ink">Jornada {j.dayIndex}</span>
               <span className="text-subtle">· {fmtWeekdayDay(j.date)}</span>
@@ -151,19 +151,19 @@ function ScheduleForm({ mode, onDone }: { mode: Mode; onDone: () => void }) {
                 initial={{ opacity: 0, y: 8, scale: 0.98 }}
                 animate={{ opacity: 1, y: 0, scale: 1 }}
                 exit={{ opacity: 0, x: -16, transition: { duration: 0.18 } }}
-                className={cn("rounded-[18px] border p-3.5", err ? "border-[#f3c97a] bg-[#fffaf0]" : isNew ? "border-[#bcd8fb] bg-[#f6faff]" : "border-hairline bg-white")}
+                className={cn("rounded-[18px] border p-3.5", err ? "border-amber-line-strong bg-amber-wash" : isNew ? "border-blue-line bg-blue-wash" : "border-hairline bg-surface")}
               >
                 <div className="mb-2.5 flex items-center justify-between gap-3">
                   <p className="text-[13px] font-semibold text-ink">
                     Jornada {kept.length + i + 1}
-                    {isNew && <span className="ml-2 rounded-md bg-[#e3f1fd] px-1.5 py-0.5 text-[11px] font-bold tracking-[0.06em] text-[#1667e0]">NUEVA</span>}
+                    {isNew && <span className="ml-2 rounded-md bg-blue-tint px-1.5 py-0.5 text-[11px] font-bold tracking-[0.06em] text-azure-fg">NUEVA</span>}
                     {r.date && <span className="ml-2 font-normal text-subtle">{fmtWeekdayDay(r.date)}</span>}
                   </p>
                   <button
                     type="button"
                     onClick={() => remove(r.key)}
                     aria-label={`Quitar jornada ${kept.length + i + 1}`}
-                    className="-mr-1 inline-flex size-10 items-center justify-center rounded-full text-subtle transition hover:bg-[#fdeeee] hover:text-st-red"
+                    className="-mr-1 inline-flex size-10 items-center justify-center rounded-full text-subtle transition hover:bg-red-soft hover:text-red-fg"
                   >
                     <Trash2 className="size-4" />
                   </button>
@@ -182,14 +182,14 @@ function ScheduleForm({ mode, onDone }: { mode: Mode; onDone: () => void }) {
                     <input type="time" value={r.end} onChange={(e) => update(r.key, { end: e.target.value })} className={cn(inputClass, "tabular")} aria-label="Hora de salida" />
                   </label>
                 </div>
-                {err && <p className="mt-2 text-[12.5px] font-medium text-[#b86e00]">{err}</p>}
+                {err && <p className="mt-2 text-[12.5px] font-medium text-amber-fg">{err}</p>}
               </motion.li>
             );
           })}
         </AnimatePresence>
       </ul>
 
-      <Button variant="outline" onClick={add} className="h-11 w-full rounded-[14px] border-dashed border-[#cfd6df] font-semibold text-ink">
+      <Button variant="outline" onClick={add} className="h-11 w-full rounded-[14px] border-dashed border-line-heavy font-semibold text-ink">
         <CalendarPlus className="size-4" /> Agregar otro día
       </Button>
 
@@ -211,7 +211,7 @@ function ScheduleForm({ mode, onDone }: { mode: Mode; onDone: () => void }) {
       )}
 
       <DialogActions hint={hint}>
-        <Button variant="outline" onClick={onDone} className="h-11 rounded-[12px] border-[#dfe3ea] px-5 font-semibold">
+        <Button variant="outline" onClick={onDone} className="h-11 rounded-[12px] border-line px-5 font-semibold">
           Cancelar
         </Button>
         <Button onClick={save} disabled={!valid} className="h-11 rounded-[12px] px-5 font-semibold">

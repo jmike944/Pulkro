@@ -51,7 +51,7 @@ export function ClosureGate({ bundle, canClose }: { bundle: OrderBundle; canClos
                   {b.detail && <p className="mt-0.5 line-clamp-2 text-[13.5px] text-subtle">{b.detail}</p>}
                 </div>
                 {b.href && (
-                  <Button asChild variant="outline" className="h-10 shrink-0 rounded-[12px] border-[#dfe3ea] px-4 font-semibold">
+                  <Button asChild variant="outline" className="h-10 shrink-0 rounded-[12px] border-line px-4 font-semibold">
                     <Link href={b.href}>Resolver</Link>
                   </Button>
                 )}
@@ -98,7 +98,7 @@ export function ClosureGate({ bundle, canClose }: { bundle: OrderBundle; canClos
                 )}
               </Button>
             </WithReason>
-            <Button asChild variant="outline" className="h-11 rounded-[14px] border-[#dfe3ea] font-semibold">
+            <Button asChild variant="outline" className="h-11 rounded-[14px] border-line font-semibold">
               <Link href={`/ordenes/${order.folio}`}>Ver orden</Link>
             </Button>
           </div>
@@ -115,21 +115,21 @@ export function ClosureGate({ bundle, canClose }: { bundle: OrderBundle; canClos
 /** Faux A4 sheet, blurred and locked — what the report will look like once closure is validated. */
 function GhostPaper({ className }: { className?: string }) {
   return (
-    <div className={cn("relative mx-auto max-w-[460px] rounded-[24px] bg-[#e9edf2] p-5", className)} aria-hidden>
-      <div className="relative aspect-[210/297] overflow-hidden rounded-[3px] bg-white p-7 shadow-[0_22px_44px_-22px_rgb(2_58_99/0.38)]">
+    <div className={cn("relative mx-auto max-w-[460px] rounded-[24px] bg-press p-5", className)} aria-hidden>
+      <div className="theme-light relative aspect-[210/297] overflow-hidden rounded-[3px] bg-white p-7 shadow-[0_22px_44px_-22px_rgb(2_58_99/0.38)]">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <span className="size-7 rounded-[8px] bg-brand-deep" />
-            <span className="h-3 w-16 rounded-full bg-[#dfe6ee]" />
+            <span className="h-3 w-16 rounded-full bg-track" />
           </div>
-          <span className="h-3 w-20 rounded-full bg-[#dfe6ee]" />
+          <span className="h-3 w-20 rounded-full bg-track" />
         </div>
         <div className="mt-4 h-[3px] rounded-full bg-gradient-to-r from-brand via-sky to-[#b9c7ff]" />
-        <div className="mt-5 h-5 w-3/4 rounded-full bg-[#e9edf2]" />
-        <div className="mt-4 h-16 rounded-[8px] bg-[#f4f7fa]" />
+        <div className="mt-5 h-5 w-3/4 rounded-full bg-press" />
+        <div className="mt-4 h-16 rounded-[8px] bg-soft" />
         <div className="mt-5 space-y-2">
           {[92, 84, 88, 60].map((w, i) => (
-            <div key={i} className="h-2.5 rounded-full bg-[#eef1f5]" style={{ width: `${w}%` }} />
+            <div key={i} className="h-2.5 rounded-full bg-well" style={{ width: `${w}%` }} />
           ))}
         </div>
         <div className="mt-5 grid grid-cols-2 gap-2.5">
@@ -137,8 +137,8 @@ function GhostPaper({ className }: { className?: string }) {
             <div key={i} className="aspect-[4/3] rounded-[6px] shimmer" />
           ))}
         </div>
-        <div className="absolute inset-0 flex items-center justify-center bg-white/40 backdrop-blur-[2px]">
-          <span className="inline-flex items-center gap-2 rounded-full bg-white px-4 py-2 text-[13px] font-semibold text-ink shadow-soft">
+        <div className="absolute inset-0 flex items-center justify-center bg-surface/40 backdrop-blur-[2px]">
+          <span className="inline-flex items-center gap-2 rounded-full bg-surface px-4 py-2 text-[13px] font-semibold text-ink shadow-soft">
             <Lock className="size-4" /> Disponible tras el cierre
           </span>
         </div>

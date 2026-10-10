@@ -31,15 +31,15 @@ export function ProfileCard() {
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1], delay: 0.1 }}
       aria-label="Mi perfil"
-      className="relative overflow-hidden rounded-[22px] border border-hairline bg-white p-4 shadow-soft sm:p-5"
+      className="relative overflow-hidden rounded-[22px] border border-hairline bg-surface p-4 shadow-soft sm:p-5"
     >
-      <span aria-hidden className="pointer-events-none absolute -left-10 -top-12 size-40 rounded-full bg-[radial-gradient(circle,#e7e1ff_0%,transparent_65%)]" />
-      <span aria-hidden className="pointer-events-none absolute -bottom-16 left-16 size-40 rounded-full bg-[radial-gradient(circle,#d7ecff_0%,transparent_65%)]" />
+      <span aria-hidden className="pointer-events-none absolute -left-10 -top-12 size-40 rounded-full bg-[radial-gradient(circle,var(--aurora-1)_0%,transparent_65%)]" />
+      <span aria-hidden className="pointer-events-none absolute -bottom-16 left-16 size-40 rounded-full bg-[radial-gradient(circle,var(--aurora-4)_0%,transparent_65%)]" />
       <div className="relative grid grid-cols-[minmax(0,1fr)] gap-4 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center xl:grid-cols-[minmax(0,1fr)_auto_auto] xl:gap-8">
         <div className="flex min-w-0 items-center gap-4">
           <span className="relative">
-            <PersonAvatar name={user.name} initials={user.initials} hue={user.hue} size={56} className="ring-4 ring-white shadow-soft" />
-            <span className="absolute bottom-0.5 right-0.5 size-3 rounded-full bg-st-teal ring-2 ring-white" aria-hidden />
+            <PersonAvatar name={user.name} initials={user.initials} hue={user.hue} size={56} className="ring-4 ring-surface shadow-soft" />
+            <span className="absolute bottom-0.5 right-0.5 size-3 rounded-full bg-st-teal ring-2 ring-surface" aria-hidden />
           </span>
           <div className="min-w-0">
             <p className="flex items-center gap-2 text-[12px] font-semibold uppercase tracking-[0.1em] text-subtle">
@@ -75,7 +75,7 @@ export function ProfileCard() {
               setEditing(true);
               setEditKey((k) => k + 1);
               setEditOpen(true);
-            }} className="h-11 min-w-0 rounded-[12px] border-[#dfe3ea] px-3 text-[14px] font-semibold sm:flex-none sm:px-4 lg:h-10">
+            }} className="h-11 min-w-0 rounded-[12px] border-line px-3 text-[14px] font-semibold sm:flex-none sm:px-4 lg:h-10">
             <Pencil className="size-4" /> Mis datos
           </Button>
         </div>
@@ -90,10 +90,10 @@ function PermissionsPopover({ allowed }: { allowed: number }) {
   return (
     <Popover>
       <PopoverTrigger asChild>
-        <Button variant="outline" className="h-11 min-w-0 rounded-[12px] border-[#dfe3ea] px-3 text-[14px] font-semibold sm:flex-none sm:px-4 lg:h-10">
+        <Button variant="outline" className="h-11 min-w-0 rounded-[12px] border-line px-3 text-[14px] font-semibold sm:flex-none sm:px-4 lg:h-10">
           <KeyRound className="size-4" />
           Mis permisos
-          <span className="hidden rounded-md bg-[#f2f4f7] px-1.5 text-[12px] tabular text-subtle sm:inline">
+          <span className="hidden rounded-md bg-tile px-1.5 text-[12px] tabular text-subtle sm:inline">
             {allowed}/{PERMISSION_ROWS.length}
           </span>
         </Button>
@@ -118,7 +118,7 @@ function PermissionsPopover({ allowed }: { allowed: number }) {
                 <span
                   className={cn(
                     "inline-flex size-6 shrink-0 items-center justify-center rounded-full",
-                    yes ? "bg-brand-deep text-white" : consulta ? "bg-[#edf4ff] text-link" : "bg-[#f2f4f7] text-[#98a2b3]",
+                    yes ? "bg-brand-deep text-white" : consulta ? "bg-blue-soft text-link" : "bg-tile text-faint",
                   )}
                 >
                   {yes ? <Check className="size-3.5" strokeWidth={3} /> : consulta ? <Eye className="size-3.5" /> : <Minus className="size-3.5" />}

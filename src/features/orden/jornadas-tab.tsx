@@ -42,7 +42,7 @@ export function JornadasTab() {
               variant="outline"
               disabled={!d.gates.reschedule.ok}
               onClick={() => ui.openSchedule("reprogramar")}
-              className="h-10 rounded-[12px] border-[#dfe3ea] px-4 font-semibold"
+              className="h-10 rounded-[12px] border-line px-4 font-semibold"
             >
               <CalendarClock /> Reprogramar
             </Button>
@@ -59,15 +59,15 @@ export function JornadasTab() {
         <motion.div
           initial={{ opacity: 0, y: -6 }}
           animate={{ opacity: 1, y: 0 }}
-          className="mb-6 flex flex-col gap-3 rounded-[20px] bg-[#fff6e6] p-4 sm:flex-row sm:items-center sm:justify-between sm:p-5"
+          className="mb-6 flex flex-col gap-3 rounded-[20px] bg-amber-soft p-4 sm:flex-row sm:items-center sm:justify-between sm:p-5"
         >
           <div className="flex gap-3">
-            <span className="inline-flex size-10 shrink-0 items-center justify-center rounded-[12px] bg-[#ffe8bf] text-[#b86e00]">
+            <span className="inline-flex size-10 shrink-0 items-center justify-center rounded-[12px] bg-amber-mid text-amber-fg">
               <CalendarDays className="size-5" />
             </span>
             <div className="text-[14px]">
               <p className="font-semibold text-ink">Fechas reprogramadas</p>
-              <p className="text-[#8a5300]">
+              <p className="text-amber-ink">
                 {lastReprogram?.reason ? `“${lastReprogram.reason}”. ` : ""}Confirme las nuevas fechas con el cliente para volver a programada.
               </p>
             </div>
@@ -127,7 +127,7 @@ function JornadaCard({ j, today }: { j: Jornada; today: boolean }) {
       layout
       variants={rowVariants}
       className={cn(
-        "relative overflow-hidden rounded-[22px] border bg-white p-4 shadow-soft sm:p-6",
+        "relative overflow-hidden rounded-[22px] border bg-surface p-4 shadow-soft sm:p-6",
         live ? "border-transparent ring-2 ring-sky/70" : "border-hairline",
       )}
     >
@@ -164,9 +164,9 @@ function JornadaCard({ j, today }: { j: Jornada; today: boolean }) {
         <div>
           <p className="text-[12px] text-subtle">Evidencia</p>
           <div className="mt-0.5 flex flex-wrap gap-1.5 text-[11px] font-bold tracking-[0.06em]">
-            <span className={cn("rounded-md px-1.5 py-0.5", antes ? "bg-[#fff6e6] text-[#b86e00]" : "bg-muted text-[#98a2b3]")}>ANTES {antes}</span>
-            <span className={cn("rounded-md px-1.5 py-0.5", despues ? "bg-[#e7f7f4] text-st-teal" : "bg-muted text-[#98a2b3]")}>DESPUÉS {despues}</span>
-            {incs > 0 && <span className="rounded-md bg-[#fdeeee] px-1.5 py-0.5 text-st-red">INC {incs}</span>}
+            <span className={cn("rounded-md px-1.5 py-0.5", antes ? "bg-amber-soft text-amber-fg" : "bg-muted text-faint")}>ANTES {antes}</span>
+            <span className={cn("rounded-md px-1.5 py-0.5", despues ? "bg-teal-soft text-teal-fg" : "bg-muted text-faint")}>DESPUÉS {despues}</span>
+            {incs > 0 && <span className="rounded-md bg-red-soft px-1.5 py-0.5 text-red-fg">INC {incs}</span>}
           </div>
         </div>
         <div className="col-span-2 flex items-center gap-2 sm:col-span-1">
@@ -206,7 +206,7 @@ function JornadaCard({ j, today }: { j: Jornada; today: boolean }) {
         <Button
           asChild
           variant={primary ? "default" : "outline"}
-          className={cn("h-10 rounded-[12px] px-4 text-[14px] font-semibold", !primary && "border-[#dfe3ea] shadow-[0_1px_2px_rgb(16_24_40/0.05)]")}
+          className={cn("h-10 rounded-[12px] px-4 text-[14px] font-semibold", !primary && "border-line shadow-[0_1px_2px_rgb(16_24_40/0.05)]")}
         >
           <Link href={`/jornada/${j.id}`}>{openLabel}</Link>
         </Button>
@@ -232,9 +232,9 @@ function StampCard({
 }) {
   if (!stamp)
     return (
-      <div className="rounded-[18px] border border-dashed border-[#d5dbe3] p-4">
+      <div className="rounded-[18px] border border-dashed border-line-strong p-4">
         <p className="text-[12px] font-semibold uppercase tracking-[0.1em] text-subtle">{label}</p>
-        <p className="mt-1 text-[26px] font-medium tracking-[-0.02em] text-[#c5ccd6] tabular">--:--</p>
+        <p className="mt-1 text-[26px] font-medium tracking-[-0.02em] text-ghost tabular">--:--</p>
         <p className="mt-1 text-[13px] text-subtle">{live ? "Cuadrilla en sitio" : "Pendiente"} · plan {fmtTime(planned)}</p>
       </div>
     );
@@ -242,7 +242,7 @@ function StampCard({
   const delta = minutesBetween(planned, stamp.deviceAt);
   const by = lk.users.get(stamp.by);
   return (
-    <div className="rounded-[18px] bg-[#f7f9fb] p-4 ring-1 ring-black/[0.03]">
+    <div className="rounded-[18px] bg-soft p-4 ring-1 ring-edge">
       <div className="flex items-center justify-between gap-2">
         <p className="text-[12px] font-semibold uppercase tracking-[0.1em] text-subtle">{label}</p>
         {stamp.offline && (
@@ -254,7 +254,7 @@ function StampCard({
       <p className="mt-1 flex items-baseline gap-2">
         <span className="text-[26px] font-medium tracking-[-0.02em] text-ink tabular">{fmtTime(stamp.deviceAt)}</span>
         {Math.abs(delta) >= 10 && (
-          <span className={cn("text-[12.5px] tabular", delta > 0 ? "text-[#b86e00]" : "text-subtle")}>
+          <span className={cn("text-[12.5px] tabular", delta > 0 ? "text-amber-fg" : "text-subtle")}>
             {delta > 0 ? `+${delta}` : delta} min vs plan
           </span>
         )}
@@ -268,7 +268,7 @@ function StampCard({
             stamp.serverAt ? (
               fmtSeconds(stamp.serverAt)
             ) : (
-              <span className="inline-flex items-center gap-1 font-medium text-[#b86e00]">
+              <span className="inline-flex items-center gap-1 font-medium text-amber-fg">
                 <CloudOff className="size-3.5" /> pendiente de sincronizar
               </span>
             )
@@ -282,7 +282,7 @@ function StampCard({
         <StampRow icon={<NotebookPen />} k="Capturó" v={by?.name ?? "Usuario"} />
       </dl>
       {stamp.note && (
-        <p className={cn("mt-2.5 rounded-[10px] px-3 py-2 text-[12.5px] leading-snug", stamp.source === "manual" ? "bg-[#fff6e6] text-[#8a5300]" : "bg-white text-subtle")}>
+        <p className={cn("mt-2.5 rounded-[10px] px-3 py-2 text-[12.5px] leading-snug", stamp.source === "manual" ? "bg-amber-soft text-amber-ink" : "bg-surface text-subtle")}>
           {stamp.source === "manual" ? "Justificación: " : "Nota: "}
           {stamp.note}
         </p>
@@ -305,7 +305,7 @@ function StampRow({ icon, k, v }: { icon: React.ReactNode; k: string; v: React.R
 
 function Bitacora({ j, lk }: { j: Jornada; lk: Lookups }) {
   return (
-    <div className="relative mt-4 rounded-[18px] bg-[#fafbfc] p-4">
+    <div className="relative mt-4 rounded-[18px] bg-wash p-4">
       <p className="mb-2.5 flex items-center gap-2 text-[12px] font-semibold uppercase tracking-[0.1em] text-subtle">
         <NotebookPen className="size-3.5" /> Bitácora
       </p>

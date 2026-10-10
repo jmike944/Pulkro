@@ -44,7 +44,7 @@ export function CaseOrderCard({ bundle }: { bundle: OrderBundle }) {
   return (
     <section>
       <SectionHeader title="Orden original" href={`/ordenes/${order.folio}`} linkLabel="Ver orden" />
-      <div className="overflow-hidden rounded-[22px] border border-hairline bg-white shadow-soft">
+      <div className="overflow-hidden rounded-[22px] border border-hairline bg-surface shadow-soft">
         <div className="p-5 sm:p-6">
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div className="min-w-0">
@@ -86,7 +86,7 @@ export function CaseOrderCard({ bundle }: { bundle: OrderBundle }) {
           )}
         </div>
         {(pair || thumbs.length > 0) && (
-          <div className="border-t border-hairline bg-[#fafbfc] p-3 sm:p-4">
+          <div className="border-t border-hairline bg-wash p-3 sm:p-4">
             <div className={cn("grid grid-cols-1 gap-3", pair && thumbs.length ? "sm:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)]" : "")}>
               {pair && <BeforeAfter before={pair.before} after={pair.after} />}
               {thumbs.length > 0 && (
@@ -111,7 +111,7 @@ export function CaseOrderIncidents({ bundle }: { bundle: OrderBundle }) {
     <section>
       <SectionHeader title="Incidencias durante el servicio" subtitle={incidents.length ? plural(incidents.length, "incidencia registrada", "incidencias registradas") : undefined} />
       {incidents.length === 0 ? (
-        <p className="rounded-[18px] bg-[#f6f8fa] px-4 py-4 text-[14px] text-subtle">La orden no tuvo incidencias durante la ejecución.</p>
+        <p className="rounded-[18px] bg-soft px-4 py-4 text-[14px] text-subtle">La orden no tuvo incidencias durante la ejecución.</p>
       ) : (
         <motion.ul variants={staggerContainer(0.05, 0.1)} initial="hidden" animate="show">
           {incidents.map((i) => {
@@ -130,7 +130,7 @@ export function CaseOrderIncidents({ bundle }: { bundle: OrderBundle }) {
                       <SoftBadge tone={SEVERITY[i.severity].tone}>{SEVERITY[i.severity].label}</SoftBadge>
                     </span>
                     <span className="mt-1 line-clamp-2 block text-[14px] text-ink/75">{i.description}</span>
-                    {i.resolution && <span className="mt-1 block text-[13px] text-st-teal">Resuelta: {i.resolution}</span>}
+                    {i.resolution && <span className="mt-1 block text-[13px] text-teal-fg">Resuelta: {i.resolution}</span>}
                   </span>
                   <span className="shrink-0">
                     <TonePill tone={i.status === "abierta" ? "red" : "teal"}>{i.status === "abierta" ? "Abierta" : "Resuelta"}</TonePill>
@@ -150,7 +150,7 @@ export function CaseOrderSurvey({ bundle }: { bundle: OrderBundle }) {
   const sv = bundle.surveys.find((s) => s.answers) ?? bundle.surveys[0];
   if (!sv) return null;
   return (
-    <div className="rounded-[22px] border border-hairline bg-white p-5 shadow-soft">
+    <div className="rounded-[22px] border border-hairline bg-surface p-5 shadow-soft">
       <div className="flex items-center justify-between gap-3">
         <p className="text-[15px] font-medium text-ink">Encuesta del servicio</p>
         <Link href={`/postventa?orden=${bundle.order.folio}`} className="inline-flex items-center gap-1 text-[13.5px] font-semibold text-link">

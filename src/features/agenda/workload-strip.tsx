@@ -60,19 +60,19 @@ export function WorkloadStrip({
               aria-pressed={isActive}
               className={cn(
                 "relative flex min-h-[60px] flex-col items-center rounded-[14px] border px-1.5 py-2 text-center outline-none transition-colors focus-visible:ring-3 focus-visible:ring-ring/50 sm:items-stretch sm:px-3 sm:text-left",
-                isActive ? "border-ink bg-white shadow-[0_6px_18px_-10px_rgb(16_24_40/0.35)]" : isToday ? "border-sky/70 bg-sky-soft/60 hover:bg-sky-soft" : "border-hairline bg-[#fafbfc] hover:bg-white",
+                isActive ? "border-ink bg-surface shadow-[0_6px_18px_-10px_rgb(16_24_40/0.35)]" : isToday ? "border-sky/70 bg-sky-soft/60 hover:bg-sky-soft" : "border-hairline bg-wash hover:bg-surface",
               )}
             >
               <span className="flex w-full items-baseline justify-center gap-1 sm:justify-between">
-                <span className={cn("text-[11px] font-semibold uppercase tracking-[0.08em]", isToday ? "text-[#1b8fc0]" : "text-subtle")}>
+                <span className={cn("text-[11px] font-semibold uppercase tracking-[0.08em]", isToday ? "text-sky-fg" : "text-subtle")}>
                   <span className="sm:hidden">{dowLetter(l.date)}</span>
                   <span className="hidden sm:inline">{dowShort(l.date)}</span>
                 </span>
                 <span className="text-[13.5px] font-semibold text-ink tabular">{l.date.getDate()}</span>
               </span>
-              <span className="mt-2 block h-[5px] w-full overflow-hidden rounded-full bg-[#e6eaf0]">
+              <span className="mt-2 block h-[5px] w-full overflow-hidden rounded-full bg-track">
                 <motion.span
-                  className={cn("block h-full rounded-full", over ? "bg-st-red" : high ? "bg-st-amber" : isToday ? "bg-[#1667e0]" : "bg-[#7fb3f5]")}
+                  className={cn("block h-full rounded-full", over ? "bg-st-red" : high ? "bg-st-amber" : isToday ? "bg-azure" : "bg-blue-bar")}
                   initial={{ width: 0 }}
                   animate={{ width: `${Math.min(1, pct) * 100}%` }}
                   transition={{ duration: 0.8, ease: EASE, delay: 0.1 + i * 0.05 }}
@@ -84,7 +84,7 @@ export function WorkloadStrip({
                   <span className="hidden text-subtle sm:inline">/{available}</span>
                 </span>
                 {doubles > 0 && (
-                  <span className="inline-flex items-center gap-0.5 font-semibold text-[#b86e00]">
+                  <span className="inline-flex items-center gap-0.5 font-semibold text-amber-fg">
                     <TriangleAlert className="size-3" />
                     <span className="max-sm:sr-only">{doubles}</span>
                   </span>
@@ -107,14 +107,14 @@ export function ConflictsNote({ conflicts, onOpen, when = "esta semana" }: { con
   const people = new Set(conflicts.map((c) => c.workerId)).size;
   if (!conflicts.length) return null;
   return (
-    <div className="mb-6 rounded-[18px] border border-[#f7dfb3] bg-[#fffaf0]">
+    <div className="mb-6 rounded-[18px] border border-amber-line bg-amber-wash">
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
         aria-expanded={open}
         className="flex min-h-12 w-full items-center gap-3 px-4 py-3 text-left outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
       >
-        <span className="inline-flex size-8 shrink-0 items-center justify-center rounded-[10px] bg-[#fff1d6] text-[#b86e00]">
+        <span className="inline-flex size-8 shrink-0 items-center justify-center rounded-[10px] bg-amber-tint text-amber-fg">
           <TriangleAlert className="size-4" />
         </span>
         <span className="min-w-0 flex-1 text-[14px] text-ink">
@@ -137,7 +137,7 @@ export function ConflictsNote({ conflicts, onOpen, when = "esta semana" }: { con
             {shown.map((c) => {
               const w = lk.workers.get(c.workerId);
               return (
-                <li key={`${c.dayKey}-${c.workerId}`} className="flex flex-wrap items-center gap-x-3 gap-y-2 border-t border-[#f7e6c4] px-4 py-3">
+                <li key={`${c.dayKey}-${c.workerId}`} className="flex flex-wrap items-center gap-x-3 gap-y-2 border-t border-amber-line px-4 py-3">
                   {w && <PersonAvatar name={w.name} initials={w.initials} hue={w.hue} size={28} />}
                   <span className="min-w-0 flex-1 text-[13.5px]">
                     <span className="block truncate font-medium text-ink">{w?.name ?? "Trabajador"}</span>
@@ -152,12 +152,12 @@ export function ConflictsNote({ conflicts, onOpen, when = "esta semana" }: { con
                           key={b.jornadaId}
                           type="button"
                           onClick={() => onOpen(b.jornadaId)}
-                          className="inline-flex h-9 items-center rounded-[10px] border border-[#f0d9ae] bg-white px-2.5 text-[12.5px] font-medium text-ink tabular transition hover:border-[#e2b866]"
+                          className="inline-flex h-9 items-center rounded-[10px] border border-amber-line bg-surface px-2.5 text-[12.5px] font-medium text-ink tabular transition hover:border-amber-line-strong"
                         >
                           {b.folio} · {fmtTime(b.start)}
                         </button>
                       ) : (
-                        <span key={b.jornadaId} className="inline-flex h-9 items-center rounded-[10px] bg-white/60 px-2.5 text-[12.5px] text-subtle tabular">
+                        <span key={b.jornadaId} className="inline-flex h-9 items-center rounded-[10px] bg-surface/60 px-2.5 text-[12.5px] text-subtle tabular">
                           Otra cuadrilla · {fmtTime(b.start)}
                         </span>
                       ),
@@ -167,7 +167,7 @@ export function ConflictsNote({ conflicts, onOpen, when = "esta semana" }: { con
               );
             })}
             {conflicts.length > shown.length && (
-              <li className="border-t border-[#f7e6c4] px-4 py-2">
+              <li className="border-t border-amber-line px-4 py-2">
                 <button type="button" onClick={() => setAll(true)} className="h-10 text-[13.5px] font-semibold text-link">
                   Mostrar las {conflicts.length} dobles asignaciones
                 </button>

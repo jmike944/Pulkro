@@ -81,12 +81,12 @@ export function MoreLink({ href, children }: { href: string; children: React.Rea
 
 function PhotoChip({ label, count, missing }: { label: string; count: number; missing: boolean }) {
   const tone = missing
-    ? "bg-[#fff6e6] text-[#b86e00] ring-1 ring-inset ring-[#f6d9a8]"
+    ? "bg-amber-soft text-amber-fg ring-1 ring-inset ring-amber-line"
     : count > 0
       ? label === "ANTES"
-        ? "bg-[#edf4ff] text-link"
-        : "bg-[#e7f7f4] text-st-teal"
-      : "bg-[#f2f4f7] text-[#98a2b3]";
+        ? "bg-blue-soft text-link"
+        : "bg-teal-soft text-teal-fg"
+      : "bg-tile text-faint dark:text-subtle";
   return (
     <span className={cn("inline-flex h-[22px] items-center gap-1 rounded-md px-1.5 text-[10.5px] font-bold tracking-[0.06em] tabular", tone)}>
       {missing && <span className="sr-only">Falta foto </span>}
@@ -129,7 +129,7 @@ export function JornadaRow({ j, o, lk, now, photos }: { j: Jornada; o: Order; lk
       />
       {/* 70px = time tile (54) + row gap (16): lines up under the text */}
       <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 pb-3.5 pl-[70px]">
-        {crew.length > 0 ? <AvatarStack people={crew} size={24} max={4} /> : <span className="text-[12.5px] font-medium text-[#b86e00]">Sin cuadrilla</span>}
+        {crew.length > 0 ? <AvatarStack people={crew} size={24} max={4} /> : <span className="text-[12.5px] font-medium text-amber-fg">Sin cuadrilla</span>}
         {j.status !== "pendiente" && (
           <span className="flex items-center gap-1.5">
             <PhotoChip label="ANTES" count={photos.antes} missing={photos.antes === 0} />
@@ -194,11 +194,11 @@ export function AttentionRow({ item, lk, role, now }: { item: AttentionItem; lk:
           allowed && a.label !== "Ver" ? (
             <>
               {/* phones: the chevron only, the status line already names the step and the pill would leave ~150px for the text */}
-              <ChevronRight className="size-[18px] shrink-0 text-[#98a2b3] sm:hidden" />
+              <ChevronRight className="size-[18px] shrink-0 text-faint sm:hidden" />
               <span
                 className={cn(
                   "hidden h-9 min-w-[72px] shrink-0 items-center justify-center rounded-[12px] px-3.5 text-[14px] font-semibold sm:inline-flex",
-                  a.variant === "primary" ? "bg-brand-deep text-white" : "border border-[#dfe3ea] bg-white text-ink",
+                  a.variant === "primary" ? "bg-brand-deep text-white" : "border border-line bg-surface text-ink",
                 )}
               >
                 {a.label}
@@ -242,7 +242,7 @@ export function ServicesHero({ stats, now, month, onMonth }: { stats: HoyStats; 
             onClick={() => setOpen(true)}
             aria-haspopup="dialog"
             aria-label={`Mes: ${MONTHS_ES[month]}. Cambiar mes`}
-            className="inline-flex h-11 items-center gap-2 rounded-[12px] bg-[#f2f4f7] px-4 text-[14px] font-semibold text-ink transition active:scale-95"
+            className="inline-flex h-11 items-center gap-2 rounded-[12px] bg-tile px-4 text-[14px] font-semibold text-ink transition active:scale-95"
           >
             {MONTHS_ES[month]}
             <ChevronDown className="size-4" />
@@ -256,7 +256,7 @@ export function ServicesHero({ stats, now, month, onMonth }: { stats: HoyStats; 
           <span
             className={cn(
               "inline-flex items-center gap-1.5 rounded-[8px] px-2 py-1 text-[13px] font-semibold",
-              stats.delta >= 0 ? "bg-[#e6f0fd] text-[#1667e0]" : "bg-[#fdeeee] text-st-red",
+              stats.delta >= 0 ? "bg-blue-tint text-azure-fg" : "bg-red-soft text-red-fg",
             )}
           >
             {stats.delta >= 0 ? <TrendingUp className="size-4" /> : <TrendingDown className="size-4" />}
@@ -324,9 +324,9 @@ function MonthSheet({
                   role="radio"
                   aria-checked={active}
                   onClick={() => onPick(m.month)}
-                  className={cn("flex h-[60px] w-full items-center gap-3.5 rounded-[14px] px-2.5 text-left transition active:bg-sand", active && "bg-[#f2f8fe]")}
+                  className={cn("flex h-[60px] w-full items-center gap-3.5 rounded-[14px] px-2.5 text-left transition active:bg-sand", active && "bg-blue-wash")}
                 >
-                  <span className={cn("inline-flex size-10 shrink-0 items-center justify-center rounded-[12px] text-[13px] font-bold tracking-wide", active ? "bg-[#e3f1fd] text-[#1667e0]" : "bg-sand text-ink")}>{m.label}</span>
+                  <span className={cn("inline-flex size-10 shrink-0 items-center justify-center rounded-[12px] text-[13px] font-bold tracking-wide", active ? "bg-blue-tint text-azure-fg" : "bg-sand text-ink")}>{m.label}</span>
                   <span className="min-w-0 flex-1">
                     <span className="block truncate text-[16px] font-semibold text-ink">{MONTHS_ES[m.month]}</span>
                     <span className="block truncate text-[13.5px] text-subtle">
@@ -334,7 +334,7 @@ function MonthSheet({
                       {m.month === currentMonth ? " · mes en curso" : ""}
                     </span>
                   </span>
-                  {active && <Check className="size-5 shrink-0 text-[#1667e0]" />}
+                  {active && <Check className="size-5 shrink-0 text-azure-fg" />}
                 </button>
               </li>
             );
@@ -356,7 +356,7 @@ export function PipelineTiles({ stats, className }: { stats: HoyStats; className
   return (
     <div className={cn("grid grid-cols-3 gap-2", className)}>
       {tiles.map((t) => (
-        <Link key={t.label} href={t.href} className="rounded-[18px] border border-hairline bg-white px-2.5 py-3 transition active:bg-sand/60">
+        <Link key={t.label} href={t.href} className="rounded-[18px] border border-hairline bg-surface px-2.5 py-3 transition active:bg-sand/60">
           <MiniStat tone={t.tone} label={t.label} value={t.value} sub={t.sub} />
         </Link>
       ))}

@@ -55,13 +55,13 @@ export function SearchPill({ className }: { className?: string }) {
       aria-haspopup="dialog"
       aria-keyshortcuts="Control+K Meta+K"
       className={cn(
-        "hidden h-10 w-[clamp(240px,24vw,380px)] items-center gap-2.5 rounded-[14px] border border-hairline bg-white px-3.5 text-left text-[14px] text-[#98a2b3] shadow-[0_1px_2px_rgb(16_24_40/0.03)] transition hover:border-[#d5dbe3] lg:flex",
+        "hidden h-10 w-[clamp(240px,24vw,380px)] items-center gap-2.5 rounded-[14px] border border-hairline bg-surface px-3.5 text-left text-[14px] text-faint shadow-[0_1px_2px_rgb(16_24_40/0.03)] transition hover:border-line-strong lg:flex",
         className,
       )}
     >
       <Search className="size-[17px] shrink-0 text-subtle" />
       <span className="flex-1 truncate">Buscar órdenes, clientes, folios</span>
-      <Kbd className="bg-[#f2f4f7] text-[11px]">⌘K</Kbd>
+      <Kbd className="bg-tile text-[11px]">⌘K</Kbd>
     </button>
   );
 }
@@ -95,7 +95,7 @@ export function ProfileAvatar({ className }: { className?: string }) {
     >
       {user.initials}
       {(offline || pending.length > 0) && (
-        <span className={cn("absolute right-0 top-0 size-3 rounded-full ring-2 ring-white", offline ? "bg-st-amber" : "bg-sky animate-pulse")} />
+        <span className={cn("absolute right-0 top-0 size-3 rounded-full ring-2 ring-surface", offline ? "bg-st-amber" : "bg-sky animate-pulse")} />
       )}
     </Link>
   );

@@ -40,7 +40,7 @@ export function PersonCard({ m }: { m: RequestModel }) {
         <a
           href={`tel:${sup.phone.replace(/\s/g, "")}`}
           aria-label={`Llamar a ${sup.name}`}
-          className="inline-flex size-11 shrink-0 items-center justify-center rounded-full bg-[#f2f4f7] text-ink transition hover:bg-[#e9edf2]"
+          className="inline-flex size-11 shrink-0 items-center justify-center rounded-full bg-tile text-ink transition hover:bg-press"
         >
           <Phone className="size-4" />
         </a>
@@ -104,7 +104,7 @@ export function NeededBox({
   return (
     <section>
       <Eyebrow className="mb-3">Qué se necesita</Eyebrow>
-      <div className="relative overflow-hidden rounded-[18px] bg-[#f5f7fa] p-4 sm:p-5">
+      <div className="relative overflow-hidden rounded-[18px] bg-soft p-4 sm:p-5">
         {wipe > 0 && <SqueegeeWipe key={wipe} />}
         <p className="text-[14px] leading-relaxed text-ink [&_b]:font-semibold">
           {request.kind === "despues" ? (
@@ -143,7 +143,7 @@ export function NeededBox({
             "Se guarda con hora y usuario; se sincroniza al recuperar señal",
           ].map((t) => (
             <li key={t} className="flex items-start gap-2">
-              <Check className="mt-0.5 size-3.5 shrink-0 text-st-teal" strokeWidth={2.6} />
+              <Check className="mt-0.5 size-3.5 shrink-0 text-teal-fg" strokeWidth={2.6} />
               {t}
             </li>
           ))}
@@ -168,7 +168,7 @@ export function AreaChips({ choices, value, onChange }: { choices: string[]; val
             aria-pressed={value === a}
             className={cn(
               "min-h-11 rounded-[12px] border px-3.5 text-[13.5px] transition md:min-h-10",
-              value === a ? "border-ink bg-ink font-medium text-white" : "border-hairline bg-white text-ink hover:bg-muted",
+              value === a ? "border-ink bg-ink font-medium text-on-ink" : "border-hairline bg-surface text-ink hover:bg-muted",
             )}
           >
             {a}
@@ -186,11 +186,11 @@ export function ReceivedCard({ m, onPreview }: { m: RequestModel; onPreview: (ph
       initial={{ opacity: 0, y: 12, scale: 0.98 }}
       animate={{ opacity: 1, y: 0, scale: 1 }}
       transition={{ type: "spring", stiffness: 260, damping: 26 }}
-      className="relative overflow-hidden rounded-[20px] bg-[#e7f7f4] p-4"
+      className="relative overflow-hidden rounded-[20px] bg-teal-soft p-4"
     >
       <SparkleBurst delay={0.2} />
       <div className="mb-3 flex items-center gap-2.5">
-        <span className="inline-flex size-8 items-center justify-center rounded-[10px] bg-white text-st-teal">
+        <span className="inline-flex size-8 items-center justify-center rounded-[10px] bg-surface text-teal-fg">
           <CheckCircle2 className="size-[18px]" />
         </span>
         <div className="min-w-0">
@@ -222,7 +222,7 @@ export function History({ m }: { m: RequestModel }) {
             transition={{ duration: 0.4, ease: EASE, delay: 0.05 * i }}
             className="relative flex gap-4"
           >
-            <span className={cn("relative z-[1] mt-1.5 size-[11px] shrink-0 rounded-full ring-4 ring-white", toneDot[h.tone])} />
+            <span className={cn("relative z-[1] mt-1.5 size-[11px] shrink-0 rounded-full ring-4 ring-surface", toneDot[h.tone])} />
             <div className="min-w-0 flex-1">
               <div className="flex items-baseline justify-between gap-3">
                 <p className="text-[14px] font-semibold text-ink">{h.title}</p>

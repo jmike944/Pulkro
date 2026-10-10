@@ -53,8 +53,8 @@ export function SupervisorsTab({ data }: { data: TeamData }) {
   return (
     <div>
       <div className="mb-5 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-        <div className="flex max-w-2xl items-start gap-3 rounded-[16px] bg-[#fff8eb] px-4 py-3 text-[13px] leading-snug text-[#6b4200]">
-          <Scale className="mt-0.5 size-4 shrink-0 text-[#b86e00]" />
+        <div className="flex max-w-2xl items-start gap-3 rounded-[16px] bg-amber-soft px-4 py-3 text-[13px] leading-snug text-amber-deep">
+          <Scale className="mt-0.5 size-4 shrink-0 text-amber-fg" />
           <span>
             <SoftBadge tone="amber" className="mr-1.5 align-[1px]">
               PENDIENTE
@@ -76,7 +76,7 @@ export function SupervisorsTab({ data }: { data: TeamData }) {
             const u = r.user;
             const today = data.supervisorToday.get(u.id);
             return (
-              <motion.article key={u.id} variants={fadeUp} className="flex flex-col rounded-[22px] border border-hairline bg-white p-5 shadow-soft sm:p-6">
+              <motion.article key={u.id} variants={fadeUp} className="flex flex-col rounded-[22px] border border-hairline bg-surface p-5 shadow-soft sm:p-6">
                 <div className="flex items-start gap-3">
                   <PersonAvatar name={u.name} initials={u.initials} hue={u.hue} size={46} />
                   <div className="min-w-0 flex-1">
@@ -88,7 +88,7 @@ export function SupervisorsTab({ data }: { data: TeamData }) {
                   <div className="mt-3">
                     {today.href ? (
                       <Link href={today.href} className="inline-flex">
-                        <TonePill tone={today.tone} live={today.live} className="transition hover:bg-[#e9edf2]">
+                        <TonePill tone={today.tone} live={today.live} className="transition hover:bg-press">
                           {today.label}
                         </TonePill>
                       </Link>
@@ -101,7 +101,7 @@ export function SupervisorsTab({ data }: { data: TeamData }) {
                 )}
 
                 <dl className="mt-5 grid grid-cols-2 gap-x-6 gap-y-5">
-                  <Metric label="Órdenes cerradas" value={r.closed} pct={r.closed / max.closed} bar="bg-[#1667e0]" />
+                  <Metric label="Órdenes cerradas" value={r.closed} pct={r.closed / max.closed} bar="bg-azure" />
                   <Metric label="Abiertas" value={r.open} pct={r.open / max.open} bar="bg-st-amber" />
                   <Metric label="Horas reales" value={Math.round(r.hours)} suffix=" h" pct={r.hours / max.hours} bar="bg-st-teal" />
                   <Metric label="h / servicio" value={Number(r.hoursPerService.toFixed(1))} suffix=" h" pct={r.hoursPerService / max.hps} bar="bg-st-violet" decimals />
@@ -145,7 +145,7 @@ function Metric({ label, value, pct, bar, suffix, decimals }: { label: string; v
           format={decimals ? { minimumFractionDigits: 1, maximumFractionDigits: 1 } : undefined}
           className="text-[24px] font-medium leading-none tracking-[-0.03em] text-ink"
         />
-        <div className="mt-2.5 h-[6px] overflow-hidden rounded-full bg-[#eef1f5]">
+        <div className="mt-2.5 h-[6px] overflow-hidden rounded-full bg-well">
           <motion.div
             initial={{ width: 0 }}
             animate={{ width: `${Math.max(0.04, Math.min(1, pct)) * 100}%` }}
@@ -167,7 +167,7 @@ function Csat({ value }: { value: number }) {
           const fill = Math.max(0, Math.min(1, value - (i - 1)));
           return (
             <span key={i} className="relative inline-flex size-4">
-              <Star className="absolute inset-0 size-4 text-[#e3e7ed]" fill="currentColor" strokeWidth={0} />
+              <Star className="absolute inset-0 size-4 text-track" fill="currentColor" strokeWidth={0} />
               <motion.span
                 className="absolute inset-0 overflow-hidden"
                 initial={{ width: 0 }}

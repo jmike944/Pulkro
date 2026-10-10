@@ -64,7 +64,7 @@ export function TaskProgress({ task, className }: { task: OutputTask; className?
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -4 }}
             transition={{ duration: 0.18 }}
-            className={cn("truncate text-[14.5px] font-semibold", task.step === "error" ? "text-st-red" : "text-ink")}
+            className={cn("truncate text-[14.5px] font-semibold", task.step === "error" ? "text-red-fg" : "text-ink")}
           >
             {label}
           </motion.p>
@@ -78,8 +78,8 @@ export function TaskProgress({ task, className }: { task: OutputTask; className?
           const done = at > i;
           const active = at === i;
           return (
-            <li key={s.key} className={cn("flex items-center gap-1.5", done ? "text-st-teal" : active ? "font-semibold text-ink" : "text-[#98a2b3]")}>
-              <span className={cn("inline-flex size-4 items-center justify-center rounded-full", done ? "bg-[#dcf4ef]" : active ? "bg-sky-soft" : "bg-[#f2f4f7]")}>
+            <li key={s.key} className={cn("flex items-center gap-1.5", done ? "text-teal-fg" : active ? "font-semibold text-ink" : "text-faint")}>
+              <span className={cn("inline-flex size-4 items-center justify-center rounded-full", done ? "bg-teal-tint" : active ? "bg-sky-soft" : "bg-tile")}>
                 {done ? <Check className="size-3" strokeWidth={3} /> : active ? <LoaderCircle className="size-3 animate-spin text-link" /> : null}
               </span>
               {s.label}
@@ -98,17 +98,17 @@ export function SyncGatePanel({ gate, onOpenSync, className }: { gate: SyncGate;
       {gate.kind !== "ok" && (
         <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} exit={{ opacity: 0, height: 0 }} className={cn("overflow-hidden", className)}>
           {gate.kind === "syncing" ? (
-            <div className="flex items-center gap-2.5 rounded-[14px] bg-sky-soft px-3.5 py-3 text-[13.5px] leading-snug text-[#11507e]">
+            <div className="flex items-center gap-2.5 rounded-[14px] bg-sky-soft px-3.5 py-3 text-[13.5px] leading-snug text-blue-ink">
               <LoaderCircle className="size-4 shrink-0 animate-spin" />
               <span className="min-w-0 flex-1">
                 Sincronizando {plural(gate.count, "registro", "registros")} de esta orden… el PDF definitivo se comparte al terminar.
               </span>
-              <button type="button" onClick={onOpenSync} className="-my-2 h-10 shrink-0 rounded-[10px] px-3 text-[13px] font-semibold text-link hover:bg-white/60">
+              <button type="button" onClick={onOpenSync} className="-my-2 h-10 shrink-0 rounded-[10px] px-3 text-[13px] font-semibold text-link hover:bg-surface/60">
                 Ver
               </button>
             </div>
           ) : (
-            <div className="rounded-[16px] bg-[#fff6e6] p-4 text-[13.5px] leading-snug text-[#8a5300]">
+            <div className="rounded-[16px] bg-amber-soft p-4 text-[13.5px] leading-snug text-amber-ink">
               <p className="flex items-center gap-2 font-semibold">
                 {gate.offline ? <WifiOff className="size-4" /> : <CloudOff className="size-4" />}
                 {gate.offline ? "Sin conexión" : "Sincronización con errores"}
@@ -117,7 +117,7 @@ export function SyncGatePanel({ gate, onOpenSync, className }: { gate: SyncGate;
                 {plural(gate.count, "registro", "registros")} de esta orden aún no {gate.count === 1 ? "llega" : "llegan"} al servidor. Para no enviar datos incompletos, el PDF
                 definitivo se comparte cuando todo esté sincronizado.
               </p>
-              <Button variant="outline" onClick={onOpenSync} className="mt-3 h-10 rounded-[12px] border-[#f1d7a8] bg-white px-4 font-semibold text-ink">
+              <Button variant="outline" onClick={onOpenSync} className="mt-3 h-10 rounded-[12px] border-amber-line bg-surface px-4 font-semibold text-ink">
                 Ver sincronización
               </Button>
             </div>

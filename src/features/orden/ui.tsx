@@ -63,13 +63,13 @@ export function OrderDialog({
       <DialogContent
         showCloseButton={false}
         className={cn(
-          "flex max-h-[92dvh] flex-col gap-0 overflow-hidden rounded-[26px] bg-white p-0 text-ink shadow-lift ring-1 ring-black/5",
+          "flex max-h-[92dvh] flex-col gap-0 overflow-hidden rounded-[26px] bg-surface p-0 text-ink shadow-lift ring-1 ring-edge",
           size === "lg" ? "sm:max-w-[620px]" : "sm:max-w-[540px]",
           "max-sm:inset-x-0 max-sm:top-auto max-sm:bottom-0 max-sm:left-0 max-sm:max-h-[94dvh] max-sm:max-w-none max-sm:translate-x-0 max-sm:translate-y-0 max-sm:rounded-b-none",
         )}
       >
         <div className="relative shrink-0 px-5 pb-4 pt-6 sm:px-7 sm:pt-7">
-          <span className="mx-auto mb-4 block h-1 w-10 rounded-full bg-[#e3e7ed] sm:hidden" aria-hidden />
+          <span className="mx-auto mb-4 block h-1 w-10 rounded-full bg-track sm:hidden" aria-hidden />
           <DialogClose
             aria-label="Cerrar"
             className="absolute right-4 top-4 inline-flex size-10 items-center justify-center rounded-full text-subtle transition hover:bg-muted hover:text-ink sm:right-5 sm:top-5"
@@ -87,7 +87,7 @@ export function OrderDialog({
         </div>
         <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-5 pb-6 sm:px-7">{children}</div>
         {footer && (
-          <div className="flex shrink-0 flex-col-reverse gap-2 border-t border-hairline bg-[#fafbfc] px-5 py-4 pb-[max(1rem,env(safe-area-inset-bottom))] sm:flex-row sm:items-center sm:justify-end sm:px-7">
+          <div className="flex shrink-0 flex-col-reverse gap-2 border-t border-hairline bg-wash px-5 py-4 pb-[max(1rem,env(safe-area-inset-bottom))] sm:flex-row sm:items-center sm:justify-end sm:px-7">
             {footer}
           </div>
         )}
@@ -102,7 +102,7 @@ export function OrderDialog({
  */
 export function DialogActions({ children, hint }: { children: React.ReactNode; hint?: React.ReactNode }) {
   return (
-    <div className="sticky bottom-[-24px] z-10 -mx-5 -mb-6 mt-6 flex flex-col-reverse gap-2 border-t border-hairline bg-[#fafbfc]/95 px-5 py-4 pb-[max(1rem,env(safe-area-inset-bottom))] backdrop-blur sm:-mx-7 sm:flex-row sm:items-center sm:justify-end sm:px-7">
+    <div className="sticky bottom-[-24px] z-10 -mx-5 -mb-6 mt-6 flex flex-col-reverse gap-2 border-t border-hairline bg-wash/95 px-5 py-4 pb-[max(1rem,env(safe-area-inset-bottom))] backdrop-blur sm:-mx-7 sm:flex-row sm:items-center sm:justify-end sm:px-7">
       {hint && <p className="text-center text-[12.5px] text-subtle sm:mr-auto sm:text-left">{hint}</p>}
       {children}
     </div>
@@ -132,7 +132,7 @@ export function ReasonField({
     <div>
       <label htmlFor={id} className="mb-2 flex items-baseline justify-between gap-3 text-[13px] font-medium text-ink">
         <span>
-          {label} <span className="text-st-red">*</span>
+          {label} <span className="text-red-fg">*</span>
         </span>
         <span className="text-[12px] font-normal text-subtle">Queda en la actividad de la orden</span>
       </label>
@@ -146,7 +146,7 @@ export function ReasonField({
               onClick={() => onChange(s)}
               className={cn(
                 "min-h-8 rounded-full border px-3 text-[12.5px] transition",
-                value === s ? "border-ink bg-ink text-white" : "border-hairline bg-white text-ink hover:bg-muted",
+                value === s ? "border-ink bg-ink text-on-ink" : "border-hairline bg-surface text-ink hover:bg-muted",
               )}
             >
               {s}
@@ -161,9 +161,9 @@ export function ReasonField({
         placeholder={placeholder}
         rows={3}
         aria-invalid={short || undefined}
-        className="w-full resize-none rounded-[14px] border border-input bg-white px-3.5 py-3 text-[15px] leading-relaxed outline-none transition placeholder:text-[#98a2b3] focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 aria-invalid:border-st-amber"
+        className="w-full resize-none rounded-[14px] border border-input bg-surface px-3.5 py-3 text-[15px] leading-relaxed outline-none transition placeholder:text-faint focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 aria-invalid:border-st-amber"
       />
-      {short && <p className="mt-1 text-[12px] text-[#b86e00]">Escriba al menos {min} caracteres.</p>}
+      {short && <p className="mt-1 text-[12px] text-amber-fg">Escriba al menos {min} caracteres.</p>}
     </div>
   );
 }
@@ -171,11 +171,11 @@ export function ReasonField({
 /** Confirm checkbox row used at the bottom of every confirmation dialog. */
 export function ConfirmCheck({ checked, onChange, children }: { checked: boolean; onChange: (v: boolean) => void; children: React.ReactNode }) {
   return (
-    <label className={cn("flex cursor-pointer items-start gap-3 rounded-[16px] border p-4 transition", checked ? "border-[#bcd8fb] bg-[#f4f8fd]" : "border-hairline bg-white hover:bg-[#fafbfc]")}>
+    <label className={cn("flex cursor-pointer items-start gap-3 rounded-[16px] border p-4 transition", checked ? "border-blue-line bg-blue-wash" : "border-hairline bg-surface hover:bg-wash")}>
       <span
         className={cn(
           "mt-0.5 inline-flex size-5 shrink-0 items-center justify-center rounded-[6px] border transition",
-          checked ? "border-brand-deep bg-brand-deep text-white" : "border-[#c9d0da] bg-white",
+          checked ? "border-brand-deep bg-brand-deep text-white" : "border-line-heavy bg-surface",
         )}
       >
         <motion.svg viewBox="0 0 16 16" className="size-3.5" initial={false} animate={{ opacity: checked ? 1 : 0 }}>
@@ -201,11 +201,11 @@ export function ConfirmCheck({ checked, onChange, children }: { checked: boolean
 /** Key-value summary block inside dialogs ("Submit claim" reference). */
 export function SummaryRows({ rows, className }: { rows: { k: React.ReactNode; v: React.ReactNode; tone?: "ok" | "warn" | "bad" }[]; className?: string }) {
   return (
-    <dl className={cn("divide-y divide-hairline rounded-[18px] border border-hairline bg-white px-4", className)}>
+    <dl className={cn("divide-y divide-hairline rounded-[18px] border border-hairline bg-surface px-4", className)}>
       {rows.map((r, i) => (
         <div key={i} className="flex items-baseline justify-between gap-4 py-3 text-[14px]">
           <dt className="text-subtle">{r.k}</dt>
-          <dd className={cn("text-right font-semibold tabular", r.tone === "bad" ? "text-st-red" : r.tone === "warn" ? "text-[#b86e00]" : "text-ink")}>{r.v}</dd>
+          <dd className={cn("text-right font-semibold tabular", r.tone === "bad" ? "text-red-fg" : r.tone === "warn" ? "text-amber-fg" : "text-ink")}>{r.v}</dd>
         </div>
       ))}
     </dl>
@@ -225,7 +225,7 @@ export function Field({ label, htmlFor, children, hint, className }: { label: Re
   );
 }
 
-export const inputClass = "h-11 w-full rounded-[12px] border border-input bg-white px-3.5 text-[15px] outline-none transition placeholder:text-[#98a2b3] focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 disabled:bg-muted disabled:text-subtle";
+export const inputClass = "h-11 w-full rounded-[12px] border border-input bg-surface px-3.5 text-[15px] outline-none transition placeholder:text-faint focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 disabled:bg-muted disabled:text-subtle";
 
 /** Section label inside long forms. */
 export function FormSection({ title, children, className, aside }: { title: string; children: React.ReactNode; className?: string; aside?: React.ReactNode }) {

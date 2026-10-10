@@ -36,7 +36,7 @@ export function NextActionButton({ row, role, className }: { row: OrderRow; role
   const rule = ACTION_RULES[a.label];
   const allowed = !rule || can(role, rule.action);
   const base = "relative z-10 h-10 min-w-[84px] rounded-[12px] px-4 text-[14px] font-semibold";
-  const outline = "border-[#dfe3ea] shadow-[0_1px_2px_rgb(16_24_40/0.05)]";
+  const outline = "border-line shadow-[0_1px_2px_rgb(16_24_40/0.05)]";
 
   if (!allowed) {
     // The role only consults: offer the detail and explain who acts.
@@ -87,9 +87,9 @@ function ViewOnlyAction({ row, who, children }: { row: OrderRow; who: string; ch
 /* ───────────── jornadas progress ───────────── */
 
 const SEG_CLASS: Record<Jornada["status"], string> = {
-  cerrada: "bg-[#1667e0]",
+  cerrada: "bg-azure",
   en_curso: "bg-sky",
-  pendiente: "bg-[#e4e8ee]",
+  pendiente: "bg-track",
 };
 
 /** "2/3" + tiny segmented bar: closed · in progress · pending. */
@@ -115,7 +115,7 @@ export function JornadaProgress({ row, className, compact }: { row: OrderRow; cl
           >
             {j?.status === "en_curso" && (
               <motion.span
-                className="absolute inset-y-0 w-1/2 bg-gradient-to-r from-transparent via-white/80 to-transparent"
+                className="absolute inset-y-0 w-1/2 bg-gradient-to-r from-transparent via-surface/80 to-transparent"
                 animate={{ x: ["-100%", "220%"] }}
                 transition={{ duration: 1.6, repeat: Infinity, ease: "easeInOut" }}
               />
@@ -131,19 +131,19 @@ export function JornadaProgress({ row, className, compact }: { row: OrderRow; cl
 
 function EvidenceChip({ label, count, missing, required }: { label: string; count: number; missing: boolean; required: boolean }) {
   const tone = missing
-    ? "bg-[#fff6e6] text-[#b86e00] ring-1 ring-inset ring-[#f6d9a8]"
+    ? "bg-amber-soft text-amber-fg ring-1 ring-inset ring-amber-line"
     : count > 0
       ? label === "ANTES"
-        ? "bg-[#edf4ff] text-link"
-        : "bg-[#e7f7f4] text-st-teal"
-      : "bg-[#f2f4f7] text-[#98a2b3]";
+        ? "bg-blue-soft text-link"
+        : "bg-teal-soft text-teal-fg"
+      : "bg-tile text-faint dark:text-subtle";
   return (
     <span
       className={cn("inline-flex h-[22px] items-center gap-1 rounded-md px-1.5 text-[10.5px] font-bold tracking-[0.06em] tabular", tone)}
       title={missing ? `Falta foto ${label}` : required ? `${count} foto(s) ${label}` : `${label}: aún no requerida`}
     >
       {label}
-      <span className={cn(count === 0 && !missing && "opacity-60")}>{missing && count === 0 ? "!" : count}</span>
+      <span className={cn(count === 0 && !missing && "opacity-60 dark:opacity-100")}>{missing && count === 0 ? "!" : count}</span>
     </span>
   );
 }
@@ -185,7 +185,7 @@ export function RowBreakdown({ row, className }: { row: OrderRow; className?: st
   return (
     <ul className={cn("space-y-0.5 border-t border-hairline pt-2.5 text-[12.5px] leading-snug text-subtle", className)}>
       {jornadas && <li>Jornadas: {jornadas}</li>}
-      {missing && <li className="font-medium text-[#b86e00]">Falta foto {missing}</li>}
+      {missing && <li className="font-medium text-amber-fg">Falta foto {missing}</li>}
       {liveHours && <li>Las horas incluyen la jornada en curso</li>}
     </ul>
   );
@@ -194,7 +194,7 @@ export function RowBreakdown({ row, className }: { row: OrderRow; className?: st
 /* ───────────── real hours ───────────── */
 
 export function RealHours({ row, className }: { row: OrderRow; className?: string }) {
-  if (!row.minutes) return <span className={cn("text-[15px] text-[#98a2b3]", className)}>—</span>;
+  if (!row.minutes) return <span className={cn("text-[15px] text-faint", className)}>—</span>;
   return (
     <span className={cn("inline-flex items-center justify-end gap-1.5 text-[15px] font-semibold text-ink tabular", className)} title={row.live ? "Incluye la jornada en curso" : "Σ salida − entrada"}>
       {row.live && <StatusDot tone="sky" live />}

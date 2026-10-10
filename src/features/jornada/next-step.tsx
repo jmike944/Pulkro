@@ -26,7 +26,7 @@ export function NextStep({ f }: { f: FieldReady }) {
     return (
       <NextStepCard
         avatar={
-          <span className="inline-flex size-11 items-center justify-center rounded-[13px] bg-sky-soft text-[#1667e0]">
+          <span className="inline-flex size-11 items-center justify-center rounded-[13px] bg-sky-soft text-azure-fg">
             <CalendarClock className="size-5" />
           </span>
         }
@@ -75,7 +75,7 @@ export function NextStep({ f }: { f: FieldReady }) {
       name={blocking.length ? "Revisar antes de cerrar" : "Listo para validar cierre"}
       sub={`${order.folio} · ${f.total} ${f.total === 1 ? "jornada" : "jornadas"}`}
       value={
-        <span className={cn("inline-flex items-center gap-1.5 text-[15px]", blocking.length ? "text-[#b86e00]" : "text-st-teal")}>
+        <span className={cn("inline-flex items-center gap-1.5 text-[15px]", blocking.length ? "text-amber-fg" : "text-teal-fg")}>
           {f.evidence.present}/{f.evidence.required}
           <span className="text-[12.5px] text-subtle">evidencias</span>
         </span>
@@ -145,15 +145,15 @@ export function EvidenceChecklist({ f }: { f: FieldReady }) {
             <span
               className={cn(
                 "inline-flex size-6 shrink-0 items-center justify-center rounded-full",
-                tone === "ok" && "bg-[#e7f7f4] text-st-teal",
-                tone === "warn" && "bg-[#fff6e6] text-[#b86e00]",
-                tone === "bad" && "bg-[#fdeeee] text-st-red",
+                tone === "ok" && "bg-teal-soft text-teal-fg",
+                tone === "warn" && "bg-amber-soft text-amber-fg",
+                tone === "bad" && "bg-red-soft text-red-fg",
               )}
             >
               {tone === "ok" ? <Check className="size-3.5" strokeWidth={3} /> : tone === "warn" ? <CircleAlert className="size-3.5" /> : <X className="size-3.5" strokeWidth={3} />}
             </span>
-            <span className={cn("min-w-0 flex-1", tone === "bad" ? "font-medium text-ink" : "text-[#3b4554]")}>{c.label}</span>
-            {c.detail && <span className={cn("shrink-0 text-[12.5px] tabular", tone === "bad" ? "font-semibold text-st-red" : "text-subtle")}>{c.detail}</span>}
+            <span className={cn("min-w-0 flex-1", tone === "bad" ? "font-medium text-ink" : "text-ink-soft")}>{c.label}</span>
+            {c.detail && <span className={cn("shrink-0 text-[12.5px] tabular", tone === "bad" ? "font-semibold text-red-fg" : "text-subtle")}>{c.detail}</span>}
           </motion.li>
         );
       })}

@@ -40,7 +40,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         <main className="min-w-0 flex-1 px-2 pb-[calc(92px+env(safe-area-inset-bottom))] pt-[max(8px,env(safe-area-inset-top))] lg:flex lg:min-h-0 lg:flex-col lg:py-3 lg:pb-3 lg:pl-0 lg:pr-3 print:block print:p-0">
           {/* From lg the panel is fixed in the window (rounded, clipping): a fixed card header (breadcrumbs, search, notifications) on
               top and the page scrolling inside it, underneath — see card-header.tsx and main-scroll.tsx. */}
-          <div className="min-h-[calc(100dvh-108px)] rounded-[28px] bg-white shadow-[0_1px_2px_rgb(16_24_40/0.04)] lg:flex lg:min-h-0 lg:flex-1 lg:flex-col lg:overflow-hidden lg:shadow-soft lg:ring-1 lg:ring-black/[0.03] print:block print:min-h-0 print:overflow-visible print:rounded-none print:shadow-none print:ring-0">
+          <div className="min-h-[calc(100dvh-108px)] rounded-[28px] bg-surface shadow-[0_1px_2px_rgb(16_24_40/0.04)] lg:flex lg:min-h-0 lg:flex-1 lg:flex-col lg:overflow-hidden lg:shadow-soft lg:ring-1 lg:ring-edge print:block print:min-h-0 print:overflow-visible print:rounded-none print:shadow-none print:ring-0">
             <CardHeader />
             <MainScroller className="px-5 py-6 sm:px-7 lg:min-h-0 lg:flex-1 lg:overflow-y-auto lg:overscroll-y-contain lg:px-10 lg:py-9 lg:outline-none lg:scrollbar-panel print:overflow-visible print:p-0">
               {children}
@@ -60,7 +60,7 @@ function ShellSkeleton() {
       <div className="hidden w-[272px] shrink-0 flex-col gap-4 px-5 pt-6 lg:flex">
         <div className="flex items-center gap-3">
           <PulkroMark animated />
-          <span className="font-brand text-[19px] font-extrabold tracking-[0.16em] text-brand-deep">PULKRO</span>
+          <span className="font-brand text-[19px] font-extrabold tracking-[0.16em] text-brand-ink">PULKRO</span>
         </div>
         <Shimmer className="mt-4 h-16" />
         <Shimmer className="h-11" />
@@ -69,7 +69,7 @@ function ShellSkeleton() {
         ))}
       </div>
       <div className="flex-1 p-3">
-        <div className="flex h-full min-h-[96dvh] flex-col items-center justify-center rounded-[28px] bg-white">
+        <div className="flex h-full min-h-[96dvh] flex-col items-center justify-center rounded-[28px] bg-surface">
           <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} className="flex flex-col items-center gap-4">
             <PulkroMark animated className="size-14 rounded-[16px]" />
             <p className="text-[13px] text-subtle">Cargando datos del dispositivo…</p>

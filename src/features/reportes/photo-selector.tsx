@@ -107,7 +107,7 @@ export function PhotoSelector({
             exit={{ opacity: 0, height: 0 }}
             className="overflow-hidden"
           >
-            <div className="mt-4 flex gap-3 rounded-[16px] bg-[#fff6e6] px-4 py-3 text-[13.5px] leading-snug text-[#8a5300]">
+            <div className="mt-4 flex gap-3 rounded-[16px] bg-amber-soft px-4 py-3 text-[13.5px] leading-snug text-amber-ink">
               <TriangleAlert className="mt-0.5 size-4 shrink-0" />
               <p>
                 {over ? (
@@ -198,13 +198,13 @@ function SelectableThumb({ photo, canEdit, pending, onToggle }: { photo: Photo; 
         transition={{ type: "spring", stiffness: 520, damping: 22 }}
         className={cn(
           "absolute right-2.5 top-2.5 inline-flex size-7 items-center justify-center rounded-full border-2 shadow-sm transition-colors",
-          sel ? "border-white bg-link text-white" : "border-white/90 bg-black/25 text-transparent",
+          sel ? "border-white bg-link text-white dark:bg-azure" : "border-white/90 bg-black/25 text-transparent",
         )}
       >
         <Check className="size-4" strokeWidth={3} />
       </motion.span>
       {pending && (
-        <span className="absolute right-11 top-3 inline-flex items-center gap-1 rounded-full bg-[#fff6e6] px-1.5 py-0.5 text-[10px] font-semibold text-[#b86e00]">
+        <span className="absolute right-11 top-3 inline-flex items-center gap-1 rounded-full bg-amber-soft px-1.5 py-0.5 text-[10px] font-semibold text-amber-fg">
           <CloudOff className="size-3" />
           <span className="sr-only">Pendiente de sincronizar</span>
         </span>
@@ -220,14 +220,13 @@ function SlotMeter({ count, className }: { count: number; className?: string }) 
   return (
     <div className={cn("flex items-center gap-1", className)} aria-label={`${count} de ${RECOMMENDED_MAX_PHOTOS} recomendadas`}>
       {Array.from({ length: RECOMMENDED_MAX_PHOTOS }).map((_, i) => (
-        <motion.span
+        <span
           key={i}
-          className="h-[7px] w-[14px] rounded-full sm:w-[18px]"
-          animate={{ backgroundColor: i < count ? (extra ? "#f0a020" : "#1667e0") : "#e3e8ef" }}
-          transition={{ duration: 0.25, delay: i * 0.015 }}
+          className={cn("h-[7px] w-[14px] rounded-full transition-colors duration-[250ms] sm:w-[18px]", i < count ? (extra ? "bg-st-amber" : "bg-azure") : "bg-track")}
+          style={{ transitionDelay: `${i * 15}ms` }}
         />
       ))}
-      <span className={cn("ml-1.5 text-[12px] font-semibold tabular", extra ? "text-[#b86e00]" : "text-subtle")}>
+      <span className={cn("ml-1.5 text-[12px] font-semibold tabular", extra ? "text-amber-fg" : "text-subtle")}>
         {extra ? `+${extra}` : `${Math.min(count, RECOMMENDED_MAX_PHOTOS)}/${RECOMMENDED_MAX_PHOTOS}`}
       </span>
     </div>

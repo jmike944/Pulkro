@@ -172,7 +172,7 @@ function WorkerBody({
         <section>
           <Eyebrow className="mb-3">Próximas asignaciones · {view.upcoming.length}</Eyebrow>
           {view.upcoming.length === 0 ? (
-            <p className="rounded-[16px] border border-dashed border-[#d9dfe7] px-4 py-5 text-center text-[13.5px] text-subtle">Sin jornadas programadas.</p>
+            <p className="rounded-[16px] border border-dashed border-line-strong px-4 py-5 text-center text-[13.5px] text-subtle">Sin jornadas programadas.</p>
           ) : (
             <ul>
               {view.upcoming.map((j) => {
@@ -235,10 +235,10 @@ function WorkerBody({
         </section>
 
         {/* productivity — preliminary (doc §5) */}
-        <section className="rounded-[20px] border border-dashed border-[#cfc4ff] bg-[#faf8ff] p-5">
+        <section className="rounded-[20px] border border-dashed border-violet-line bg-violet-soft p-5">
           <div className="flex flex-wrap items-center justify-between gap-2">
             <h3 className="flex items-center gap-2 text-[16px] font-semibold text-ink">
-              <Sprout className="size-4 text-st-violet" /> Productividad
+              <Sprout className="size-4 text-violet-fg" /> Productividad
             </h3>
             <SoftBadge tone="violet">Preliminar · Fase 2</SoftBadge>
           </div>
@@ -252,7 +252,7 @@ function WorkerBody({
               { label: "Horas asig.", value: fmtHours(view.minutes30), sub: "30 días" },
               { label: "Órdenes", value: String(view.orders30), sub: "distintas" },
             ].map((m) => (
-              <div key={m.label} className="rounded-[14px] bg-white p-3 shadow-[0_1px_2px_rgb(16_24_40/0.04)]">
+              <div key={m.label} className="rounded-[14px] bg-surface p-3 shadow-[0_1px_2px_rgb(16_24_40/0.04)]">
                 <p className="text-[12px] text-subtle">{m.label}</p>
                 <p className="mt-0.5 text-[20px] font-medium tracking-[-0.02em] text-ink tabular">{m.value}</p>
                 <p className="text-[11.5px] text-subtle">{m.sub}</p>
@@ -282,7 +282,7 @@ function WorkerBody({
                       initial={{ height: 0 }}
                       animate={{ height: barPx }}
                       transition={t}
-                      className={cn("w-full max-w-[26px] rounded-full", i === view.weeks.length - 1 ? "bg-st-violet" : wk.minutes ? "bg-[#cfc4ff]" : "bg-[#ece8fb]")}
+                      className={cn("w-full max-w-[26px] rounded-full", i === view.weeks.length - 1 ? "bg-st-violet" : wk.minutes ? "bg-violet-line" : "bg-violet-soft")}
                     />
                   </div>
                 );

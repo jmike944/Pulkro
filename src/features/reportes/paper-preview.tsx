@@ -112,7 +112,7 @@ export function PaperPreview({
     <div className={cn("relative", className)}>
       {/* offscreen measurer */}
       <div aria-hidden className="pointer-events-none absolute left-0 top-0 h-0 w-0 overflow-hidden">
-        <div ref={measureRef} className="invisible" style={{ width: CONTENT_W }}>
+        <div ref={measureRef} className="theme-light invisible" style={{ width: CONTENT_W }}>
           {blocks.map((b) => (
             <div key={b.key} data-block={b.key} className="flow-root">
               {b.render("measure")}
@@ -124,13 +124,13 @@ export function PaperPreview({
       <div
         ref={rasterRootRef}
         className={cn(
-          "rounded-[24px] bg-[#e9edf2] bg-[radial-gradient(circle_at_1px_1px,rgb(16_24_40/0.06)_1px,transparent_0)] bg-[length:18px_18px] p-3 sm:p-5",
+          "rounded-[24px] bg-press bg-[radial-gradient(circle_at_1px_1px,rgb(16_24_40/0.06)_1px,transparent_0)] bg-[length:18px_18px] p-3 sm:p-5 dark:bg-[radial-gradient(circle_at_1px_1px,rgb(255_255_255/0.05)_1px,transparent_0)]",
           zoom === "real" ? "overflow-x-auto overscroll-x-contain" : "overflow-hidden",
         )}
       >
         <div ref={deskRef} className="w-full">
           {!heights ? (
-            <div className="mx-auto aspect-[210/297] w-full max-w-[794px] rounded-[4px] bg-white shimmer" />
+            <div className="theme-light mx-auto aspect-[210/297] w-full max-w-[794px] rounded-[4px] bg-white shimmer" />
           ) : (
             pages.map((idxs, pi) => (
               <motion.div
@@ -142,7 +142,7 @@ export function PaperPreview({
                 style={{ width: PAGE_W * scale, height: PAGE_H * scale }}
               >
                 <div
-                  className="relative origin-top-left overflow-hidden rounded-[3px] bg-white shadow-[0_1px_2px_rgb(16_24_40/0.06),0_22px_44px_-22px_rgb(2_58_99/0.38)] ring-1 ring-black/[0.04]"
+                  className="theme-light relative origin-top-left overflow-hidden rounded-[3px] bg-white shadow-[0_1px_2px_rgb(16_24_40/0.06),0_22px_44px_-22px_rgb(2_58_99/0.38)] ring-1 ring-black/[0.04]"
                   style={{ width: PAGE_W, height: PAGE_H, transform: `scale(${scale})` }}
                   aria-label={`Página ${pi + 1} de ${pages.length}`}
                 >

@@ -99,7 +99,7 @@ export function ClientDialog({
       }}
     >
       <div className="space-y-5">
-        <div className="flex items-center gap-3 rounded-[16px] bg-[#f6f8fa] p-3">
+        <div className="flex items-center gap-3 rounded-[16px] bg-soft p-3">
           <ClientMark name={name || "Nuevo cliente"} hue={hue} size={46} />
           <div className="min-w-0">
             <p className="truncate text-[15px] font-semibold text-ink">{shortName || name || "Nuevo cliente"}</p>
@@ -182,7 +182,7 @@ export function ClientDialog({
                 aria-checked={hue === h}
                 aria-label={`Tono ${h}`}
                 onClick={() => setHue(h)}
-                className={cn("size-10 rounded-[12px] ring-offset-2 transition", hue === h ? "scale-105 ring-2 ring-brand-deep" : "ring-1 ring-black/5 hover:scale-105")}
+                className={cn("size-10 rounded-[12px] ring-offset-2 transition", hue === h ? "scale-105 ring-2 ring-brand-deep" : "ring-1 ring-edge hover:scale-105")}
                 style={{ background: `linear-gradient(135deg, oklch(0.96 0.03 ${h}), oklch(0.86 0.08 ${h}))` }}
               />
             ))}

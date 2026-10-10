@@ -46,7 +46,7 @@ export function IncidentStats({
             value={stats.blocking}
             sub={
               stats.blocking ? (
-                <span className="inline-flex items-center gap-1.5 font-medium text-st-red">
+                <span className="inline-flex items-center gap-1.5 font-medium text-red-fg">
                   <StatusDot tone="red" live /> {plural(stats.blockingOrders, "orden detenida", "órdenes detenidas")}
                 </span>
               ) : (

@@ -37,7 +37,7 @@ export function IncidentsTab() {
             {blocking > 0 && (
               <>
                 {" "}
-                · <b className="font-semibold text-st-red">{plural(blocking, "impide", "impiden")} el cierre</b>
+                · <b className="font-semibold text-red-fg">{plural(blocking, "impide", "impiden")} el cierre</b>
               </>
             )}
           </p>
@@ -94,7 +94,7 @@ function IncidentCard({ inc }: { inc: Incident }) {
     <motion.li
       layout
       variants={rowVariants}
-      className={cn("rounded-[22px] border bg-white p-4 shadow-soft sm:p-6", open && inc.blocksClosure ? "border-[#f7c8ca]" : "border-hairline")}
+      className={cn("rounded-[22px] border bg-surface p-4 shadow-soft sm:p-6", open && inc.blocksClosure ? "border-red-line" : "border-hairline")}
     >
       <div className="flex gap-3 sm:gap-4">
         <span className={cn("inline-flex size-11 shrink-0 items-center justify-center rounded-[14px]", toneSoftBg[meta.tone], toneText[meta.tone])}>
@@ -120,7 +120,7 @@ function IncidentCard({ inc }: { inc: Incident }) {
         <Link
           href={`/incidencias?i=${inc.id}`}
           aria-label={`Ver ${inc.folio} en incidencias`}
-          className="inline-flex size-10 shrink-0 items-center justify-center rounded-full bg-[#f2f4f7] text-ink transition hover:bg-brand-deep hover:text-white"
+          className="inline-flex size-10 shrink-0 items-center justify-center rounded-full bg-tile text-ink transition hover:bg-brand-deep hover:text-white"
         >
           <ArrowUpRight className="size-4" />
         </Link>
@@ -142,8 +142,8 @@ function IncidentCard({ inc }: { inc: Incident }) {
       </p>
 
       {!open && inc.resolution && (
-        <div className="mt-4 flex gap-3 rounded-[16px] bg-[#e7f7f4] p-4 text-[14px]">
-          <CircleCheck className="mt-0.5 size-4 shrink-0 text-st-teal" />
+        <div className="mt-4 flex gap-3 rounded-[16px] bg-teal-soft p-4 text-[14px]">
+          <CircleCheck className="mt-0.5 size-4 shrink-0 text-teal-fg" />
           <div>
             <p className="text-ink">{inc.resolution}</p>
             <p className="mt-1 text-[12.5px] text-subtle">
@@ -176,7 +176,7 @@ function IncidentCard({ inc }: { inc: Incident }) {
                   rows={3}
                   autoFocus
                   placeholder="Ej. Se repuso el material con entrega urgente y se informó al contacto."
-                  className="w-full resize-none rounded-[14px] border border-input bg-white px-3.5 py-3 text-[15px] leading-relaxed outline-none placeholder:text-[#98a2b3] focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
+                  className="w-full resize-none rounded-[14px] border border-input bg-surface px-3.5 py-3 text-[15px] leading-relaxed outline-none placeholder:text-faint focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
                 />
                 <div className="mt-2 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
                   <Button variant="ghost" onClick={() => setResolving(false)} className="h-10 rounded-[12px] px-4">
@@ -194,7 +194,7 @@ function IncidentCard({ inc }: { inc: Incident }) {
                     variant="outline"
                     disabled={!d.gates.resolve.ok}
                     onClick={() => setResolving(true)}
-                    className="h-10 rounded-[12px] border-[#dfe3ea] px-4 font-semibold"
+                    className="h-10 rounded-[12px] border-line px-4 font-semibold"
                   >
                     <CircleCheck className="size-4" /> Resolver
                   </Button>

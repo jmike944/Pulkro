@@ -29,9 +29,9 @@ function UnassignedList({ orders, reasons, canPlan, onSchedule }: Props) {
   if (!orders.length) {
     return (
       <div className="flex flex-col items-center px-4 py-8 text-center">
-        <span className="relative mb-3 inline-flex size-12 items-center justify-center rounded-[16px] bg-sky-soft text-[#1667e0]">
+        <span className="relative mb-3 inline-flex size-12 items-center justify-center rounded-[16px] bg-sky-soft text-azure-fg">
           <Sparkles className="size-5" />
-          <span className="absolute -right-2 -top-1 size-3 rounded-full border border-sky/60 bg-white animate-float" />
+          <span className="absolute -right-2 -top-1 size-3 rounded-full border border-sky/60 bg-surface animate-float" />
         </span>
         <p className="font-serif text-[19px] text-ink">Todo programado</p>
         <p className="mt-1 text-[13px] text-subtle">No hay órdenes sin cuadrilla ni fechas por confirmar.</p>
@@ -66,7 +66,7 @@ function UnassignedList({ orders, reasons, canPlan, onSchedule }: Props) {
                     </span>
                   </div>
                   {reason && o.status === "reprogramada" && (
-                    <p className="mt-2 line-clamp-2 rounded-[10px] bg-[#fff6e6] px-2.5 py-1.5 text-[12.5px] leading-snug text-[#8a5300]">{reason}</p>
+                    <p className="mt-2 line-clamp-2 rounded-[10px] bg-amber-soft px-2.5 py-1.5 text-[12.5px] leading-snug text-amber-ink">{reason}</p>
                   )}
                 </div>
               </Link>
@@ -114,7 +114,7 @@ export function UnassignedSection(props: Props) {
   const stacked = !useMediaQuery("(min-width: 1024px)");
   const [open, setOpen] = useState(() => props.orders.length > 0 && !stacked);
   return (
-    <div className="rounded-[20px] border border-hairline bg-white shadow-soft">
+    <div className="rounded-[20px] border border-hairline bg-surface shadow-soft">
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}

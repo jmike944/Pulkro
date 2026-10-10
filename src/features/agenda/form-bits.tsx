@@ -24,7 +24,7 @@ export function MotivoField({
   return (
     <div>
       <Label htmlFor={id} className="mb-2 block text-[13px] text-subtle">
-        Motivo <span className="text-st-red">*</span>
+        Motivo <span className="text-red-fg">*</span>
       </Label>
       <div className="mb-2.5 flex flex-wrap gap-1.5">
         {suggestions.map((s) => {
@@ -38,7 +38,7 @@ export function MotivoField({
               aria-pressed={on}
               className={cn(
                 "h-10 rounded-full border px-3.5 text-[13px] transition-colors sm:h-9",
-                on ? "border-ink bg-ink text-white" : "border-hairline bg-white text-ink hover:bg-muted",
+                on ? "border-ink bg-ink text-on-ink" : "border-hairline bg-surface text-ink hover:bg-muted",
               )}
             >
               {s}
@@ -55,7 +55,7 @@ export function MotivoField({
 /** Explicit confirmation checkbox (the "Submit claim" pattern). */
 export function ConfirmCheck({ id, checked, onChange, children }: { id: string; checked: boolean; onChange: (v: boolean) => void; children: React.ReactNode }) {
   return (
-    <label htmlFor={id} className={cn("flex cursor-pointer items-start gap-3 rounded-[16px] p-4 text-[13.5px] leading-snug text-ink transition-colors", checked ? "bg-[#e9f3ff]" : "bg-[#f4f8fd]")}>
+    <label htmlFor={id} className={cn("flex cursor-pointer items-start gap-3 rounded-[16px] p-4 text-[13.5px] leading-snug text-ink transition-colors", checked ? "bg-blue-soft" : "bg-blue-wash")}>
       <Checkbox id={id} checked={checked} onCheckedChange={(v) => onChange(v === true)} className="mt-0.5 size-5 rounded-[6px]" />
       <span>{children}</span>
     </label>
@@ -72,13 +72,13 @@ export function FieldLabel({ htmlFor, children }: { htmlFor: string; children: R
 
 /** Native date/time inputs — the phone's own pickers are the best UX in the field. */
 export function DateTimeInput({ className, invalid, ...props }: React.ComponentProps<typeof Input> & { invalid?: boolean }) {
-  return <Input {...props} aria-invalid={invalid || undefined} className={cn("h-11 rounded-[12px] bg-white text-[15px] tabular", className)} />;
+  return <Input {...props} aria-invalid={invalid || undefined} className={cn("h-11 rounded-[12px] bg-surface text-[15px] tabular", className)} />;
 }
 
 export function FieldError({ children }: { children?: React.ReactNode }) {
   if (!children) return null;
   return (
-    <motion.p initial={{ opacity: 0, y: -2 }} animate={{ opacity: 1, y: 0 }} className="mt-1.5 text-[12.5px] font-medium text-st-red">
+    <motion.p initial={{ opacity: 0, y: -2 }} animate={{ opacity: 1, y: 0 }} className="mt-1.5 text-[12.5px] font-medium text-red-fg">
       {children}
     </motion.p>
   );

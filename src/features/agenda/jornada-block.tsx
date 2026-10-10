@@ -69,11 +69,11 @@ export function JornadaBlock({
         live
           ? "border-transparent bg-brand-deep text-white shadow-[0_10px_24px_-14px_rgb(2_58_99/0.7)]"
           : visual.kind === "nocrew"
-            ? "border-dashed border-[#cfd6df] bg-[#fafbfc] text-ink"
+            ? "border-dashed border-line-heavy bg-wash text-ink"
             : done
-              ? "border-hairline bg-[#fbfcfd] text-ink"
-              : "border-hairline bg-white text-ink shadow-[0_1px_2px_rgb(16_24_40/0.04)]",
-        highlight && "ring-2 ring-sky ring-offset-2 ring-offset-white",
+              ? "border-hairline bg-wash text-ink"
+              : "border-hairline bg-surface text-ink shadow-[0_1px_2px_rgb(16_24_40/0.04)]",
+        highlight && "ring-2 ring-sky ring-offset-2 ring-offset-surface",
       )}
     >
       <span aria-hidden className="absolute inset-y-0 left-0 w-[3px]" style={{ background: toneHex[visual.tone] }} />
@@ -118,12 +118,12 @@ export function JornadaBlock({
               )}
               <span className="flex items-center gap-1">
                 {item.conflictIds.length > 0 && (
-                  <span title="Doble asignación" className={cn("inline-flex items-center gap-0.5 text-[11px] font-semibold", live ? "text-[#ffd48a]" : "text-[#b86e00]")}>
+                  <span title="Doble asignación" className={cn("inline-flex items-center gap-0.5 text-[11px] font-semibold", live ? "text-[#ffd48a]" : "text-amber-fg")}>
                     <TriangleAlert className="size-3.5" />
                     {item.conflictIds.length}
                   </span>
                 )}
-                {done && <Check className="size-3.5 text-st-teal" strokeWidth={2.6} />}
+                {done && <Check className="size-3.5 text-teal-fg" strokeWidth={2.6} />}
               </span>
             </div>
           </>
@@ -173,7 +173,7 @@ export function JornadaRow({
         aria-label={ariaLabel(item)}
         data-order-id={order.id}
         className={cn(
-          "group grid w-full grid-cols-[52px_minmax(0,1fr)_auto] items-center gap-x-4 gap-y-2 rounded-[14px] border-b border-hairline px-1 py-4 text-left outline-none transition-colors hover:bg-[#fafbfc] focus-visible:ring-3 focus-visible:ring-ring/50 md:grid-cols-[64px_minmax(0,1fr)_120px_150px_20px]",
+          "group grid w-full grid-cols-[52px_minmax(0,1fr)_auto] items-center gap-x-4 gap-y-2 rounded-[14px] border-b border-hairline px-1 py-4 text-left outline-none transition-colors hover:bg-wash focus-visible:ring-3 focus-visible:ring-ring/50 md:grid-cols-[64px_minmax(0,1fr)_120px_150px_20px]",
           highlight && "bg-sky-soft/60",
         )}
       >
@@ -192,14 +192,14 @@ export function JornadaRow({
             </span>
             {isMultiDay(j, order) && (
               <>
-                <span className="text-[#c5ccd6]">·</span>
+                <span className="text-ghost">·</span>
                 <span className="tabular">{dayLabel(j, order)}</span>
               </>
             )}
             {site && (
               // phones show the municipality on the status line instead: this line would clip it
               <span className="hidden items-center gap-1 md:inline-flex">
-                <span className="text-[#c5ccd6]">·</span>
+                <span className="text-ghost">·</span>
                 <MapPin className="size-3.5" />
                 {site.municipality}
               </span>
@@ -221,7 +221,7 @@ export function JornadaRow({
             </ToneText>
           </span>
           {item.conflictIds.length > 0 && (
-            <span className="inline-flex items-center gap-1 text-[12.5px] font-medium text-[#b86e00]">
+            <span className="inline-flex items-center gap-1 text-[12.5px] font-medium text-amber-fg">
               <TriangleAlert className="size-3.5" /> {item.conflictIds.length} doble
             </span>
           )}

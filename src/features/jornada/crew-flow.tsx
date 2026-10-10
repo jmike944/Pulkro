@@ -88,7 +88,7 @@ export function CrewFlow({ f, open, onOpenChange }: { f: FieldReady; open: boole
           value={reason}
           onChange={(e) => setReason(e.target.value)}
           placeholder="Ej. Ausencia de Juan; se integra Rosa como refuerzo"
-          className="min-h-[80px] rounded-[14px] border-[#e2e0da] bg-[#faf9f6] text-[16px]"
+          className="min-h-[80px] rounded-[14px] border-field-line bg-field text-[16px]"
         />
         <div className="scrollbar-none -mx-1 mt-2.5 flex gap-2 overflow-x-auto px-1 pb-0.5">
           {REASONS.map((r) => (
@@ -105,12 +105,12 @@ export function CrewFlow({ f, open, onOpenChange }: { f: FieldReady; open: boole
 function DiffGroup({ label, tone, people }: { label: string; tone: "teal" | "red"; people: Worker[] }) {
   return (
     <div className="min-w-0">
-      <p className={tone === "teal" ? "mb-2 text-[12px] font-semibold uppercase tracking-[0.1em] text-st-teal" : "mb-2 text-[12px] font-semibold uppercase tracking-[0.1em] text-st-red"}>
+      <p className={tone === "teal" ? "mb-2 text-[12px] font-semibold uppercase tracking-[0.1em] text-teal-fg" : "mb-2 text-[12px] font-semibold uppercase tracking-[0.1em] text-red-fg"}>
         {label} · {people.length}
       </p>
       <ul className="flex flex-wrap gap-2">
         {people.map((p) => (
-          <li key={p.id} className="inline-flex items-center gap-2 rounded-full bg-white py-1 pl-1 pr-3 ring-1 ring-hairline">
+          <li key={p.id} className="inline-flex items-center gap-2 rounded-full bg-surface py-1 pl-1 pr-3 ring-1 ring-hairline">
             <PersonAvatar initials={p.initials} hue={p.hue} size={24} name={p.name} />
             <span className="max-w-[140px] truncate text-[13px] text-ink">{p.name}</span>
           </li>

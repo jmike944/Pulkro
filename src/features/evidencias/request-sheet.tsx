@@ -112,7 +112,7 @@ function DesktopRequest({ request }: { request: EvidenceRequest }) {
               transition={{ duration: 0.35, ease: EASE }}
               className="overflow-hidden"
             >
-              <div className="rounded-[18px] border border-dashed border-[#bcd9fa] bg-[#f6faff] p-4">
+              <div className="rounded-[18px] border border-dashed border-blue-line bg-blue-wash p-4">
                 <AreaChips choices={m.areaChoices} value={captureArea} onChange={setArea} />
                 <PhotoCaptureButtons
                   className="mt-4"
@@ -135,7 +135,7 @@ function DesktopRequest({ request }: { request: EvidenceRequest }) {
       <SheetFooter className="flex-row flex-wrap items-center justify-end gap-2 border-t border-hairline p-4">
         {m.resolved ? (
           <>
-            <Button asChild variant="outline" className="h-11 rounded-[12px] border-[#dfe3ea] px-4 font-semibold">
+            <Button asChild variant="outline" className="h-11 rounded-[12px] border-line px-4 font-semibold">
               <Link href={`/jornada/${jornada.id}`}>
                 Ver jornada <ArrowUpRight />
               </Link>
@@ -161,7 +161,7 @@ function DesktopRequest({ request }: { request: EvidenceRequest }) {
                 variant={m.isMine ? "default" : "outline"}
                 disabled={!canCapture || capturing}
                 onClick={startCapture}
-                className={cn("h-11 rounded-[12px] px-4 font-semibold", !m.isMine && "border-[#dfe3ea]")}
+                className={cn("h-11 rounded-[12px] px-4 font-semibold", !m.isMine && "border-line")}
               >
                 <Camera /> {m.isMine ? `Subir foto ${m.kindLabel}` : "Subirla yo"}
               </Button>
@@ -284,7 +284,7 @@ function PhoneRequest({
             {busy ? <Loader2 className="animate-spin" /> : <Camera />} Tomar foto {m.kindLabel}
           </BigButton>
           <div className="grid grid-cols-2 gap-2.5">
-            <Button variant="outline" disabled={busy} onClick={() => galRef.current?.click()} className="h-12 rounded-[14px] border-[#d9dde3] text-[15px] font-semibold">
+            <Button variant="outline" disabled={busy} onClick={() => galRef.current?.click()} className="h-12 rounded-[14px] border-line-strong text-[15px] font-semibold">
               <ImagePlus /> Galería
             </Button>
             <Button
@@ -295,14 +295,14 @@ function PhoneRequest({
                 toast.success("Foto de ejemplo agregada");
                 afterCapture([id], { toast: false });
               }}
-              className="h-12 rounded-[14px] border-[#d9dde3] text-[15px] font-semibold"
+              className="h-12 rounded-[14px] border-line-strong text-[15px] font-semibold"
             >
               <Wand2 /> Simular
             </Button>
           </div>
         </>
       ) : (
-        <p className="rounded-[14px] bg-[#f5f7fa] px-4 py-3 text-[13.5px] leading-snug text-subtle">{CAPTURE_REASON}</p>
+        <p className="rounded-[14px] bg-soft px-4 py-3 text-[13.5px] leading-snug text-subtle">{CAPTURE_REASON}</p>
       )}
       {!m.isMine && (
         <>
@@ -340,7 +340,7 @@ function PhoneRequest({
         <PersonCard m={m} />
         <NeededBox m={m} onPreview={lb.open}>
           {canCapture && (
-            <div className="mt-4 border-t border-[#e6eaf0] pt-4">
+            <div className="mt-4 border-t border-line pt-4">
               <AreaChips choices={m.areaChoices} value={captureArea} onChange={setArea} />
             </div>
           )}

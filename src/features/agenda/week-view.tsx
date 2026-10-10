@@ -71,10 +71,10 @@ function WeekGrid({ data, now, onOpen, onPickDay, highlightOrderId }: Props) {
   const dayPct = Math.max(0, Math.min(1, (minutesOfDay(now) - 360) / 960));
 
   return (
-    <div className="hidden overflow-hidden rounded-[22px] border border-hairline bg-white shadow-soft [--lane:56px] md:block xl:[--lane:132px]">
+    <div className="hidden overflow-hidden rounded-[22px] border border-hairline bg-surface shadow-soft [--lane:56px] md:block xl:[--lane:132px]">
       <motion.div variants={staggerContainer(0, 0.05)} initial="hidden" animate="show" className="grid" style={{ gridTemplateColumns: cols }}>
         {multiLane && (
-          <div className="flex items-end border-b border-hairline bg-[#fafbfc] px-3 pb-3 text-[12px] font-semibold uppercase tracking-[0.1em] text-subtle xl:px-4">
+          <div className="flex items-end border-b border-hairline bg-wash px-3 pb-3 text-[12px] font-semibold uppercase tracking-[0.1em] text-subtle xl:px-4">
             <span className="hidden xl:inline">Supervisor</span>
           </div>
         )}
@@ -89,13 +89,13 @@ function WeekGrid({ data, now, onOpen, onPickDay, highlightOrderId }: Props) {
               onClick={() => onPickDay(d)}
               aria-label={`Ver ${dowShort(d)} ${d.getDate()} en vista de día`}
               className={cn(
-                "group relative border-b border-hairline px-3 pb-3 pt-3.5 text-left outline-none transition-colors hover:bg-[#f6f8fa] focus-visible:bg-[#f6f8fa]",
+                "group relative border-b border-hairline px-3 pb-3 pt-3.5 text-left outline-none transition-colors hover:bg-soft focus-visible:bg-soft",
                 (multiLane || di > 0) && "border-l",
-                isToday ? "bg-sky-soft/70 hover:bg-sky-soft" : "bg-[#fafbfc]",
+                isToday ? "bg-sky-soft/70 hover:bg-sky-soft" : "bg-wash",
               )}
             >
               <div className="flex items-center justify-between gap-2">
-                <span className={cn("text-[11.5px] font-semibold uppercase tracking-[0.1em]", isToday ? "text-[#1b8fc0]" : "text-subtle")}>{dowShort(d)}</span>
+                <span className={cn("text-[11.5px] font-semibold uppercase tracking-[0.1em]", isToday ? "text-sky-fg" : "text-subtle")}>{dowShort(d)}</span>
                 {isToday && (
                   <span className="rounded-full bg-brand-deep px-2 py-0.5 text-[10.5px] font-semibold tracking-wide text-white">Hoy</span>
                 )}
@@ -105,7 +105,7 @@ function WeekGrid({ data, now, onOpen, onPickDay, highlightOrderId }: Props) {
                 <span className="truncate text-[12px] text-subtle">{count ? plural(count, "jornada", "jornadas") : "Libre"}</span>
               </div>
               {isToday && (
-                <div className="relative mt-2.5 h-[3px] rounded-full bg-white" aria-hidden>
+                <div className="relative mt-2.5 h-[3px] rounded-full bg-surface" aria-hidden>
                   <motion.div
                     initial={{ width: 0 }}
                     animate={{ width: `${dayPct * 100}%` }}
@@ -116,7 +116,7 @@ function WeekGrid({ data, now, onOpen, onPickDay, highlightOrderId }: Props) {
                     initial={{ left: 0 }}
                     animate={{ left: `${dayPct * 100}%` }}
                     transition={{ duration: 0.9, ease: [0.22, 1, 0.36, 1] }}
-                    className="absolute top-1/2 size-2 -translate-x-1/2 -translate-y-1/2 rounded-full bg-st-red ring-2 ring-white"
+                    className="absolute top-1/2 size-2 -translate-x-1/2 -translate-y-1/2 rounded-full bg-st-red ring-2 ring-surface"
                   />
                 </div>
               )}
@@ -156,7 +156,7 @@ function LaneLabel({ lane, last }: { lane: Lane; last: boolean }) {
   // below xl only the avatar fits: hover shows the tooltip, a tap on touch tablets opens the same text
   return (
     <ReasonTip reason={u ? `${u.name} · ${plural(lane.items, "jornada", "jornadas")}` : undefined} side="right" icon={null} contentClassName="max-w-[260px] text-[12.5px]">
-      <div tabIndex={u ? 0 : undefined} className={cn("flex items-start gap-2.5 px-3 py-3 outline-none focus-visible:bg-[#f6f8fa] xl:px-4", !last && "border-b border-hairline")}>
+      <div tabIndex={u ? 0 : undefined} className={cn("flex items-start gap-2.5 px-3 py-3 outline-none focus-visible:bg-soft xl:px-4", !last && "border-b border-hairline")}>
         {u && <PersonAvatar initials={u.initials} hue={u.hue} size={30} />}
         <div className="hidden min-w-0 xl:block">
           <p className="truncate text-[13.5px] font-semibold leading-tight text-ink">{u ? u.name.split(" ").slice(0, 2).join(" ") : "Sin supervisor"}</p>
@@ -211,7 +211,7 @@ export function NowLine({ now, label = true, className }: { now: Date; label?: b
         <span className="relative size-2 rounded-full bg-st-red" />
       </span>
       <span className="h-[1.5px] flex-1 rounded-full bg-st-red/80" />
-      {label && <span className="text-[10.5px] font-semibold text-st-red tabular">{fmtTime(now)}</span>}
+      {label && <span className="text-[10.5px] font-semibold text-red-fg tabular">{fmtTime(now)}</span>}
     </motion.div>
   );
 }
@@ -250,12 +250,12 @@ function WeekSwipe({ data, now, focusKey, onOpen, onPickDay, highlightOrderId }:
             data-day={k}
             className={cn(
               "w-[82%] max-w-[330px] shrink-0 snap-start rounded-[20px] border p-3",
-              isToday ? "border-sky/70 bg-sky-soft/50" : "border-hairline bg-[#fafbfc]",
+              isToday ? "border-sky/70 bg-sky-soft/50" : "border-hairline bg-wash",
             )}
           >
             <button type="button" onClick={() => onPickDay(d)} className="mb-3 flex w-full min-h-10 items-center justify-between gap-2 px-1 text-left">
               <span className="flex items-baseline gap-2">
-                <span className={cn("text-[12px] font-semibold uppercase tracking-[0.1em]", isToday ? "text-[#1b8fc0]" : "text-subtle")}>{dowShort(d)}</span>
+                <span className={cn("text-[12px] font-semibold uppercase tracking-[0.1em]", isToday ? "text-sky-fg" : "text-subtle")}>{dowShort(d)}</span>
                 <span className="text-[22px] font-medium leading-none text-ink tabular">{d.getDate()}</span>
               </span>
               <span className="flex items-center gap-2 text-[12.5px] text-subtle">
@@ -264,7 +264,7 @@ function WeekSwipe({ data, now, focusKey, onOpen, onPickDay, highlightOrderId }:
               </span>
             </button>
             <div className="space-y-2">
-              {list.length === 0 && !isToday && <p className="rounded-[14px] border border-dashed border-[#d9dfe7] px-3 py-6 text-center text-[13px] text-subtle">Sin jornadas</p>}
+              {list.length === 0 && !isToday && <p className="rounded-[14px] border border-dashed border-line-strong px-3 py-6 text-center text-[13px] text-subtle">Sin jornadas</p>}
               {list.map((it, idx) => (
                 <Fragment key={it.j.id}>
                   {idx === nowIdx && <NowLine now={now} />}

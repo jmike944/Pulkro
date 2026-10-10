@@ -53,7 +53,7 @@ export function OrdersFilters(props: Props) {
           type="button"
           variant="outline"
           onClick={() => setSheetOpen(true)}
-          className={cn("h-11 flex-1 rounded-[14px] border-hairline px-4 text-[14.5px] font-semibold", count > 0 && "border-[#bcd8fb] bg-[#f2f8fe]")}
+          className={cn("h-11 flex-1 rounded-[14px] border-hairline px-4 text-[14.5px] font-semibold", count > 0 && "border-blue-line bg-blue-wash")}
         >
           <SlidersHorizontal className="size-4" />
           Filtros
@@ -77,7 +77,7 @@ export function OrdersFilters(props: Props) {
             {chips.map((c) => (
               <li key={c.key}>
                 <button type="button" onClick={() => props.onChange({ [c.key]: "" })} aria-label={`Quitar filtro ${c.label}: ${c.value}`} className="group inline-flex h-11 items-center outline-none">
-                  <span className="inline-flex h-9 max-w-[260px] items-center gap-1.5 rounded-full border border-[#bcd8fb] bg-[#f2f8fe] pl-3.5 pr-2.5 text-[13.5px] transition group-focus-visible:ring-3 group-focus-visible:ring-ring/50 group-active:scale-95">
+                  <span className="inline-flex h-9 max-w-[260px] items-center gap-1.5 rounded-full border border-blue-line bg-blue-wash pl-3.5 pr-2.5 text-[13.5px] transition group-focus-visible:ring-3 group-focus-visible:ring-ring/50 group-active:scale-95">
                     <span className="min-w-0 truncate">
                       <span className="text-subtle">{c.label}: </span>
                       <span className="font-semibold text-ink">{c.value}</span>
@@ -109,7 +109,7 @@ export function OrdersFilters(props: Props) {
               animate={{ opacity: 1, x: 0 }}
               exit={{ opacity: 0, x: 6 }}
               onClick={onClear}
-              className="inline-flex h-10 items-center gap-1.5 rounded-[12px] px-3 text-[13.5px] font-medium text-link transition hover:bg-[#f2f8fe]"
+              className="inline-flex h-10 items-center gap-1.5 rounded-[12px] px-3 text-[13.5px] font-medium text-link transition hover:bg-blue-wash"
             >
               <X className="size-4" />
               Limpiar
@@ -169,7 +169,7 @@ function SearchBox({ value, onChange }: { value: string; onChange: (v: string) =
         onChange={(e) => onChange(e.target.value)}
         placeholder="Folio, título, cliente o dirección"
         aria-label="Buscar órdenes"
-        className="h-11 rounded-[14px] border-hairline bg-white pl-10 pr-10 text-[15px] shadow-[0_1px_2px_rgb(16_24_40/0.03)] md:h-10 md:rounded-[12px] md:text-[14px]"
+        className="h-11 rounded-[14px] border-hairline bg-surface pl-10 pr-10 text-[15px] shadow-[0_1px_2px_rgb(16_24_40/0.03)] md:h-10 md:rounded-[12px] md:text-[14px]"
         enterKeyHint="search"
       />
       {value && (
@@ -218,9 +218,9 @@ function FilterSelect({
       <SelectTrigger
         aria-label={label}
         className={cn(
-          "max-w-[240px] rounded-[12px] border-hairline bg-white px-3 text-[14px] shadow-[0_1px_2px_rgb(16_24_40/0.03)] transition hover:border-[#d5dbe3] data-[size=default]:h-10",
+          "max-w-[240px] rounded-[12px] border-hairline bg-surface px-3 text-[14px] shadow-[0_1px_2px_rgb(16_24_40/0.03)] transition hover:border-line-strong data-[size=default]:h-10",
           stacked && "max-w-none rounded-[14px] data-[size=default]:h-12",
-          current && "border-[#bcd8fb] bg-[#f2f8fe] hover:border-[#a9cbf7]",
+          current && "border-blue-line bg-blue-wash hover:border-blue-line",
         )}
       >
         <span className="min-w-0 truncate text-left">
@@ -256,7 +256,7 @@ function AltaToggle({ on, onToggle, className }: { on: boolean; onToggle: () => 
       whileTap={{ scale: 0.95 }}
       className={cn(
         "inline-flex h-10 shrink-0 items-center gap-1.5 rounded-[12px] border px-3 text-[14px] font-medium transition-colors",
-        on ? "border-[#f7c8ca] bg-[#fdeeee] text-st-red" : "border-hairline bg-white text-ink shadow-[0_1px_2px_rgb(16_24_40/0.03)] hover:border-[#d5dbe3]",
+        on ? "border-red-line bg-red-soft text-red-fg" : "border-hairline bg-surface text-ink shadow-[0_1px_2px_rgb(16_24_40/0.03)] hover:border-line-strong",
         className,
       )}
     >

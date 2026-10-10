@@ -86,10 +86,10 @@ export function OrdersList({ rows, role, filterSig, empty }: { rows: OrderRow[];
             type="button"
             variant="outline"
             onClick={() => setLimit((l) => l + PAGE_SIZE)}
-            className="group mt-1 h-11 rounded-[14px] border-[#dfe3ea] px-5 text-[14px] font-semibold shadow-[0_1px_2px_rgb(16_24_40/0.05)]"
+            className="group mt-1 h-11 rounded-[14px] border-line px-5 text-[14px] font-semibold shadow-[0_1px_2px_rgb(16_24_40/0.05)]"
           >
             Mostrar más
-            <span className="rounded-md bg-[#f2f4f7] px-1.5 text-[12px] tabular text-subtle">+{Math.min(PAGE_SIZE, remaining)}</span>
+            <span className="rounded-md bg-tile px-1.5 text-[12px] tabular text-subtle">+{Math.min(PAGE_SIZE, remaining)}</span>
             <ChevronDown className="size-4 transition-transform group-hover:translate-y-0.5" />
           </Button>
         )}
@@ -148,7 +148,7 @@ function OrderTableRow({ row, role }: { row: OrderRow; role: Role }) {
   return (
     <div
       className={cn(
-        "group relative -mx-3 hidden items-center gap-x-3 rounded-[16px] border-b border-hairline px-3 py-4 transition-[background-color,box-shadow,transform,border-color] duration-300 ease-out hover:-translate-y-0.5 hover:border-transparent hover:bg-white hover:shadow-[0_12px_30px_-16px_rgb(16_24_40/0.25),0_0_0_1px_rgb(16_24_40/0.04)] @4xl:grid",
+        "group relative -mx-3 hidden items-center gap-x-3 rounded-[16px] border-b border-hairline px-3 py-4 transition-[background-color,box-shadow,transform,border-color] duration-300 ease-out hover:-translate-y-0.5 hover:border-transparent hover:bg-surface hover:shadow-[0_12px_30px_-16px_rgb(16_24_40/0.25),0_0_0_1px_rgb(16_24_40/0.04)] @4xl:grid",
         GRID_MD,
         GRID_LG,
       )}
@@ -176,7 +176,7 @@ function OrderTableRow({ row, role }: { row: OrderRow; role: Role }) {
           {row.crew.length ? (
             <AvatarStack people={row.crew} size={26} max={3} />
           ) : (
-            <span className="text-[12.5px] font-medium text-[#b86e00]">Sin cuadrilla</span>
+            <span className="text-[12.5px] font-medium text-amber-fg">Sin cuadrilla</span>
           )}
         </div>
       </div>
@@ -200,7 +200,7 @@ function OrderCard({ row, role }: { row: OrderRow; role: Role }) {
     <motion.article
       whileTap={{ scale: 0.99 }}
       transition={{ type: "spring", stiffness: 420, damping: 30 }}
-      className="relative flex h-full flex-col rounded-[22px] border border-hairline bg-white p-4 shadow-[0_1px_2px_rgb(16_24_40/0.04),0_10px_24px_-18px_rgb(16_24_40/0.2)] transition-shadow duration-300 hover:shadow-lift @4xl:hidden"
+      className="relative flex h-full flex-col rounded-[22px] border border-hairline bg-surface p-4 shadow-[0_1px_2px_rgb(16_24_40/0.04),0_10px_24px_-18px_rgb(16_24_40/0.2)] transition-shadow duration-300 hover:shadow-lift @4xl:hidden"
     >
       {row.live && (
         <motion.span
@@ -265,7 +265,7 @@ function OrderCard({ row, role }: { row: OrderRow; role: Role }) {
         {row.crew.length ? (
           <AvatarStack people={row.crew} size={30} max={3} className="shrink-0" />
         ) : (
-          <span className="shrink-0 text-[12.5px] font-medium text-[#b86e00]">Sin cuadrilla</span>
+          <span className="shrink-0 text-[12.5px] font-medium text-amber-fg">Sin cuadrilla</span>
         )}
       </div>
 

@@ -176,7 +176,7 @@ export function SurveysPanel({
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0, transition: { duration: 0.4, ease: EASE, delay: Math.min(i, 8) * 0.035 } }}
                     exit={{ opacity: 0, scale: 0.97, transition: { duration: 0.15 } }}
-                    className={cn("flex flex-col rounded-[20px] border border-hairline bg-white p-4 shadow-[0_1px_2px_rgb(16_24_40/0.04)]", focus && "ring-2 ring-sky ring-offset-2")}
+                    className={cn("flex flex-col rounded-[20px] border border-hairline bg-surface p-4 shadow-[0_1px_2px_rgb(16_24_40/0.04)]", focus && "ring-2 ring-sky ring-offset-2")}
                   >
                     <div className="flex items-start justify-between gap-3">
                       <OrderCell r={r} />
@@ -258,7 +258,7 @@ function StateCell({ r }: { r: SurveyRow }) {
         </TonePill>
       )}
       {r.s.manual && <span className="text-[11.5px] font-medium text-subtle">Captura manual</span>}
-      {needsAttention(r) && <span className="text-[11.5px] font-semibold text-st-red">Requiere atención</span>}
+      {needsAttention(r) && <span className="text-[11.5px] font-semibold text-red-fg">Requiere atención</span>}
     </span>
   );
 }
@@ -293,7 +293,7 @@ function SurveyMenu({
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
         {compact ? (
-          <Button variant="outline" size="icon" aria-label={`Acciones de la encuesta ${r.order.folio}`} className="size-10 rounded-[12px] border-[#dfe3ea]">
+          <Button variant="outline" size="icon" aria-label={`Acciones de la encuesta ${r.order.folio}`} className="size-10 rounded-[12px] border-line">
             <ChevronDown className="size-4" />
           </Button>
         ) : (
@@ -328,7 +328,7 @@ function SurveyMenu({
             </Link>
           </DropdownMenuItem>
         ) : (
-          <DropdownMenuItem className={cn(menuItemCls, needsAttention(r) && "font-semibold text-st-red")} disabled={!canManage} onClick={() => actions.openCase(r)}>
+          <DropdownMenuItem className={cn(menuItemCls, needsAttention(r) && "font-semibold text-red-fg")} disabled={!canManage} onClick={() => actions.openCase(r)}>
             <MessageSquareWarning /> Abrir caso postventa
           </DropdownMenuItem>
         )}

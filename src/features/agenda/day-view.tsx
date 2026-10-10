@@ -70,7 +70,7 @@ export function DayView({
   const hours = Array.from({ length: to - from + 1 }, (_, i) => from + i);
 
   return (
-    <div className="rounded-[22px] border border-hairline bg-white p-3 shadow-soft sm:p-5">
+    <div className="rounded-[22px] border border-hairline bg-surface p-3 shadow-soft sm:p-5">
       <div className="mb-4 flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1 px-1">
         <h3 className="flex items-center gap-2.5 text-[17px] font-medium text-ink">
           {longDay(day)}
@@ -107,12 +107,12 @@ export function DayView({
               <div key={h} aria-hidden className="absolute inset-x-0 border-t border-hairline" style={{ top: (h - from) * HOUR_PX }} />
             ))}
             {hours.slice(0, -1).map((h) => (
-              <div key={`half-${h}`} aria-hidden className="absolute inset-x-0 border-t border-dashed border-[#f0f2f5]" style={{ top: (h - from + 0.5) * HOUR_PX }} />
+              <div key={`half-${h}`} aria-hidden className="absolute inset-x-0 border-t border-dashed border-tile" style={{ top: (h - from + 0.5) * HOUR_PX }} />
             ))}
             {isToday && (
               <div
                 aria-hidden
-                className="absolute inset-x-0 top-0 rounded-[10px] bg-[#f6f8fa]/80"
+                className="absolute inset-x-0 top-0 rounded-[10px] bg-soft/80"
                 style={{ height: Math.max(0, Math.min(total, nowTop)) }}
               />
             )}
@@ -152,7 +152,7 @@ export function DayView({
               >
                 <span className="relative inline-flex size-2.5 -translate-y-1/2">
                   <span className="absolute inset-0 animate-ping-soft rounded-full bg-st-red" />
-                  <span className="relative size-2.5 rounded-full bg-st-red ring-2 ring-white" />
+                  <span className="relative size-2.5 rounded-full bg-st-red ring-2 ring-surface" />
                 </span>
                 <span className="h-[2px] flex-1 -translate-y-1/2 bg-st-red/85" />
                 <span className="-translate-y-1/2 rounded-full bg-st-red px-1.5 py-0.5 text-[10.5px] font-semibold text-white tabular">{fmtTime(now)}</span>

@@ -3,12 +3,16 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { AnimatePresence, motion } from "motion/react";
 import { Eraser, PenLine } from "lucide-react";
+import { useTheme } from "next-themes";
 import { cn } from "@/lib/utils";
 
 type Point = { x: number; y: number; w: number };
 type Stroke = Point[];
 
+/** Ink of the saved signature (report + PDF paper): always dark navy on transparent, whatever the theme. */
 const INK = "#07243f";
+/** On-screen ink over the dark pad (same strokes; never exported). Matches `--ink` in dark. */
+const INK_ON_DARK = "#e9f0f8";
 const MIN_W = 1.3;
 const MAX_W = 3.4;
 
@@ -31,13 +35,16 @@ export function SignaturePad({
   const strokes = useRef<Stroke[]>([]);
   const current = useRef<{ stroke: Stroke; lastT: number } | null>(null);
   const [hasInk, setHasInk] = useState(false);
+  const dark = useTheme().resolvedTheme === "dark";
+  const screenInk = dark ? INK_ON_DARK : INK;
+  const inkRef = useRef(INK);
 
   const ctx = () => canvasRef.current?.getContext("2d") ?? null;
 
   /** Draw one stroke segment-by-segment with midpoint quadratic curves. */
-  const drawStroke = useCallback((c: CanvasRenderingContext2D, s: Stroke, from = 1) => {
-    c.strokeStyle = INK;
-    c.fillStyle = INK;
+  const drawStroke = useCallback((c: CanvasRenderingContext2D, s: Stroke, from = 1, color: string = inkRef.current) => {
+    c.strokeStyle = color;
+    c.fillStyle = color;
     c.lineCap = "round";
     c.lineJoin = "round";
     if (s.length === 1) {
@@ -70,6 +77,28 @@ export function SignaturePad({
     c.restore();
     strokes.current.forEach((s) => drawStroke(c, s));
   }, [drawStroke]);
+
+  /** PNG of the strokes in the saved ink (dark on transparent), independent of the on-screen ink. */
+  const exportPng = () => {
+    const canvas = canvasRef.current;
+    if (!canvas) return null;
+    if (inkRef.current === INK) return canvas.toDataURL("image/png");
+    const off = document.createElement("canvas");
+    off.width = canvas.width;
+    off.height = canvas.height;
+    const c = off.getContext("2d");
+    if (!c) return null;
+    const dpr = canvas.width / (parseFloat(canvas.style.width) || canvas.width);
+    c.setTransform(dpr, 0, 0, dpr, 0, 0);
+    strokes.current.forEach((st) => drawStroke(c, st, 1, INK));
+    return off.toDataURL("image/png");
+  };
+
+  // Pick the on-screen ink and re-ink the existing strokes when the theme flips mid-signature.
+  useEffect(() => {
+    inkRef.current = screenInk;
+    redraw();
+  }, [screenInk, redraw]);
 
   // Retina scaling + keep the drawing when the pad is resized (rotation, dialog resize).
   useEffect(() => {
@@ -142,7 +171,7 @@ export function SignaturePad({
     current.current = null;
     strokes.current = [...strokes.current, cur.stroke];
     setHasInk(true);
-    onChange(canvasRef.current?.toDataURL("image/png") ?? null);
+    onChange(exportPng());
   };
 
   const clear = () => {
@@ -156,7 +185,7 @@ export function SignaturePad({
     <div className={className}>
       <div className="mb-2 flex items-center justify-between gap-3">
         <span className="text-[13px] font-medium text-ink">
-          {label} <span className="text-st-red">*</span>
+          {label} <span className="text-red-fg">*</span>
         </span>
         <button
           type="button"
@@ -170,8 +199,8 @@ export function SignaturePad({
       <div
         ref={wrapRef}
         className={cn(
-          "relative h-[170px] overflow-hidden rounded-[18px] border bg-[linear-gradient(180deg,#fbfcfe,#f5f8fc)] transition-colors",
-          hasInk ? "border-[#bcd8fb]" : "border-dashed border-[#cfd6df]",
+          "relative h-[170px] overflow-hidden rounded-[18px] border bg-[linear-gradient(180deg,#fbfcfe,#f5f8fc)] transition-colors dark:bg-field dark:bg-none",
+          hasInk ? "border-blue-line" : "border-dashed border-line-heavy",
         )}
       >
         <canvas
@@ -186,9 +215,9 @@ export function SignaturePad({
           aria-label={hasInk ? "Firma capturada" : "Área para firmar con el dedo o el mouse"}
         />
         {/* baseline + "X" like a paper form */}
-        <div className="pointer-events-none absolute inset-x-6 bottom-9 flex items-end gap-2 text-[#b8c2cf]" aria-hidden>
+        <div className="pointer-events-none absolute inset-x-6 bottom-9 flex items-end gap-2 text-ghost" aria-hidden>
           <span className="font-serif text-[20px] leading-none">×</span>
-          <span className="mb-[3px] h-px flex-1 bg-[#d5dce5]" />
+          <span className="mb-[3px] h-px flex-1 bg-line-strong" />
         </div>
         <AnimatePresence>
           {!hasInk && (
@@ -196,7 +225,7 @@ export function SignaturePad({
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0, scale: 0.96 }}
-              className="pointer-events-none absolute inset-0 flex items-center justify-center gap-2 text-[14px] text-[#98a2b3]"
+              className="pointer-events-none absolute inset-0 flex items-center justify-center gap-2 text-[14px] text-faint"
             >
               <PenLine className="size-4" /> Firme aquí
             </motion.span>

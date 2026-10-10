@@ -119,7 +119,7 @@ export function DeviceData() {
       <section>
         <div className="mb-1 flex items-start justify-between gap-4">
           <h2 className="text-[19px] font-medium tracking-[-0.01em] text-ink">Almacenamiento local</h2>
-          <span className="inline-flex size-8 items-center justify-center rounded-full bg-[#f2f4f7] text-ink">
+          <span className="inline-flex size-8 items-center justify-center rounded-full bg-tile text-ink">
             <HardDrive className="size-4" />
           </span>
         </div>
@@ -133,18 +133,18 @@ export function DeviceData() {
             <ProgressLine value={Math.max(0.015, usagePct)} className="mt-3" tone={usagePct > 0.8 ? "red" : "blue"} />
             <div className="mt-4 flex flex-wrap items-center justify-between gap-3 text-[13.5px]">
               <span className="flex items-center gap-2 text-subtle">
-                <ShieldCheck className={persisted ? "size-4 text-st-teal" : "size-4 text-[#98a2b3]"} />
+                <ShieldCheck className={persisted ? "size-4 text-teal-fg" : "size-4 text-faint"} />
                 {persisted === null ? "Comprobando protección…" : persisted ? "Protegido contra borrado automático" : "El navegador puede liberar estos datos si falta espacio"}
               </span>
               {persisted === false && (
-                <Button variant="outline" onClick={requestPersist} className="h-10 rounded-[12px] border-[#dfe3ea] px-4 font-semibold">
+                <Button variant="outline" onClick={requestPersist} className="h-10 rounded-[12px] border-line px-4 font-semibold">
                   Proteger datos
                 </Button>
               )}
             </div>
           </>
         ) : (
-          <p className="rounded-[14px] bg-[#f4f6f8] px-4 py-3 text-[13.5px] text-subtle">Este navegador no informa el espacio usado.</p>
+          <p className="rounded-[14px] bg-soft px-4 py-3 text-[13.5px] text-subtle">Este navegador no informa el espacio usado.</p>
         )}
       </section>
 
@@ -172,7 +172,7 @@ export function DeviceData() {
           {/* the global unit filter narrows Dirección's backup, and on a phone that filter is easy to forget */}
           {user.role === "direccion" && <> · alcance: {unitFilter === "all" ? "todas las unidades" : (lk.units.get(unitFilter)?.name ?? unitFilter)}</>}.
         </p>
-        <Button variant="outline" onClick={() => setConfirmReset(true)} className="h-11 w-full rounded-[12px] border-[#dfe3ea] text-[14.5px] font-semibold text-st-red hover:text-st-red">
+        <Button variant="outline" onClick={() => setConfirmReset(true)} className="h-11 w-full rounded-[12px] border-line text-[14.5px] font-semibold text-red-fg hover:text-red-fg">
           <RotateCcw className="size-4" /> Restablecer datos de demostración
         </Button>
       </section>
@@ -186,7 +186,7 @@ export function DeviceData() {
         description="Se reemplaza todo lo guardado en este dispositivo por el escenario de demostración, anclado a hoy."
         rows={[
           { k: "Órdenes en el dispositivo", v: fmtNum(data.orders.length) },
-          { k: "Registros sin sincronizar", v: <span className={pending.length ? "text-[#b86e00]" : undefined}>{fmtNum(pending.length)}</span> },
+          { k: "Registros sin sincronizar", v: <span className={pending.length ? "text-amber-fg" : undefined}>{fmtNum(pending.length)}</span> },
           { k: "Fotos tomadas con cámara", v: fmtNum(captured) },
           { k: "Movimientos en bitácora", v: fmtNum(data.audit.length) },
         ]}
@@ -203,7 +203,7 @@ export function DeviceData() {
         }}
       >
         {pending.length > 0 && (
-          <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="rounded-[14px] bg-[#fff6e6] px-4 py-3 text-[13.5px] leading-snug text-[#8a5300]">
+          <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="rounded-[14px] bg-amber-soft px-4 py-3 text-[13.5px] leading-snug text-amber-ink">
             Hay {fmtNum(pending.length)} registros que aún no llegan al servidor. Exporta un respaldo antes de continuar.
           </motion.p>
         )}

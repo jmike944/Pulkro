@@ -66,7 +66,7 @@ function ServiceBreakdown() {
             <ul className="space-y-1.5">
               {order.activities.map((a) => (
                 <li key={a} className="flex gap-2.5">
-                  <span className="mt-[3px] inline-flex size-4 shrink-0 items-center justify-center rounded-full bg-[#e7f7f4] text-st-teal">
+                  <span className="mt-[3px] inline-flex size-4 shrink-0 items-center justify-center rounded-full bg-teal-soft text-teal-fg">
                     <Check className="size-2.5" strokeWidth={3.5} />
                   </span>
                   <span>{a}</span>
@@ -149,7 +149,7 @@ function HoursBreakdown() {
           const live = j.status === "en_curso";
           const diff = real - planned;
           const diffText = j.checkOut ? fmtDiff(diff) : live ? "En curso" : "Pendiente";
-          const diffTone = !j.checkOut ? "text-subtle" : diff > 30 ? "text-[#b86e00]" : diff < -30 ? "text-link" : "text-subtle";
+          const diffTone = !j.checkOut ? "text-subtle" : diff > 30 ? "text-amber-fg" : diff < -30 ? "text-link" : "text-subtle";
           return (
             <motion.li
               key={j.id}
@@ -163,15 +163,15 @@ function HoursBreakdown() {
                   {live && <StatusDot tone="blue" live />}
                 </p>
                 {/* planned vs real capsule */}
-                <div className="relative mt-2 h-[6px] max-w-[260px] rounded-full bg-[#eef1f5]">
+                <div className="relative mt-2 h-[6px] max-w-[260px] rounded-full bg-well">
                   <motion.span
-                    className="absolute inset-y-0 left-0 rounded-full bg-[#d6e6fb]"
+                    className="absolute inset-y-0 left-0 rounded-full bg-blue-mid"
                     initial={{ width: 0 }}
                     animate={{ width: `${(planned / maxMinutes) * 100}%` }}
                     transition={{ duration: 0.8, ease: EASE, delay: 0.2 }}
                   />
                   <motion.span
-                    className={cn("absolute inset-y-0 left-0 rounded-full", live ? "bg-sky" : diff > 30 ? "bg-st-amber" : "bg-[#1667e0]")}
+                    className={cn("absolute inset-y-0 left-0 rounded-full", live ? "bg-sky" : diff > 30 ? "bg-st-amber" : "bg-azure")}
                     initial={{ width: 0 }}
                     animate={{ width: `${(real / maxMinutes) * 100}%` }}
                     transition={{ duration: 0.9, ease: EASE, delay: 0.35 }}
@@ -180,7 +180,7 @@ function HoursBreakdown() {
               </div>
               <span className="hidden text-right text-[14px] text-subtle tabular sm:block">{fmtHours(planned)}</span>
               <span className="text-right text-[14.5px] font-semibold text-ink tabular">
-                {j.checkIn ? fmtDuration(real) : <span className="font-normal text-[#98a2b3]">—</span>}
+                {j.checkIn ? fmtDuration(real) : <span className="font-normal text-faint">—</span>}
                 <span className="block text-[12px] font-normal text-subtle sm:hidden">plan {fmtHours(planned)}</span>
                 {/* phones have no Diferencia column: the signed difference goes under the plan */}
                 <span className={cn("block text-[12px] font-medium sm:hidden", diffTone)}>{diffText}</span>

@@ -60,7 +60,7 @@ export function SummaryButton({ scheduled, onClick, className }: { scheduled: bo
     >
       <ClipboardList className="size-[18px] shrink-0 text-subtle" />
       <span className="min-w-0 flex-1 truncate">Resumen</span>
-      <OrderStatusPill status={status} className="bg-white" />
+      <OrderStatusPill status={status} className="bg-surface" />
       <ChevronRight className="size-4 shrink-0 text-subtle" />
     </button>
   );

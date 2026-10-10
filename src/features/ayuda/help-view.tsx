@@ -44,7 +44,7 @@ export function HelpView() {
         }
         actions={
           <>
-            <Button asChild variant="outline" className="h-10 rounded-[12px] border-[#dfe3ea] px-4 text-[14px] font-semibold shadow-[0_1px_2px_rgb(16_24_40/0.05)]">
+            <Button asChild variant="outline" className="h-10 rounded-[12px] border-line px-4 text-[14px] font-semibold shadow-[0_1px_2px_rgb(16_24_40/0.05)]">
               <Link href="/configuracion">
                 <Settings className="size-4" /> Configuración
               </Link>
@@ -67,7 +67,7 @@ export function HelpView() {
             initial={{ opacity: 0, y: 6 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.35, ease: EASE, delay: 0.1 + i * 0.04 }}
-            className="inline-flex h-11 shrink-0 items-center rounded-full lg:h-10 border border-hairline bg-white px-4 text-[13.5px] font-medium text-ink transition hover:border-brand-deep hover:bg-brand-deep hover:text-white"
+            className="inline-flex h-11 shrink-0 items-center rounded-full lg:h-10 border border-hairline bg-surface px-4 text-[13.5px] font-medium text-ink transition hover:border-brand-deep hover:bg-brand-deep hover:text-white"
           >
             {s.label}
           </motion.a>

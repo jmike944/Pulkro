@@ -34,20 +34,20 @@ export function StageFlow({ ind }: { ind: Indicators }) {
                       initial={{ opacity: 0, y: 4 }}
                       animate={{ opacity: 1, y: 0 }}
                       transition={{ delay: 1, duration: 0.4, ease: EASE }}
-                      className="inline-flex h-5 items-center rounded-md bg-[#e6f0fd] px-1.5 text-[11px] font-semibold text-[#1667e0]"
+                      className="inline-flex h-5 items-center rounded-md bg-blue-tint px-1.5 text-[11px] font-semibold text-azure-fg"
                     >
                       Cuello de botella
                     </motion.span>
                   )}
                 </span>
-                <span className={cn("shrink-0 text-[14px] font-semibold tabular", isBottleneck ? "text-[#1667e0]" : "text-ink")}>{fmtDays(s.days)}</span>
+                <span className={cn("shrink-0 text-[14px] font-semibold tabular", isBottleneck ? "text-azure-fg" : "text-ink")}>{fmtDays(s.days)}</span>
               </div>
-              <div className="mt-2 h-[5px] w-full overflow-hidden rounded-full bg-[#eef1f5]">
+              <div className="mt-2 h-[5px] w-full overflow-hidden rounded-full bg-well">
                 <motion.div
                   initial={{ width: 0 }}
                   animate={{ width: `${(s.days / max) * 100}%` }}
                   transition={{ duration: 0.9, ease: EASE, delay: 0.25 + i * 0.08 }}
-                  className={cn("h-full rounded-full", isBottleneck ? "bg-[#1667e0]" : "bg-[#b9d8fb]")}
+                  className={cn("h-full rounded-full", isBottleneck ? "bg-azure" : "bg-blue-line")}
                 />
               </div>
             </li>

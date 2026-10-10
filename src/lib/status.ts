@@ -26,35 +26,36 @@ export const toneDot: Record<Tone, string> = {
 
 export const toneText: Record<Tone, string> = {
   blue: "text-link",
-  amber: "text-[#b86e00]",
-  red: "text-st-red",
-  teal: "text-st-teal",
-  violet: "text-st-violet",
+  amber: "text-amber-fg",
+  red: "text-red-fg",
+  teal: "text-teal-fg",
+  violet: "text-violet-fg",
   slate: "text-subtle",
-  navy: "text-brand",
-  sky: "text-[#1b8fc0]",
+  navy: "text-brand-ink",
+  sky: "text-sky-fg",
 };
 
 export const toneSoftBg: Record<Tone, string> = {
-  blue: "bg-[#edf4ff]",
-  amber: "bg-[#fff6e6]",
-  red: "bg-[#fdeeee]",
-  teal: "bg-[#e7f7f4]",
-  violet: "bg-[#f1edff]",
-  slate: "bg-[#f2f4f7]",
-  navy: "bg-[#e8eef5]",
+  blue: "bg-blue-soft",
+  amber: "bg-amber-soft",
+  red: "bg-red-soft",
+  teal: "bg-teal-soft",
+  violet: "bg-violet-soft",
+  slate: "bg-tile",
+  navy: "bg-press",
   sky: "bg-sky-soft",
 };
 
+/** Solid tone colors as CSS variables (they re-theme in dark mode). Use in inline `style` / SVG, never as a literal hex. */
 export const toneHex: Record<Tone, string> = {
-  blue: "#2f80ed",
-  amber: "#f0a020",
-  red: "#e5484d",
-  teal: "#12a594",
-  violet: "#7c5cfc",
-  slate: "#98a2b3",
-  navy: "#023a63",
-  sky: "#7ad1f4",
+  blue: "var(--st-blue)",
+  amber: "var(--st-amber)",
+  red: "var(--st-red)",
+  teal: "var(--st-teal)",
+  violet: "var(--st-violet)",
+  slate: "var(--st-slate)",
+  navy: "var(--brand)",
+  sky: "var(--sky)",
 };
 
 export type StatusMeta = {

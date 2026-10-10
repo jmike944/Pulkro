@@ -90,7 +90,7 @@ export function HubList({
                       {r.order.folio} · {client?.shortName}
                       {r.latest && ` · v${r.latest.version}`}
                     </span>
-                    {reopened && <span className="shrink-0 font-medium text-st-violet">· reabierta</span>}
+                    {reopened && <span className="shrink-0 font-medium text-violet-fg">· reabierta</span>}
                   </>
                 }
                 status={{
@@ -151,16 +151,16 @@ export function HubList({
                 <p className="truncate text-[15px] font-semibold text-ink group-hover:text-link">{r.order.title}</p>
                 <p className="mt-0.5 truncate text-[13px] text-subtle">
                   {r.order.folio} · {client?.shortName}
-                  {r.stage === "por_generar" && r.order.status === "reabierta" && <span className="ml-1.5 font-medium text-st-violet">· reabierta</span>}
+                  {r.stage === "por_generar" && r.order.status === "reabierta" && <span className="ml-1.5 font-medium text-violet-fg">· reabierta</span>}
                 </p>
               </Link>
               <span>
                 {r.latest ? (
-                  <span className={cn("inline-flex h-7 items-center rounded-[8px] px-2 text-[13px] font-bold tabular", r.stage === "enviados" ? "bg-[#e7f7f4] text-st-teal" : "bg-[#edf4ff] text-link")}>
+                  <span className={cn("inline-flex h-7 items-center rounded-[8px] px-2 text-[13px] font-bold tabular", r.stage === "enviados" ? "bg-teal-soft text-teal-fg" : "bg-blue-soft text-link")}>
                     v{r.latest.version}
                   </span>
                 ) : (
-                  <span className="text-[14px] text-[#98a2b3]">—</span>
+                  <span className="text-[14px] text-faint">—</span>
                 )}
               </span>
               <span className="min-w-0">
@@ -196,7 +196,7 @@ export function HubList({
                 <Button
                   asChild
                   variant={action.primary ? "default" : "outline"}
-                  className={cn("h-10 min-w-[92px] rounded-[12px] px-3.5 text-[14px] font-semibold", !action.primary && "border-[#dfe3ea] shadow-[0_1px_2px_rgb(16_24_40/0.05)]")}
+                  className={cn("h-10 min-w-[92px] rounded-[12px] px-3.5 text-[14px] font-semibold", !action.primary && "border-line shadow-[0_1px_2px_rgb(16_24_40/0.05)]")}
                 >
                   <Link href={action.href}>
                     {action.primary ? null : <FileText />}

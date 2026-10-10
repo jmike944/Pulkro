@@ -26,6 +26,7 @@ import { NAV_FOOT, NAV_GROUPS, NAV_HOME, isActive, type NavGroup, type NavItem }
 import { useNavBadges } from "./use-nav-badges";
 import { useOpenGroups } from "./use-open-groups";
 import { SyncChip } from "./sync-indicator";
+import { ThemeMenuGroup } from "./theme-switcher";
 
 const COLLAPSE_KEY = "pk.sidebar.collapsed";
 
@@ -40,7 +41,7 @@ function readCollapsed() {
 }
 
 /** Keyboard focus ring for sidebar rows. Inset: the scrolling nav would clip a ring drawn outside the row. */
-const ROW_FOCUS = "outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[#1667e0]/60";
+const ROW_FOCUS = "outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-azure/60";
 
 export function Sidebar() {
   const pathname = usePathname();
@@ -63,9 +64,9 @@ export function Sidebar() {
       <div className={cn("flex items-center justify-between px-1.5", collapsed && "flex-col gap-2")}>
         <Link href="/" className="flex items-center gap-3">
           <PulkroMark />
-          {!collapsed && <span className="font-brand text-[19px] font-extrabold tracking-[0.16em] text-brand-deep">PULKRO</span>}
+          {!collapsed && <span className="font-brand text-[19px] font-extrabold tracking-[0.16em] text-brand-ink">PULKRO</span>}
         </Link>
-        <button onClick={toggle} className="rounded-lg p-1.5 text-subtle transition hover:bg-white hover:text-ink" aria-label="Contraer menú">
+        <button onClick={toggle} className="rounded-lg p-1.5 text-subtle transition hover:bg-surface hover:text-ink" aria-label="Contraer menú">
           <PanelLeft className="size-[18px]" />
         </button>
       </div>
@@ -152,7 +153,7 @@ function ActivePill() {
   return (
     <motion.span
       layoutId="nav-active"
-      className="absolute inset-0 rounded-[14px] bg-white shadow-[0_1px_2px_rgb(16_24_40/0.05),0_8px_20px_-12px_rgb(16_24_40/0.18)]"
+      className="absolute inset-0 rounded-[14px] bg-surface shadow-[0_1px_2px_rgb(16_24_40/0.05),0_8px_20px_-12px_rgb(16_24_40/0.18)]"
       transition={{ type: "spring", stiffness: 480, damping: 38 }}
     />
   );
@@ -164,7 +165,7 @@ function CountChip({ count }: { count: number }) {
       key={count}
       initial={{ scale: 0.6, opacity: 0 }}
       animate={{ scale: 1, opacity: 1 }}
-      className="relative inline-flex h-[22px] min-w-[22px] items-center justify-center rounded-md bg-[#e9edf2] px-1.5 text-[12px] font-semibold text-ink tabular"
+      className="relative inline-flex h-[22px] min-w-[22px] items-center justify-center rounded-md bg-press px-1.5 text-[12px] font-semibold text-ink tabular"
     >
       {count}
     </motion.span>
@@ -193,17 +194,17 @@ function NavGroupSection({ group, open, onOpenChange }: { group: NavGroup; open:
         <CollapsibleTrigger
           className={cn(
             "group relative flex h-10 w-full items-center gap-3.5 rounded-[14px] px-3.5 text-left text-[15px] transition-colors",
-            hasActive && !open ? "text-ink" : "text-[#3b4554] hover:text-ink",
+            hasActive && !open ? "text-ink" : "text-ink-soft hover:text-ink",
             ROW_FOCUS,
           )}
         >
-          <Icon className={cn("size-[20px] shrink-0 transition-colors", hasActive && !open ? "text-[#1667e0]" : "text-[#5b6675] group-hover:text-ink")} strokeWidth={1.7} />
+          <Icon className={cn("size-[20px] shrink-0 transition-colors", hasActive && !open ? "text-azure-fg" : "text-ink-muted group-hover:text-ink")} strokeWidth={1.7} />
           <span className="flex-1 truncate">{group.label}</span>
           {!open && total > 0 && <CountChip count={total} />}
           <ChevronRight className="size-4 shrink-0 text-subtle transition-transform duration-200 group-data-[state=open]:rotate-90 motion-reduce:transition-none" aria-hidden />
         </CollapsibleTrigger>
         <CollapsibleContent className="overflow-hidden motion-safe:data-[state=closed]:animate-collapsible-up motion-safe:data-[state=open]:animate-collapsible-down">
-          <ul aria-label={group.label} className="ml-6 mt-0.5 border-l border-black/10 pl-[7px]">
+          <ul aria-label={group.label} className="ml-6 mt-0.5 border-l border-edge-strong pl-[7px]">
             {group.items.map((item, i) => (
               <SubLink key={item.key} item={item} count={counts[i]} />
             ))}
@@ -231,7 +232,7 @@ function SubLink({ item, count }: { item: NavItem; count: number }) {
         aria-current={active ? "page" : undefined}
         className={cn(
           "relative scroll-my-10 flex h-9 items-center gap-2 rounded-[14px] pl-4 pr-3.5 text-[14.5px] transition-colors",
-          active ? "font-semibold text-ink" : "text-[#3b4554] hover:text-ink",
+          active ? "font-semibold text-ink" : "text-ink-soft hover:text-ink",
           ROW_FOCUS,
         )}
       >
@@ -277,13 +278,13 @@ function CollapsedGroup({ group }: { group: NavGroup }) {
               <button
                 type="button"
                 className={cn(
-                  "group relative flex h-10 w-full items-center justify-center rounded-[14px] transition-colors data-[state=open]:bg-white/60",
-                  hasActive ? "text-ink" : "text-[#3b4554] hover:text-ink",
+                  "group relative flex h-10 w-full items-center justify-center rounded-[14px] transition-colors data-[state=open]:bg-surface/60",
+                  hasActive ? "text-ink" : "text-ink-soft hover:text-ink",
                   ROW_FOCUS,
                 )}
               >
                 {hasActive && <ActivePill />}
-                <Icon className={cn("relative size-[20px] shrink-0 transition-colors", hasActive ? "text-[#1667e0]" : "text-[#5b6675] group-hover:text-ink")} strokeWidth={1.7} />
+                <Icon className={cn("relative size-[20px] shrink-0 transition-colors", hasActive ? "text-azure-fg" : "text-ink-muted group-hover:text-ink")} strokeWidth={1.7} />
                 <span className="sr-only">
                   {group.label}
                   {total > 0 ? `, ${total} por atender` : ""}
@@ -312,13 +313,13 @@ function CollapsedGroup({ group }: { group: NavGroup }) {
               <DropdownMenuItem
                 key={item.key}
                 asChild
-                className={cn("h-10 gap-3 rounded-[11px] px-2.5 text-[14.5px]", active ? "bg-[#f1f3f6] font-semibold text-ink" : "text-[#3b4554]")}
+                className={cn("h-10 gap-3 rounded-[11px] px-2.5 text-[14.5px]", active ? "bg-tile font-semibold text-ink" : "text-ink-soft")}
               >
                 <Link href={item.href} aria-current={active ? "page" : undefined}>
-                  <ItemIcon className={cn("size-[18px] shrink-0", active ? "text-[#1667e0]" : "text-[#5b6675]")} strokeWidth={1.7} />
+                  <ItemIcon className={cn("size-[18px] shrink-0", active ? "text-azure-fg" : "text-ink-muted")} strokeWidth={1.7} />
                   <span className="flex-1 truncate">{item.label}</span>
                   {counts[i] > 0 && <CountChip count={counts[i]} />}
-                  {active && <Check className="size-4 shrink-0 text-[#1667e0]" aria-hidden />}
+                  {active && <Check className="size-4 shrink-0 text-azure-fg" aria-hidden />}
                 </Link>
               </DropdownMenuItem>
             );
@@ -349,13 +350,13 @@ function NavLink({ item, collapsed }: { item: NavItem; collapsed: boolean }) {
       aria-label={collapsed ? item.label : undefined}
       className={cn(
         "group relative scroll-my-10 flex h-10 items-center gap-3.5 rounded-[14px] px-3.5 text-[15px] transition-colors",
-        active ? "font-semibold text-ink" : "text-[#3b4554] hover:text-ink",
+        active ? "font-semibold text-ink" : "text-ink-soft hover:text-ink",
         collapsed && "justify-center px-0",
         ROW_FOCUS,
       )}
     >
       {active && <ActivePill />}
-      <Icon className={cn("relative size-[20px] shrink-0 transition-colors", active ? "text-[#1667e0]" : "text-[#5b6675] group-hover:text-ink")} strokeWidth={1.7} />
+      <Icon className={cn("relative size-[20px] shrink-0 transition-colors", active ? "text-azure-fg" : "text-ink-muted group-hover:text-ink")} strokeWidth={1.7} />
       {!collapsed && <span className="relative flex-1 truncate">{item.label}</span>}
       {!collapsed && count > 0 && <CountChip count={count} />}
       {collapsed && count > 0 && <span className="absolute right-3.5 top-2.5 size-2 rounded-full bg-st-red ring-2 ring-canvas" />}
@@ -390,11 +391,11 @@ export function UnitSwitcher({ collapsed }: { collapsed?: boolean }) {
   const card = (
     <span
       className={cn(
-        "flex w-full items-center gap-3 rounded-[16px] border border-white bg-white/70 p-2 text-left shadow-[0_1px_2px_rgb(16_24_40/0.04)] transition hover:bg-white",
+        "flex w-full items-center gap-3 rounded-[16px] border border-surface bg-surface/70 p-2 text-left shadow-[0_1px_2px_rgb(16_24_40/0.04)] transition hover:bg-surface",
         collapsed && "justify-center p-1.5",
       )}
     >
-      <span className="inline-flex size-9 shrink-0 items-center justify-center rounded-[11px] bg-[#eef1f5] text-[13px] font-bold tracking-wide text-ink">{code.slice(0, 2)}</span>
+      <span className="inline-flex size-9 shrink-0 items-center justify-center rounded-[11px] bg-well text-[13px] font-bold tracking-wide text-ink">{code.slice(0, 2)}</span>
       {!collapsed && (
         <>
           <span className="min-w-0 flex-1">
@@ -436,7 +437,7 @@ export function NewOrderButton({ collapsed }: { collapsed?: boolean }) {
     <Link
       href="/ordenes/nueva"
       className={cn(
-        "group flex h-10 w-full items-center justify-center gap-2 rounded-[14px] border border-white bg-white text-[15px] font-semibold text-ink shadow-[0_1px_2px_rgb(16_24_40/0.05),0_6px_16px_-10px_rgb(16_24_40/0.2)] transition hover:-translate-y-px hover:shadow-soft active:translate-y-0",
+        "group flex h-10 w-full items-center justify-center gap-2 rounded-[14px] border border-surface bg-surface text-[15px] font-semibold text-ink shadow-[0_1px_2px_rgb(16_24_40/0.05),0_6px_16px_-10px_rgb(16_24_40/0.2)] transition hover:-translate-y-px hover:shadow-soft active:translate-y-0",
       )}
     >
       <Plus className="size-[18px] transition-transform duration-300 group-hover:rotate-90" />
@@ -465,7 +466,7 @@ export function UserCard({ collapsed }: { collapsed?: boolean }) {
         </div>
       )}
       <DropdownMenu>
-        <DropdownMenuTrigger className={cn("rounded-lg p-1.5 text-subtle outline-none hover:bg-white hover:text-ink", collapsed && "hidden")} aria-label="Menú de usuario">
+        <DropdownMenuTrigger className={cn("rounded-lg p-1.5 text-subtle outline-none hover:bg-surface hover:text-ink", collapsed && "hidden")} aria-label="Menú de usuario">
           <EllipsisVertical className="size-4" />
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end" side="top" className="w-60">
@@ -483,6 +484,8 @@ export function UserCard({ collapsed }: { collapsed?: boolean }) {
               {user.role === r && <Check className="size-4" />}
             </DropdownMenuItem>
           ))}
+          <DropdownMenuSeparator />
+          <ThemeMenuGroup />
           <DropdownMenuSeparator />
           <DropdownMenuItem
             onClick={() => {

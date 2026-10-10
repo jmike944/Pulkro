@@ -101,7 +101,7 @@ export function PendingTab({
           <AnimatedNumber value={stats.overdue} className="text-[30px] font-medium leading-none tracking-[-0.04em] text-ink sm:text-[40px]" />
           <StatSub>
             {stats.overdue > 0 ? (
-              <span className="inline-flex items-center gap-1.5 font-medium text-st-red">
+              <span className="inline-flex items-center gap-1.5 font-medium text-red-fg">
                 <StatusDot tone="red" live /> {user.role === "supervisor" ? "Súbelas hoy" : "Recordar hoy"}
               </span>
             ) : (
@@ -245,8 +245,8 @@ function RequestRow({ r, selected, onOpen }: { r: EvidenceRequest; selected: boo
         onClick={onOpen}
         aria-label={`${neededLabel(r)} · ${r.order.folio}`}
         className={cn(
-          "group -mx-3 hidden w-[calc(100%+1.5rem)] grid-cols-[minmax(0,1fr)_minmax(0,1.15fr)_minmax(0,1.35fr)_132px_20px] items-center gap-5 rounded-[14px] border-b border-hairline px-3 py-4 text-left transition-colors hover:bg-[#fafbfc] lg:grid",
-          selected && "bg-[#f4f8fe] hover:bg-[#f4f8fe]",
+          "group -mx-3 hidden w-[calc(100%+1.5rem)] grid-cols-[minmax(0,1fr)_minmax(0,1.15fr)_minmax(0,1.35fr)_132px_20px] items-center gap-5 rounded-[14px] border-b border-hairline px-3 py-4 text-left transition-colors hover:bg-wash lg:grid",
+          selected && "bg-blue-wash hover:bg-blue-wash",
         )}
       >
         <span className="flex min-w-0 items-center gap-3">
@@ -275,7 +275,7 @@ function RequestRow({ r, selected, onOpen }: { r: EvidenceRequest; selected: boo
             {dueLabel(r)}
           </ToneText>
         </span>
-        <ChevronRight className="size-4 text-[#98a2b3] transition-transform group-hover:translate-x-0.5 group-hover:text-ink" />
+        <ChevronRight className="size-4 text-faint transition-transform group-hover:translate-x-0.5 group-hover:text-ink" />
       </button>
     </motion.li>
   );

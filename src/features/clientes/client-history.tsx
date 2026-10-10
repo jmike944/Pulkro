@@ -192,12 +192,12 @@ export function ClientHistory({
                     className="group grid grid-cols-[52px_minmax(0,1fr)] items-center gap-x-4 gap-y-2 py-4 md:grid-cols-[64px_56px_minmax(0,1fr)_120px_64px]"
                   >
                     <DateBadge date={r.o.closure!.validatedAt} />
-                    <span className="hidden aspect-[4/3] w-14 overflow-hidden rounded-[10px] bg-[#eef1f5] ring-1 ring-black/5 md:block">
+                    <span className="hidden aspect-[4/3] w-14 overflow-hidden rounded-[10px] bg-well ring-1 ring-edge md:block">
                       {r.cover && <PhotoImage photo={r.cover} />}
                     </span>
                     {/* phones: the "después" cover goes under the date, beside the status row */}
                     {r.cover && (
-                      <span aria-hidden className="col-start-1 row-start-2 aspect-[4/3] w-[52px] overflow-hidden rounded-[10px] bg-[#eef1f5] ring-1 ring-black/5 md:hidden">
+                      <span aria-hidden className="col-start-1 row-start-2 aspect-[4/3] w-[52px] overflow-hidden rounded-[10px] bg-well ring-1 ring-edge md:hidden">
                         <PhotoImage photo={r.cover} />
                       </span>
                     )}
@@ -217,7 +217,7 @@ export function ClientHistory({
                         <span className="text-[12.5px] text-subtle">{r.survey ? "Encuesta pendiente" : "Sin encuesta"}</span>
                       )}
                       {r.kase && (
-                        <span className="inline-flex h-[22px] items-center rounded-md bg-[#fdeeee] px-2 text-[11.5px] font-semibold text-st-red">Queja {r.kase.folio}</span>
+                        <span className="inline-flex h-[22px] items-center rounded-md bg-red-soft px-2 text-[11.5px] font-semibold text-red-fg">Queja {r.kase.folio}</span>
                       )}
                       <HoursChip minutes={r.minutes} className="ml-auto" />
                     </span>

@@ -201,7 +201,7 @@ export function OrdersView() {
             variant="outline"
             onClick={runExport}
             disabled={exporting}
-            className="h-11 flex-1 rounded-[14px] border-[#dfe3ea] px-4 text-[14.5px] font-semibold shadow-[0_1px_2px_rgb(16_24_40/0.05)] sm:flex-none"
+            className="h-11 flex-1 rounded-[14px] border-line px-4 text-[14.5px] font-semibold shadow-[0_1px_2px_rgb(16_24_40/0.05)] sm:flex-none"
           >
             {exporting ? <Loader2 className="size-4 animate-spin" /> : <Download className="size-4" />}
             Exportar

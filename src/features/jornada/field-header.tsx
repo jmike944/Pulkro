@@ -92,7 +92,7 @@ export function FieldHeader({ f }: { f: FieldReady }) {
           initial={{ opacity: 0, y: 6 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.4, ease: EASE, delay: 0.15 }}
-          className="mt-5 flex items-start gap-3 rounded-[18px] bg-[#f4f6f8] px-4 py-3.5 text-[14px] leading-snug text-subtle"
+          className="mt-5 flex items-start gap-3 rounded-[18px] bg-soft px-4 py-3.5 text-[14px] leading-snug text-subtle"
         >
           <Eye className="mt-0.5 size-4 shrink-0 text-ink/60" />
           <span>
@@ -164,15 +164,15 @@ function ConnectivityBanner({ f }: { f: FieldReady }) {
           animate={{ opacity: 1, y: 0, scale: 1 }}
           exit={{ opacity: 0, y: -8, scale: 0.98 }}
           transition={{ type: "spring", stiffness: 420, damping: 32 }}
-          className="mt-5 flex w-full items-center gap-3 rounded-[18px] bg-[#fff6e6] px-4 py-3.5 text-left ring-1 ring-[#f6dfb4] transition hover:bg-[#fff2dc]"
+          className="mt-5 flex w-full items-center gap-3 rounded-[18px] bg-amber-soft px-4 py-3.5 text-left ring-1 ring-amber-line transition hover:bg-amber-tint"
         >
-          <span className="inline-flex size-10 shrink-0 items-center justify-center rounded-[12px] bg-[#ffe9c2] text-[#b86e00]">
+          <span className="inline-flex size-10 shrink-0 items-center justify-center rounded-[12px] bg-amber-mid text-amber-fg">
             <WifiOff className="size-[18px]" />
           </span>
-          <span className="min-w-0 flex-1 text-[14px] leading-snug text-[#7a5a1e]">
-            <b className="font-semibold text-[#5e4410]">Sin conexión</b> · lo que captures se guarda en el dispositivo y se sincroniza al volver la señal
+          <span className="min-w-0 flex-1 text-[14px] leading-snug text-amber-olive">
+            <b className="font-semibold text-amber-olive-ink">Sin conexión</b> · lo que captures se guarda en el dispositivo y se sincroniza al volver la señal
           </span>
-          <span className="shrink-0 rounded-full bg-white/80 px-2.5 py-1 text-[12.5px] font-semibold text-[#b86e00] tabular">
+          <span className="shrink-0 rounded-full bg-surface/80 px-2.5 py-1 text-[12.5px] font-semibold text-amber-fg tabular">
             {pending} {pending === 1 ? "pendiente" : "pendientes"}
           </span>
         </motion.button>
@@ -184,7 +184,7 @@ function ConnectivityBanner({ f }: { f: FieldReady }) {
           initial={{ opacity: 0, y: -6 }}
           animate={{ opacity: 1, y: 0 }}
           exit={{ opacity: 0, y: -6 }}
-          className="mt-4 inline-flex h-9 items-center gap-2 rounded-full bg-sky-soft px-3.5 text-[13px] font-medium text-[#1667e0]"
+          className="mt-4 inline-flex h-9 items-center gap-2 rounded-full bg-sky-soft px-3.5 text-[13px] font-medium text-azure-fg"
         >
           <motion.span animate={{ y: [0, -2, 0] }} transition={{ duration: 1.2, repeat: Infinity }}>
             <CloudUpload className="size-4" />

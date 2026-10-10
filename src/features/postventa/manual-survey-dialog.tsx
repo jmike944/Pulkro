@@ -95,7 +95,7 @@ function ManualForm({ target, onDone }: { target: ManualTarget; onDone: (sv?: Su
       }
     >
       <div className="space-y-6">
-        <div className="rounded-[20px] bg-[#f6f8fb] px-4 py-5">
+        <div className="rounded-[20px] bg-soft px-4 py-5">
           <p className="text-center text-[14px] font-medium text-ink">¿Cómo calificó el servicio en general?</p>
           <StarInput value={overall} onChange={setOverall} size="md" label="Calificación general" showLabel className="mt-2" />
         </div>

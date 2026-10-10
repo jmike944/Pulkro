@@ -44,7 +44,7 @@ export function AuroraFrame({ className, innerClassName, children }: { className
       transition={{ duration: 0.6, ease: EASE, delay: 0.1 }}
       className={cn("bg-aurora-frame grain rounded-[28px] p-2.5 shadow-lift", className)}
     >
-      <div className={cn("relative z-[2] rounded-[22px] bg-white p-6 shadow-[0_1px_0_rgb(255_255_255)_inset]", innerClassName)}>{children}</div>
+      <div className={cn("relative z-[2] rounded-[22px] bg-surface p-6 shadow-[0_1px_0_var(--hl)_inset]", innerClassName)}>{children}</div>
     </motion.div>
   );
 }

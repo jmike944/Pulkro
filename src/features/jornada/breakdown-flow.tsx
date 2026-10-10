@@ -134,7 +134,7 @@ export function BreakdownFlow({ f, open, onOpenChange }: { f: FieldReady; open: 
         value={`${total.toFixed(1)} h`}
       />
       {mismatch && (
-        <p className="mt-2.5 text-[13.5px] leading-snug text-[#8a5300]">
+        <p className="mt-2.5 text-[13.5px] leading-snug text-amber-ink">
           {gap > 0 ? `Sobran ${gap.toFixed(1)} h` : `Faltan ${Math.abs(gap).toFixed(1)} h`} respecto al tiempo entre entrada y salida. Explícalo en la nota si aplica.
         </p>
       )}

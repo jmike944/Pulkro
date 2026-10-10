@@ -184,10 +184,10 @@ export function AgendaView() {
         description={description}
         actions={
           <>
-            <Button variant="outline" onClick={goToday} className="h-10 rounded-[12px] border-[#dfe3ea] px-4 text-[14px] font-semibold shadow-[0_1px_2px_rgb(16_24_40/0.05)]">
+            <Button variant="outline" onClick={goToday} className="h-10 rounded-[12px] border-line px-4 text-[14px] font-semibold shadow-[0_1px_2px_rgb(16_24_40/0.05)]">
               Hoy
             </Button>
-            <div className="flex items-center rounded-[12px] border border-[#dfe3ea] bg-white p-0.5 shadow-[0_1px_2px_rgb(16_24_40/0.05)]">
+            <div className="flex items-center rounded-[12px] border border-line bg-surface p-0.5 shadow-[0_1px_2px_rgb(16_24_40/0.05)]">
               <button
                 type="button"
                 onClick={() => step(-1)}

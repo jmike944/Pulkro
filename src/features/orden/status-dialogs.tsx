@@ -67,7 +67,7 @@ function CancelForm({ onDone }: { onDone: () => void }) {
         Entiendo que la orden quedará <b className="font-semibold">cancelada</b> y que no se ejecutarán las jornadas pendientes.
       </ConfirmCheck>
       <DialogActions hint={!reason.trim() ? "Indique el motivo" : !confirmed ? "Confirme la cancelación" : undefined}>
-        <Button variant="outline" onClick={onDone} className="h-11 rounded-[12px] border-[#dfe3ea] px-5 font-semibold">
+        <Button variant="outline" onClick={onDone} className="h-11 rounded-[12px] border-line px-5 font-semibold">
           Volver
         </Button>
         <Button onClick={submit} disabled={!valid} className="h-11 rounded-[12px] bg-st-red px-5 font-semibold text-white hover:bg-st-red/90">
@@ -144,7 +144,7 @@ function ReopenForm({ onDone }: { onDone: () => void }) {
         Entiendo que se generará una <b className="font-semibold">nueva versión del reporte</b> y que el cambio queda auditado.
       </ConfirmCheck>
       <DialogActions hint={!reason.trim() ? "Indique el motivo" : !confirmed ? "Confirme la reapertura" : undefined}>
-        <Button variant="outline" onClick={onDone} className="h-11 rounded-[12px] border-[#dfe3ea] px-5 font-semibold">
+        <Button variant="outline" onClick={onDone} className="h-11 rounded-[12px] border-line px-5 font-semibold">
           Volver
         </Button>
         <Button onClick={submit} disabled={!valid} className="h-11 rounded-[12px] px-5 font-semibold">

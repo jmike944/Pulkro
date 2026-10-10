@@ -47,9 +47,9 @@ export function DateBadge({ date, className, tone }: { date: string | Date; clas
   return (
     <div
       className={cn(
-        "flex size-[52px] shrink-0 flex-col items-center justify-center rounded-[14px] border bg-white shadow-[0_1px_2px_rgb(16_24_40/0.04)]",
+        "flex size-[52px] shrink-0 flex-col items-center justify-center rounded-[14px] border bg-surface shadow-[0_1px_2px_rgb(16_24_40/0.04)]",
         tone === "today" && "border-sky bg-sky-soft",
-        tone === "late" && "border-[#f7c8ca] bg-[#fff5f5]",
+        tone === "late" && "border-red-line bg-red-wash",
         className,
       )}
     >
@@ -79,14 +79,21 @@ export function PersonAvatar({
   return (
     <span
       title={name}
-      className={cn("inline-flex shrink-0 select-none items-center justify-center rounded-full font-semibold tracking-wide", ring && "ring-2 ring-white", className)}
-      style={{
-        width: size,
-        height: size,
-        fontSize: Math.max(10, size * 0.34),
-        background: `oklch(0.95 0.03 ${hue})`,
-        color: `oklch(0.38 0.08 ${hue})`,
-      }}
+      className={cn(
+        "inline-flex shrink-0 select-none items-center justify-center rounded-full font-semibold tracking-wide",
+        // pastel disc + deep initials by hue; in dark the disc deepens and the initials lighten so avatars don't glow
+        "bg-[oklch(0.95_0.03_var(--hue))] text-[oklch(0.38_0.08_var(--hue))] dark:bg-[oklch(0.36_0.06_var(--hue))] dark:text-[oklch(0.92_0.05_var(--hue))]",
+        ring && "ring-2 ring-surface",
+        className,
+      )}
+      style={
+        {
+          "--hue": hue,
+          width: size,
+          height: size,
+          fontSize: Math.max(10, size * 0.34),
+        } as React.CSSProperties
+      }
     >
       {initials}
     </span>
@@ -120,7 +127,7 @@ export function AvatarStack({
       ))}
       {rest > 0 && (
         <span
-          className="-ml-2 inline-flex items-center justify-center rounded-full bg-[#eef1f5] text-[11px] font-semibold text-subtle ring-2 ring-white"
+          className="-ml-2 inline-flex items-center justify-center rounded-full bg-well text-[11px] font-semibold text-subtle ring-2 ring-surface"
           style={{ width: size, height: size }}
         >
           +{rest}
@@ -219,7 +226,7 @@ export function CornerLink({ href, label }: { href: string; label: string }) {
     <Link
       href={href}
       aria-label={label}
-      className="inline-flex size-8 items-center justify-center rounded-full bg-[#f2f4f7] text-ink transition hover:bg-brand-deep hover:text-white"
+      className="inline-flex size-8 items-center justify-center rounded-full bg-tile text-ink transition hover:bg-brand-deep hover:text-white"
     >
       <ArrowUpRight className="size-4" />
     </Link>
@@ -259,7 +266,7 @@ export function BarList({
               initial={{ width: 0 }}
               animate={{ width: `${(it.pct / max) * 100}%` }}
               transition={{ duration: 0.9, ease: EASE, delay: 0.2 + i * 0.07 }}
-              className={cn("h-full rounded-full", i === 0 ? "bg-[#1667e0]" : "bg-[#b9d8fb]")}
+              className={cn("h-full rounded-full", i === 0 ? "bg-azure" : "bg-blue-line")}
             />
           </div>
           <span className="col-start-2 row-start-1 text-right text-[14px] font-semibold text-ink tabular lg:col-start-3">
@@ -274,9 +281,9 @@ export function BarList({
 /* ───────────── progress ───────────── */
 
 export function ProgressLine({ value, className, tone = "blue" }: { value: number; className?: string; tone?: "blue" | "amber" | "red" | "teal" }) {
-  const color = { blue: "bg-[#1667e0]", amber: "bg-st-amber", red: "bg-st-red", teal: "bg-st-teal" }[tone];
+  const color = { blue: "bg-azure", amber: "bg-st-amber", red: "bg-st-red", teal: "bg-st-teal" }[tone];
   return (
-    <div className={cn("h-[6px] w-full overflow-hidden rounded-full bg-[#eef1f5]", className)}>
+    <div className={cn("h-[6px] w-full overflow-hidden rounded-full bg-well", className)}>
       <motion.div
         initial={{ width: 0 }}
         animate={{ width: `${Math.max(0, Math.min(1, value)) * 100}%` }}
@@ -308,12 +315,12 @@ export function MiniStat({ tone, label, value, sub, className }: { tone: Tone; l
 /** Icon tile used in card headers ("Recovered this month" icon). */
 export function IconTile({ children, className, tone = "sky" }: { children: React.ReactNode; className?: string; tone?: "sky" | "navy" | "amber" | "red" | "teal" | "violet" }) {
   const t = {
-    sky: "bg-[#e3f1fd] text-[#1667e0]",
+    sky: "bg-blue-tint text-azure-fg",
     navy: "bg-brand-deep text-white",
-    amber: "bg-[#fff1d6] text-[#b86e00]",
-    red: "bg-[#fde4e4] text-st-red",
-    teal: "bg-[#dcf4ef] text-st-teal",
-    violet: "bg-[#ebe5ff] text-st-violet",
+    amber: "bg-amber-tint text-amber-fg",
+    red: "bg-red-tint text-red-fg",
+    teal: "bg-teal-tint text-teal-fg",
+    violet: "bg-violet-tint text-violet-fg",
   }[tone];
   return <span className={cn("inline-flex size-8 shrink-0 items-center justify-center rounded-[10px] [&_svg]:size-[17px]", t, className)}>{children}</span>;
 }
@@ -322,8 +329,8 @@ export function IconTile({ children, className, tone = "sky" }: { children: Reac
 
 export function Insight({ icon, children, href, linkLabel, className }: { icon: React.ReactNode; children: React.ReactNode; href?: string; linkLabel?: string; className?: string }) {
   return (
-    <div className={cn("flex gap-4 rounded-[20px] bg-[#f4f8fd] p-5", className)}>
-      <span className="inline-flex size-10 shrink-0 items-center justify-center rounded-[12px] bg-[#cfe6fd] text-[#1667e0] [&_svg]:size-5">{icon}</span>
+    <div className={cn("flex gap-4 rounded-[20px] bg-blue-wash p-5", className)}>
+      <span className="inline-flex size-10 shrink-0 items-center justify-center rounded-[12px] bg-blue-mid text-azure-fg [&_svg]:size-5">{icon}</span>
       <div className="min-w-0 text-[14px] leading-relaxed text-ink">
         {children}
         {href && (
@@ -359,7 +366,7 @@ export function KeyValues({ title, rows, className }: { title?: string; rows: { 
 
 /** Plain white bordered card for secondary content blocks. */
 export function Panel({ className, children }: { className?: string; children: React.ReactNode }) {
-  return <div className={cn("rounded-[22px] border border-hairline bg-white p-5 shadow-soft sm:p-6", className)}>{children}</div>;
+  return <div className={cn("rounded-[22px] border border-hairline bg-surface p-5 shadow-soft sm:p-6", className)}>{children}</div>;
 }
 
 export function Eyebrow({ children, className }: { children: React.ReactNode; className?: string }) {
