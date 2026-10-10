@@ -73,7 +73,7 @@ export function JornadaBlock({
             : done
               ? "border-hairline bg-wash text-ink"
               : "border-hairline bg-surface text-ink shadow-[0_1px_2px_rgb(16_24_40/0.04)]",
-        highlight && "ring-2 ring-sky ring-offset-2 ring-offset-white",
+        highlight && "ring-2 ring-sky ring-offset-2 ring-offset-surface",
       )}
     >
       <span aria-hidden className="absolute inset-y-0 left-0 w-[3px]" style={{ background: toneHex[visual.tone] }} />

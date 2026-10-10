@@ -266,11 +266,11 @@ function ComplianceRing({ value }: { value: number }) {
       <svg viewBox="0 0 200 200" className="size-full -rotate-90" role="img" aria-label={`Cumplimiento ${fmtPct(value)}`}>
         <defs>
           <linearGradient id={gid} x1="0" y1="0" x2="1" y2="1">
-            <stop offset="0" stopColor="#7ad1f4" />
-            <stop offset="1" stopColor="#1667e0" />
+            <stop offset="0" style={{ stopColor: "var(--sky)" }} />
+            <stop offset="1" style={{ stopColor: "var(--azure)" }} />
           </linearGradient>
         </defs>
-        <circle cx="100" cy="100" r="80" fill="none" stroke="#eef1f5" strokeWidth="16" />
+        <circle cx="100" cy="100" r="80" fill="none" className="stroke-well" strokeWidth="16" />
         <motion.circle
           cx="100"
           cy="100"

@@ -105,11 +105,11 @@ function LightboxBody({
           <PhotoImage photo={photo} className="pointer-events-none" />
         </motion.div>
 
-        <span className="absolute left-3.5 top-3.5 inline-flex items-center gap-1.5 rounded-full bg-white/90 px-2.5 py-1 text-[11px] font-bold tracking-[0.08em] text-ink backdrop-blur">
+        <span className="absolute left-3.5 top-3.5 inline-flex items-center gap-1.5 rounded-full bg-white/90 px-2.5 py-1 text-[11px] font-bold tracking-[0.08em] text-ink backdrop-blur dark:text-on-light">
           <span className={cn("size-1.5 rounded-full", toneDot[kind.tone])} />
           {kind.label.toUpperCase()}
         </span>
-        <DialogClose aria-label="Cerrar" className="absolute right-3 top-3 inline-flex size-10 items-center justify-center rounded-full bg-white/90 text-ink backdrop-blur transition hover:bg-white">
+        <DialogClose aria-label="Cerrar" className="absolute right-3 top-3 inline-flex size-10 items-center justify-center rounded-full bg-white/90 text-ink backdrop-blur transition hover:bg-white dark:text-on-light">
           <X className="size-[18px]" />
         </DialogClose>
 
@@ -184,7 +184,7 @@ function LightboxBody({
                 <b className="font-semibold">¿Eliminar esta foto?</b> Queda registrado en la bitácora de auditoría.
               </p>
               <div className="flex shrink-0 gap-2">
-                <Button variant="outline" onClick={() => setConfirming(false)} className="h-10 flex-1 rounded-[12px] bg-white px-4">
+                <Button variant="outline" onClick={() => setConfirming(false)} className="h-10 flex-1 rounded-[12px] bg-surface px-4">
                   Cancelar
                 </Button>
                 <Button onClick={remove} className="h-10 flex-1 rounded-[12px] bg-st-red px-4 font-semibold text-white hover:bg-st-red/90">
@@ -221,7 +221,7 @@ function NavButton({ side, disabled, onClick }: { side: "left" | "right"; disabl
       disabled={disabled}
       aria-label={side === "left" ? "Foto anterior" : "Foto siguiente"}
       className={cn(
-        "absolute top-1/2 inline-flex size-10 -translate-y-1/2 items-center justify-center rounded-full bg-white/85 text-ink shadow-lift backdrop-blur transition hover:bg-white disabled:opacity-0",
+        "absolute top-1/2 inline-flex size-10 -translate-y-1/2 items-center justify-center rounded-full bg-white/85 text-ink shadow-lift backdrop-blur transition hover:bg-white disabled:opacity-0 dark:text-on-light",
         side === "left" ? "left-3" : "right-3",
       )}
     >

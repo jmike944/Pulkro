@@ -16,8 +16,8 @@ export function SqueegeeWipe({ className, sparkles = true }: { className?: strin
         transition={{ duration: 1.05, ease: [0.65, 0, 0.35, 1] }}
         className="absolute inset-y-0 left-0 w-full"
       >
-        <span className="absolute inset-y-0 right-[6px] w-2/3 bg-gradient-to-r from-transparent via-sky/15 to-white/80" />
-        <span className="absolute inset-y-[-10%] right-0 w-[6px] rounded-full bg-brand/80 shadow-[0_0_18px_rgb(122_209_244/0.9)]" />
+        <span className="absolute inset-y-0 right-[6px] w-2/3 bg-gradient-to-r from-transparent via-sky/15 to-white/80 dark:to-sky/25" />
+        <span className="absolute inset-y-[-10%] right-0 w-[6px] rounded-full bg-brand/80 shadow-[0_0_18px_rgb(122_209_244/0.9)] dark:bg-sky/80" />
       </motion.span>
       {sparkles && <SparkleBurst delay={0.7} />}
     </span>

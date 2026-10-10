@@ -467,7 +467,7 @@ export function PinDrop({ title, at, offline }: { title: string; at: string; off
     <div className="flex flex-col items-center pt-2 text-center" role="status" aria-live="polite">
       <div className="relative h-32 w-36">
         <motion.span
-          className="absolute bottom-3 left-1/2 h-3 w-16 -translate-x-1/2 rounded-[50%] bg-brand-deep/20 blur-[1px]"
+          className="absolute bottom-3 left-1/2 h-3 w-16 -translate-x-1/2 rounded-[50%] bg-brand-deep/20 blur-[1px] dark:bg-black/40"
           initial={{ scaleX: 0.2, opacity: 0 }}
           animate={{ scaleX: 1, opacity: 1 }}
           transition={{ delay: 0.32, duration: 0.3 }}
@@ -487,7 +487,7 @@ export function PinDrop({ title, at, offline }: { title: string; at: string; off
           animate={{ y: 0, opacity: 1, scaleY: 1 }}
           transition={{ type: "spring", stiffness: 560, damping: 15, mass: 0.9 }}
         >
-          <MapPin className="size-16 fill-brand-deep text-white drop-shadow-[0_10px_14px_rgb(7_36_63/0.35)]" strokeWidth={1.4} />
+          <MapPin className="size-16 fill-brand-deep text-white drop-shadow-[0_10px_14px_rgb(7_36_63/0.35)] dark:fill-azure dark:drop-shadow-[0_10px_14px_rgb(0_0_0/0.5)]" strokeWidth={1.4} />
         </motion.div>
         {SPARKS.map((s, i) => (
           <motion.span

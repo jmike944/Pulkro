@@ -215,7 +215,7 @@ function ClosureForm({ onDone }: { onDone: () => void }) {
                 rows={3}
                 placeholder="Ej. El cliente bloqueó el área al terminar; se envió confirmación por correo."
                 aria-label="Justificación de la excepción"
-                className="mt-3 w-full resize-none rounded-[14px] border border-amber-line bg-surface px-3.5 py-3 text-[15px] leading-relaxed outline-none placeholder:text-[#c9a86a] focus-visible:border-st-amber focus-visible:ring-3 focus-visible:ring-st-amber/25"
+                className="mt-3 w-full resize-none rounded-[14px] border border-amber-line bg-surface px-3.5 py-3 text-[15px] leading-relaxed outline-none placeholder:text-[#c9a86a] dark:placeholder:text-amber-ink/70 focus-visible:border-st-amber focus-visible:ring-3 focus-visible:ring-st-amber/25"
               />
               <p className={cn("mt-1 text-[12px]", exceptionOk ? "text-teal-fg" : "text-amber-fg")}>
                 {exceptionOk ? "Justificación lista" : `Mínimo 15 caracteres · ${exception.trim().length}/15`}

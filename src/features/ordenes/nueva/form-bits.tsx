@@ -37,13 +37,13 @@ export function ServiceIcon({ id, hue, size = 40, className }: { id: string; hue
   const Icon = SERVICE_ICONS[id] ?? Sparkles;
   return (
     <span
-      className={cn("inline-flex shrink-0 items-center justify-center rounded-[12px] ring-1 ring-edge", className)}
-      style={{
-        width: size,
-        height: size,
-        background: `linear-gradient(140deg, oklch(0.97 0.025 ${hue}), oklch(0.91 0.06 ${hue}))`,
-        color: `oklch(0.42 0.12 ${hue})`,
-      }}
+      className={cn(
+        "inline-flex shrink-0 items-center justify-center rounded-[12px] ring-1 ring-edge",
+        "bg-[linear-gradient(140deg,oklch(0.97_0.025_var(--h)),oklch(0.91_0.06_var(--h)))] text-[oklch(0.42_0.12_var(--h))]",
+        "dark:bg-[linear-gradient(140deg,oklch(0.36_0.06_var(--h)),oklch(0.29_0.05_var(--h)))] dark:text-[oklch(0.86_0.1_var(--h))]",
+        className,
+      )}
+      style={{ width: size, height: size, ["--h" as string]: hue }}
     >
       <Icon style={{ width: size * 0.46, height: size * 0.46 }} strokeWidth={1.8} />
     </span>

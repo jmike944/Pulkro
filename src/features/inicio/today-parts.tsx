@@ -86,7 +86,7 @@ function PhotoChip({ label, count, missing }: { label: string; count: number; mi
       ? label === "ANTES"
         ? "bg-blue-soft text-link"
         : "bg-teal-soft text-teal-fg"
-      : "bg-tile text-faint";
+      : "bg-tile text-faint dark:text-subtle";
   return (
     <span className={cn("inline-flex h-[22px] items-center gap-1 rounded-md px-1.5 text-[10.5px] font-bold tracking-[0.06em] tabular", tone)}>
       {missing && <span className="sr-only">Falta foto </span>}

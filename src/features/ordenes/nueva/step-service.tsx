@@ -99,6 +99,7 @@ export function StepService({
                   animate={{ opacity: 1, y: 0, transition: { delay: i * 0.035, duration: 0.35, ease: EASE } }}
                   whileHover={{ y: -2 }}
                   whileTap={{ scale: 0.97 }}
+                  style={{ ["--h" as string]: st.hue }}
                   className={cn(
                     "relative flex min-h-[132px] flex-col items-start rounded-[18px] border p-3.5 text-left transition-[border-color,box-shadow] duration-200",
                     on ? "border-transparent" : "border-hairline bg-surface hover:shadow-soft",
@@ -107,8 +108,7 @@ export function StepService({
                   {on && (
                     <motion.span
                       layoutId="service-ring"
-                      className="absolute inset-0 rounded-[18px] ring-[1.5px]"
-                      style={{ background: `oklch(0.985 0.012 ${st.hue})`, ["--tw-ring-color" as string]: `oklch(0.55 0.14 ${st.hue})` }}
+                      className="absolute inset-0 rounded-[18px] bg-[oklch(0.985_0.012_var(--h))] ring-[1.5px] ring-[oklch(0.55_0.14_var(--h))] dark:bg-[oklch(0.3_0.05_var(--h))] dark:ring-[oklch(0.72_0.13_var(--h))]"
                       transition={{ type: "spring", stiffness: 480, damping: 36 }}
                     />
                   )}

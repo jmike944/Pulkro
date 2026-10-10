@@ -240,7 +240,7 @@ function GalleryTile({
         <PhotoImage photo={photo} />
       </span>
       <span className="pointer-events-none absolute inset-x-0 bottom-0 h-2/3 bg-gradient-to-t from-black/60 via-black/15 to-transparent" />
-      <span className="absolute left-2.5 top-2.5 inline-flex items-center gap-1.5 rounded-full bg-surface/90 px-2 py-0.5 text-[10.5px] font-bold tracking-[0.08em] text-ink backdrop-blur">
+      <span className="absolute left-2.5 top-2.5 inline-flex items-center gap-1.5 rounded-full bg-white/90 px-2 py-0.5 text-[10.5px] font-bold tracking-[0.08em] text-ink backdrop-blur dark:text-on-light">
         <span className={cn("size-1.5 rounded-full", toneDot[k.tone])} />
         {k.label.toUpperCase()}
       </span>

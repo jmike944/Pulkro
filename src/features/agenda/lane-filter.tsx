@@ -52,7 +52,7 @@ function Pill({ active, onClick, count, children }: { active: boolean; onClick: 
       )}
     >
       {children}
-      <span className={cn("text-[12.5px] tabular", active ? "text-white/70" : "text-subtle")}>{count}</span>
+      <span className={cn("text-[12.5px] tabular", active ? "text-on-ink/70" : "text-subtle")}>{count}</span>
     </button>
   );
 }

@@ -136,14 +136,14 @@ function EvidenceChip({ label, count, missing, required }: { label: string; coun
       ? label === "ANTES"
         ? "bg-blue-soft text-link"
         : "bg-teal-soft text-teal-fg"
-      : "bg-tile text-faint";
+      : "bg-tile text-faint dark:text-subtle";
   return (
     <span
       className={cn("inline-flex h-[22px] items-center gap-1 rounded-md px-1.5 text-[10.5px] font-bold tracking-[0.06em] tabular", tone)}
       title={missing ? `Falta foto ${label}` : required ? `${count} foto(s) ${label}` : `${label}: aún no requerida`}
     >
       {label}
-      <span className={cn(count === 0 && !missing && "opacity-60")}>{missing && count === 0 ? "!" : count}</span>
+      <span className={cn(count === 0 && !missing && "opacity-60 dark:opacity-100")}>{missing && count === 0 ? "!" : count}</span>
     </span>
   );
 }
