@@ -168,7 +168,8 @@ function TileGroup({ group, pathname, badges, onClose }: { group: NavGroup; path
                 <span className={cn("inline-flex size-10 items-center justify-center rounded-[12px]", active ? "bg-[#e3f1fd] text-[#1667e0]" : "bg-sand text-[#3b4554]")}>
                   <Icon className="size-[20px]" strokeWidth={1.8} />
                 </span>
-                <span className={cn("max-w-full truncate text-[12.5px] leading-snug", active ? "font-semibold text-ink" : "text-[#3b4554]")}>{item.label}</span>
+                {/* truncate clips at the padding box and the line box leaves ~1px above the accent of "Ó": py + -my gives it headroom without moving the tile. */}
+                <span className={cn("-my-[3px] max-w-full truncate py-[3px] text-[12.5px] leading-snug", active ? "font-semibold text-ink" : "text-[#3b4554]")}>{item.label}</span>
                 {count > 0 && (
                   <span aria-hidden className="absolute right-1 top-1 inline-flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-[#e9edf2] px-1 text-[11px] font-semibold text-ink tabular">
                     {count}

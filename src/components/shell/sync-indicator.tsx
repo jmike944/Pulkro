@@ -11,23 +11,36 @@ import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "
 import { Switch } from "@/components/ui/switch";
 import { Button } from "@/components/ui/button";
 
-/** Sidebar chip — the "Detection on · 4 min ago" equivalent for offline sync. */
-export function SyncChip({ collapsed, compact }: { collapsed?: boolean; compact?: boolean }) {
+/**
+ * Sidebar chip — the "Detection on · 4 min ago" equivalent for offline sync.
+ * `slim` is the sidebar's density: while everything is synced (online, nothing queued) it collapses to a quiet one-line
+ * row aligned to the nav columns; offline or with records in the queue it grows back to the full card so the warning
+ * keeps its weight. Either way it is the same button and opens the sync sheet.
+ */
+export function SyncChip({ collapsed, compact, slim }: { collapsed?: boolean; compact?: boolean; slim?: boolean }) {
   const { offline, pending, syncing, lastSyncAt } = useSyncSummary();
   const setOpen = useUi((s) => s.setSyncOpen);
   useNow(30_000);
   const state = offline ? "offline" : syncing.length || pending.length ? "syncing" : "ok";
+  const row = !!slim && state === "ok";
   return (
     <button
       onClick={() => setOpen(true)}
       className={cn(
-        "flex w-full items-center gap-2.5 rounded-[14px] bg-white/80 px-3.5 py-3 text-left text-[13.5px] shadow-[0_1px_2px_rgb(16_24_40/0.04)] ring-1 ring-black/[0.03] transition hover:bg-white",
+        "flex w-full items-center text-left transition",
+        row
+          ? "h-8 gap-3.5 rounded-[10px] px-3.5 text-[12.5px] hover:bg-white/70"
+          : cn(
+              "gap-2.5 rounded-[14px] bg-white/80 px-3.5 text-[13.5px] shadow-[0_1px_2px_rgb(16_24_40/0.04)] ring-1 ring-black/[0.03] hover:bg-white",
+              slim ? "py-2 leading-5" : "py-3",
+            ),
         collapsed && "justify-center px-0",
         compact && "w-auto rounded-full px-3 py-2 text-[12.5px]",
       )}
       aria-label="Estado de sincronización"
     >
-      <span className="relative inline-flex size-2.5 shrink-0">
+      {/* In the slim row the dot sits in a 20px box so it lines up with the nav icons above. */}
+      <span className={cn("relative inline-flex size-2.5 shrink-0", row && "m-[5px]")}>
         <span
           className={cn(
             "absolute inset-0 rounded-full animate-ping-soft",
@@ -46,12 +59,17 @@ export function SyncChip({ collapsed, compact }: { collapsed?: boolean; compact?
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -4 }}
             transition={{ duration: 0.2 }}
-            className="flex min-w-0 items-baseline gap-1.5"
+            className={cn("flex min-w-0 items-baseline", row ? "gap-1" : "gap-1.5")}
           >
             {state === "ok" && (
               <>
-                <span className="font-semibold text-ink">Sincronizado</span>
-                {!compact && <span className="truncate text-subtle">{fmtAgo(lastSyncAt)}</span>}
+                <span className={cn("shrink-0", row ? "font-medium text-ink" : "font-semibold text-ink")}>Sincronizado</span>
+                {!compact && (
+                  <span className="truncate text-subtle">
+                    {row && "· "}
+                    {fmtAgo(lastSyncAt)}
+                  </span>
+                )}
               </>
             )}
             {state === "syncing" && (

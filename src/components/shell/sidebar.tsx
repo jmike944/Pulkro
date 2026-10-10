@@ -46,9 +46,9 @@ export function Sidebar() {
     <motion.aside
       animate={{ width: collapsed ? 84 : 272 }}
       transition={{ type: "spring", stiffness: 380, damping: 38 }}
-      className="sticky top-0 hidden h-dvh shrink-0 flex-col overflow-hidden px-4 pb-4 pt-6 lg:flex print:hidden"
+      className="sticky top-0 hidden h-dvh shrink-0 flex-col overflow-hidden px-4 pb-3 pt-4 lg:flex print:hidden"
     >
-      <div className={cn("flex items-center justify-between px-1.5", collapsed && "flex-col gap-4")}>
+      <div className={cn("flex items-center justify-between px-1.5", collapsed && "flex-col gap-2")}>
         <Link href="/" className="flex items-center gap-3">
           <PulkroMark />
           {!collapsed && <span className="font-brand text-[19px] font-extrabold tracking-[0.16em] text-brand-deep">PULKRO</span>}
@@ -58,7 +58,7 @@ export function Sidebar() {
         </button>
       </div>
 
-      <div className="mt-6 space-y-3">
+      <div className="mt-3 space-y-1.5">
         <UnitSwitcher collapsed={collapsed} />
         <NewOrderButton collapsed={collapsed} />
       </div>
@@ -66,7 +66,7 @@ export function Sidebar() {
       <NavScroller>
         {/* One LayoutGroup for every group so the active pill glides between sections. */}
         <LayoutGroup id="sidebar">
-          <ul className="space-y-1">
+          <ul className="space-y-0.5">
             {NAV_HOME.map((item) => (
               <NavLink key={item.key} item={item} collapsed={collapsed} />
             ))}
@@ -77,16 +77,16 @@ export function Sidebar() {
         </LayoutGroup>
       </NavScroller>
 
-      <div className="mt-4 space-y-1">
+      <div className="mt-1.5">
         <LayoutGroup id="sidebar-foot">
-          <ul className="space-y-1">
+          <ul className="space-y-0.5">
             {NAV_FOOT.map((item) => (
               <NavLink key={item.key} item={item} collapsed={collapsed} />
             ))}
           </ul>
         </LayoutGroup>
-        <div className="pt-3">
-          <SyncChip collapsed={collapsed} />
+        <div className="pt-1.5">
+          <SyncChip collapsed={collapsed} slim />
         </div>
         <UserCard collapsed={collapsed} />
       </div>
@@ -122,7 +122,7 @@ function NavScroller({ children }: { children: React.ReactNode }) {
       ref={navRef}
       aria-label="Secciones"
       className={cn(
-        "scrollbar-none mt-6 flex-1 overflow-y-auto",
+        "scrollbar-none mt-2 flex-1 overflow-y-auto",
         more && !scrolled && "[mask-image:linear-gradient(to_bottom,#000_calc(100%-36px),transparent)]",
         !more && scrolled && "[mask-image:linear-gradient(to_bottom,transparent,#000_28px)]",
         more && scrolled && "[mask-image:linear-gradient(to_bottom,transparent,#000_28px,#000_calc(100%-36px),transparent)]",
@@ -138,11 +138,11 @@ function NavSection({ group, collapsed }: { group: NavGroup; collapsed: boolean 
   const headingId = useId();
   return (
     <div>
-      {collapsed && <div aria-hidden className="mb-3 mt-4 flex justify-center"><span className="block h-px w-6 bg-black/10" /></div>}
-      <p id={headingId} className={cn(collapsed ? "sr-only" : "mb-1.5 mt-5 px-3.5 text-[11.5px] font-semibold uppercase tracking-[0.12em] text-subtle/80")}>
+      {collapsed && <div aria-hidden className="mb-1.5 mt-2 flex justify-center"><span className="block h-px w-6 bg-black/10" /></div>}
+      <p id={headingId} className={cn(collapsed ? "sr-only" : "mt-3 px-3.5 text-[11px] font-semibold uppercase leading-4 tracking-[0.12em] text-subtle/80")}>
         {group.label}
       </p>
-      <ul aria-labelledby={headingId} className="space-y-1">
+      <ul aria-labelledby={headingId} className="space-y-0.5">
         {group.items.map((item) => (
           <NavLink key={item.key} item={item} collapsed={collapsed} />
         ))}
@@ -167,7 +167,7 @@ function NavLink({ item, collapsed }: { item: NavItem; collapsed: boolean }) {
       ref={ref}
       href={item.href}
       className={cn(
-        "group relative scroll-my-10 flex h-11 items-center gap-3.5 rounded-[14px] px-3.5 text-[15px] transition-colors",
+        "group relative scroll-my-10 flex h-10 items-center gap-3.5 rounded-[14px] px-3.5 text-[15px] transition-colors",
         active ? "font-semibold text-ink" : "text-[#3b4554] hover:text-ink",
         collapsed && "justify-center px-0",
       )}
@@ -223,16 +223,16 @@ export function UnitSwitcher({ collapsed }: { collapsed?: boolean }) {
   const card = (
     <span
       className={cn(
-        "flex w-full items-center gap-3 rounded-[16px] border border-white bg-white/70 p-2.5 text-left shadow-[0_1px_2px_rgb(16_24_40/0.04)] transition hover:bg-white",
-        collapsed && "justify-center p-2",
+        "flex w-full items-center gap-3 rounded-[16px] border border-white bg-white/70 p-2 text-left shadow-[0_1px_2px_rgb(16_24_40/0.04)] transition hover:bg-white",
+        collapsed && "justify-center p-1.5",
       )}
     >
-      <span className="inline-flex size-10 shrink-0 items-center justify-center rounded-[12px] bg-[#eef1f5] text-[13px] font-bold tracking-wide text-ink">{code.slice(0, 2)}</span>
+      <span className="inline-flex size-9 shrink-0 items-center justify-center rounded-[11px] bg-[#eef1f5] text-[13px] font-bold tracking-wide text-ink">{code.slice(0, 2)}</span>
       {!collapsed && (
         <>
           <span className="min-w-0 flex-1">
-            <span className="block truncate text-[15px] font-semibold text-ink">{title}</span>
-            <span className="block truncate text-[12.5px] text-subtle">{sub}</span>
+            <span className="block truncate text-[15px] font-semibold leading-tight text-ink">{title}</span>
+            <span className="block truncate text-[12.5px] leading-tight text-subtle">{sub}</span>
           </span>
           {allUnits && <ChevronDown className="size-4 shrink-0 text-subtle" />}
         </>
@@ -269,7 +269,7 @@ export function NewOrderButton({ collapsed }: { collapsed?: boolean }) {
     <Link
       href="/ordenes/nueva"
       className={cn(
-        "group flex h-11 w-full items-center justify-center gap-2 rounded-[14px] border border-white bg-white text-[15px] font-semibold text-ink shadow-[0_1px_2px_rgb(16_24_40/0.05),0_6px_16px_-10px_rgb(16_24_40/0.2)] transition hover:-translate-y-px hover:shadow-soft active:translate-y-0",
+        "group flex h-10 w-full items-center justify-center gap-2 rounded-[14px] border border-white bg-white text-[15px] font-semibold text-ink shadow-[0_1px_2px_rgb(16_24_40/0.05),0_6px_16px_-10px_rgb(16_24_40/0.2)] transition hover:-translate-y-px hover:shadow-soft active:translate-y-0",
       )}
     >
       <Plus className="size-[18px] transition-transform duration-300 group-hover:rotate-90" />
@@ -285,13 +285,13 @@ export function UserCard({ collapsed }: { collapsed?: boolean }) {
   const resetDemo = useAppStore((s) => s.resetDemo);
   const router = useRouter();
   return (
-    <div className={cn("mt-2 flex items-center gap-3 rounded-[14px] px-2 py-2", collapsed && "justify-center")}>
-      <PersonAvatar name={user.name} initials={user.initials} hue={user.hue} size={38} />
+    <div className={cn("mt-0.5 flex items-center gap-3 rounded-[14px] px-2 py-1", collapsed && "justify-center")}>
+      <PersonAvatar name={user.name} initials={user.initials} hue={user.hue} size={36} />
       {!collapsed && (
         <div className="min-w-0 flex-1">
-          <p className="truncate text-[14.5px] font-semibold text-ink">{user.name.split(" ").slice(0, 2).join(" ")}</p>
+          <p className="truncate text-[14.5px] font-semibold leading-tight text-ink">{user.name.split(" ").slice(0, 2).join(" ")}</p>
           <AnimatePresence mode="wait">
-            <motion.p key={user.role} initial={{ opacity: 0, y: 3 }} animate={{ opacity: 1, y: 0 }} className="truncate text-[12.5px] text-subtle">
+            <motion.p key={user.role} initial={{ opacity: 0, y: 3 }} animate={{ opacity: 1, y: 0 }} className="truncate text-[12.5px] leading-tight text-subtle">
               {ROLE_LABEL[user.role]} · {user.title}
             </motion.p>
           </AnimatePresence>
