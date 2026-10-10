@@ -71,7 +71,8 @@ function QrBody({ target }: { target: SurveyTarget }) {
           transition={{ type: "spring", stiffness: 260, damping: 20 }}
           className="bg-aurora-frame grain rounded-[28px] p-2.5 shadow-lift"
         >
-          <div className="relative z-[2] rounded-[22px] bg-surface p-5">
+          {/* the code stays dark-on-light (with its quiet zone) in both themes: scanners need the contrast */}
+          <div className="theme-light relative z-[2] rounded-[22px] bg-surface p-5">
             <QRCodeSVG value={url} size={220} level="H" marginSize={0} fgColor="#07243f" bgColor="#ffffff" title={`Encuesta ${order.folio}`} className="size-[200px] sm:size-[220px]" />
             <span className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 rounded-[12px] bg-surface p-1.5">
               <PulkroMark className="size-9" />

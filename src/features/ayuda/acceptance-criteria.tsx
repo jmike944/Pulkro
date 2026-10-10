@@ -183,7 +183,7 @@ function CoverageRing({ covered, total }: { covered: number; total: number }) {
     <div className="flex items-center gap-5 lg:flex-col lg:items-start">
       <div className="relative size-[132px] shrink-0">
         <svg viewBox="0 0 132 132" className="size-full -rotate-90" aria-hidden>
-          <circle cx="66" cy="66" r={r} fill="none" stroke="#eef1f5" strokeWidth="12" />
+          <circle cx="66" cy="66" r={r} fill="none" className="stroke-well" strokeWidth="12" />
           <motion.circle
             cx="66"
             cy="66"
@@ -200,8 +200,8 @@ function CoverageRing({ covered, total }: { covered: number; total: number }) {
           />
           <defs>
             <linearGradient id="pk-ring" x1="0" y1="0" x2="1" y2="1">
-              <stop offset="0" stopColor="#7ad1f4" />
-              <stop offset="1" stopColor="#023a63" />
+              <stop offset="0" className="[stop-color:var(--sky)]" />
+              <stop offset="1" className="[stop-color:var(--brand)] dark:[stop-color:var(--azure)]" />
             </linearGradient>
           </defs>
         </svg>

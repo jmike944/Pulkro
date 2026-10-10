@@ -109,7 +109,7 @@ export function PendingQuestions() {
           variants={{ hidden: { opacity: 0, y: 10 }, show: { opacity: 1, y: 0, transition: { duration: 0.4, ease: EASE } } }}
           className="relative flex flex-col overflow-hidden rounded-[20px] bg-amber-soft p-4 ring-1 ring-amber-line sm:p-5"
         >
-          <span aria-hidden className="pointer-events-none absolute -top-4 right-4 select-none font-serif text-[84px] leading-none text-[#f3d9a6]/60">
+          <span aria-hidden className="pointer-events-none absolute -top-4 right-4 select-none font-serif text-[84px] leading-none text-[#f3d9a6]/60 dark:text-amber-line">
             ?
           </span>
           <div className="relative flex items-center gap-2">
@@ -256,25 +256,25 @@ function MatrizIllustration() {
       <svg viewBox="0 0 400 260" preserveAspectRatio="xMidYMid slice" className="absolute inset-0 size-full" aria-hidden>
         <defs>
           <pattern id="pk-blocks" width="46" height="38" patternUnits="userSpaceOnUse">
-            <rect x="3" y="3" width="40" height="32" rx="5" fill="#e3eaf2" />
+            <rect x="3" y="3" width="40" height="32" rx="5" className="fill-[#e3eaf2] dark:fill-soft" />
           </pattern>
         </defs>
         <rect width="400" height="260" fill="url(#pk-blocks)" />
         {/* park */}
-        <rect x="282" y="168" width="86" height="66" rx="10" fill="#d9efe6" />
+        <rect x="282" y="168" width="86" height="66" rx="10" className="fill-[#d9efe6] dark:fill-teal-tint" />
         {/* railway (Col. Terminal) */}
-        <path d="M -10 52 L 410 30" stroke="#c4cfdb" strokeWidth="10" />
-        <path d="M -10 52 L 410 30" stroke="#ffffff" strokeWidth="2" strokeDasharray="6 6" />
+        <path d="M -10 52 L 410 30" className="stroke-[#c4cfdb] dark:stroke-track" strokeWidth="10" />
+        <path d="M -10 52 L 410 30" className="stroke-white dark:stroke-line-heavy" strokeWidth="2" strokeDasharray="6 6" />
         {/* avenues */}
-        <path d="M -10 128 L 410 116" stroke="#ffffff" strokeWidth="16" />
-        <path d="M 196 -10 L 206 270" stroke="#ffffff" strokeWidth="14" />
-        <path d="M 60 -10 L 76 270" stroke="#ffffff" strokeWidth="8" />
-        <path d="M -10 206 L 410 196" stroke="#ffffff" strokeWidth="8" />
-        <text x="18" y="112" fontSize="10" fontWeight="600" fill="#8b98a9" letterSpacing="1.2">AV. COLÓN</text>
-        <text x="205" y="258" fontSize="8.5" fontWeight="700" fill="#8b98a9" letterSpacing="1" transform="rotate(-88 205 258)">D. DE MONTEMAYOR</text>
-        <text x="300" y="22" fontSize="9" fontWeight="600" fill="#9aa7b7" letterSpacing="1">COL. TERMINAL</text>
+        <path d="M -10 128 L 410 116" className="stroke-white dark:stroke-line-heavy" strokeWidth="16" />
+        <path d="M 196 -10 L 206 270" className="stroke-white dark:stroke-line-heavy" strokeWidth="14" />
+        <path d="M 60 -10 L 76 270" className="stroke-white dark:stroke-line-heavy" strokeWidth="8" />
+        <path d="M -10 206 L 410 196" className="stroke-white dark:stroke-line-heavy" strokeWidth="8" />
+        <text x="18" y="112" fontSize="10" fontWeight="600" className="fill-[#8b98a9] dark:fill-faint" letterSpacing="1.2">AV. COLÓN</text>
+        <text x="205" y="258" fontSize="8.5" fontWeight="700" className="fill-[#8b98a9] dark:fill-faint" letterSpacing="1" transform="rotate(-88 205 258)">D. DE MONTEMAYOR</text>
+        <text x="300" y="22" fontSize="9" fontWeight="600" className="fill-[#9aa7b7] dark:fill-faint" letterSpacing="1">COL. TERMINAL</text>
         {/* route from the corner to the door */}
-        <path d="M 120 124 Q 150 122 196 121 L 203 150" fill="none" stroke="#1667e0" strokeWidth="3" strokeLinecap="round" strokeDasharray="1 7" />
+        <path d="M 120 124 Q 150 122 196 121 L 203 150" fill="none" className="stroke-azure" strokeWidth="3" strokeLinecap="round" strokeDasharray="1 7" />
       </svg>
       <div className="absolute left-[52%] top-[57%] -translate-x-1/2 -translate-y-full">
         <div className="relative flex flex-col items-center">
@@ -282,8 +282,8 @@ function MatrizIllustration() {
             Pulkro · Matriz
           </span>
           <span className="relative inline-flex size-5 items-center justify-center">
-            <span className="absolute inset-0 rounded-full bg-brand/30 animate-ping-soft" />
-            <span className="relative size-3.5 rounded-full border-[3px] border-surface bg-brand-deep shadow-[0_4px_10px_rgb(2_58_99/0.45)]" />
+            <span className="absolute inset-0 rounded-full bg-brand/30 animate-ping-soft dark:bg-sky/30" />
+            <span className="relative size-3.5 rounded-full border-[3px] border-surface bg-brand-deep shadow-[0_4px_10px_rgb(2_58_99/0.45)] dark:bg-sky" />
           </span>
         </div>
       </div>

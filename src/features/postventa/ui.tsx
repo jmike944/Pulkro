@@ -99,7 +99,7 @@ export function FilterChip({
       )}
     >
       {children}
-      {count !== undefined && <span className={cn("text-[12.5px] tabular", active ? "text-white/70" : "text-subtle")}>{count}</span>}
+      {count !== undefined && <span className={cn("text-[12.5px] tabular", active ? "text-on-ink/70" : "text-subtle")}>{count}</span>}
     </button>
   );
 }

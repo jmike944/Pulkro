@@ -134,8 +134,8 @@ function Conduit({ horizontal, state, slow, label }: { horizontal: boolean; stat
             "absolute inset-0 rounded-full",
             state === "offline"
               ? horizontal
-                ? "bg-[repeating-linear-gradient(90deg,#f0a020_0_6px,transparent_6px_11px)]"
-                : "bg-[repeating-linear-gradient(180deg,#f0a020_0_6px,transparent_6px_11px)]"
+                ? "bg-[repeating-linear-gradient(90deg,var(--st-amber)_0_6px,transparent_6px_11px)]"
+                : "bg-[repeating-linear-gradient(180deg,var(--st-amber)_0_6px,transparent_6px_11px)]"
               : state === "idle"
                 ? "bg-st-teal/50"
                 : "bg-surface/80",

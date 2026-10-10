@@ -64,7 +64,7 @@ export function ServicesChart({ ind, win }: { ind: Indicators; win: PeriodWindow
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ delay: 0.9 }}
-            className="pointer-events-none absolute inset-x-0 z-[1] border-t border-dashed border-[#9fb3c8]"
+            className="pointer-events-none absolute inset-x-0 z-[1] border-t border-dashed border-[#9fb3c8] dark:border-faint"
             style={{ bottom: `${(avg / max) * 100}%` }}
           >
             <span className="absolute -top-[22px] right-0 rounded-md bg-surface/90 px-1.5 text-[11.5px] font-medium text-subtle tabular">

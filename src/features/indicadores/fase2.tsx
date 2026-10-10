@@ -171,7 +171,7 @@ function SkeletonChart({ kind }: { kind: LockedSpec["chart"] }) {
         {BUBBLES.map((b, i) => (
           <span
             key={i}
-            className="absolute animate-float rounded-full border border-white bg-[radial-gradient(circle_at_30%_30%,#ffffff,#cfe6fd_55%,#b9c7ff)]"
+            className="absolute animate-float rounded-full border border-white bg-[radial-gradient(circle_at_30%_30%,#ffffff,#cfe6fd_55%,#b9c7ff)] dark:border-sky/30 dark:bg-[radial-gradient(circle_at_30%_30%,rgb(122_209_244/0.55),rgb(79_148_255/0.35)_55%,rgb(159_177_255/0.3))]"
             style={{ left: `${b.x}%`, top: `${b.y}%`, width: b.s, height: b.s, animationDelay: `${i * 0.7}s` }}
           />
         ))}
@@ -182,13 +182,13 @@ function SkeletonChart({ kind }: { kind: LockedSpec["chart"] }) {
     <svg viewBox="0 0 300 148" preserveAspectRatio="none" className="size-full">
       <defs>
         <linearGradient id="fase2-area" x1="0" x2="0" y1="0" y2="1">
-          <stop offset="0%" stopColor="#7ad1f4" stopOpacity="0.55" />
-          <stop offset="100%" stopColor="#7ad1f4" stopOpacity="0" />
+          <stop offset="0%" style={{ stopColor: "var(--sky)" }} stopOpacity="0.55" />
+          <stop offset="100%" style={{ stopColor: "var(--sky)" }} stopOpacity="0" />
         </linearGradient>
       </defs>
       <path d="M0 110 C 40 96, 60 70, 100 78 S 160 40, 200 52 S 260 22, 300 30 L 300 148 L 0 148 Z" fill="url(#fase2-area)" />
-      <path d="M0 110 C 40 96, 60 70, 100 78 S 160 40, 200 52 S 260 22, 300 30" fill="none" stroke="#1667e0" strokeWidth="3" strokeLinecap="round" />
-      <path d="M0 124 C 50 118, 90 104, 140 108 S 220 84, 300 88" fill="none" stroke="#b9c7ff" strokeWidth="3" strokeDasharray="6 6" strokeLinecap="round" />
+      <path d="M0 110 C 40 96, 60 70, 100 78 S 160 40, 200 52 S 260 22, 300 30" fill="none" className="stroke-azure" strokeWidth="3" strokeLinecap="round" />
+      <path d="M0 124 C 50 118, 90 104, 140 108 S 220 84, 300 88" fill="none" className="stroke-chart-4" strokeWidth="3" strokeDasharray="6 6" strokeLinecap="round" />
     </svg>
   );
 }

@@ -203,9 +203,10 @@ function Serpentine({ selected, onSelect }: { selected: number; onSelect: (n: nu
           <svg aria-hidden className="pointer-events-none absolute inset-0 z-0 overflow-visible" width={geo.w} height={geo.h} viewBox={`0 0 ${geo.w} ${geo.h}`}>
             <defs>
               <linearGradient id={`${uid}-line`} x1="0" y1="0" x2={geo.w} y2={geo.h} gradientUnits="userSpaceOnUse">
-                <stop offset="0" stopColor="#023a63" stopOpacity="0.55" />
-                <stop offset="0.55" stopColor="#1667e0" stopOpacity="0.55" />
-                <stop offset="1" stopColor="#023a63" stopOpacity="0.6" />
+                {/* navy → azure on the light aurora; sky → periwinkle on the dark one (CSS-driven, so it follows the theme) */}
+                <stop offset="0" stopOpacity="0.55" className="[stop-color:var(--brand)] dark:[stop-color:var(--sky)]" />
+                <stop offset="0.55" stopOpacity="0.55" className="[stop-color:var(--azure)] dark:[stop-color:var(--chart-4)]" />
+                <stop offset="1" stopOpacity="0.6" className="[stop-color:var(--brand)] dark:[stop-color:var(--sky)]" />
               </linearGradient>
               <marker id={`${uid}-arrow`} viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
                 <path d="M 0 0 L 10 5 L 0 10 z" fill="#d48806" />
@@ -276,12 +277,12 @@ function Serpentine({ selected, onSelect }: { selected: number; onSelect: (n: nu
                 animate={{ opacity: 1 }}
                 transition={{ delay: nodeDelay(ch.n) + 0.18, duration: 0.3 }}
               >
-                <circle cx={ch.x} cy={ch.y} r={5.5} fill="white" fillOpacity={0.95} />
+                <circle cx={ch.x} cy={ch.y} r={5.5} className="fill-surface" fillOpacity={0.95} />
                 <path
                   d={`M ${ch.x - 1.5} ${ch.y - 2.75} L ${ch.x + 1.75} ${ch.y} L ${ch.x - 1.5} ${ch.y + 2.75}`}
                   transform={`rotate(${ch.rot} ${ch.x} ${ch.y})`}
                   fill="none"
-                  stroke="#023a63"
+                  className="stroke-brand dark:stroke-brand-ink"
                   strokeWidth={1.75}
                   strokeLinecap="round"
                   strokeLinejoin="round"
@@ -347,7 +348,7 @@ function FlowNode({
         <motion.span
           layoutId={`${layoutKey}-selected`}
           aria-hidden
-          className="absolute -inset-[4px] rounded-[22px] ring-2 ring-brand-deep"
+          className="absolute -inset-[4px] rounded-[22px] ring-2 ring-brand-deep dark:ring-sky"
           transition={{ type: "spring", stiffness: 520, damping: 38 }}
         />
       )}

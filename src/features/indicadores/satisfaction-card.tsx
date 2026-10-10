@@ -165,15 +165,15 @@ function NpsGauge({ nps, answered }: { nps: number; answered: number }) {
       <svg viewBox="0 0 200 118" className="w-full" role="img" aria-label={`NPS ${nps}: ${verdict}`}>
         <defs>
           <linearGradient id={`nps-${gid}`} x1="0" x2="1" y1="0" y2="0">
-            <stop offset="0%" stopColor="#b9c7ff" />
-            <stop offset="55%" stopColor="#7ad1f4" />
-            <stop offset="100%" stopColor="#1667e0" />
+            <stop offset="0%" style={{ stopColor: "var(--chart-4)" }} />
+            <stop offset="55%" style={{ stopColor: "var(--sky)" }} />
+            <stop offset="100%" style={{ stopColor: "var(--azure)" }} />
           </linearGradient>
         </defs>
-        <path d={arc} fill="none" stroke="#eef1f5" strokeWidth={14} strokeLinecap="round" />
+        <path d={arc} fill="none" className="stroke-well" strokeWidth={14} strokeLinecap="round" />
         <motion.path d={arc} fill="none" stroke={`url(#nps-${gid})`} strokeWidth={14} strokeLinecap="round" style={{ pathLength: progress }} />
-        <line x1={CX} x2={CX} y1={CY - R - 11} y2={CY - R + 11} stroke="#ffffff" strokeWidth={2} />
-        {answered > 0 && <motion.circle r={9} cx={cx} cy={cy} fill="#ffffff" stroke="#07243f" strokeWidth={3} />}
+        <line x1={CX} x2={CX} y1={CY - R - 11} y2={CY - R + 11} className="stroke-surface" strokeWidth={2} />
+        {answered > 0 && <motion.circle r={9} cx={cx} cy={cy} className="fill-surface stroke-brand-ink" strokeWidth={3} />}
         <text x={CX - R} y={CY + 18} textAnchor="middle" className="fill-faint text-[10px]">
           −100
         </text>

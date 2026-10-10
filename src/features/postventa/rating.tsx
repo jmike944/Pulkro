@@ -7,6 +7,7 @@ import { cn } from "@/lib/utils";
 import { EASE } from "@/components/pk/motion";
 import { RATING_LABELS, npsGroup } from "./lib";
 
+/** Rating gold: the one literal color here, deliberately identical in both themes (readable on white and on navy). */
 const GOLD = "#f2a91e";
 
 /* ───────────── read-only stars ───────────── */
@@ -129,9 +130,12 @@ export function StarInput({
                 className="inline-flex"
               >
                 <Star
-                  style={{ width: px, height: px, color: on ? GOLD : "#d5dbe3", fill: on ? GOLD : "transparent" }}
+                  style={on ? { width: px, height: px, color: GOLD, fill: GOLD } : { width: px, height: px }}
                   strokeWidth={size === "lg" ? 1.4 : 1.6}
-                  className={cn("transition-[color,fill] duration-200", on && "drop-shadow-[0_6px_10px_rgb(242_169_30/0.35)]")}
+                  className={cn(
+                    "transition-[color,fill] duration-200",
+                    on ? "drop-shadow-[0_6px_10px_rgb(242_169_30/0.35)]" : "fill-transparent text-line-strong dark:text-track-strong",
+                  )}
                 />
               </motion.span>
               {chosen && size !== "sm" && <SparkleBurst key={burst} big={size === "lg"} />}

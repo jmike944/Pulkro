@@ -96,13 +96,13 @@ function Ring({ value }: { value: number }) {
   return (
     <div className="relative size-[120px] shrink-0">
       <svg viewBox="0 0 120 120" className="size-full -rotate-90">
-        <circle cx={60} cy={60} r={r} fill="none" stroke="#eef1f5" strokeWidth={12} />
+        <circle cx={60} cy={60} r={r} fill="none" className="stroke-well" strokeWidth={12} />
         <motion.circle
           cx={60}
           cy={60}
           r={r}
           fill="none"
-          stroke="#12a594"
+          className="stroke-st-teal"
           strokeWidth={12}
           strokeLinecap="round"
           initial={{ pathLength: 0 }}
