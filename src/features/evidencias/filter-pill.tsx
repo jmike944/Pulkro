@@ -42,18 +42,18 @@ export function FilterPill({
 }) {
   const current = options.find((o) => o.value === value);
   const active = !!allLabel && value !== ALL;
+  const showValue = (active || !allLabel) && !!current;
   return (
     <DropdownMenu>
       <DropdownMenuTrigger
         className={cn(pillClass, active ? "border-[#cfe3fb] bg-[#f4f8fe]" : "border-hairline", className)}
         aria-label={`Filtrar por ${label.toLowerCase()}`}
       >
-        <span className={cn("shrink-0", active || !allLabel ? "text-subtle" : "font-medium")}>{label}</span>
-        {(active || !allLabel) && current && (
-          <span className="min-w-0 truncate font-semibold">
-            <span className="text-subtle">:</span> {current.label}
-          </span>
-        )}
+        <span className={cn("shrink-0", showValue || !allLabel ? "text-subtle" : "font-medium")}>
+          {label}
+          {showValue && ":"}
+        </span>
+        {showValue && <span className="min-w-0 truncate font-semibold">{current.label}</span>}
         <ChevronDown className="size-4 shrink-0 text-subtle" />
       </DropdownMenuTrigger>
       <DropdownMenuContent align="start" className="max-h-[340px] w-auto min-w-[220px] max-w-[300px] rounded-[14px] p-1.5">

@@ -182,7 +182,10 @@ export function JornadaRow({
           <span className="text-[12.5px] text-subtle">{fmtTime(item.end)}</span>
         </span>
         <span className="min-w-0">
-          <span className="block truncate text-[15px] font-semibold text-ink transition-colors group-hover:text-link">{order.title}</span>
+          {/* phones: two lines, the avatar stack takes a column and the distinguishing site part sits at the end of the title */}
+          <span className="line-clamp-2 text-[15px] font-semibold leading-snug text-ink transition-colors group-hover:text-link md:line-clamp-1 md:leading-normal">
+            {order.title}
+          </span>
           <span className="mt-0.5 flex items-center gap-1.5 truncate text-[13px] text-subtle">
             <span className="truncate">
               {order.folio} · {client?.shortName}

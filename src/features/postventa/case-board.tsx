@@ -8,6 +8,7 @@ import { CASE_STATUS } from "@/lib/status";
 import type { CaseStatus } from "@/lib/types";
 import { StatusDot } from "@/components/pk/status";
 import { EmptyState } from "@/components/pk/feedback";
+import { useEdgeFade } from "@/components/pk/edge-fade";
 import { EASE } from "@/components/pk/motion";
 import { CaseCard } from "./case-card";
 import { CaseStatusDialog, moveNeedsDialog, quickMove, type CaseMove } from "./case-status-dialog";
@@ -167,9 +168,11 @@ function MobileCaseList({
     e.currentTarget.scrollIntoView({ behavior: "smooth", block: "nearest", inline: "center" });
   };
 
+  const { ref: chipRef, style: chipStyle } = useEdgeFade();
+
   return (
     <div className="mt-5 md:hidden">
-      <div className="scrollbar-none -mx-4 flex gap-2 overflow-x-auto px-4 pb-1">
+      <div ref={chipRef} style={chipStyle} className="scrollbar-none -mx-5 flex gap-2 overflow-x-auto px-5 pb-1 sm:-mx-7 sm:px-7">
         <FilterChip active={filter === "activos"} onClick={pick("activos")} count={counts.activos}>
           Activos
         </FilterChip>

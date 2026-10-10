@@ -228,7 +228,11 @@ export function CornerLink({ href, label }: { href: string; label: string }) {
 
 /* ───────────── bar list ───────────── */
 
-/** "Why claims get denied" horizontal bars: first bar strong blue, rest light. */
+/**
+ * "Why claims get denied" horizontal bars: first bar strong blue, rest light.
+ * Phones/tablets (< lg): label + figure on the first line (the label wraps, never truncates), full-width bar below.
+ * Desktop: label · bar · figure on a single row.
+ */
 export function BarList({
   items,
   className,
@@ -240,14 +244,17 @@ export function BarList({
 }) {
   const max = Math.max(0.0001, ...items.map((i) => i.pct));
   return (
-    <ul className={cn("space-y-[18px]", className)}>
+    <ul className={cn("space-y-5 lg:space-y-[18px]", className)}>
       {items.map((it, i) => (
-        <li key={it.label} className="grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)_44px] items-center gap-4">
-          <div className="min-w-0">
-            <p className="truncate text-[14px] text-ink">{it.label}</p>
+        <li
+          key={it.label}
+          className="grid grid-cols-[minmax(0,1fr)_auto] items-baseline gap-x-4 gap-y-2 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_44px] lg:items-center"
+        >
+          <div className="col-start-1 row-start-1 min-w-0">
+            <p className="text-[14px] leading-snug text-ink lg:truncate lg:leading-normal">{it.label}</p>
             {it.sub && <p className="text-[12px] text-subtle">{it.sub}</p>}
           </div>
-          <div className="h-[7px] w-full">
+          <div className="col-span-2 row-start-2 h-[7px] w-full lg:col-span-1 lg:col-start-2 lg:row-start-1">
             <motion.div
               initial={{ width: 0 }}
               animate={{ width: `${(it.pct / max) * 100}%` }}
@@ -255,7 +262,7 @@ export function BarList({
               className={cn("h-full rounded-full", i === 0 ? "bg-[#1667e0]" : "bg-[#b9d8fb]")}
             />
           </div>
-          <span className="text-right text-[14px] font-semibold text-ink tabular">
+          <span className="col-start-2 row-start-1 text-right text-[14px] font-semibold text-ink tabular lg:col-start-3">
             {showCount ? it.value : `${Math.round(it.pct * 100)}%`}
           </span>
         </li>
