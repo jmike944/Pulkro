@@ -63,7 +63,7 @@ export function SatisfactionHero({ surveys, cases, now }: { surveys: Survey[]; c
               <span className="text-[15px] font-medium leading-snug text-ink sm:truncate sm:leading-normal">Satisfacción del cliente</span>
             </div>
             <DropdownMenu>
-              <DropdownMenuTrigger className="ml-auto inline-flex h-9 shrink-0 items-center gap-2 rounded-[10px] bg-[#f2f4f7] px-3 text-[14px] font-medium text-ink outline-none transition hover:bg-[#e9edf2]">
+              <DropdownMenuTrigger className="ml-auto inline-flex h-9 shrink-0 items-center gap-2 rounded-[10px] bg-tile px-3 text-[14px] font-medium text-ink outline-none transition hover:bg-press">
                 {PERIOD_LABEL[period]}
                 <ChevronDown className="size-4" />
               </DropdownMenuTrigger>
@@ -85,7 +85,7 @@ export function SatisfactionHero({ surveys, cases, now }: { surveys: Survey[]; c
                 className="text-[64px] font-medium leading-none tracking-[-0.045em] text-ink sm:text-[76px]"
               />
             ) : (
-              <span className="text-[64px] font-medium leading-none tracking-[-0.045em] text-[#c5ccd6] sm:text-[76px]">—</span>
+              <span className="text-[64px] font-medium leading-none tracking-[-0.045em] text-ghost sm:text-[76px]">—</span>
             )}
             <div className="mb-2 flex flex-col gap-1.5">
               <Stars key={`${period}-${stats.answered}`} value={stats.overall} size={20} delay={0.25} />
@@ -97,7 +97,7 @@ export function SatisfactionHero({ surveys, cases, now }: { surveys: Survey[]; c
             <span
               className={cn(
                 "inline-flex items-center gap-1.5 rounded-[8px] px-2 py-1 text-[13px] font-semibold tabular",
-                stats.nps >= 50 ? "bg-[#e7f7f4] text-st-teal" : stats.nps >= 0 ? "bg-[#e6f0fd] text-[#1667e0]" : "bg-[#fdeeee] text-st-red",
+                stats.nps >= 50 ? "bg-teal-soft text-teal-fg" : stats.nps >= 0 ? "bg-blue-tint text-azure-fg" : "bg-red-soft text-red-fg",
               )}
             >
               NPS {stats.nps > 0 ? "+" : ""}
@@ -143,7 +143,7 @@ export function SatisfactionHero({ surveys, cases, now }: { surveys: Survey[]; c
               ]}
               value={metric}
               onChange={setMetric}
-              className="bg-white/55 backdrop-blur"
+              className="bg-surface/55 backdrop-blur"
             />
           </div>
           <p className="mt-4 text-[13px] text-ink/60">

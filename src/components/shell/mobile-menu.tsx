@@ -12,6 +12,7 @@ import { fmtAgo } from "@/lib/format";
 import { PersonAvatar } from "@/components/pk/bits";
 import { Drawer, DrawerClose, DrawerContent, DrawerDescription, DrawerTitle } from "@/components/ui/drawer";
 import { NAV_FOOT, NAV_GROUPS, isActive, type NavGroup, type NavItem } from "./nav";
+import { ThemeSegmented } from "./theme-switcher";
 import { UnitPickerSheet, useUnitScope } from "./unit-picker";
 import { useNavBadges } from "./use-nav-badges";
 
@@ -36,7 +37,7 @@ export function MobileMenu({ open, onOpenChange }: { open: boolean; onOpenChange
       <Drawer open={open} onOpenChange={onOpenChange}>
         <DrawerContent
           className={cn(
-            "gap-0 bg-sand shadow-lift",
+            "gap-0 bg-canvas shadow-lift",
             "data-[vaul-drawer-direction=bottom]:mt-0 data-[vaul-drawer-direction=bottom]:border-t-0 data-[vaul-drawer-direction=bottom]:max-h-[88dvh] data-[vaul-drawer-direction=bottom]:rounded-t-[26px]",
             "motion-reduce:[animation-duration:0.01ms]! motion-reduce:[transition-duration:0.01ms]!",
           )}
@@ -44,7 +45,7 @@ export function MobileMenu({ open, onOpenChange }: { open: boolean; onOpenChange
           <div className="flex shrink-0 items-center justify-between pb-2 pl-5 pr-3 pt-2">
             <DrawerTitle className="font-serif text-[26px] font-medium text-ink">Menú</DrawerTitle>
             <DrawerClose asChild>
-              <button type="button" aria-label="Cerrar" className="inline-flex size-11 items-center justify-center rounded-full bg-white text-ink transition active:scale-95">
+              <button type="button" aria-label="Cerrar" className="inline-flex size-11 items-center justify-center rounded-full bg-surface text-ink transition active:scale-95">
                 <X className="size-[18px]" />
               </button>
             </DrawerClose>
@@ -79,7 +80,7 @@ function MenuBody({ onClose, onPickUnit, onSearch, onSync }: { onClose: () => vo
         <button
           type="button"
           onClick={onSearch}
-          className="inline-flex h-[52px] items-center justify-center gap-2 rounded-[16px] border border-hairline bg-white text-[15.5px] font-semibold text-ink transition active:scale-[0.98]"
+          className="inline-flex h-[52px] items-center justify-center gap-2 rounded-[16px] border border-hairline bg-surface text-[15.5px] font-semibold text-ink transition active:scale-[0.98]"
         >
           <Search className="size-[18px]" /> Buscar
         </button>
@@ -89,12 +90,19 @@ function MenuBody({ onClose, onPickUnit, onSearch, onSync }: { onClose: () => vo
         <TileGroup key={group.key} group={group} pathname={pathname} badges={badges} onClose={onClose} />
       ))}
 
-      <div className="rounded-[22px] border border-hairline bg-white p-1.5">
+      <div className="rounded-[22px] border border-hairline bg-surface p-1.5">
         {NAV_FOOT.map((item) => (
           <ListRow key={item.key} item={item} onClose={onClose} />
         ))}
         <SyncRow onOpen={onSync} />
       </div>
+
+      <section aria-labelledby="menu-tema">
+        <p id="menu-tema" className="mb-2 px-1 text-[11.5px] font-semibold uppercase tracking-[0.12em] text-subtle">
+          Apariencia
+        </p>
+        <ThemeSegmented compact className="rounded-[18px] border border-hairline bg-surface p-1" />
+      </section>
     </div>
   );
 }
@@ -106,7 +114,7 @@ function ProfileCard({ onClose, onPickUnit }: { onClose: () => void; onPickUnit:
   const { allUnits, units, selected } = useUnitScope();
   const scopeName = allUnits ? (selected?.name ?? "Todas las unidades") : (units.find((u) => u.id === user.unitId)?.name ?? "");
   return (
-    <section aria-label="Cuenta" className="rounded-[22px] border border-hairline bg-white p-1.5">
+    <section aria-label="Cuenta" className="rounded-[22px] border border-hairline bg-surface p-1.5">
       <Link href="/perfil" onClick={onClose} aria-current={isActive(pathname, "/perfil") ? "page" : undefined} className="flex min-h-[60px] items-center gap-3.5 rounded-[16px] px-2.5 py-2 transition active:bg-sand">
         <PersonAvatar name={user.name} initials={user.initials} hue={user.hue} size={44} />
         <span className="min-w-0 flex-1">
@@ -115,7 +123,7 @@ function ProfileCard({ onClose, onPickUnit }: { onClose: () => void; onPickUnit:
             {ROLE_LABEL[user.role]} · {scopeName}
           </span>
         </span>
-        <ChevronRight className="size-4 shrink-0 text-[#98a2b3]" />
+        <ChevronRight className="size-4 shrink-0 text-faint" />
       </Link>
       {allUnits && (
         <>
@@ -162,16 +170,16 @@ function TileGroup({ group, pathname, badges, onClose }: { group: NavGroup; path
                 aria-label={count > 0 ? `${item.label}, ${count}` : undefined}
                 className={cn(
                   "relative flex min-h-[76px] flex-col items-center justify-center gap-1.5 rounded-[18px] border px-0.5 py-2 transition active:scale-[0.97]",
-                  active ? "border-[#cfe3fb] bg-[#f2f8fe]" : "border-hairline bg-white",
+                  active ? "border-blue-mid bg-blue-wash" : "border-hairline bg-surface",
                 )}
               >
-                <span className={cn("inline-flex size-10 items-center justify-center rounded-[12px]", active ? "bg-[#e3f1fd] text-[#1667e0]" : "bg-sand text-[#3b4554]")}>
+                <span className={cn("inline-flex size-10 items-center justify-center rounded-[12px]", active ? "bg-blue-tint text-azure-fg" : "bg-sand text-ink-soft")}>
                   <Icon className="size-[20px]" strokeWidth={1.8} />
                 </span>
                 {/* truncate clips at the padding box and the line box leaves ~1px above the accent of "Ó": py + -my gives it headroom without moving the tile. */}
-                <span className={cn("-my-[3px] max-w-full truncate py-[3px] text-[12.5px] leading-snug", active ? "font-semibold text-ink" : "text-[#3b4554]")}>{item.label}</span>
+                <span className={cn("-my-[3px] max-w-full truncate py-[3px] text-[12.5px] leading-snug", active ? "font-semibold text-ink" : "text-ink-soft")}>{item.label}</span>
                 {count > 0 && (
-                  <span aria-hidden className="absolute right-1 top-1 inline-flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-[#e9edf2] px-1 text-[11px] font-semibold text-ink tabular">
+                  <span aria-hidden className="absolute right-1 top-1 inline-flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-press px-1 text-[11px] font-semibold text-ink tabular">
                     {count}
                   </span>
                 )}
@@ -185,19 +193,19 @@ function TileGroup({ group, pathname, badges, onClose }: { group: NavGroup; path
 }
 
 const ROW = "flex h-[52px] w-full items-center gap-3.5 rounded-[16px] px-2.5 text-left text-[15.5px] text-ink transition active:bg-sand";
-const ROW_ICON = "inline-flex size-9 shrink-0 items-center justify-center rounded-[11px] bg-sand text-[#3b4554]";
+const ROW_ICON = "inline-flex size-9 shrink-0 items-center justify-center rounded-[11px] bg-sand text-ink-soft";
 
 function ListRow({ item, onClose }: { item: NavItem; onClose: () => void }) {
   const pathname = usePathname();
   const active = isActive(pathname, item.href);
   const Icon = item.icon;
   return (
-    <Link href={item.href} onClick={onClose} aria-current={active ? "page" : undefined} className={cn(ROW, active && "bg-[#f2f8fe]")}>
-      <span className={cn(ROW_ICON, active && "bg-[#e3f1fd] text-[#1667e0]")}>
+    <Link href={item.href} onClick={onClose} aria-current={active ? "page" : undefined} className={cn(ROW, active && "bg-blue-wash")}>
+      <span className={cn(ROW_ICON, active && "bg-blue-tint text-azure-fg")}>
         <Icon className="size-[18px]" strokeWidth={1.8} />
       </span>
       <span className={cn("flex-1", active && "font-semibold")}>{item.label}</span>
-      <ChevronRight className="size-4 shrink-0 text-[#98a2b3]" />
+      <ChevronRight className="size-4 shrink-0 text-faint" />
     </Link>
   );
 }
@@ -230,7 +238,7 @@ function SyncRow({ onOpen }: { onOpen: () => void }) {
           </>
         )}
       </span>
-      <ChevronRight className="size-4 shrink-0 text-[#98a2b3]" />
+      <ChevronRight className="size-4 shrink-0 text-faint" />
     </button>
   );
 }

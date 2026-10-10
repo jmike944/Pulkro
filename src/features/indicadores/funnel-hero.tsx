@@ -36,7 +36,7 @@ export function FunnelHero({ ind, win, onDrill }: { ind: Indicators; win: Period
       <div className="flex flex-col gap-4 px-2 pt-2 sm:flex-row sm:items-start sm:justify-between sm:px-0 sm:pt-0">
         <div className="min-w-0">
           <p className="flex items-center gap-2.5 text-[15px] font-medium text-ink">
-            <span className="inline-flex size-8 items-center justify-center rounded-[10px] bg-white/70 text-[#1667e0] shadow-[inset_0_1px_0_rgb(255_255_255)] [&_svg]:size-[17px]">
+            <span className="inline-flex size-8 items-center justify-center rounded-[10px] bg-surface/70 text-azure-fg shadow-[inset_0_1px_0_var(--hl)] [&_svg]:size-[17px]">
               <Workflow />
             </span>
             Del plan al cliente
@@ -139,7 +139,7 @@ function FunnelColumn({
               initial={{ opacity: 0, scale: 0.4, rotate: -30 }}
               animate={{ opacity: 1, scale: 1, rotate: 0 }}
               transition={{ type: "spring", stiffness: 260, damping: 14, delay: 1.3 }}
-              className="text-[#1667e0]"
+              className="text-azure-fg"
             >
               <Sparkles className="size-3.5" />
             </motion.span>
@@ -168,9 +168,9 @@ function ConversionChip({ from, to, delay }: { from: number; to: number; delay: 
         initial={{ opacity: 0, scale: 0.6, x: -6 }}
         animate={{ opacity: 1, scale: 1, x: 0 }}
         transition={{ duration: 0.5, ease: EASE, delay }}
-        className="inline-flex h-7 items-center gap-1 whitespace-nowrap rounded-full bg-white px-2.5 text-[12.5px] font-semibold text-ink shadow-[0_6px_18px_-8px_rgb(2_58_99/0.45)] tabular print:px-2"
+        className="inline-flex h-7 items-center gap-1 whitespace-nowrap rounded-full bg-surface px-2.5 text-[12.5px] font-semibold text-ink shadow-[0_6px_18px_-8px_rgb(2_58_99/0.45)] tabular print:px-2"
       >
-        <ArrowRight className="size-3.5 text-[#1667e0]" />
+        <ArrowRight className="size-3.5 text-azure-fg" />
         {pct === null ? "—" : `${pct}%`}
       </motion.span>
     </div>

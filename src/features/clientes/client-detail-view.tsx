@@ -143,7 +143,7 @@ function ClientDetail({ client }: { client: Client }) {
                 <span className="text-[15px] font-medium leading-snug text-ink sm:truncate sm:leading-normal">Servicios para {client.shortName}</span>
               </div>
               <DropdownMenu>
-                <DropdownMenuTrigger className="ml-auto inline-flex h-9 shrink-0 items-center gap-2 rounded-[10px] bg-[#f2f4f7] px-3 text-[14px] font-medium text-ink outline-none transition hover:bg-[#e9edf2]">
+                <DropdownMenuTrigger className="ml-auto inline-flex h-9 shrink-0 items-center gap-2 rounded-[10px] bg-tile px-3 text-[14px] font-medium text-ink outline-none transition hover:bg-press">
                   {PERIOD_LABEL[period]}
                   <ChevronDown className="size-4" />
                 </DropdownMenuTrigger>

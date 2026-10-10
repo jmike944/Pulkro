@@ -29,7 +29,7 @@ export function IncidentsCard({ ind }: { ind: Indicators }) {
               {ind.incidentsOpen > 0 && (
                 <>
                   {" "}
-                  · <b className="font-semibold text-st-red">{plural(ind.incidentsOpen, "abierta", "abiertas")}</b>
+                  · <b className="font-semibold text-red-fg">{plural(ind.incidentsOpen, "abierta", "abiertas")}</b>
                 </>
               )}
             </span>

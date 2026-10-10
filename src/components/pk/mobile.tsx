@@ -27,7 +27,7 @@ export function TimeTile({ date, className, tone }: { date: string | Date; class
     <div
       className={cn(
         "flex size-[54px] shrink-0 flex-col items-center justify-center rounded-[14px] bg-sand leading-none",
-        tone === "live" && "bg-[#e3f1fd]",
+        tone === "live" && "bg-blue-tint",
         className,
       )}
     >
@@ -73,7 +73,7 @@ export function MobileRow({
           </span>
         )}
       </span>
-      {trailing ?? <ChevronRight className="size-[18px] shrink-0 text-[#98a2b3]" />}
+      {trailing ?? <ChevronRight className="size-[18px] shrink-0 text-faint" />}
     </>
   );
   const cls = cn("flex w-full items-center gap-4 border-b border-hairline py-3.5 text-left last:border-0 active:bg-sand/60", className);
@@ -116,7 +116,7 @@ export function NextStepCard({
       transition={{ duration: 0.6, ease: EASE, delay: 0.1 }}
       className={cn("bg-aurora-frame grain rounded-[28px] p-2.5 shadow-lift", className)}
     >
-      <div className="relative z-[2] rounded-[22px] bg-white p-5 shadow-[0_1px_0_rgb(255_255_255)_inset]">
+      <div className="relative z-[2] rounded-[22px] bg-surface p-5 shadow-[0_1px_0_var(--hl)_inset]">
         <div className="flex items-center gap-3">
           {avatar}
           <div className="min-w-0 flex-1">
@@ -125,7 +125,7 @@ export function NextStepCard({
           </div>
           {value && <span className="shrink-0 text-[17px] font-medium text-ink tabular">{value}</span>}
         </div>
-        <div className="mt-3.5 text-[15.5px] leading-relaxed text-[#3b4554]">{message}</div>
+        <div className="mt-3.5 text-[15.5px] leading-relaxed text-ink-soft">{message}</div>
         {action && <div className="mt-4">{action}</div>}
       </div>
     </motion.div>
@@ -152,7 +152,7 @@ export function BigButton({
 }) {
   const cls = cn(
     "inline-flex h-[54px] w-full items-center justify-center gap-2.5 rounded-[14px] text-[17px] font-semibold transition active:scale-[0.985] disabled:pointer-events-none disabled:opacity-45 [&_svg]:size-5",
-    variant === "primary" ? "bg-brand-deep text-white shadow-[0_10px_24px_-12px_rgb(7_36_63/0.7)] hover:bg-[#0b2f52]" : "border border-[#d9dde3] bg-white text-ink hover:bg-sand/50",
+    variant === "primary" ? "bg-brand-deep text-white shadow-[0_10px_24px_-12px_rgb(7_36_63/0.7)] hover:bg-brand-hover" : "border border-line-strong bg-surface text-ink hover:bg-sand/50",
     className,
   );
   if (href && !disabled)
@@ -206,7 +206,7 @@ export function FlowScreen({
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
-                className={cn("fixed inset-0 z-50", desktop ? "bg-[#0e1726]/35 backdrop-blur-[2px]" : "bg-sand")}
+                className={cn("fixed inset-0 z-50", desktop ? "bg-[#0e1726]/35 backdrop-blur-[2px] dark:bg-black/60" : "bg-canvas")}
               />
             </DialogPrimitive.Overlay>
             <DialogPrimitive.Content asChild forceMount {...(description ? {} : { "aria-describedby": undefined })}>
@@ -216,7 +216,7 @@ export function FlowScreen({
                 exit={desktop ? { opacity: 0, scale: 0.97, y: 6 } : { y: "100%" }}
                 transition={desktop ? { duration: 0.28, ease: EASE } : { type: "spring", stiffness: 340, damping: 36 }}
                 className={cn(
-                  "fixed z-50 flex flex-col overflow-hidden bg-white outline-none",
+                  "fixed z-50 flex flex-col overflow-hidden bg-surface outline-none",
                   desktop
                     ? "left-1/2 top-1/2 max-h-[88dvh] w-[min(460px,calc(100vw-32px))] -translate-x-1/2 -translate-y-1/2 rounded-[28px] shadow-lift"
                     : "inset-x-2 bottom-2 top-[max(8px,env(safe-area-inset-top))] rounded-[28px]",
@@ -226,7 +226,7 @@ export function FlowScreen({
                 <div className={cn("relative flex min-h-[64px] shrink-0 items-center px-5 pt-3", title ? "justify-center" : closeSide === "right" ? "justify-end" : "justify-start")}>
                   <DialogPrimitive.Close
                     className={cn(
-                      "inline-flex size-10 items-center justify-center rounded-[12px] border border-hairline bg-white text-ink transition hover:bg-sand",
+                      "inline-flex size-10 items-center justify-center rounded-[12px] border border-hairline bg-surface text-ink transition hover:bg-sand",
                       title && (closeSide === "left" ? "absolute left-5 top-3" : "absolute right-5 top-3"),
                     )}
                     aria-label="Cerrar"
@@ -241,7 +241,7 @@ export function FlowScreen({
                   {description && <DialogPrimitive.Description className="sr-only">{description}</DialogPrimitive.Description>}
                 </div>
                 <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-5 pb-6 pt-3 sm:px-6">{children}</div>
-                {footer && <div className="shrink-0 border-t border-transparent bg-white px-5 pb-[max(16px,env(safe-area-inset-bottom))] pt-3 sm:px-6">{footer}</div>}
+                {footer && <div className="shrink-0 border-t border-transparent bg-surface px-5 pb-[max(16px,env(safe-area-inset-bottom))] pt-3 sm:px-6">{footer}</div>}
               </motion.div>
             </DialogPrimitive.Content>
           </DialogPrimitive.Portal>
@@ -286,13 +286,13 @@ export function Stepper({
   const set = (v: number) => onChange(Math.min(max, Math.max(min, Math.round(v / step) * step)));
   return (
     <div className="inline-flex shrink-0 items-center gap-1 rounded-[14px] bg-sand p-1" role="group" aria-label={label}>
-      <motion.button type="button" whileTap={{ scale: 0.88 }} onClick={() => set(value - step)} disabled={value <= min} aria-label="Disminuir" className="inline-flex size-9 items-center justify-center rounded-[10px] bg-white text-ink shadow-[0_1px_2px_rgb(16_24_40/0.06)] disabled:opacity-40">
+      <motion.button type="button" whileTap={{ scale: 0.88 }} onClick={() => set(value - step)} disabled={value <= min} aria-label="Disminuir" className="inline-flex size-9 items-center justify-center rounded-[10px] bg-surface text-ink shadow-[0_1px_2px_rgb(16_24_40/0.06)] disabled:opacity-40">
         <Minus className="size-4" />
       </motion.button>
       <span className="min-w-[64px] text-center text-[16px] font-semibold text-ink">
         <AnimatedNumber value={value} format={{ minimumFractionDigits: decimals, maximumFractionDigits: decimals }} suffix={suffix} />
       </span>
-      <motion.button type="button" whileTap={{ scale: 0.88 }} onClick={() => set(value + step)} disabled={value >= max} aria-label="Aumentar" className="inline-flex size-9 items-center justify-center rounded-[10px] bg-white text-ink shadow-[0_1px_2px_rgb(16_24_40/0.06)] disabled:opacity-40">
+      <motion.button type="button" whileTap={{ scale: 0.88 }} onClick={() => set(value + step)} disabled={value >= max} aria-label="Aumentar" className="inline-flex size-9 items-center justify-center rounded-[10px] bg-surface text-ink shadow-[0_1px_2px_rgb(16_24_40/0.06)] disabled:opacity-40">
         <Plus className="size-4" />
       </motion.button>
     </div>
@@ -315,7 +315,7 @@ export function StepperRow({ label, hint, children }: { label: React.ReactNode; 
 /** Light-blue total card: "Total · Clock time 5 h 10 min ........ 5.0 h" */
 export function TotalCard({ label, sub, value, tone = "blue", className }: { label: React.ReactNode; sub?: React.ReactNode; value: React.ReactNode; tone?: "blue" | "amber"; className?: string }) {
   return (
-    <div className={cn("flex items-center justify-between gap-4 rounded-[20px] px-5 py-5", tone === "blue" ? "bg-[#eef6fe]" : "bg-[#fff6e6]", className)}>
+    <div className={cn("flex items-center justify-between gap-4 rounded-[20px] px-5 py-5", tone === "blue" ? "bg-blue-soft" : "bg-amber-soft", className)}>
       <div>
         <p className="text-[16px] font-semibold text-ink">{label}</p>
         {sub && <p className="mt-0.5 text-[14px] text-subtle">{sub}</p>}
@@ -333,9 +333,9 @@ export function FieldCaption({ children, className }: { children: React.ReactNod
 /** Sand input with a leading icon. */
 export function SandInput({ icon, className, ...props }: React.ComponentProps<"input"> & { icon?: React.ReactNode }) {
   return (
-    <label className={cn("flex h-[54px] items-center gap-3 rounded-[14px] border border-[#e2e0da] bg-[#faf9f6] px-4 focus-within:border-sky focus-within:ring-3 focus-within:ring-sky/30", className)}>
+    <label className={cn("flex h-[54px] items-center gap-3 rounded-[14px] border border-field-line bg-field px-4 focus-within:border-sky focus-within:ring-3 focus-within:ring-sky/30", className)}>
       {icon && <span className="text-subtle [&_svg]:size-[18px]">{icon}</span>}
-      <input className="h-full min-w-0 flex-1 bg-transparent text-[16px] text-ink outline-none placeholder:text-[#98a2b3]" {...props} />
+      <input className="h-full min-w-0 flex-1 bg-transparent text-[16px] text-ink outline-none placeholder:text-faint" {...props} />
     </label>
   );
 }
@@ -349,11 +349,11 @@ export function SuccessHero({ title, children, icon }: { title: React.ReactNode;
         initial={{ scale: 0.4, rotate: -12, opacity: 0 }}
         animate={{ scale: 1, rotate: 0, opacity: 1 }}
         transition={{ type: "spring", stiffness: 260, damping: 16, delay: 0.1 }}
-        className="relative inline-flex size-[72px] items-center justify-center rounded-[20px] bg-[linear-gradient(140deg,#a9d4ff,#6aa9f7)] text-brand-deep shadow-[0_14px_30px_-14px_rgb(47_128_237/0.8)]"
+        className="relative inline-flex size-[72px] items-center justify-center rounded-[20px] bg-[linear-gradient(140deg,#a9d4ff,#6aa9f7)] text-on-light shadow-[0_14px_30px_-14px_rgb(47_128_237/0.8)] dark:bg-[linear-gradient(140deg,var(--azure),var(--brand-deep))] dark:text-white dark:ring-1 dark:ring-edge-strong"
       >
-        <span className="absolute inset-0 rounded-[20px] bg-white/30 animate-ping-soft" />
+        <span className="absolute inset-0 rounded-[20px] bg-white/30 animate-ping-soft dark:bg-white/15" />
         {icon ?? (
-          <span className="relative inline-flex size-9 items-center justify-center rounded-full border-[2.5px] border-brand-deep">
+          <span className="relative inline-flex size-9 items-center justify-center rounded-full border-[2.5px] border-brand-deep dark:border-white">
             <Check className="size-5" strokeWidth={2.6} />
           </span>
         )}
@@ -382,7 +382,7 @@ export function ItemCard({ leading, title, sub, value, status, className }: { le
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.45, ease: EASE, delay: 0.45 }}
-      className={cn("flex items-center gap-4 rounded-[20px] border border-hairline bg-white p-4", className)}
+      className={cn("flex items-center gap-4 rounded-[20px] border border-hairline bg-surface p-4", className)}
     >
       {leading}
       <div className="min-w-0 flex-1">
@@ -408,7 +408,7 @@ export function AuroraStat({ label, value, sub, className }: { label: React.Reac
       transition={{ duration: 0.55, ease: EASE, delay: 0.55 }}
       className={cn("bg-aurora-frame grain rounded-[28px] p-2.5 shadow-lift", className)}
     >
-      <div className="relative z-[2] rounded-[22px] bg-white px-5 py-5">
+      <div className="relative z-[2] rounded-[22px] bg-surface px-5 py-5">
         <p className="text-[14px] text-subtle">{label}</p>
         <div className="mt-2 text-[44px] font-medium leading-none tracking-[-0.035em] text-ink">{value}</div>
         {sub && <p className="mt-3 text-[14px] leading-snug text-subtle">{sub}</p>}

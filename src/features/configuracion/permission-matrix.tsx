@@ -62,13 +62,13 @@ export function PermissionMatrix() {
         subtitle="Roles y acciones del documento maestro (§2). La columna resaltada es tu rol actual."
       />
 
-      <div className="overflow-hidden rounded-[22px] border border-hairline bg-white shadow-soft">
+      <div className="overflow-hidden rounded-[22px] border border-hairline bg-surface shadow-soft">
         <div className="grid grid-cols-[minmax(0,1fr)_repeat(3,46px)] items-end gap-x-1 border-b border-hairline px-4 pb-3 pt-4 text-[12px] font-semibold uppercase tracking-[0.1em] text-subtle sm:grid-cols-[minmax(0,1fr)_repeat(3,96px)] sm:px-5 md:grid-cols-[minmax(0,1fr)_repeat(3,112px)_124px]">
           <span>Acción</span>
           {ROLES.map((r) => (
             <span key={r} className={cn("relative flex flex-col items-center gap-1 text-center", r === me.role && "text-ink")}>
               {r === me.role && (
-                <motion.span layoutId="matrix-you" className="rounded-md bg-sky-soft px-1.5 py-0.5 text-[10px] tracking-[0.08em] text-[#1667e0]">
+                <motion.span layoutId="matrix-you" className="rounded-md bg-sky-soft px-1.5 py-0.5 text-[10px] tracking-[0.08em] text-azure-fg">
                   TÚ
                 </motion.span>
               )}
@@ -128,9 +128,9 @@ export function PermissionMatrix() {
         El ojo es solo consulta, salvo en «Ver todas las unidades»: Administración ve únicamente su unidad y Supervisor únicamente sus asignaciones.
       </p>
 
-      <div className="mt-8 rounded-[22px] bg-[#fff8eb] p-5 sm:p-6">
+      <div className="mt-8 rounded-[22px] bg-amber-soft p-5 sm:p-6">
         <div className="flex items-start gap-4">
-          <span className="inline-flex size-10 shrink-0 items-center justify-center rounded-[12px] bg-[#ffe7bd] text-[#b86e00]">
+          <span className="inline-flex size-10 shrink-0 items-center justify-center rounded-[12px] bg-amber-mid text-amber-fg">
             <ShieldQuestion className="size-5" />
           </span>
           <div className="min-w-0">
@@ -150,7 +150,7 @@ export function PermissionMatrix() {
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
               transition={{ duration: 0.4, ease: EASE, delay: i * 0.08 }}
-              className="rounded-[16px] bg-white/80 p-4 ring-1 ring-[#f6e2bd]"
+              className="rounded-[16px] bg-surface/80 p-4 ring-1 ring-amber-line"
             >
               <p className="text-[14px] font-semibold leading-snug text-ink">{d.q}</p>
               <p className="mt-2 text-[13px] leading-relaxed text-subtle">
@@ -186,14 +186,14 @@ function MarkGlyph({ kind, delay = 0, animated }: { kind: "yes" | "partial" | "n
     : {};
   if (kind === "partial")
     return (
-      <motion.span {...pop} className="inline-flex size-[26px] items-center justify-center rounded-full bg-[#edf4ff] text-link ring-1 ring-[#d6e6fd]">
+      <motion.span {...pop} className="inline-flex size-[26px] items-center justify-center rounded-full bg-blue-soft text-link ring-1 ring-blue-mid">
         <Eye className="size-3.5" />
       </motion.span>
     );
   return (
     <motion.span
       {...pop}
-      className={cn("inline-flex size-[26px] items-center justify-center rounded-full", kind === "yes" ? "bg-brand-deep text-white shadow-[0_4px_10px_-4px_rgb(2_58_99/0.6)]" : "bg-[#f2f4f7] text-[#a8b1bf]")}
+      className={cn("inline-flex size-[26px] items-center justify-center rounded-full", kind === "yes" ? "bg-brand-deep text-white shadow-[0_4px_10px_-4px_rgb(2_58_99/0.6)]" : "bg-tile text-faint")}
     >
       <svg viewBox="0 0 24 24" className="size-3.5" fill="none" stroke="currentColor" strokeWidth={3} strokeLinecap="round" strokeLinejoin="round" aria-hidden>
         {kind === "yes" ? <motion.path d="M5 12.5l4.5 4.5L19 7.5" {...draw} /> : <motion.path d="M6 12h12" {...draw} />}

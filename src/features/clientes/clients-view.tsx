@@ -156,7 +156,7 @@ export function ClientsView() {
           {reasons.length ? (
             <BarList showCount items={reasons.map((r) => ({ label: r.label, value: r.value, pct: r.pct }))} />
           ) : (
-            <p className="rounded-[18px] bg-[#f6f8fa] px-4 py-6 text-center text-[14px] text-subtle">Sin quejas registradas. ¡Impecable!</p>
+            <p className="rounded-[18px] bg-soft px-4 py-6 text-center text-[14px] text-subtle">Sin quejas registradas. ¡Impecable!</p>
           )}
           {insight && (
             <Insight icon={<MessageSquareWarning />} href="/postventa" linkLabel="Atender casos" className="mt-8">

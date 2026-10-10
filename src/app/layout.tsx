@@ -19,10 +19,14 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
+  // = --canvas of each theme (phones use the warm sand chrome in light). ThemeColorSync (providers.tsx) keeps the metas
+  // right when the user forces Claro/Oscuro against the OS setting.
   themeColor: [
+    { media: "(prefers-color-scheme: dark)", color: "#050e18" },
     { media: "(max-width: 1023px)", color: "#f3f2ee" },
     { color: "#f1f3f6" },
   ],
+  colorScheme: "light dark",
   width: "device-width",
   initialScale: 1,
   viewportFit: "cover",
@@ -30,7 +34,7 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
-    <html lang="es-MX" className={`${geist.variable} ${geistMono.variable} ${newsreader.variable} ${montserrat.variable} h-full antialiased`}>
+    <html lang="es-MX" suppressHydrationWarning className={`${geist.variable} ${geistMono.variable} ${newsreader.variable} ${montserrat.variable} h-full antialiased`}>
       <body className="min-h-full">
         <Providers>{children}</Providers>
       </body>

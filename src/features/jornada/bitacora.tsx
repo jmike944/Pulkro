@@ -62,7 +62,7 @@ export function NoteComposer({ f }: { f: FieldReady }) {
             if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) save();
           }}
           placeholder="¿Qué pasó en la jornada? Avances, acuerdos con el cliente, pendientes…"
-          className="min-h-[88px] rounded-[16px] bg-white pb-12 text-[16px] sm:text-[15px]"
+          className="min-h-[88px] rounded-[16px] bg-surface pb-12 text-[16px] sm:text-[15px]"
         />
         <Button onClick={save} disabled={!ok} className="absolute bottom-2.5 right-2.5 h-10 rounded-[12px] px-4 font-semibold">
           <Send /> Agregar
@@ -115,7 +115,7 @@ export function NoteFlow({ f, open, onOpenChange }: { f: FieldReady; open: boole
         autoFocus
         onChange={(e) => setText(e.target.value)}
         placeholder="Avances, acuerdos con el cliente, pendientes…"
-        className="min-h-[132px] rounded-[16px] border-[#e2e0da] bg-[#faf9f6] text-[16px]"
+        className="min-h-[132px] rounded-[16px] border-field-line bg-field text-[16px]"
       />
       <FieldCaption className="mt-6">Frecuentes</FieldCaption>
       <div className="flex flex-wrap gap-2">
@@ -169,7 +169,7 @@ export function Bitacora({ f }: { f: FieldReady }) {
         <div className="mb-5">
           {f.recordBlock ? (
             <Gate reason={f.recordBlock} className="w-full">
-              <p className="w-full rounded-[16px] bg-[#f4f6f8] px-4 py-3 text-[13.5px] text-subtle">{f.recordBlock}</p>
+              <p className="w-full rounded-[16px] bg-soft px-4 py-3 text-[13.5px] text-subtle">{f.recordBlock}</p>
             </Gate>
           ) : (
             <NoteComposer f={f} />
@@ -178,7 +178,7 @@ export function Bitacora({ f }: { f: FieldReady }) {
       )}
 
       {entries.length === 0 ? (
-        <p className="rounded-[18px] border border-dashed border-[#d9dfe7] px-5 py-5 text-[14px] text-subtle">Sin notas todavía. La entrada, la salida y las incidencias aparecerán aquí.</p>
+        <p className="rounded-[18px] border border-dashed border-line-strong px-5 py-5 text-[14px] text-subtle">Sin notas todavía. La entrada, la salida y las incidencias aparecerán aquí.</p>
       ) : (
         <ol className="relative">
           <AnimatePresence initial={false}>
@@ -195,7 +195,7 @@ export function Bitacora({ f }: { f: FieldReady }) {
                   transition={{ duration: 0.4, ease: EASE, delay: Math.min(i, 6) * 0.04 }}
                   className="relative flex gap-3.5 pb-6 last:pb-0"
                 >
-                  {!last && <span aria-hidden className="absolute bottom-0 left-[17px] top-10 w-px bg-[#e3e8ef]" />}
+                  {!last && <span aria-hidden className="absolute bottom-0 left-[17px] top-10 w-px bg-track" />}
                   <EntryIcon kind={e.kind} user={user} />
                   <div className="min-w-0 flex-1 pt-0.5">
                     <div className="flex flex-wrap items-baseline justify-between gap-x-3">
@@ -217,14 +217,14 @@ export function Bitacora({ f }: { f: FieldReady }) {
 }
 
 function EntryIcon({ kind, user }: { kind: Entry["kind"]; user?: { name: string; initials: string; hue: number } }) {
-  if (kind === "nota" && user) return <PersonAvatar initials={user.initials} hue={user.hue} size={36} name={user.name} className="relative z-[1] ring-4 ring-white" />;
+  if (kind === "nota" && user) return <PersonAvatar initials={user.initials} hue={user.hue} size={36} name={user.name} className="relative z-[1] ring-4 ring-surface" />;
   const map = {
-    nota: { icon: <NotebookPen />, cls: "bg-[#f2f4f7] text-subtle" },
-    entrada: { icon: <LogIn />, cls: "bg-[#eaf3fe] text-[#1667e0]" },
-    salida: { icon: <LogOut />, cls: "bg-[#e7f7f4] text-st-teal" },
-    incidencia: { icon: <TriangleAlert />, cls: "bg-[#fdeeee] text-st-red" },
+    nota: { icon: <NotebookPen />, cls: "bg-tile text-subtle" },
+    entrada: { icon: <LogIn />, cls: "bg-blue-soft text-azure-fg" },
+    salida: { icon: <LogOut />, cls: "bg-teal-soft text-teal-fg" },
+    incidencia: { icon: <TriangleAlert />, cls: "bg-red-soft text-red-fg" },
   }[kind];
   return (
-    <span className={cn("relative z-[1] inline-flex size-9 shrink-0 items-center justify-center rounded-[11px] ring-4 ring-white [&_svg]:size-[17px]", map.cls)}>{map.icon}</span>
+    <span className={cn("relative z-[1] inline-flex size-9 shrink-0 items-center justify-center rounded-[11px] ring-4 ring-surface [&_svg]:size-[17px]", map.cls)}>{map.icon}</span>
   );
 }

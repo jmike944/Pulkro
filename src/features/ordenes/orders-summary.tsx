@@ -28,7 +28,7 @@ export function OrdersSummary({
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5, ease: EASE, delay: 0.12 }}
-        className="grid grid-cols-2 gap-1.5 rounded-[22px] border border-hairline bg-[#fbfcfd] p-1.5 shadow-[0_1px_2px_rgb(16_24_40/0.04)] sm:grid-cols-4"
+        className="grid grid-cols-2 gap-1.5 rounded-[22px] border border-hairline bg-wash p-1.5 shadow-[0_1px_2px_rgb(16_24_40/0.04)] sm:grid-cols-4"
         role="group"
         aria-label="Filtros rápidos por etapa"
       >
@@ -44,13 +44,13 @@ export function OrdersSummary({
               whileTap={{ scale: 0.97 }}
               className={cn(
                 "group relative min-h-[84px] rounded-[17px] px-3.5 py-3 text-left outline-none transition-colors focus-visible:ring-3 focus-visible:ring-ring/50 sm:px-4",
-                !on && "hover:bg-white",
+                !on && "hover:bg-surface",
               )}
             >
               {on && (
                 <motion.span
                   layoutId="stage-highlight"
-                  className="absolute inset-0 rounded-[17px] bg-white shadow-[0_1px_2px_rgb(16_24_40/0.06),0_10px_24px_-14px_rgb(2_58_99/0.35)] ring-1 ring-[#cfe2fb]"
+                  className="absolute inset-0 rounded-[17px] bg-surface shadow-[0_1px_2px_rgb(16_24_40/0.06),0_10px_24px_-14px_rgb(2_58_99/0.35)] ring-1 ring-blue-mid"
                   transition={{ type: "spring", stiffness: 480, damping: 36 }}
                 />
               )}
@@ -63,7 +63,7 @@ export function OrdersSummary({
                   <motion.span
                     initial={{ opacity: 0, scale: 0.6 }}
                     animate={{ opacity: 1, scale: 1 }}
-                    className="rounded-full bg-[#eaf3fe] px-1.5 text-[10.5px] font-semibold text-link"
+                    className="rounded-full bg-blue-soft px-1.5 text-[10.5px] font-semibold text-link"
                   >
                     Filtro
                   </motion.span>

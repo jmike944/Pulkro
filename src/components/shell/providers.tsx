@@ -3,6 +3,7 @@
 import { useEffect } from "react";
 import { MotionConfig } from "motion/react";
 import { useOffline } from "next/offline";
+import { ThemeProvider, useTheme } from "next-themes";
 import { bootstrapStore, useAppStore } from "@/lib/store";
 import { useUi } from "@/lib/ui-store";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -10,22 +11,56 @@ import { Toaster } from "@/components/ui/sonner";
 import { Celebrate } from "@/components/pk/feedback";
 import { PwaRegistrar } from "./pwa";
 
-/** Global client providers: store bootstrap (IndexedDB), connectivity, motion prefs, toasts. */
+/** Global client providers: theme (Claro / Oscuro / Sistema), store bootstrap (IndexedDB), connectivity, motion prefs, toasts. */
 export function Providers({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     void bootstrapStore();
   }, []);
   return (
-    <MotionConfig reducedMotion="user">
-      <TooltipProvider delayDuration={250}>
-        <ConnectivityWatcher />
-        <PwaRegistrar />
-        {children}
-        <GlobalCelebrate />
-        <Toaster position="top-center" richColors={false} closeButton />
-      </TooltipProvider>
-    </MotionConfig>
+    <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange storageKey="pk.theme">
+      <MotionConfig reducedMotion="user">
+        <TooltipProvider delayDuration={250}>
+          <ThemeColorSync />
+          <ConnectivityWatcher />
+          <PwaRegistrar />
+          {children}
+          <GlobalCelebrate />
+          <Toaster position="top-center" richColors={false} closeButton />
+        </TooltipProvider>
+      </MotionConfig>
+    </ThemeProvider>
   );
+}
+
+/** Outer chrome colors (= --canvas): the browser/PWA status bar matches them. Keep in sync with `viewport` in app/layout.tsx. */
+const CHROME = { dark: "#050e18", lightPhone: "#f3f2ee", lightDesktop: "#f1f3f6" };
+
+/**
+ * The `viewport.themeColor` metas follow the OS color scheme; when the user forces Claro/Oscuro against it, point every
+ * theme-color meta at the chrome of the theme actually shown so the status bar never clashes with the app.
+ */
+function ThemeColorSync() {
+  const { resolvedTheme } = useTheme();
+  useEffect(() => {
+    if (!resolvedTheme) return;
+    const phone = window.matchMedia("(max-width: 1023px)");
+    const apply = () => {
+      const color = resolvedTheme === "dark" ? CHROME.dark : phone.matches ? CHROME.lightPhone : CHROME.lightDesktop;
+      document.querySelectorAll<HTMLMetaElement>('meta[name="theme-color"]').forEach((m) => {
+        if (m.content !== color) m.content = color;
+      });
+    };
+    apply();
+    // Next streams the viewport metas in after hydration (and re-renders them on navigation): keep them pinned.
+    const watch = new MutationObserver(apply);
+    watch.observe(document.head, { childList: true, subtree: true, attributes: true, attributeFilter: ["content"] });
+    phone.addEventListener("change", apply);
+    return () => {
+      watch.disconnect();
+      phone.removeEventListener("change", apply);
+    };
+  }, [resolvedTheme]);
+  return null;
 }
 
 /** Mirrors browser connectivity (+ Next's offline detection) into the store's sync slice. */

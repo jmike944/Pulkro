@@ -94,7 +94,7 @@ export function EquipoView() {
                 </IconTile>
                 <span className="text-[15px] font-medium text-ink">Personal activo</span>
               </div>
-              <span className="truncate rounded-[10px] bg-[#f2f4f7] px-3 py-1.5 text-[13px] font-medium text-ink">{data.scopeLabel}</span>
+              <span className="truncate rounded-[10px] bg-tile px-3 py-1.5 text-[13px] font-medium text-ink">{data.scopeLabel}</span>
             </div>
             <div className="mt-5 flex items-end gap-3">
               <AnimatedNumber value={counts.active} className="text-[64px] font-medium leading-none tracking-[-0.045em] text-ink sm:text-[76px]" />
@@ -133,7 +133,7 @@ export function EquipoView() {
             {agendaBar && (
               <Link
                 href={`/agenda?fecha=${agendaBar.key}`}
-                className="mt-4 inline-flex h-11 items-center justify-center gap-2 self-start rounded-[14px] bg-white px-4 text-[14px] font-semibold text-ink shadow-[0_1px_2px_rgb(16_24_40/0.08)] transition active:scale-[0.98] lg:hidden"
+                className="mt-4 inline-flex h-11 items-center justify-center gap-2 self-start rounded-[14px] bg-surface px-4 text-[14px] font-semibold text-ink shadow-[0_1px_2px_rgb(16_24_40/0.08)] transition active:scale-[0.98] lg:hidden"
               >
                 <CalendarDays className="size-4" /> Abrir agenda · {agendaBar === todayBar ? "hoy" : `${dowShort(agendaBar.date)} ${agendaBar.date.getDate()}`}
               </Link>

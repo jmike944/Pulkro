@@ -14,7 +14,7 @@ import type { Drill } from "./drill-sheet";
 const TONE: Record<SplitRow["tone"], { bar: string; dot: string }> = {
   navy: { bar: "bg-brand", dot: "bg-brand" },
   blue: { bar: "bg-[#5aa2f5]", dot: "bg-[#5aa2f5]" },
-  slate: { bar: "bg-[#c9d1dc]", dot: "bg-[#c9d1dc]" },
+  slate: { bar: "bg-track-strong", dot: "bg-track-strong" },
 };
 
 /** "Dónde está el trabajo de octubre" — 3-segment bar + rows (§5: pendientes / en proceso / terminados). */
@@ -35,7 +35,7 @@ export function WorkSplit({ ind, win, onDrill }: { ind: Indicators; win: PeriodW
       </p>
 
       {/* segmented bar */}
-      <div className="relative flex h-[14px] gap-1 overflow-hidden rounded-full bg-[#f2f4f7]" role="img" aria-label={rows.map((r) => `${r.label} ${fmtPct(r.pct)}`).join(", ")}>
+      <div className="relative flex h-[14px] gap-1 overflow-hidden rounded-full bg-tile" role="img" aria-label={rows.map((r) => `${r.label} ${fmtPct(r.pct)}`).join(", ")}>
         {visible.map((r, i) => (
           <motion.span
             key={r.key}
@@ -53,7 +53,7 @@ export function WorkSplit({ ind, win, onDrill }: { ind: Indicators; win: PeriodW
           initial={{ x: "-130%" }}
           animate={{ x: "330%" }}
           transition={{ duration: 1.1, ease: [0.65, 0, 0.35, 1], delay: 1.25 }}
-          className="pointer-events-none absolute inset-y-0 left-0 w-1/3 -skew-x-12 bg-gradient-to-r from-transparent via-white/75 to-transparent motion-reduce:hidden"
+          className="pointer-events-none absolute inset-y-0 left-0 w-1/3 -skew-x-12 bg-gradient-to-r from-transparent via-white/75 dark:via-white/25 to-transparent motion-reduce:hidden"
         />
       </div>
 
@@ -69,7 +69,7 @@ export function WorkSplit({ ind, win, onDrill }: { ind: Indicators; win: PeriodW
               onClick={() => onDrill({ title: r.label, description: `Programadas en ${win.phrase}`, orders: r.orders })}
               className={cn(
                 "group grid min-h-[60px] w-full grid-cols-[minmax(0,1fr)_auto_auto] items-center gap-3 rounded-[14px] px-3 py-3 text-left transition-colors sm:gap-5",
-                hover === r.key ? "bg-[#f4f7fb]" : "hover:bg-[#f4f7fb]",
+                hover === r.key ? "bg-soft" : "hover:bg-soft",
               )}
             >
               <span className="flex min-w-0 items-start gap-3">
@@ -82,7 +82,7 @@ export function WorkSplit({ ind, win, onDrill }: { ind: Indicators; win: PeriodW
               <AnimatedNumber value={r.orders.length} className="text-[17px] font-semibold text-ink" />
               <span className="flex w-[58px] items-center justify-end gap-1 text-[14px] text-subtle tabular">
                 {fmtPct(r.pct)}
-                <ChevronRight className="size-4 -mr-1 text-[#c5ccd6] transition group-hover:translate-x-0.5 group-hover:text-ink" />
+                <ChevronRight className="size-4 -mr-1 text-ghost transition group-hover:translate-x-0.5 group-hover:text-ink" />
               </span>
             </button>
           </li>

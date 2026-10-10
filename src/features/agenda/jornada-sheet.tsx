@@ -120,7 +120,7 @@ function SheetBody({
           <TonePill tone={visual.tone} live={visual.live}>
             {visual.label}
           </TonePill>
-          <span className="inline-flex h-6 items-center rounded-md bg-[#f2f4f7] px-2 text-[12px] font-semibold text-ink tabular">{dayLabel(b.jornada, b.order)}</span>
+          <span className="inline-flex h-6 items-center rounded-md bg-tile px-2 text-[12px] font-semibold text-ink tabular">{dayLabel(b.jornada, b.order)}</span>
           <OrderStatusPill status={b.order.status} solid={false} className="text-subtle" />
         </div>
         <SheetTitle className="font-serif text-[26px] font-medium leading-tight">{b.client?.shortName ?? b.order.title}</SheetTitle>
@@ -208,11 +208,11 @@ function Detail({
     <>
       <div className="flex-1 space-y-7 overflow-y-auto p-5 sm:p-6">
         {/* time hero */}
-        <div className={cn("relative overflow-hidden rounded-[20px] p-5", visual.live ? "bg-brand-deep text-white" : "border border-hairline bg-gradient-to-br from-[#f3f8fe] via-white to-white")}>
+        <div className={cn("relative overflow-hidden rounded-[20px] p-5", visual.live ? "bg-brand-deep text-white" : "border border-hairline bg-gradient-to-br from-blue-wash via-surface to-surface")}>
           {visual.live && <span aria-hidden className="pointer-events-none absolute -right-16 -top-16 size-48 rounded-full bg-sky/25 blur-2xl" />}
           <Eyebrow className={cn("relative", visual.live && "text-white/60")}>{longDay(start)}</Eyebrow>
           <p className="relative mt-1.5 text-[34px] font-medium leading-none tracking-[-0.035em] tabular">
-            {fmtTime(start)} <span className={visual.live ? "text-white/40" : "text-[#c5ccd6]"}>–</span> {fmtTime(end)}
+            {fmtTime(start)} <span className={visual.live ? "text-white/40" : "text-ghost"}>–</span> {fmtTime(end)}
           </p>
           <p className={cn("relative mt-2 text-[13.5px]", visual.live ? "text-white/70" : "text-subtle")}>
             {fmtDuration(planned)} planeadas · Jornada {j.dayIndex} de {Math.max(order.plannedDays, j.dayIndex)}
@@ -227,7 +227,7 @@ function Detail({
               Entrada {fmtTime(j.checkIn.deviceAt)} · Salida {fmtTime(j.checkOut.deviceAt)} · <b className="font-semibold">{fmtDuration(jornadaMinutes(j))} reales</b>
             </p>
           )}
-          {visual.kind === "late" && <p className="relative mt-3 text-[13.5px] font-medium text-[#b86e00]">Pasó la hora de inicio sin registro de entrada.</p>}
+          {visual.kind === "late" && <p className="relative mt-3 text-[13.5px] font-medium text-amber-fg">Pasó la hora de inicio sin registro de entrada.</p>}
 
           {jornadas.length > 1 && (
             <div className="relative mt-4 flex flex-wrap gap-1.5" role="tablist" aria-label="Jornadas de la orden">
@@ -246,10 +246,10 @@ function Detail({
                       on
                         ? visual.live
                           ? "border-white/30 bg-white/15 text-white"
-                          : "border-ink bg-ink text-white"
+                          : "border-ink bg-ink text-on-ink"
                         : visual.live
                           ? "border-white/15 text-white/70 hover:bg-white/10"
-                          : "border-hairline bg-white text-ink hover:bg-muted",
+                          : "border-hairline bg-surface text-ink hover:bg-muted",
                     )}
                   >
                     <StatusDot tone={v.tone} live={v.live} />J{x.dayIndex} · {fmtDay(x.date)}
@@ -292,7 +292,7 @@ function Detail({
             {crew.length > 0 && <AvatarStack people={crew} size={26} max={5} />}
           </div>
           {crew.length === 0 ? (
-            <p className="rounded-[16px] border border-dashed border-[#d9dfe7] px-4 py-5 text-center text-[13.5px] text-subtle">Sin cuadrilla asignada.</p>
+            <p className="rounded-[16px] border border-dashed border-line-strong px-4 py-5 text-center text-[13.5px] text-subtle">Sin cuadrilla asignada.</p>
           ) : (
             <ul>
               {crew.map((w) => {
@@ -307,7 +307,7 @@ function Detail({
                       <p className="truncate text-[12.5px] text-subtle">{w.specialty}</p>
                     </div>
                     {c && (
-                      <span className="inline-flex max-w-[48%] items-center gap-1 truncate text-right text-[12px] font-medium text-[#b86e00]">
+                      <span className="inline-flex max-w-[48%] items-center gap-1 truncate text-right text-[12px] font-medium text-amber-fg">
                         <TriangleAlert className="size-3.5 shrink-0" />
                         <span className="truncate">También {c.map((x) => (x.visible ? `${x.folio} ${x.time}` : `otra cuadrilla ${x.time}`)).join(", ")}</span>
                       </span>
@@ -340,8 +340,8 @@ function Detail({
         />
 
         {order.specialInstructions && (
-          <div className="rounded-[16px] bg-[#fff6e6] p-4 text-[13.5px] leading-relaxed text-[#6b4200]">
-            <p className="mb-1 text-[12px] font-semibold uppercase tracking-[0.1em] text-[#b86e00]">Instrucciones especiales</p>
+          <div className="rounded-[16px] bg-amber-soft p-4 text-[13.5px] leading-relaxed text-amber-deep">
+            <p className="mb-1 text-[12px] font-semibold uppercase tracking-[0.1em] text-amber-fg">Instrucciones especiales</p>
             {order.specialInstructions}
           </div>
         )}
@@ -352,7 +352,7 @@ function Detail({
             <ol className="space-y-3 border-l border-hairline pl-4">
               {history.map((h, i) => (
                 <li key={`${h.at}-${i}`} className="relative">
-                  <span className="absolute -left-[21px] top-1.5 size-2 rounded-full bg-[#c5d6ea] ring-4 ring-white" />
+                  <span className="absolute -left-[21px] top-1.5 size-2 rounded-full bg-blue-mid ring-4 ring-surface" />
                   <p className="text-[13.5px] text-ink">
                     {plural(h.workerIds.length, "persona", "personas")} · {h.reason}
                   </p>
@@ -463,13 +463,13 @@ function CrewEditor({ b, onBack }: { b: Bundle; onBack: () => void }) {
               <div className="flex flex-wrap gap-x-6 gap-y-2 rounded-[16px] border border-hairline p-4 text-[13px]">
                 {added.length > 0 && (
                   <span className="flex items-center gap-2">
-                    <b className="font-semibold text-st-teal">+{added.length}</b>
+                    <b className="font-semibold text-teal-fg">+{added.length}</b>
                     <AvatarStack people={people(added)} size={24} />
                   </span>
                 )}
                 {removed.length > 0 && (
                   <span className="flex items-center gap-2">
-                    <b className="font-semibold text-st-red">−{removed.length}</b>
+                    <b className="font-semibold text-red-fg">−{removed.length}</b>
                     <AvatarStack people={people(removed)} size={24} className="opacity-60" />
                   </span>
                 )}
@@ -578,14 +578,14 @@ function MoveEditor({ b, now, onBack, onMoved }: { b: Bundle; now: Date; onBack:
           </div>
           <div className="col-span-2 -mt-1">
             <FieldError>{timeErr}</FieldError>
-            {current.clamped && <p className="mt-1.5 text-[12.5px] text-[#b86e00]">Esta jornada terminaba al día siguiente ({current.originalEnd}); las jornadas se registran dentro del mismo día.</p>}
+            {current.clamped && <p className="mt-1.5 text-[12.5px] text-amber-fg">Esta jornada terminaba al día siguiente ({current.originalEnd}); las jornadas se registran dentro del mismo día.</p>}
           </div>
         </div>
 
         <div className="grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-3 rounded-[18px] border border-hairline p-4">
           <div className="min-w-0">
             <Eyebrow>Antes</Eyebrow>
-            <p className="mt-1 truncate text-[14px] font-medium text-subtle line-through decoration-[#c5ccd6]">{fmtDay(current.date)}</p>
+            <p className="mt-1 truncate text-[14px] font-medium text-subtle line-through decoration-ghost">{fmtDay(current.date)}</p>
             <p className="text-[13px] text-subtle tabular">
               {current.start}–{current.clamped ? current.originalEnd : current.end}
             </p>
@@ -603,7 +603,7 @@ function MoveEditor({ b, now, onBack, onMoved }: { b: Bundle; now: Date; onBack:
         </div>
 
         {clampedOthers.length > 0 && (
-          <p className="rounded-[14px] bg-[#fff6e6] px-4 py-3 text-[12.5px] leading-snug text-[#8a5300]">
+          <p className="rounded-[14px] bg-amber-soft px-4 py-3 text-[12.5px] leading-snug text-amber-ink">
             {plural(clampedOthers.length, "otra jornada nocturna", "otras jornadas nocturnas")} de la orden se registrará{clampedOthers.length > 1 ? "n" : ""} con término a las 23:59 del mismo día.
           </p>
         )}

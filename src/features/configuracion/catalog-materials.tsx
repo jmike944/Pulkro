@@ -66,7 +66,7 @@ export function MaterialsCatalog() {
                 className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3 border-b border-hairline py-3.5 lg:grid-cols-[minmax(0,1fr)_140px_120px_96px] lg:gap-x-4"
               >
                 <div className="flex min-w-0 items-center gap-3">
-                  <span className="inline-flex size-10 shrink-0 items-center justify-center rounded-[12px] bg-[#e6f5fd] text-[#1b8fc0]">
+                  <span className="inline-flex size-10 shrink-0 items-center justify-center rounded-[12px] bg-sky-soft text-sky-fg">
                     <FlaskConical className="size-[18px]" />
                   </span>
                   <div className="min-w-0">
@@ -77,12 +77,12 @@ export function MaterialsCatalog() {
                   </div>
                 </div>
                 <span className="hidden text-[14px] text-ink lg:block">
-                  <span className="mr-2 inline-flex h-[22px] min-w-9 items-center justify-center rounded-md bg-[#f2f4f7] px-1.5 text-[12px] font-semibold">{m.unit}</span>
+                  <span className="mr-2 inline-flex h-[22px] min-w-9 items-center justify-center rounded-md bg-tile px-1.5 text-[12px] font-semibold">{m.unit}</span>
                   <span className="text-subtle">{UNIT_LABEL[m.unit] ?? ""}</span>
                 </span>
                 <span className="hidden text-right text-[15px] font-semibold text-ink tabular lg:block">{usage.get(m.id) ?? 0}</span>
                 <div className="flex justify-end">
-                  <GatedButton allowed={canEdit} reason={NO_CATALOGS} variant="outline" onClick={() => dlg.show(m)} className="w-11 border-[#dfe3ea] px-0 lg:w-auto lg:min-w-[84px] lg:px-4" aria-label={`Editar ${m.name}`}>
+                  <GatedButton allowed={canEdit} reason={NO_CATALOGS} variant="outline" onClick={() => dlg.show(m)} className="w-11 border-line px-0 lg:w-auto lg:min-w-[84px] lg:px-4" aria-label={`Editar ${m.name}`}>
                     <Pencil className="size-4 lg:hidden" />
                     <span className="max-lg:sr-only">Editar</span>
                   </GatedButton>

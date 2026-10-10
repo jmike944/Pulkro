@@ -190,7 +190,7 @@ export function FeaturedCard() {
             transition={{ type: "spring", stiffness: 380, damping: 18, delay: 0.3 }}
             className="inline-flex"
           >
-            <LineIcon className={cn("size-4", line.tone === "teal" ? "text-st-teal" : line.tone === "amber" ? "text-[#b86e00]" : line.tone === "red" ? "text-st-red" : "text-subtle")} />
+            <LineIcon className={cn("size-4", line.tone === "teal" ? "text-teal-fg" : line.tone === "amber" ? "text-amber-fg" : line.tone === "red" ? "text-red-fg" : "text-subtle")} />
           </motion.span>
         ) : null}
         <ToneText tone={line.tone} className="font-medium">

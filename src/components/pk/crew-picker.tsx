@@ -76,7 +76,7 @@ export function CrewPicker({
                 onClick={() => toggle(w.id)}
                 className={cn(
                   "flex w-full items-center gap-3 rounded-[14px] px-2.5 py-2 text-left transition",
-                  on ? "bg-[#f2f8fe] ring-1 ring-[#bcd8fb]" : "hover:bg-muted",
+                  on ? "bg-blue-wash ring-1 ring-blue-line" : "hover:bg-muted",
                 )}
               >
                 <PersonAvatar initials={w.initials} hue={w.hue} size={34} name={w.name} />
@@ -85,13 +85,13 @@ export function CrewPicker({
                   <span className="flex items-center gap-1.5 truncate text-[12px] text-subtle">
                     {w.specialty}
                     {conflict && (
-                      <span className="inline-flex items-center gap-1 text-[#b86e00]">
+                      <span className="inline-flex items-center gap-1 text-amber-fg">
                         <TriangleAlert className="size-3" /> {conflict}
                       </span>
                     )}
                   </span>
                 </span>
-                <span className={cn("inline-flex size-5 shrink-0 items-center justify-center rounded-md border transition", on ? "border-[#1667e0] bg-[#1667e0] text-white" : "border-[#d0d6de]")}>
+                <span className={cn("inline-flex size-5 shrink-0 items-center justify-center rounded-md border transition", on ? "border-azure bg-azure text-white" : "border-line-strong")}>
                   {on && <Check className="size-3.5" strokeWidth={3} />}
                 </span>
               </motion.button>

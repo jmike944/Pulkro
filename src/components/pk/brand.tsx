@@ -7,7 +7,7 @@ export function PulkroMark({ className, animated = false }: { className?: string
   return (
     <span
       className={cn(
-        "relative inline-flex size-9 shrink-0 items-center justify-center overflow-hidden rounded-[11px] bg-brand-deep shadow-[inset_0_1px_0_rgb(255_255_255/0.12),0_6px_14px_-6px_rgb(2_58_99/0.6)]",
+        "relative inline-flex size-9 shrink-0 items-center justify-center overflow-hidden rounded-[11px] bg-brand-deep shadow-[inset_0_1px_0_rgb(255_255_255/0.12),0_6px_14px_-6px_rgb(2_58_99/0.6)] dark:ring-1 dark:ring-white/10",
         className,
       )}
       aria-hidden
@@ -37,7 +37,7 @@ export function PulkroMark({ className, animated = false }: { className?: string
 export function PulkroWordmark({ className, sub = true }: { className?: string; sub?: boolean }) {
   return (
     <span className={cn("flex flex-col leading-none", className)}>
-      <span className="font-brand text-[19px] font-extrabold tracking-[0.18em] text-brand-deep">PULKRO</span>
+      <span className="font-brand text-[19px] font-extrabold tracking-[0.18em] text-brand-ink">PULKRO</span>
       {sub && <span className="mt-1 text-[10.5px] font-medium tracking-wide text-subtle">Cuadrillas · Operación y postventa</span>}
     </span>
   );

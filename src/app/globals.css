@@ -2,12 +2,28 @@
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
 
-@custom-variant dark (&:is(.dark *));
+/* `dark:` variants follow the `.dark` class set by next-themes. Inside a `.theme-light` scope (the paper sheet of the
+   report, which represents PAPER and never goes dark) they are switched off, even when the page itself is dark. */
+@custom-variant dark (&:is(.dark *):not(.theme-light, .theme-light *));
 
 /* ───────────────────────────── Pulkro Cuadrillas · design tokens ─────────────────────────────
    Brand: Pulkro navy #023A63 · Pulkro sky #7AD1F4 (from pulkro.com.mx)
    Layout language: soft canvas, white rounded work panel, aurora-gradient hero panels,
-   serif display headings (Newsreader) + Geist UI + Montserrat wordmark.                       */
+   serif display headings (Newsreader) + Geist UI + Montserrat wordmark.
+
+   THEMING. Every color is a CSS variable declared twice: light in `:root` (+ `.theme-light`, the scope that pins a
+   subtree to the light palette) and dark in `.dark`. Utilities (`bg-surface`, `text-ink`, `border-line`, …) are mapped
+   in `@theme inline`, so they read the variable at the element and re-theme with it. NEVER write a literal color
+   (`bg-white`, `bg-[#f2f4f7]`, `text-[#b86e00]`) in components: use a token below. See docs/CONVENTIONS.md → "Theming".
+
+   Surfaces (low → high):  bg-canvas (outer chrome) < bg-panel (work panel) < bg-surface (cards, inputs, popovers)
+                           then neutral fills ladder: wash < soft < tile < well < press < track < track-strong
+   Lines:      border-hairline (default) · border-line (cards) · border-line-strong · border-line-heavy · border-input
+   Text:       text-ink > ink-soft > ink-muted > subtle > faint > ghost   (link: text-link / text-azure-fg)
+   Tones:      {blue,amber,red,teal,violet}-{wash,soft,tint,mid,line} for tinted bg/border/ring,
+               {amber,red,teal,violet,sky}-fg and *-ink for tone text; st-* are the solid dot/bar colors.
+   Navy:       bg-brand-deep (+ text-white) = filled navy surface/button. text-brand-ink = navy used AS TEXT.
+               bg-ink needs text-on-ink; bg-sky needs text-on-light.                                           */
 
 @theme inline {
   --color-background: var(--background);
@@ -48,7 +64,7 @@
   --color-card-foreground: var(--card-foreground);
   --color-card: var(--card);
 
-  /* Pulkro extensions */
+  /* Pulkro tokens */
   --color-canvas: var(--canvas);
   --color-sand: var(--sand);
   --color-sand-deep: var(--sand-deep);
@@ -67,6 +83,66 @@
   --color-st-teal: var(--st-teal);
   --color-st-violet: var(--st-violet);
   --color-st-slate: var(--st-slate);
+  --color-surface: var(--surface);
+  --color-wash: var(--wash);
+  --color-soft: var(--soft);
+  --color-tile: var(--tile);
+  --color-well: var(--well);
+  --color-press: var(--press);
+  --color-track: var(--track);
+  --color-track-strong: var(--track-strong);
+  --color-field: var(--field);
+  --color-line: var(--line);
+  --color-line-strong: var(--line-strong);
+  --color-line-heavy: var(--line-heavy);
+  --color-line-dash: var(--line-dash);
+  --color-field-line: var(--field-line);
+  --color-edge: var(--edge);
+  --color-edge-strong: var(--edge-strong);
+  --color-ink-soft: var(--ink-soft);
+  --color-ink-muted: var(--ink-muted);
+  --color-faint: var(--faint);
+  --color-ghost: var(--ghost);
+  --color-brand-ink: var(--brand-ink);
+  --color-brand-hover: var(--brand-hover);
+  --color-on-ink: var(--on-ink);
+  --color-on-light: var(--on-light);
+  --color-azure: var(--azure);
+  --color-azure-fg: var(--azure-fg);
+  --color-blue-wash: var(--blue-wash);
+  --color-blue-soft: var(--blue-soft);
+  --color-blue-tint: var(--blue-tint);
+  --color-blue-mid: var(--blue-mid);
+  --color-blue-line: var(--blue-line);
+  --color-blue-bar: var(--blue-bar);
+  --color-blue-ink: var(--blue-ink);
+  --color-sky-fg: var(--sky-fg);
+  --color-amber-wash: var(--amber-wash);
+  --color-amber-soft: var(--amber-soft);
+  --color-amber-tint: var(--amber-tint);
+  --color-amber-mid: var(--amber-mid);
+  --color-amber-line: var(--amber-line);
+  --color-amber-line-strong: var(--amber-line-strong);
+  --color-amber-fg: var(--amber-fg);
+  --color-amber-ink: var(--amber-ink);
+  --color-amber-deep: var(--amber-deep);
+  --color-amber-olive: var(--amber-olive);
+  --color-amber-olive-ink: var(--amber-olive-ink);
+  --color-red-wash: var(--red-wash);
+  --color-red-soft: var(--red-soft);
+  --color-red-tint: var(--red-tint);
+  --color-red-line: var(--red-line);
+  --color-red-fg: var(--red-fg);
+  --color-red-ink: var(--red-ink);
+  --color-teal-wash: var(--teal-wash);
+  --color-teal-soft: var(--teal-soft);
+  --color-teal-tint: var(--teal-tint);
+  --color-teal-fg: var(--teal-fg);
+  --color-violet-soft: var(--violet-soft);
+  --color-violet-tint: var(--violet-tint);
+  --color-violet-line: var(--violet-line);
+  --color-violet-fg: var(--violet-fg);
+  --color-violet-ink: var(--violet-ink);
 
   --radius-sm: calc(var(--radius) * 0.6);
   --radius-md: calc(var(--radius) * 0.8);
@@ -76,9 +152,9 @@
   --radius-3xl: calc(var(--radius) * 2.2);
   --radius-4xl: calc(var(--radius) * 2.6);
 
-  --shadow-soft: 0 1px 2px rgb(16 24 40 / 0.04), 0 10px 28px -14px rgb(16 24 40 / 0.14);
-  --shadow-lift: 0 1px 2px rgb(16 24 40 / 0.05), 0 24px 48px -20px rgb(2 58 99 / 0.28);
-  --shadow-glass: 0 1px 0 rgb(255 255 255 / 0.9) inset, 0 18px 40px -18px rgb(2 58 99 / 0.35);
+  --shadow-soft: var(--sh-soft);
+  --shadow-lift: var(--sh-lift);
+  --shadow-glass: var(--sh-glass);
 
   --animate-aurora: aurora 18s ease-in-out infinite alternate;
   --animate-shimmer: shimmer 2.2s linear infinite;
@@ -103,7 +179,10 @@
   }
 }
 
-:root {
+/* ───────────── Light palette (the original look; also the `.theme-light` scope used by the report paper) ───────────── */
+:root,
+.theme-light {
+  color-scheme: light;
   --radius: 0.75rem;
 
   --canvas: #f1f3f6;
@@ -118,13 +197,72 @@
   --ink: #0e1726;
   --subtle: #667085;
   --hairline: #e9ecf1;
-
   --st-blue: #2f80ed;
   --st-amber: #f0a020;
   --st-red: #e5484d;
   --st-teal: #12a594;
   --st-violet: #7c5cfc;
   --st-slate: #98a2b3;
+  --surface: #ffffff;
+  --wash: #fafbfc;
+  --soft: #f6f8fa;
+  --tile: #f2f4f7;
+  --well: #eef1f5;
+  --press: #e9edf2;
+  --track: #e4e8ee;
+  --track-strong: #c9d1dc;
+  --field: #faf9f6;
+  --line: #dfe3ea;
+  --line-strong: #d5dbe3;
+  --line-heavy: #cfd6df;
+  --line-dash: #b9c7d6;
+  --field-line: #e2e0da;
+  --edge: rgb(0 0 0 / 0.05);
+  --edge-strong: rgb(0 0 0 / 0.1);
+  --ink-soft: #3b4554;
+  --ink-muted: #5b6675;
+  --faint: #98a2b3;
+  --ghost: #c5ccd6;
+  --brand-ink: #07243f;
+  --brand-hover: #0b2f52;
+  --on-ink: #ffffff;
+  --on-light: #07243f;
+  --azure: #1667e0;
+  --azure-fg: #1667e0;
+  --blue-wash: #f4f8fd;
+  --blue-soft: #edf4ff;
+  --blue-tint: #e3f1fd;
+  --blue-mid: #cfe3fb;
+  --blue-line: #bcd8fb;
+  --blue-bar: #7fb5f5;
+  --blue-ink: #11507e;
+  --sky-fg: #1b8fc0;
+  --amber-wash: #fffaf0;
+  --amber-soft: #fff6e6;
+  --amber-tint: #fff1d6;
+  --amber-mid: #ffe8bf;
+  --amber-line: #f6dfb4;
+  --amber-line-strong: #f3c97a;
+  --amber-fg: #b86e00;
+  --amber-ink: #8a5300;
+  --amber-deep: #6b4200;
+  --amber-olive: #7a5a1e;
+  --amber-olive-ink: #5e4410;
+  --red-wash: #fdf3f3;
+  --red-soft: #fdeeee;
+  --red-tint: #fde4e4;
+  --red-line: #f7c8ca;
+  --red-fg: #e5484d;
+  --red-ink: #9b1c1f;
+  --teal-wash: #f2faf8;
+  --teal-soft: #e7f7f4;
+  --teal-tint: #dcf4ef;
+  --teal-fg: #12a594;
+  --violet-soft: #f1edff;
+  --violet-tint: #ebe5ff;
+  --violet-line: #cfc4ff;
+  --violet-fg: #7c5cfc;
+  --violet-ink: #4b33b5;
 
   --background: #ffffff;
   --foreground: #0e1726;
@@ -157,19 +295,196 @@
   --sidebar-accent-foreground: #0e1726;
   --sidebar-border: #e9ecf1;
   --sidebar-ring: #7ad1f4;
+
+  /* signature gradients (aurora hero panel + featured frame) */
+  --aurora-base: #dcecff;
+  --aurora-1: #e7e1ff;
+  --aurora-2: #c8f1ef;
+  --aurora-3: #6fb3ff;
+  --aurora-4: #d7ecff;
+  --aurora-lin-a: #eceeff;
+  --aurora-lin-b: #d6ebff;
+  --aurora-lin-c: #93c6ff;
+  --frame-1: #e2dcff;
+  --frame-2: #7fbdff;
+  --frame-lin-a: #e9ecff;
+  --frame-lin-b: #cfe7ff;
+  --frame-lin-c: #9fcdfd;
+  --glass-a: rgb(255 255 255 / 0.97);
+  --glass-b: rgb(255 255 255 / 0.9);
+  --glass-border: rgb(255 255 255 / 0.9);
+  --shimmer-a: #eef1f5;
+  --shimmer-b: #f8f9fb;
+  --map-bg: #eef2f6;
+  --map-attribution: rgb(255 255 255 / 0.7);
+  --hl: rgb(255 255 255); /* 1px top highlight on inset cards (shadow-[0_1px_0_var(--hl)_inset]) */
+
+  --sh-soft: 0 1px 2px rgb(16 24 40 / 0.04), 0 10px 28px -14px rgb(16 24 40 / 0.14);
+  --sh-lift: 0 1px 2px rgb(16 24 40 / 0.05), 0 24px 48px -20px rgb(2 58 99 / 0.28);
+  --sh-glass: 0 1px 0 rgb(255 255 255 / 0.9) inset, 0 18px 40px -18px rgb(2 58 99 / 0.35);
 }
 
 /* Phones/tablets use the warm "sand" chrome of the mobile reference; desktop keeps the cool canvas. */
 @media (max-width: 1023.98px) {
-  :root {
+  :root,
+  .theme-light {
     --canvas: #f3f2ee;
     --sidebar: #f3f2ee;
+  }
+}
+
+/* ───────────── Dark palette ─────────────
+   Deep navy family derived from brand-deep #07243f: canvas (outer chrome) < panel (work panel) < surface (cards) < popover.
+   Neutral fills step LIGHTER away from the surface; tone tints are low-alpha washes of the tone so they sit on any surface;
+   text keeps WCAG AA on surface/tile. Not applied when printing (paper is always light).                                  */
+@media not print {
+  .dark {
+    color-scheme: dark;
+
+    --canvas: #050e18;
+    --sand: #182e46;
+    --sand-deep: #20384f;
+    --panel: #0a1827;
+    --brand: #1d5a94;
+    --brand-deep: #1a4a7e;
+    --sky: #7ad1f4;
+    --sky-soft: rgb(122 209 244 / 0.12);
+    --link: #7db4ff;
+    --ink: #e9f0f8;
+    --subtle: #96a6ba;
+    --hairline: #1b3149;
+    --st-blue: #2f80ed;
+    --st-amber: #f2aa33;
+    --st-red: #e5484d;
+    --st-teal: #12a594;
+    --st-violet: #7c5cfc;
+    --st-slate: #7d8fa6;
+    --surface: #0f2135;
+    --wash: #11243a;
+    --soft: #14283f;
+    --tile: #182e46;
+    --well: #1e364f;
+    --press: #263f5a;
+    --track: #2d4864;
+    --track-strong: #40607f;
+    --field: #0c1c2e;
+    --line: #223a56;
+    --line-strong: #2f4c6c;
+    --line-heavy: #3e5f82;
+    --line-dash: #3a5a7c;
+    --field-line: #223a56;
+    --edge: rgb(255 255 255 / 0.07);
+    --edge-strong: rgb(255 255 255 / 0.12);
+    --ink-soft: #c8d4e2;
+    --ink-muted: #aab8ca;
+    --faint: #8294ab;
+    --ghost: #4d6078;
+    --brand-ink: #dcebfb;
+    --brand-hover: #2466ab;
+    --on-ink: #07243f;
+    --on-light: #07243f;
+    --azure: #2b72e4;
+    --azure-fg: #7db4ff;
+    --blue-wash: rgb(79 148 255 / 0.06);
+    --blue-soft: rgb(79 148 255 / 0.10);
+    --blue-tint: rgb(79 148 255 / 0.15);
+    --blue-mid: rgb(79 148 255 / 0.24);
+    --blue-line: rgb(79 148 255 / 0.34);
+    --blue-bar: rgb(79 148 255 / 0.40);
+    --blue-ink: #a9d3f5;
+    --sky-fg: #62c4f0;
+    --amber-wash: rgb(245 166 35 / 0.05);
+    --amber-soft: rgb(245 166 35 / 0.10);
+    --amber-tint: rgb(245 166 35 / 0.15);
+    --amber-mid: rgb(245 166 35 / 0.24);
+    --amber-line: rgb(245 166 35 / 0.30);
+    --amber-line-strong: rgb(245 166 35 / 0.46);
+    --amber-fg: #f2b04a;
+    --amber-ink: #f7c677;
+    --amber-deep: #fdd89a;
+    --amber-olive: #f0cf8e;
+    --amber-olive-ink: #fbdca0;
+    --red-wash: rgb(255 99 105 / 0.06);
+    --red-soft: rgb(255 99 105 / 0.11);
+    --red-tint: rgb(255 99 105 / 0.17);
+    --red-line: rgb(255 99 105 / 0.34);
+    --red-fg: #ff8086;
+    --red-ink: #ffb1b4;
+    --teal-wash: rgb(45 212 191 / 0.06);
+    --teal-soft: rgb(45 212 191 / 0.11);
+    --teal-tint: rgb(45 212 191 / 0.17);
+    --teal-fg: #34d1be;
+    --violet-soft: rgb(150 120 255 / 0.13);
+    --violet-tint: rgb(150 120 255 / 0.19);
+    --violet-line: rgb(150 120 255 / 0.36);
+    --violet-fg: #a58bff;
+    --violet-ink: #c8b8ff;
+
+    --background: var(--surface);
+    --foreground: var(--ink);
+    --card: var(--surface);
+    --card-foreground: var(--ink);
+    --popover: #14283e;
+    --popover-foreground: var(--ink);
+    --primary: var(--brand-deep);
+    --primary-foreground: #ffffff;
+    --secondary: var(--tile);
+    --secondary-foreground: var(--ink);
+    --muted: var(--soft);
+    --muted-foreground: var(--subtle);
+    --accent: var(--well);
+    --accent-foreground: var(--ink);
+    --destructive: #ff6b70;
+    --border: var(--hairline);
+    --input: #2a4562;
+    --ring: #7ad1f4;
+    --chart-1: #4a90d9;
+    --chart-2: #4b93f5;
+    --chart-3: #7ad1f4;
+    --chart-4: #9fb1ff;
+    --chart-5: #2cc3b0;
+    --sidebar: var(--canvas);
+    --sidebar-foreground: var(--ink);
+    --sidebar-primary: var(--brand-deep);
+    --sidebar-primary-foreground: #ffffff;
+    --sidebar-accent: var(--surface);
+    --sidebar-accent-foreground: var(--ink);
+    --sidebar-border: var(--hairline);
+    --sidebar-ring: #7ad1f4;
+
+    --aurora-base: #0c2342;
+    --aurora-1: #34297a;
+    --aurora-2: #0d4f5c;
+    --aurora-3: #1f62b8;
+    --aurora-4: #153d78;
+    --aurora-lin-a: #14275a;
+    --aurora-lin-b: #0e3566;
+    --aurora-lin-c: #1d58a3;
+    --frame-1: #2f2670;
+    --frame-2: #1f5eb0;
+    --frame-lin-a: #1a2a5c;
+    --frame-lin-b: #12386b;
+    --frame-lin-c: #1b4f94;
+    --glass-a: rgb(13 31 53 / 0.82);
+    --glass-b: rgb(10 26 46 / 0.74);
+    --glass-border: rgb(255 255 255 / 0.1);
+    --shimmer-a: #14283f;
+    --shimmer-b: #1c3450;
+    --map-bg: #0c1c2e;
+    --map-attribution: rgb(10 24 40 / 0.75);
+    --hl: rgb(255 255 255 / 0.07);
+
+    --sh-soft: 0 1px 2px rgb(0 0 0 / 0.35), 0 10px 28px -14px rgb(0 0 0 / 0.55);
+    --sh-lift: 0 1px 2px rgb(0 0 0 / 0.4), 0 24px 48px -20px rgb(0 0 0 / 0.65);
+    --sh-glass: 0 1px 0 rgb(255 255 255 / 0.06) inset, 0 18px 40px -18px rgb(0 0 0 / 0.6);
   }
 }
 
 @layer base {
   * {
     @apply border-border outline-ring/50;
+    /* ring-offset-N gaps follow the surface (Tailwind's default is a literal #fff, a white halo in dark) */
+    --tw-ring-offset-color: var(--surface);
   }
   html {
     @apply bg-canvas font-sans;
@@ -190,24 +505,24 @@
 
 /* ───────────── Signature surfaces ───────────── */
 
-/* Aurora hero gradient (lavender → sky → Pulkro blue) used for the big KPI panels */
+/* Aurora hero gradient (lavender → sky → Pulkro blue; deep indigo → navy in dark) used for the big KPI panels */
 @utility bg-aurora {
-  background-color: #dcecff;
+  background-color: var(--aurora-base);
   background-image:
-    radial-gradient(60% 80% at 0% 0%, #e7e1ff 0%, transparent 60%),
-    radial-gradient(55% 70% at 0% 100%, #c8f1ef 0%, transparent 62%),
-    radial-gradient(70% 90% at 100% 100%, #6fb3ff 0%, transparent 60%),
-    radial-gradient(60% 70% at 70% 20%, #d7ecff 0%, transparent 65%),
-    linear-gradient(135deg, #eceeff 0%, #d6ebff 48%, #93c6ff 100%);
+    radial-gradient(60% 80% at 0% 0%, var(--aurora-1) 0%, transparent 60%),
+    radial-gradient(55% 70% at 0% 100%, var(--aurora-2) 0%, transparent 62%),
+    radial-gradient(70% 90% at 100% 100%, var(--aurora-3) 0%, transparent 60%),
+    radial-gradient(60% 70% at 70% 20%, var(--aurora-4) 0%, transparent 65%),
+    linear-gradient(135deg, var(--aurora-lin-a) 0%, var(--aurora-lin-b) 48%, var(--aurora-lin-c) 100%);
   background-size: 120% 120%, 120% 120%, 120% 120%, 120% 120%, 100% 100%;
 }
 
 /* Soft ring-frame around featured cards (the "glow frame" in the claim detail card) */
 @utility bg-aurora-frame {
   background-image:
-    radial-gradient(80% 80% at 0% 0%, #e2dcff 0%, transparent 60%),
-    radial-gradient(80% 80% at 100% 100%, #7fbdff 0%, transparent 60%),
-    linear-gradient(135deg, #e9ecff, #cfe7ff 55%, #9fcdfd);
+    radial-gradient(80% 80% at 0% 0%, var(--frame-1) 0%, transparent 60%),
+    radial-gradient(80% 80% at 100% 100%, var(--frame-2) 0%, transparent 60%),
+    linear-gradient(135deg, var(--frame-lin-a), var(--frame-lin-b) 55%, var(--frame-lin-c));
 }
 
 /* Paper grain overlay to give gradients a tactile, printed finish */
@@ -227,17 +542,17 @@
   }
 }
 
-/* Frosted white card that floats inside an aurora panel */
+/* Frosted card that floats inside an aurora panel */
 @utility glass-card {
-  background: linear-gradient(180deg, rgb(255 255 255 / 0.97), rgb(255 255 255 / 0.9));
-  border: 1px solid rgb(255 255 255 / 0.9);
+  background: linear-gradient(180deg, var(--glass-a), var(--glass-b));
+  border: 1px solid var(--glass-border);
   box-shadow: var(--shadow-glass);
   backdrop-filter: blur(14px);
 }
 
 /* Skeleton shimmer */
 @utility shimmer {
-  background: linear-gradient(90deg, #eef1f5 0%, #f8f9fb 40%, #eef1f5 80%);
+  background: linear-gradient(90deg, var(--shimmer-a) 0%, var(--shimmer-b) 40%, var(--shimmer-a) 80%);
   background-size: 200% 100%;
   animation: var(--animate-shimmer);
 }
@@ -259,15 +574,25 @@
   }
 }
 
-/* Leaflet (maps) — keep tiles soft and on-brand */
+/* Leaflet (maps) — keep tiles soft and on-brand; dark tiles are the light ones inverted and desaturated */
 .leaflet-container {
   font-family: var(--font-geist), system-ui, sans-serif;
-  background: #eef2f6;
+  background: var(--map-bg);
+}
+.dark .leaflet-container {
+  background: var(--map-bg); /* leaflet.css loads later and wins at equal specificity */
 }
 .leaflet-tile-pane {
   filter: saturate(0.65) contrast(0.98);
 }
+.dark .leaflet-tile-pane {
+  filter: invert(1) hue-rotate(200deg) saturate(0.5) brightness(0.8) contrast(0.92);
+}
 .leaflet-control-attribution {
   font-size: 9px !important;
-  background: rgb(255 255 255 / 0.7) !important;
+  background: var(--map-attribution) !important;
+}
+.dark .leaflet-control-attribution,
+.dark .leaflet-control-attribution a {
+  color: var(--subtle) !important;
 }

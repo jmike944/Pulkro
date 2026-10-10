@@ -28,7 +28,7 @@ export function PhotoDialog({ photoId, onOpenChange }: { photoId: string | null;
     >
       {photo && (
         <div className="space-y-4">
-          <div className="relative aspect-[4/3] overflow-hidden rounded-[20px] bg-[#eef1f5] ring-1 ring-black/5">
+          <div className="relative aspect-[4/3] overflow-hidden rounded-[20px] bg-well ring-1 ring-edge">
             <PhotoImage photo={photo} />
             {d.pendingIds.has(photo.id) && (
               <SoftBadge tone="amber" className="absolute right-3 top-3">
@@ -45,7 +45,7 @@ export function PhotoDialog({ photoId, onOpenChange }: { photoId: string | null;
               { k: "Sincronización", v: d.pendingIds.has(photo.id) ? "Pendiente" : "Sincronizada", tone: d.pendingIds.has(photo.id) ? ("warn" as const) : ("ok" as const) },
             ]}
           />
-          {photo.note && <p className="rounded-[14px] bg-[#f7f9fb] px-4 py-3 text-[14px] text-ink">{photo.note}</p>}
+          {photo.note && <p className="rounded-[14px] bg-soft px-4 py-3 text-[14px] text-ink">{photo.note}</p>}
           {photo.kind !== "postventa" && (
             <Gated gate={d.gates.photos} className="flex w-full">
               <label className="flex min-h-12 w-full cursor-pointer items-center justify-between gap-3 rounded-[16px] border border-hairline px-4 py-3">

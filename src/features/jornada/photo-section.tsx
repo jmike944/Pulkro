@@ -66,14 +66,14 @@ export function CaptureComposer({ f, kind, onCaptured, className }: { f: FieldRe
         value={area}
         onChange={(e) => setArea(e.target.value)}
         placeholder="Ej. Baños planta baja"
-        className="h-12 rounded-[14px] bg-white text-[16px] sm:text-[15px]"
+        className="h-12 rounded-[14px] bg-surface text-[16px] sm:text-[15px]"
         autoComplete="off"
       />
       <div ref={chipRef} style={chipStyle} className="scrollbar-none -mx-1 mt-2.5 flex gap-2 overflow-x-auto px-1 pb-1">
         {all.slice(0, 10).map((a) => (
           <Chip key={a} active={area === a} onClick={() => setArea(a)} hint={missing.has(a) ? "falta" : undefined}>
             {a}
-            {used.has(a) && <Check className={area === a ? "size-3.5 text-sky" : "size-3.5 text-st-teal"} aria-label="ya tiene foto" />}
+            {used.has(a) && <Check className={area === a ? "size-3.5 text-sky" : "size-3.5 text-teal-fg"} aria-label="ya tiene foto" />}
           </Chip>
         ))}
       </div>
@@ -141,7 +141,7 @@ function FieldCaptureButtons({
         <Button type="button" disabled={busy} onClick={() => camRef.current?.click()} className="h-12 flex-1 rounded-[14px] px-4 text-[15px] font-semibold">
           {busy ? <LoaderCircle className="animate-spin" /> : <Camera />} Tomar foto
         </Button>
-        <Button type="button" variant="outline" disabled={busy} onClick={() => galRef.current?.click()} aria-label="Elegir de la galería" className="h-12 rounded-[14px] bg-white px-3.5">
+        <Button type="button" variant="outline" disabled={busy} onClick={() => galRef.current?.click()} aria-label="Elegir de la galería" className="h-12 rounded-[14px] bg-surface px-3.5">
           <ImagePlus /> <span className="hidden min-[420px]:inline">Galería</span>
         </Button>
         <Button
@@ -190,7 +190,7 @@ export function PhotoSection({ f, kind }: { f: FieldReady; kind: Kind }) {
 
       {!readOnly &&
         (f.photoBlock ? (
-          <p className="mb-4 flex items-start gap-2.5 rounded-[16px] bg-[#f4f6f8] px-4 py-3 text-[13.5px] text-subtle">
+          <p className="mb-4 flex items-start gap-2.5 rounded-[16px] bg-soft px-4 py-3 text-[13.5px] text-subtle">
             <Lock className="mt-0.5 size-4 shrink-0" />
             {f.photoBlock}
           </p>
@@ -199,7 +199,7 @@ export function PhotoSection({ f, kind }: { f: FieldReady; kind: Kind }) {
             f={f}
             kind={kind}
             onCaptured={(ids) => setFresh(ids)}
-            className="mb-4 rounded-[20px] border border-hairline bg-[#fafbfc] p-4"
+            className="mb-4 rounded-[20px] border border-hairline bg-wash p-4"
           />
         ))}
 
@@ -209,8 +209,8 @@ export function PhotoSection({ f, kind }: { f: FieldReady; kind: Kind }) {
             <motion.li key={p.id} variants={rowVariants} layout>
               <PhotoThumb photo={p} pending={f.pendingIds.has(p.id)} onClick={() => setLightbox(i)} className="w-full">
                 {!p.selectedForReport && (
-                  <span className="absolute inset-0 flex items-center justify-center bg-white/45 backdrop-grayscale">
-                    <span className="inline-flex items-center gap-1.5 rounded-full bg-white/95 px-2.5 py-1 text-[11px] font-semibold text-subtle shadow-sm">
+                  <span className="absolute inset-0 flex items-center justify-center bg-surface/45 backdrop-grayscale">
+                    <span className="inline-flex items-center gap-1.5 rounded-full bg-surface/95 px-2.5 py-1 text-[11px] font-semibold text-subtle shadow-sm">
                       <EyeOff className="size-3.5" /> Fuera del reporte
                     </span>
                   </span>
@@ -221,10 +221,10 @@ export function PhotoSection({ f, kind }: { f: FieldReady; kind: Kind }) {
           ))}
         </motion.ul>
       ) : (
-        <div className="flex items-center gap-4 rounded-[20px] border border-dashed border-[#d9dfe7] px-5 py-6">
-          <span className="relative inline-flex size-12 shrink-0 items-center justify-center rounded-[16px] bg-sky-soft text-[#1667e0]">
+        <div className="flex items-center gap-4 rounded-[20px] border border-dashed border-line-strong px-5 py-6">
+          <span className="relative inline-flex size-12 shrink-0 items-center justify-center rounded-[16px] bg-sky-soft text-azure-fg">
             {kind === "antes" ? <Camera className="size-5" /> : <Sparkles className="size-5" />}
-            <span className="absolute -right-1 -top-1 size-3 rounded-full border border-sky/60 bg-white animate-float" />
+            <span className="absolute -right-1 -top-1 size-3 rounded-full border border-sky/60 bg-surface animate-float" />
           </span>
           <div className="min-w-0">
             <p className="text-[15px] font-semibold text-ink">{copy.empty}</p>

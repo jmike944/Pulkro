@@ -220,8 +220,8 @@ function WorkerForm({ workerId, onClose, onSaved }: { workerId: string | null; o
           <AnimatePresence initial={false}>
             {needsConfirm && (
               <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} exit={{ opacity: 0, height: 0 }} className="space-y-3 overflow-hidden">
-                <div className="flex gap-3 rounded-[16px] bg-[#fff6e6] p-4 text-[13px] leading-snug text-[#6b4200]">
-                  <TriangleAlert className="mt-0.5 size-4 shrink-0 text-[#b86e00]" />
+                <div className="flex gap-3 rounded-[16px] bg-amber-soft p-4 text-[13px] leading-snug text-amber-deep">
+                  <TriangleAlert className="mt-0.5 size-4 shrink-0 text-amber-fg" />
                   <span>
                     Tiene <b className="font-semibold">{plural(upcoming, "jornada abierta", "jornadas abiertas")}</b>. {deactivating ? "Al desactivarlo no aparecerá" : "En otra unidad no aparecerá"} al
                     asignar nuevas cuadrillas; revisa esas jornadas en la agenda.
@@ -235,7 +235,7 @@ function WorkerForm({ workerId, onClose, onSaved }: { workerId: string | null; o
           </AnimatePresence>
         </div>
 
-        <div className="flex justify-end gap-2 border-t border-hairline bg-[#fafbfc] p-4">
+        <div className="flex justify-end gap-2 border-t border-hairline bg-wash p-4">
           <Button type="button" variant="outline" onClick={onClose} className="h-11 rounded-[12px] px-5">
             Cancelar
           </Button>

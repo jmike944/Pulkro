@@ -21,7 +21,7 @@ import type { StepProps } from "./step-types";
 const QUICK_DAYS = [1, 2, 3, 5];
 
 const timeInput =
-  "h-11 w-full min-w-0 rounded-[12px] border border-hairline bg-white px-3 text-[15px] tabular text-ink shadow-[0_1px_2px_rgb(16_24_40/0.03)] outline-none transition hover:border-[#d5dbe3] focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 aria-invalid:border-st-red md:text-[14.5px]";
+  "h-11 w-full min-w-0 rounded-[12px] border border-hairline bg-surface px-3 text-[15px] tabular text-ink shadow-[0_1px_2px_rgb(16_24_40/0.03)] outline-none transition hover:border-line-strong focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 aria-invalid:border-st-red md:text-[14.5px]";
 
 export function StepSchedule({
   draft,
@@ -134,7 +134,7 @@ export function StepSchedule({
                   type="button"
                   onClick={() => setDuration(n)}
                   aria-pressed={on}
-                  className={cn("relative h-11 rounded-[12px] px-3.5 text-[13.5px] font-medium transition-colors md:h-10", on ? "text-white" : "bg-[#f2f4f7] text-ink hover:bg-[#e9edf2]")}
+                  className={cn("relative h-11 rounded-[12px] px-3.5 text-[13.5px] font-medium transition-colors md:h-10", on ? "text-white" : "bg-tile text-ink hover:bg-press")}
                 >
                   {on && <motion.span layoutId="quick-days-pill" className="absolute inset-0 rounded-[12px] bg-brand-deep" transition={{ type: "spring", stiffness: 500, damping: 36 }} />}
                   <span className="relative">{plural(n, "día", "días")}</span>
@@ -158,13 +158,13 @@ export function StepSchedule({
                   animate={{ opacity: 1, y: 0, scale: 1 }}
                   exit={{ opacity: 0, x: 24, transition: { duration: 0.2 } }}
                   transition={{ duration: 0.35, ease: EASE }}
-                  className={cn("rounded-[18px] border bg-white p-3 sm:p-3.5", err ? "border-[#f7c8ca]" : "border-hairline")}
+                  className={cn("rounded-[18px] border bg-surface p-3 sm:p-3.5", err ? "border-red-line" : "border-hairline")}
                 >
                   <div className="flex items-center gap-3">
                     {day.date ? (
                       <DateBadge date={day.date} tone={day.date === today ? "today" : day.date < today ? "late" : undefined} />
                     ) : (
-                      <span className="flex size-[52px] items-center justify-center rounded-[14px] border border-dashed border-[#cfd6df] text-[11px] text-subtle">—</span>
+                      <span className="flex size-[52px] items-center justify-center rounded-[14px] border border-dashed border-line-heavy text-[11px] text-subtle">—</span>
                     )}
                     <div className="min-w-0 flex-1">
                       <p className="text-[14.5px] font-semibold text-ink">Jornada {i + 1}</p>
@@ -179,7 +179,7 @@ export function StepSchedule({
                           onClick={() => removeDay(day.id)}
                           disabled={draft.days.length === 1}
                           aria-label={`Quitar jornada ${i + 1}`}
-                          className="inline-flex size-10 items-center justify-center rounded-[12px] text-subtle transition hover:bg-[#fdeeee] hover:text-st-red disabled:pointer-events-none disabled:opacity-40"
+                          className="inline-flex size-10 items-center justify-center rounded-[12px] text-subtle transition hover:bg-red-soft hover:text-red-fg disabled:pointer-events-none disabled:opacity-40"
                         >
                           <Trash className="size-4" />
                         </button>
@@ -221,7 +221,7 @@ export function StepSchedule({
               whileTap={{ scale: 0.985 }}
               onClick={addDay}
               disabled={draft.days.length >= MAX_DAYS}
-              className="group flex h-12 w-full items-center justify-center gap-2 rounded-[16px] border border-dashed border-[#cfd6df] text-[14px] font-semibold text-ink transition hover:border-[#1667e0] hover:bg-[#f6faff] hover:text-link disabled:pointer-events-none disabled:opacity-50"
+              className="group flex h-12 w-full items-center justify-center gap-2 rounded-[16px] border border-dashed border-line-heavy text-[14px] font-semibold text-ink transition hover:border-azure hover:bg-blue-wash hover:text-link disabled:pointer-events-none disabled:opacity-50"
             >
               <CalendarPlus className="size-[18px] transition-transform group-hover:-rotate-6 group-hover:scale-110" />
               Agregar jornada
@@ -237,7 +237,7 @@ export function StepSchedule({
         description="Personal variable por servicio. Se marca a quien ya tiene jornada esos días."
         aside={
           canAssign ? (
-            <span className="inline-flex shrink-0 items-center gap-1.5 rounded-md bg-[#f2f4f7] px-2 py-1 text-[12.5px] font-semibold text-ink tabular">
+            <span className="inline-flex shrink-0 items-center gap-1.5 rounded-md bg-tile px-2 py-1 text-[12.5px] font-semibold text-ink tabular">
               <Users className="size-3.5" />
               {draft.workerIds.length}
             </span>
@@ -246,7 +246,7 @@ export function StepSchedule({
       >
         {canAssign && client ? (
           <>
-            <div className="rounded-[18px] border border-hairline bg-white p-3">
+            <div className="rounded-[18px] border border-hairline bg-surface p-3">
               <CrewPicker
                 unitId={client.unitId}
                 dates={dates}
@@ -265,8 +265,8 @@ export function StepSchedule({
             />
           </>
         ) : (
-          <div className="flex gap-4 rounded-[20px] bg-[#f4f8fd] p-5">
-            <span className="inline-flex size-10 shrink-0 items-center justify-center rounded-[12px] bg-[#cfe6fd] text-[#1667e0]">
+          <div className="flex gap-4 rounded-[20px] bg-blue-wash p-5">
+            <span className="inline-flex size-10 shrink-0 items-center justify-center rounded-[12px] bg-blue-mid text-azure-fg">
               <Info className="size-5" />
             </span>
             <div className="text-[14px] leading-relaxed text-ink">
@@ -310,7 +310,7 @@ function SupervisorField({
       <Select value={value} onValueChange={onChange}>
         <SelectTrigger
           aria-label="Supervisor"
-          className="w-full rounded-[14px] border-hairline bg-white px-3 text-left shadow-[0_1px_2px_rgb(16_24_40/0.03)] transition hover:border-[#d5dbe3] data-[size=default]:h-14"
+          className="w-full rounded-[14px] border-hairline bg-surface px-3 text-left shadow-[0_1px_2px_rgb(16_24_40/0.03)] transition hover:border-line-strong data-[size=default]:h-14"
         >
           {current ? (
             <span className="flex min-w-0 items-center gap-3">

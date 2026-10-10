@@ -112,7 +112,7 @@ function JornadaEvidence({ j, index }: { j: Jornada; index: number }) {
       </div>
 
       {!executed && ps.length === 0 ? (
-        <p className="mt-4 flex items-center gap-2 rounded-[16px] bg-[#f7f9fb] px-4 py-3.5 text-[13.5px] text-subtle">
+        <p className="mt-4 flex items-center gap-2 rounded-[16px] bg-soft px-4 py-3.5 text-[13.5px] text-subtle">
           <ImageOff className="size-4 shrink-0" />
           La jornada aún no inicia. Las fotos se capturan al registrar la entrada.
           <Link href={`/jornada/${j.id}`} className="ml-auto inline-flex shrink-0 items-center gap-1 font-semibold text-link">
@@ -165,7 +165,7 @@ type Missing = { jornada: Jornada; kind: "antes" | "despues"; /** jornada still 
 function PhotoGrid({ photos, missing, emptyText }: { photos: Photo[]; missing?: Missing; emptyText?: string }) {
   const { d, ui } = useOrder();
   const toggle = useAppStore((s) => s.togglePhotoForReport);
-  if (!photos.length && !missing) return <p className="rounded-[16px] border border-dashed border-[#d9dfe7] px-4 py-6 text-center text-[13px] text-subtle">{emptyText ?? "Sin fotos"}</p>;
+  if (!photos.length && !missing) return <p className="rounded-[16px] border border-dashed border-line-strong px-4 py-6 text-center text-[13px] text-subtle">{emptyText ?? "Sin fotos"}</p>;
   return (
     <motion.div layout className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-2 xl:grid-cols-3">
       {photos.map((p) => (
@@ -189,20 +189,20 @@ function PhotoGrid({ photos, missing, emptyText }: { photos: Photo[]; missing?: 
           href={`/jornada/${missing.jornada.id}`}
           className={cn(
             "group flex aspect-[4/3] flex-col items-center justify-center gap-1.5 rounded-[16px] border-2 border-dashed p-3 text-center transition",
-            missing.soft ? "border-[#bcd8fb] bg-[#f6faff] hover:bg-[#edf4ff]" : "border-[#f3c97a] bg-[#fffaf0] hover:bg-[#fff3dc]",
+            missing.soft ? "border-blue-line bg-blue-wash hover:bg-blue-soft" : "border-amber-line-strong bg-amber-wash hover:bg-amber-tint",
           )}
         >
           <motion.span
-            className={cn("inline-flex size-10 items-center justify-center rounded-full", missing.soft ? "bg-[#e3f1fd] text-[#1667e0]" : "bg-[#ffe8bf] text-[#b86e00]")}
+            className={cn("inline-flex size-10 items-center justify-center rounded-full", missing.soft ? "bg-blue-tint text-azure-fg" : "bg-amber-mid text-amber-fg")}
             animate={missing.soft ? undefined : { scale: [1, 1.08, 1] }}
             transition={{ duration: 2.4, repeat: Infinity, ease: "easeInOut" }}
           >
             <Camera className="size-[18px]" />
           </motion.span>
-          <span className={cn("text-[13px] font-semibold", missing.soft ? "text-ink" : "text-[#8a5300]")}>
+          <span className={cn("text-[13px] font-semibold", missing.soft ? "text-ink" : "text-amber-ink")}>
             {missing.soft ? "DESPUÉS al terminar" : `Falta foto ${missing.kind === "antes" ? "ANTES" : "DESPUÉS"}`}
           </span>
-          <span className={cn("inline-flex items-center gap-1 text-[12px]", missing.soft ? "text-link" : "text-[#b86e00]")}>
+          <span className={cn("inline-flex items-center gap-1 text-[12px]", missing.soft ? "text-link" : "text-amber-fg")}>
             {missing.soft ? "Se captura antes de la salida" : `Capturar en Jornada ${missing.jornada.dayIndex}`}
             <ArrowRight className="size-3 transition-transform group-hover:translate-x-0.5" />
           </span>

@@ -99,16 +99,16 @@ export function StepService({
                   animate={{ opacity: 1, y: 0, transition: { delay: i * 0.035, duration: 0.35, ease: EASE } }}
                   whileHover={{ y: -2 }}
                   whileTap={{ scale: 0.97 }}
+                  style={{ ["--h" as string]: st.hue }}
                   className={cn(
                     "relative flex min-h-[132px] flex-col items-start rounded-[18px] border p-3.5 text-left transition-[border-color,box-shadow] duration-200",
-                    on ? "border-transparent" : "border-hairline bg-white hover:shadow-soft",
+                    on ? "border-transparent" : "border-hairline bg-surface hover:shadow-soft",
                   )}
                 >
                   {on && (
                     <motion.span
                       layoutId="service-ring"
-                      className="absolute inset-0 rounded-[18px] ring-[1.5px]"
-                      style={{ background: `oklch(0.985 0.012 ${st.hue})`, ["--tw-ring-color" as string]: `oklch(0.55 0.14 ${st.hue})` }}
+                      className="absolute inset-0 rounded-[18px] bg-[oklch(0.985_0.012_var(--h))] ring-[1.5px] ring-[oklch(0.55_0.14_var(--h))] dark:bg-[oklch(0.3_0.05_var(--h))] dark:ring-[oklch(0.72_0.13_var(--h))]"
                       transition={{ type: "spring", stiffness: 480, damping: 36 }}
                     />
                   )}
@@ -125,7 +125,7 @@ export function StepService({
                         <Check className="size-3.5" strokeWidth={3} />
                       </motion.span>
                     ) : (
-                      past > 0 && <span className="rounded-md bg-[#f2f4f7] px-1.5 py-0.5 text-[10.5px] font-semibold text-subtle">{plural(past, "previa", "previas")}</span>
+                      past > 0 && <span className="rounded-md bg-tile px-1.5 py-0.5 text-[10.5px] font-semibold text-subtle">{plural(past, "previa", "previas")}</span>
                     )}
                   </span>
                   <span className="relative mt-auto block pt-3 text-[14px] font-semibold leading-snug text-ink">{st.name}</span>
@@ -156,12 +156,12 @@ export function StepService({
                     <button
                       type="button"
                       onClick={() => setDraft((d) => ({ ...d, title: "", titleEdited: false }))}
-                      className="inline-flex h-8 items-center gap-1 rounded-[9px] px-2 text-[12.5px] font-medium text-link hover:bg-[#f2f8fe]"
+                      className="inline-flex h-8 items-center gap-1 rounded-[9px] px-2 text-[12.5px] font-medium text-link hover:bg-blue-wash"
                     >
                       <RotateCcw className="size-3.5" /> Sugerido
                     </button>
                   ) : (
-                    <span className="inline-flex h-7 items-center gap-1 rounded-[8px] bg-[#f1edff] px-2 text-[12px] font-semibold text-st-violet">
+                    <span className="inline-flex h-7 items-center gap-1 rounded-[8px] bg-violet-soft px-2 text-[12px] font-semibold text-violet-fg">
                       <Wand2 className="size-3.5" /> Sugerido
                     </span>
                   )}
@@ -173,7 +173,7 @@ export function StepService({
             <FormSection
               title="Actividades"
               description="Alcance del trabajo. Sugeridas a partir de órdenes anteriores de este servicio."
-              aside={<span className="shrink-0 rounded-md bg-[#f2f4f7] px-2 py-1 text-[12.5px] font-semibold text-ink tabular">{draft.activities.length} de {allActivities.length}</span>}
+              aside={<span className="shrink-0 rounded-md bg-tile px-2 py-1 text-[12.5px] font-semibold text-ink tabular">{draft.activities.length} de {allActivities.length}</span>}
             >
               <ul className="grid gap-1.5 sm:grid-cols-2">
                 <AnimatePresence initial={false}>
@@ -185,7 +185,7 @@ export function StepService({
                         <div
                           className={cn(
                             "flex min-h-[48px] items-center gap-3 rounded-[14px] border px-3 py-2 transition-colors",
-                            on ? "border-[#cfe2fb] bg-[#f6faff]" : "border-hairline bg-white hover:border-[#d5dbe3]",
+                            on ? "border-blue-mid bg-blue-wash" : "border-hairline bg-surface hover:border-line-strong",
                           )}
                         >
                           <button type="button" role="checkbox" aria-checked={on} onClick={() => toggleActivity(a)} className="flex min-w-0 flex-1 items-center gap-3 text-left">
@@ -216,7 +216,7 @@ export function StepService({
                 }}
               >
                 <Input value={custom} onChange={(e) => setCustom(e.target.value)} placeholder="Agregar actividad personalizada" aria-label="Nueva actividad" maxLength={90} className={cn(inputClass, "flex-1")} />
-                <Button type="submit" variant="outline" disabled={!custom.trim()} className="h-11 rounded-[13px] border-[#dfe3ea] px-4 font-semibold">
+                <Button type="submit" variant="outline" disabled={!custom.trim()} className="h-11 rounded-[13px] border-line px-4 font-semibold">
                   <Plus className="size-4" />
                   <span className="hidden sm:inline">Agregar</span>
                 </Button>
@@ -227,9 +227,9 @@ export function StepService({
             <FormSection
               title="Materiales y productos"
               description="Cantidades a entregar a la cuadrilla. Opcional."
-              aside={<span className="shrink-0 rounded-md bg-[#f2f4f7] px-2 py-1 text-[12.5px] font-semibold text-ink tabular">{plural(materialCount, "material", "materiales")}</span>}
+              aside={<span className="shrink-0 rounded-md bg-tile px-2 py-1 text-[12.5px] font-semibold text-ink tabular">{plural(materialCount, "material", "materiales")}</span>}
             >
-              <ul className="divide-y divide-hairline rounded-[18px] border border-hairline bg-white">
+              <ul className="divide-y divide-hairline rounded-[18px] border border-hairline bg-surface">
                 {primaryMaterials.map((m) => (
                   <MaterialRow key={m.id} material={m} suggested={suggestedMaterialIds.has(m.id)} qty={draft.materials[m.id] ?? 0} onChange={(q) => setDraft((d) => ({ ...d, materials: { ...d.materials, [m.id]: q } }))} />
                 ))}
@@ -246,7 +246,7 @@ export function StepService({
                 <button
                   type="button"
                   onClick={() => setShowAllMaterials((v) => !v)}
-                  className="mt-2.5 inline-flex h-10 items-center gap-1.5 rounded-[12px] px-2 text-[13.5px] font-medium text-link hover:bg-[#f2f8fe]"
+                  className="mt-2.5 inline-flex h-10 items-center gap-1.5 rounded-[12px] px-2 text-[13.5px] font-medium text-link hover:bg-blue-wash"
                 >
                   <ChevronDown className={cn("size-4 transition-transform", showAllMaterials && "rotate-180")} />
                   {showAllMaterials ? "Ocultar otros materiales" : `Ver otros materiales del catálogo (${otherMaterials.length})`}
@@ -261,7 +261,7 @@ export function StepService({
                 placeholder="Ej. Acceso por andén 3. Presentar identificación y EPP completo."
                 aria-label="Instrucciones especiales"
                 maxLength={600}
-                className="min-h-[104px] rounded-[14px] border-hairline bg-white px-3.5 py-3 text-[15px] md:text-[14.5px]"
+                className="min-h-[104px] rounded-[14px] border-hairline bg-surface px-3.5 py-3 text-[15px] md:text-[14.5px]"
               />
               {instructionIdeas.length > 0 && (
                 <div className="mt-3">
@@ -273,7 +273,7 @@ export function StepService({
                         type="button"
                         whileTap={{ scale: 0.96 }}
                         onClick={() => setDraft((d) => ({ ...d, specialInstructions: d.specialInstructions.trim() ? `${d.specialInstructions.trim()}\n${t}` : t }))}
-                        className="inline-flex min-h-10 max-w-full items-center gap-1.5 rounded-[12px] border border-dashed border-[#cfd6df] bg-white px-3 py-1.5 text-left text-[13px] text-ink transition hover:border-[#1667e0] hover:bg-[#f6faff]"
+                        className="inline-flex min-h-10 max-w-full items-center gap-1.5 rounded-[12px] border border-dashed border-line-heavy bg-surface px-3 py-1.5 text-left text-[13px] text-ink transition hover:border-azure hover:bg-blue-wash"
                       >
                         <Plus className="size-3.5 shrink-0 text-link" />
                         <span className="line-clamp-2">{t}</span>
@@ -308,7 +308,7 @@ function MaterialRow({
     <Tag className="flex items-center gap-3 px-3.5 py-2.5">
       <div className="min-w-0 flex-1">
         <p className={cn("line-clamp-2 text-[14px] leading-snug", qty > 0 ? "font-medium text-ink" : "text-subtle")}>{material.name}</p>
-        {suggested && <p className="mt-0.5 text-[11.5px] font-medium text-st-violet">Sugerido</p>}
+        {suggested && <p className="mt-0.5 text-[11.5px] font-medium text-violet-fg">Sugerido</p>}
       </div>
       <QtyStepper value={qty} onChange={onChange} unit={material.unit} label={material.name} />
     </Tag>

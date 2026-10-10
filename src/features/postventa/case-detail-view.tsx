@@ -123,15 +123,15 @@ function CaseDetail({ c }: { c: PostSaleCase }) {
             )}
             {order && (
               <>
-                <span className="text-[#c5ccd6]">•</span>
+                <span className="text-ghost">•</span>
                 <Link href={`/ordenes/${order.folio}`} className="font-medium text-link tabular hover:underline">
                   {order.folio}
                 </Link>
               </>
             )}
-            <span className="text-[#c5ccd6]">•</span>
+            <span className="text-ghost">•</span>
             <span>Vía {channelText(CASE_CHANNEL[c.channel])}</span>
-            <span className="text-[#c5ccd6]">•</span>
+            <span className="text-ghost">•</span>
             <span>
               Registró {creator ? firstName(creator.name) : "—"} · {fmtDateTime(c.createdAt)}
             </span>
@@ -146,7 +146,7 @@ function CaseDetail({ c }: { c: PostSaleCase }) {
           <section>
             <SectionHeader title="Seguimiento del caso" subtitle={`${plural(c.timeline.length, "registro", "registros")} · cada cambio guarda usuario y fecha`} />
             <Timeline steps={steps} className="mt-6" />
-            <div className="mt-7 rounded-[20px] border border-hairline bg-[#fafbfc] p-3 sm:p-4">
+            <div className="mt-7 rounded-[20px] border border-hairline bg-wash p-3 sm:p-4">
               <label htmlFor="case-note" className="sr-only">
                 Agregar nota
               </label>
@@ -159,7 +159,7 @@ function CaseDetail({ c }: { c: PostSaleCase }) {
                 }}
                 disabled={!canManage}
                 placeholder={canManage ? "Agregar nota: llamada al cliente, acuerdo, visita de revisión…" : REASON_POSTVENTA}
-                className={`${textareaCls} min-h-[84px] border-transparent bg-white`}
+                className={`${textareaCls} min-h-[84px] border-transparent bg-surface`}
               />
               <div className="mt-3 flex items-center justify-between gap-3">
                 <span className="hidden text-[12.5px] text-subtle sm:inline">⌘ + Enter para guardar</span>
@@ -194,7 +194,7 @@ function CaseDetail({ c }: { c: PostSaleCase }) {
                 ))}
               </div>
             ) : (
-              <p className="rounded-[18px] border border-dashed border-[#d9dfe7] px-4 py-6 text-center text-[14px] text-subtle">
+              <p className="rounded-[18px] border border-dashed border-line-strong px-4 py-6 text-center text-[14px] text-subtle">
                 Sin fotos adjuntas{canManage ? ". Tome una foto o súbala desde la galería." : "."}
               </p>
             )}

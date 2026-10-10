@@ -109,7 +109,7 @@ export function SyncTab() {
               <MiniStat tone="red" label="Con error" value={errors} className="px-3 sm:px-5" />
               <MiniStat tone="teal" label="Enviados" value={sent} sub="recientes" className="pl-3 sm:pl-5" />
             </div>
-            <div className="mt-5 flex items-center justify-between gap-4 rounded-[16px] bg-[#f6f8fa] px-4 py-3">
+            <div className="mt-5 flex items-center justify-between gap-4 rounded-[16px] bg-soft px-4 py-3">
               <div className="min-w-0">
                 <p className="text-[14px] font-semibold text-ink">Simular sin conexión</p>
                 <p className="text-[12.5px] leading-snug text-subtle">
@@ -121,7 +121,7 @@ export function SyncTab() {
             <AnimatePresence initial={false}>
               {errors > 0 && (
                 <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} exit={{ opacity: 0, height: 0 }} className="overflow-hidden">
-                  <Button variant="outline" onClick={retry} disabled={offline} className="mt-3 h-11 w-full rounded-[12px] border-[#dfe3ea] font-semibold">
+                  <Button variant="outline" onClick={retry} disabled={offline} className="mt-3 h-11 w-full rounded-[12px] border-line font-semibold">
                     <RefreshCw className="size-4" /> Reintentar {plural(errors, "envío", "envíos")} con error
                   </Button>
                 </motion.div>
@@ -138,13 +138,13 @@ export function SyncTab() {
             </div>
             <SyncPipeline offline={offline} queued={toSend} syncing={syncing.length > 0} stored={stored} lastSyncAt={lastSyncAt} />
             <ul className="grid gap-2 text-[13px] text-ink/75 sm:grid-cols-3">
-              <li className="rounded-[14px] bg-white/55 px-3 py-2.5 backdrop-blur-sm">
+              <li className="rounded-[14px] bg-surface/55 px-3 py-2.5 backdrop-blur-sm">
                 <b className="font-semibold text-ink">1 · Captura local.</b> GPS, fotos e incidencias se guardan al instante con hora del dispositivo.
               </li>
-              <li className="rounded-[14px] bg-white/55 px-3 py-2.5 backdrop-blur-sm">
+              <li className="rounded-[14px] bg-surface/55 px-3 py-2.5 backdrop-blur-sm">
                 <b className="font-semibold text-ink">2 · Cola.</b> Cada registro espera con marca de pendiente; las fotos se ven en la cola.
               </li>
-              <li className="rounded-[14px] bg-white/55 px-3 py-2.5 backdrop-blur-sm">
+              <li className="rounded-[14px] bg-surface/55 px-3 py-2.5 backdrop-blur-sm">
                 <b className="font-semibold text-ink">3 · Servidor.</b> Al sincronizar se sella la hora del servidor; el PDF definitivo se habilita.
               </li>
             </ul>
@@ -172,7 +172,7 @@ export function SyncTab() {
               <motion.li
                 key={d.title}
                 variants={{ hidden: { opacity: 0, y: 10 }, show: { opacity: 1, y: 0, transition: { duration: 0.4, ease: EASE } } }}
-                className="flex flex-col rounded-[20px] border border-hairline bg-white p-4 shadow-soft"
+                className="flex flex-col rounded-[20px] border border-hairline bg-surface p-4 shadow-soft"
               >
                 <div className="flex items-center justify-between gap-2">
                   <IconTile tone={d.status === "pendiente" ? "amber" : "sky"}>{d.icon}</IconTile>
@@ -194,10 +194,10 @@ export function SyncTab() {
 }
 
 const STATE_META: Record<SyncItem["state"], { label: string; cls: string; icon: React.ReactNode }> = {
-  sincronizado: { label: "Sincronizado", cls: "bg-[#e7f7f4] text-st-teal", icon: <Check className="size-4" strokeWidth={2.5} /> },
-  sincronizando: { label: "Enviando", cls: "bg-[#edf4ff] text-link", icon: <Loader2 className="size-4 animate-spin" /> },
-  pendiente: { label: "Pendiente", cls: "bg-[#fff6e6] text-[#b86e00]", icon: <CloudOff className="size-4" /> },
-  error: { label: "Error", cls: "bg-[#fdeeee] text-st-red", icon: <RefreshCw className="size-4" /> },
+  sincronizado: { label: "Sincronizado", cls: "bg-teal-soft text-teal-fg", icon: <Check className="size-4" strokeWidth={2.5} /> },
+  sincronizando: { label: "Enviando", cls: "bg-blue-soft text-link", icon: <Loader2 className="size-4 animate-spin" /> },
+  pendiente: { label: "Pendiente", cls: "bg-amber-soft text-amber-fg", icon: <CloudOff className="size-4" /> },
+  error: { label: "Error", cls: "bg-red-soft text-red-fg", icon: <RefreshCw className="size-4" /> },
 };
 
 function QueueActivity({ queue, offline }: { queue: SyncItem[]; offline: boolean }) {

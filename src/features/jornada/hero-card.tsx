@@ -41,7 +41,7 @@ export function HeroCard({ f, actions }: { f: FieldReady; actions: HeroActions }
       className="relative scroll-mt-24 overflow-hidden rounded-[28px] bg-brand-deep p-5 text-white shadow-lift sm:p-7"
     >
       <span aria-hidden className="pointer-events-none absolute -right-24 -top-28 size-80 rounded-full bg-sky/25 blur-3xl" />
-      <span aria-hidden className="pointer-events-none absolute -bottom-32 -left-20 size-72 rounded-full bg-[#2f80ed]/20 blur-3xl" />
+      <span aria-hidden className="pointer-events-none absolute -bottom-32 -left-20 size-72 rounded-full bg-st-blue/20 blur-3xl" />
       {status === "en_curso" && <Bubbles className="opacity-40" />}
       <AnimatePresence mode="wait" initial={false}>
         <motion.div
@@ -194,7 +194,7 @@ function LiveTimer({ since, planned }: { since: string; planned: number }) {
       </div>
       <div className="mt-2 h-[6px] overflow-hidden rounded-full bg-white/10">
         <motion.div
-          className={cn("h-full rounded-full", over ? "bg-[#ffd18a]" : "bg-gradient-to-r from-[#2f80ed] to-sky")}
+          className={cn("h-full rounded-full", over ? "bg-[#ffd18a]" : "bg-gradient-to-r from-st-blue to-sky")}
           initial={{ width: 0 }}
           animate={{ width: `${Math.min(1, pct) * 100}%` }}
           transition={{ type: "spring", stiffness: 60, damping: 18 }}
@@ -340,7 +340,7 @@ function BreakdownStrip({ f, onEdit }: { f: FieldReady; onEdit: () => void }) {
             <span className="row-span-2 text-right text-[14px] font-semibold tabular">{b.hours.toFixed(1)} h</span>
             <span className="h-[5px] overflow-hidden rounded-full bg-white/10">
               <motion.span
-                className="block h-full rounded-full bg-gradient-to-r from-[#2f80ed] to-sky"
+                className="block h-full rounded-full bg-gradient-to-r from-st-blue to-sky"
                 initial={{ width: 0 }}
                 animate={{ width: `${(b.hours / max) * 100}%` }}
                 transition={{ duration: 0.9, ease: EASE, delay: 0.2 + i * 0.07 }}
@@ -434,7 +434,7 @@ function QuickAction({
               transition={{ type: "spring", stiffness: 600, damping: 20 }}
               className={cn(
                 "absolute right-1.5 top-1.5 inline-flex h-5 min-w-5 items-center justify-center rounded-full px-1 text-[11px] font-bold tabular",
-                alert ? "bg-st-red text-white" : "bg-sky text-brand-deep",
+                alert ? "bg-st-red text-white" : "bg-sky text-on-light",
               )}
             >
               {count}
@@ -472,7 +472,7 @@ function BigAction({
       whileTap={{ scale: 0.98 }}
       whileHover={disabled ? undefined : { y: -1 }}
       className={cn(
-        "group relative flex h-16 w-full items-center gap-3.5 overflow-hidden rounded-[20px] px-4 text-left text-brand-deep shadow-[0_14px_30px_-14px_rgb(0_0_0/0.6)] outline-none transition focus-visible:ring-4 focus-visible:ring-sky/60 disabled:opacity-45",
+        "group relative flex h-16 w-full items-center gap-3.5 overflow-hidden rounded-[20px] px-4 text-left text-on-light shadow-[0_14px_30px_-14px_rgb(0_0_0/0.6)] outline-none transition focus-visible:ring-4 focus-visible:ring-sky/60 disabled:opacity-45",
         variant === "white" ? "bg-white" : "bg-sky",
         className,
       )}
@@ -482,7 +482,7 @@ function BigAction({
       </span>
       <span className="min-w-0 flex-1">
         <span className="block text-[17px] font-semibold leading-tight">{label}</span>
-        {sub && <span className="block truncate text-[12.5px] text-brand-deep/60">{sub}</span>}
+        {sub && <span className="block truncate text-[12.5px] text-on-light/60">{sub}</span>}
       </span>
       {!disabled && (
         <motion.span

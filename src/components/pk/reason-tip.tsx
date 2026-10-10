@@ -89,7 +89,7 @@ function TapReason({
         sideOffset={8}
         collisionPadding={12}
         className={cn(
-          "w-fit max-w-[min(280px,calc(100vw-24px))] flex-row items-start gap-2 rounded-[12px] border-0 bg-foreground px-3 py-2.5 leading-snug text-background shadow-lift ring-0",
+          "w-fit max-w-[min(280px,calc(100vw-24px))] flex-row items-start gap-2 rounded-[12px] border-0 bg-foreground px-3 py-2.5 leading-snug text-background shadow-lift ring-0 dark:bg-well dark:text-ink dark:ring-1 dark:ring-edge-strong",
           contentClassName,
           "text-[13.5px]",
         )}

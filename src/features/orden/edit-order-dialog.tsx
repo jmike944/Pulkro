@@ -155,8 +155,8 @@ function EditForm({ onDone }: { onDone: () => void }) {
       )}
 
       {!full && (
-        <p className="mb-5 flex gap-2.5 rounded-[14px] bg-[#f4f8fd] px-3.5 py-3 text-[13px] leading-relaxed text-ink">
-          <Info className="mt-0.5 size-4 shrink-0 text-[#1667e0]" />
+        <p className="mb-5 flex gap-2.5 rounded-[14px] bg-blue-wash px-3.5 py-3 text-[13px] leading-relaxed text-ink">
+          <Info className="mt-0.5 size-4 shrink-0 text-azure-fg" />
           Título, sitio, tipo de servicio, supervisor y referencia comercial solo los modifica Administración.
         </p>
       )}
@@ -179,7 +179,7 @@ function EditForm({ onDone }: { onDone: () => void }) {
           onChange={(e) => setInstructions(e.target.value)}
           rows={3}
           placeholder="Accesos, EPP, horarios restringidos…"
-          className="w-full resize-none rounded-[14px] border border-input bg-white px-3.5 py-3 text-[15px] leading-relaxed outline-none placeholder:text-[#98a2b3] focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
+          className="w-full resize-none rounded-[14px] border border-input bg-surface px-3.5 py-3 text-[15px] leading-relaxed outline-none placeholder:text-faint focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
         />
       </FormSection>
 
@@ -193,14 +193,14 @@ function EditForm({ onDone }: { onDone: () => void }) {
                 initial={{ opacity: 0, scale: 0.9 }}
                 animate={{ opacity: 1, scale: 1 }}
                 exit={{ opacity: 0, scale: 0.85 }}
-                className="inline-flex max-w-full items-center gap-1 rounded-full border border-hairline bg-[#f7f9fb] py-1 pl-3 pr-1 text-[13px] text-ink"
+                className="inline-flex max-w-full items-center gap-1 rounded-full border border-hairline bg-soft py-1 pl-3 pr-1 text-[13px] text-ink"
               >
                 <span className="truncate">{a}</span>
                 <button
                   type="button"
                   onClick={() => setActivities((xs) => xs.filter((x) => x !== a))}
                   aria-label={`Quitar ${a}`}
-                  className="inline-flex size-7 shrink-0 items-center justify-center rounded-full text-subtle hover:bg-white hover:text-st-red"
+                  className="inline-flex size-7 shrink-0 items-center justify-center rounded-full text-subtle hover:bg-surface hover:text-red-fg"
                 >
                   <X className="size-3.5" />
                 </button>
@@ -222,7 +222,7 @@ function EditForm({ onDone }: { onDone: () => void }) {
             aria-label="Nueva actividad"
             className={inputClass}
           />
-          <Button type="button" variant="outline" onClick={addActivity} disabled={!draft.trim()} className="h-11 shrink-0 rounded-[12px] border-[#dfe3ea] px-4 font-semibold">
+          <Button type="button" variant="outline" onClick={addActivity} disabled={!draft.trim()} className="h-11 shrink-0 rounded-[12px] border-line px-4 font-semibold">
             <Plus className="size-4" /> Agregar
           </Button>
         </div>
@@ -264,7 +264,7 @@ function EditForm({ onDone }: { onDone: () => void }) {
                   type="button"
                   onClick={() => setMaterials((xs) => xs.filter((_, k) => k !== i))}
                   aria-label={`Quitar ${mat?.name ?? "material"}`}
-                  className="inline-flex size-10 items-center justify-center rounded-full text-subtle transition hover:bg-[#fdeeee] hover:text-st-red"
+                  className="inline-flex size-10 items-center justify-center rounded-full text-subtle transition hover:bg-red-soft hover:text-red-fg"
                 >
                   <Trash2 className="size-4" />
                 </button>
@@ -277,7 +277,7 @@ function EditForm({ onDone }: { onDone: () => void }) {
           variant="outline"
           disabled={!unusedMaterial}
           onClick={() => unusedMaterial && setMaterials((xs) => [...xs, { materialId: unusedMaterial.id, qty: 1 }])}
-          className="mt-2.5 h-11 w-full rounded-[14px] border-dashed border-[#cfd6df] font-semibold text-ink"
+          className="mt-2.5 h-11 w-full rounded-[14px] border-dashed border-line-heavy font-semibold text-ink"
         >
           <Plus className="size-4" /> Agregar material
         </Button>
@@ -288,7 +288,7 @@ function EditForm({ onDone }: { onDone: () => void }) {
       </FormSection>
 
       <DialogActions hint={hint}>
-        <Button variant="outline" onClick={onDone} className="h-11 rounded-[12px] border-[#dfe3ea] px-5 font-semibold">
+        <Button variant="outline" onClick={onDone} className="h-11 rounded-[12px] border-line px-5 font-semibold">
           Cancelar
         </Button>
         <Button onClick={save} disabled={!valid} className="h-11 rounded-[12px] px-5 font-semibold">

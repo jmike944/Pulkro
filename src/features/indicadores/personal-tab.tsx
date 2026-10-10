@@ -91,7 +91,7 @@ export function PersonalTab({
           )}
         </div>
 
-        <div className="mb-7 grid grid-cols-2 gap-x-4 gap-y-5 rounded-[18px] bg-[#f6f8fb] p-4 sm:grid-cols-4 sm:p-5">
+        <div className="mb-7 grid grid-cols-2 gap-x-4 gap-y-5 rounded-[18px] bg-soft p-4 sm:grid-cols-4 sm:p-5">
           <MiniStat tone="navy" label="Cerradas" value={<AnimatedNumber value={totals.closed} />} />
           <MiniStat tone="blue" label="Abiertas" value={<AnimatedNumber value={totals.open} />} />
           <MiniStat tone="teal" label="Horas reales" value={<AnimatedNumber value={Math.round(totals.hours)} />} sub="h" />
@@ -123,7 +123,7 @@ export function PersonalTab({
                     type="button"
                     onClick={() => openDrill(r)}
                     aria-label={`Ver órdenes de ${r.user.name}`}
-                    className="-mx-3 grid w-[calc(100%+24px)] grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)_56px_minmax(0,0.9fr)_60px_68px] items-center gap-4 rounded-[14px] px-3 py-4 text-left transition-colors hover:bg-[#f6f8fb]"
+                    className="-mx-3 grid w-[calc(100%+24px)] grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)_56px_minmax(0,0.9fr)_60px_68px] items-center gap-4 rounded-[14px] px-3 py-4 text-left transition-colors hover:bg-soft"
                   >
                     <SupervisorCell row={r} unit={units.get(r.user.unitId)} />
                     <BarCell value={r.closed} max={maxClosed} strong={sort === "closed" && i === 0} label={fmtNum(r.closed)} />
@@ -176,7 +176,7 @@ export function PersonalTab({
                   trailing={
                     <span className="flex shrink-0 items-center gap-2">
                       <CsatCell value={r.csat} n={r.surveys} />
-                      <ChevronRight className="size-[18px] text-[#98a2b3]" />
+                      <ChevronRight className="size-[18px] text-faint" />
                     </span>
                   }
                 />
@@ -185,8 +185,8 @@ export function PersonalTab({
           </ul>
         </LayoutGroup>
 
-        <div className="mt-6 flex gap-3 rounded-[16px] border border-dashed border-[#f2c879] bg-[#fffaf0] p-4 text-[13.5px] leading-relaxed text-ink">
-          <Info className="mt-0.5 size-4 shrink-0 text-[#b86e00]" />
+        <div className="mt-6 flex gap-3 rounded-[16px] border border-dashed border-amber-line-strong bg-amber-wash p-4 text-[13.5px] leading-relaxed text-ink">
+          <Info className="mt-0.5 size-4 shrink-0 text-amber-fg" />
           <p>
             <b className="font-semibold">Definir denominador (PENDIENTE §5).</b> Las horas por servicio se calculan sobre órdenes con cierre validado. Falta
             acordar si la productividad se mide por servicio, por jornada o por hora-persona.
@@ -198,7 +198,7 @@ export function PersonalTab({
         {best ? (
           <AuroraFrame innerClassName="p-5 sm:p-6">
             <p className="flex items-center gap-2 text-[12px] font-semibold uppercase tracking-[0.1em] text-subtle">
-              <Award className="size-4 text-[#1667e0]" /> Mejor calificación
+              <Award className="size-4 text-azure-fg" /> Mejor calificación
             </p>
             <div className="mt-4 flex items-center gap-3">
               <PersonAvatar name={best.user.name} initials={best.user.initials} hue={best.user.hue} size={48} />
@@ -251,12 +251,12 @@ function BarCell({ value, max, label, strong }: { value: number; max: number; la
   return (
     <div className="flex min-w-0 items-center gap-3">
       <span className="w-[44px] shrink-0 text-[15px] font-semibold text-ink tabular">{label}</span>
-      <span className="h-[6px] min-w-0 flex-1 overflow-hidden rounded-full bg-[#eef1f5]">
+      <span className="h-[6px] min-w-0 flex-1 overflow-hidden rounded-full bg-well">
         <motion.span
           initial={{ width: 0 }}
           animate={{ width: `${(value / max) * 100}%` }}
           transition={{ duration: 0.9, ease: EASE, delay: 0.2 }}
-          className={cn("block h-full rounded-full transition-colors", strong ? "bg-[#1667e0]" : "bg-[#b9d8fb]")}
+          className={cn("block h-full rounded-full transition-colors", strong ? "bg-azure" : "bg-blue-line")}
         />
       </span>
     </div>
@@ -267,9 +267,9 @@ function CsatCell({ value, n }: { value: number; n: number }) {
   if (!value) return <span className="text-right text-[14px] text-subtle">—</span>;
   return (
     <span className="flex flex-col items-end" title={plural(n, "encuesta", "encuestas")}>
-      <span className={cn("inline-flex items-center gap-1 text-[15px] font-semibold tabular", value < 4 ? "text-[#b86e00]" : "text-ink")}>
+      <span className={cn("inline-flex items-center gap-1 text-[15px] font-semibold tabular", value < 4 ? "text-amber-fg" : "text-ink")}>
         {value.toFixed(1)}
-        <Star className="size-3.5 text-[#f0a020]" fill="currentColor" strokeWidth={0} />
+        <Star className="size-3.5 text-st-amber" fill="currentColor" strokeWidth={0} />
       </span>
       <span className="text-[11.5px] text-subtle tabular">{n} resp.</span>
     </span>

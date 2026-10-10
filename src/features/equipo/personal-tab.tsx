@@ -92,13 +92,13 @@ export function PersonalTab({
             onChange={(e) => setQ(e.target.value)}
             placeholder="Buscar por nombre, especialidad o teléfono"
             aria-label="Buscar personal"
-            className="h-11 rounded-[14px] bg-white pl-10 text-[15px]"
+            className="h-11 rounded-[14px] bg-surface pl-10 text-[15px]"
           />
         </div>
         <div className="flex flex-wrap items-center gap-2">
           {data.multiUnit && (
             <Select value={unit} onValueChange={setUnit}>
-              <SelectTrigger aria-label="Unidad" className="h-11 min-w-[150px] rounded-[14px] bg-white px-3.5 text-[14px] data-[size=default]:h-11">
+              <SelectTrigger aria-label="Unidad" className="h-11 min-w-[150px] rounded-[14px] bg-surface px-3.5 text-[14px] data-[size=default]:h-11">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent position="popper">
@@ -112,7 +112,7 @@ export function PersonalTab({
             </Select>
           )}
           <Select value={spec} onValueChange={setSpec}>
-            <SelectTrigger aria-label="Especialidad" className="h-11 min-w-[170px] rounded-[14px] bg-white px-3.5 text-[14px] data-[size=default]:h-11">
+            <SelectTrigger aria-label="Especialidad" className="h-11 min-w-[170px] rounded-[14px] bg-surface px-3.5 text-[14px] data-[size=default]:h-11">
               <SelectValue />
             </SelectTrigger>
             <SelectContent position="popper">
@@ -158,8 +158,8 @@ export function PersonalTab({
       </div>
 
       {data.user.role === "supervisor" && (
-        <p className="mb-4 flex items-start gap-2 rounded-[14px] bg-[#f4f8fd] px-4 py-3 text-[13px] leading-snug text-ink/80">
-          <Info className="mt-0.5 size-4 shrink-0 text-[#1667e0]" />
+        <p className="mb-4 flex items-start gap-2 rounded-[14px] bg-blue-wash px-4 py-3 text-[13px] leading-snug text-ink/80">
+          <Info className="mt-0.5 size-4 shrink-0 text-azure-fg" />
           Jornadas, horas y último servicio consideran solo tus órdenes. La disponibilidad de hoy considera a toda la unidad.
         </p>
       )}
@@ -234,9 +234,9 @@ function WorkerRow({ s, i, onOpen, multiUnit, showPhone, cols }: { s: WorkerStat
         className={cn(
           "group w-full text-left outline-none transition-colors focus-visible:ring-3 focus-visible:ring-ring/50",
           // phones: card
-          "flex items-center gap-3 rounded-[18px] border border-hairline bg-white p-3.5 shadow-[0_1px_2px_rgb(16_24_40/0.04)]",
+          "flex items-center gap-3 rounded-[18px] border border-hairline bg-surface p-3.5 shadow-[0_1px_2px_rgb(16_24_40/0.04)]",
           // tablet+: table row
-          "md:grid md:items-center md:gap-4 md:rounded-[12px] md:border-0 md:border-b md:border-hairline md:bg-transparent md:px-2 md:py-3.5 md:shadow-none md:hover:bg-[#fafbfc]",
+          "md:grid md:items-center md:gap-4 md:rounded-[12px] md:border-0 md:border-b md:border-hairline md:bg-transparent md:px-2 md:py-3.5 md:shadow-none md:hover:bg-wash",
           cols,
           !w.active && "opacity-60",
         )}

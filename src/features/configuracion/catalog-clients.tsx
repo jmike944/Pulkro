@@ -127,7 +127,7 @@ export function ClientsCatalog() {
                     </div>
                     <span className="hidden text-right text-[15px] font-semibold text-ink tabular xl:block">{cs.length}</span>
                     <span className="col-start-2 row-span-2 row-start-1 flex items-center gap-2 xl:col-start-auto xl:row-span-1 xl:row-start-auto xl:justify-end">
-                      <span className="rounded-md bg-[#f2f4f7] px-1.5 py-0.5 text-[12px] font-semibold text-subtle tabular xl:hidden">
+                      <span className="rounded-md bg-tile px-1.5 py-0.5 text-[12px] font-semibold text-subtle tabular xl:hidden">
                         {cs.length} {cs.length === 1 ? "sitio" : "sitios"}
                       </span>
                       <motion.span
@@ -204,12 +204,12 @@ function ClientDetail({
   onEditSite: (s: Site | null) => void;
 }) {
   return (
-    <div className="mb-5 grid gap-5 rounded-[20px] bg-[#f7f9fb] p-4 sm:p-5 xl:grid-cols-[minmax(0,1.1fr)_minmax(0,1fr)]">
+    <div className="mb-5 grid gap-5 rounded-[20px] bg-soft p-4 sm:p-5 xl:grid-cols-[minmax(0,1.1fr)_minmax(0,1fr)]">
       <div className="min-w-0">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <p className="text-[12px] font-semibold uppercase tracking-[0.1em] text-subtle">Sitios · {sites.length}</p>
           <div className="flex flex-wrap gap-2">
-            <GatedButton allowed={canEdit} reason={NO_CATALOGS} variant="outline" onClick={onEditClient} className="border-[#dfe3ea] bg-white">
+            <GatedButton allowed={canEdit} reason={NO_CATALOGS} variant="outline" onClick={onEditClient} className="border-line bg-surface">
               <Pencil className="size-4" /> Editar cliente
             </GatedButton>
             <GatedButton allowed={canEdit} reason={NO_CATALOGS} onClick={() => onEditSite(null)}>
@@ -218,7 +218,7 @@ function ClientDetail({
           </div>
         </div>
         {sites.length === 0 ? (
-          <p className="mt-4 rounded-[14px] border border-dashed border-[#d9dfe7] bg-white px-4 py-6 text-center text-[13.5px] text-subtle">
+          <p className="mt-4 rounded-[14px] border border-dashed border-line-strong bg-surface px-4 py-6 text-center text-[13.5px] text-subtle">
             Sin sitios registrados. Agrega uno para poder programar órdenes.
           </p>
         ) : (
@@ -229,9 +229,9 @@ function ClientDetail({
                 initial={{ opacity: 0, x: -6 }}
                 animate={{ opacity: 1, x: 0 }}
                 transition={{ delay: 0.08 + i * 0.05, duration: 0.3, ease: EASE }}
-                className="flex items-center gap-3 rounded-[16px] bg-white p-3 ring-1 ring-hairline"
+                className="flex items-center gap-3 rounded-[16px] bg-surface p-3 ring-1 ring-hairline"
               >
-                <span className="inline-flex size-9 shrink-0 items-center justify-center rounded-[11px] bg-[#e8eef5] text-brand">
+                <span className="inline-flex size-9 shrink-0 items-center justify-center rounded-[11px] bg-press text-brand-ink">
                   <MapPin className="size-4" />
                 </span>
                 <div className="min-w-0 flex-1">
@@ -239,7 +239,7 @@ function ClientDetail({
                   <p className="truncate text-[12.5px] text-subtle">
                     {s.address} · {s.municipality}
                   </p>
-                  <p className="text-[11.5px] text-[#98a2b3] tabular">{fmtCoords(s.lat, s.lng)}</p>
+                  <p className="text-[11.5px] text-faint tabular">{fmtCoords(s.lat, s.lng)}</p>
                 </div>
                 {/* a title attribute never shows on touch: ReasonTip opens the reason on tap */}
                 <ReasonTip reason={canEdit ? undefined : NO_CATALOGS} contentClassName="max-w-[260px] text-[12.5px] leading-snug">
@@ -266,12 +266,12 @@ function ClientDetail({
         {/* the "Contacto" column (phone) only exists from xl: below it, call / WhatsApp live here */}
         {client.contactPhone && (
           <div className="mt-3 grid gap-2 sm:grid-cols-2 xl:hidden">
-            <Button asChild variant="outline" className="h-11 min-w-0 rounded-[12px] border-[#dfe3ea] bg-white px-3 font-semibold">
+            <Button asChild variant="outline" className="h-11 min-w-0 rounded-[12px] border-line bg-surface px-3 font-semibold">
               <a href={`tel:${client.contactPhone.replace(/\s/g, "")}`} aria-label={`Llamar a ${client.contactName}: ${client.contactPhone}`}>
                 <Phone className="size-4 shrink-0" /> <span className="truncate tabular">{client.contactPhone}</span>
               </a>
             </Button>
-            <Button asChild variant="outline" className="h-11 min-w-0 rounded-[12px] border-[#dfe3ea] bg-white px-3 font-semibold">
+            <Button asChild variant="outline" className="h-11 min-w-0 rounded-[12px] border-line bg-surface px-3 font-semibold">
               <a
                 href={whatsappLink(client.contactPhone, `Hola ${firstName(client.contactName)}, le saluda Pulkro Compañía de Servicios.`)}
                 target="_blank"
@@ -284,12 +284,12 @@ function ClientDetail({
           </div>
         )}
         <div className="mt-4 flex flex-wrap gap-2">
-          <Button asChild variant="outline" className="h-10 rounded-[12px] border-[#dfe3ea] bg-white px-4 font-semibold">
+          <Button asChild variant="outline" className="h-10 rounded-[12px] border-line bg-surface px-4 font-semibold">
             <Link href={`/clientes/${client.id}`}>
               <Building2 className="size-4" /> Ver ficha
             </Link>
           </Button>
-          <Button asChild variant="outline" className="h-10 rounded-[12px] border-[#dfe3ea] bg-white px-4 font-semibold">
+          <Button asChild variant="outline" className="h-10 rounded-[12px] border-line bg-surface px-4 font-semibold">
             <Link href={`/ordenes/nueva?cliente=${client.id}`}>
               <ClipboardList className="size-4" /> Nueva orden
             </Link>
@@ -304,7 +304,7 @@ function ClientDetail({
             zoom={14}
           />
         ) : (
-          <div className="flex h-full min-h-[220px] items-center justify-center rounded-[20px] bg-white text-[13px] text-subtle ring-1 ring-hairline">Sin ubicaciones</div>
+          <div className="flex h-full min-h-[220px] items-center justify-center rounded-[20px] bg-surface text-[13px] text-subtle ring-1 ring-hairline">Sin ubicaciones</div>
         )}
       </div>
     </div>

@@ -180,20 +180,20 @@ export function ClientsTable({ rows }: { rows: ClientStats[] }) {
                     </span>
                     <span className="flex items-center justify-end gap-2 md:contents">
                       {r.openCases > 0 && (
-                        <span className="inline-flex h-6 items-center rounded-md bg-[#fdeeee] px-1.5 text-[12px] font-semibold text-st-red md:hidden">
+                        <span className="inline-flex h-6 items-center rounded-md bg-red-soft px-1.5 text-[12px] font-semibold text-red-fg md:hidden">
                           {r.openCases === 1 ? "1 caso" : `${r.openCases} casos`}
                         </span>
                       )}
                       <span
                         className={cn(
                           "hidden h-6 min-w-7 items-center justify-center rounded-md px-1.5 text-[12.5px] font-semibold tabular md:inline-flex md:justify-self-end",
-                          r.openCases ? "bg-[#fdeeee] text-st-red" : "bg-[#f2f4f7] text-subtle",
+                          r.openCases ? "bg-red-soft text-red-fg" : "bg-tile text-subtle",
                         )}
                         title={`${r.openCases} casos abiertos`}
                       >
                         {r.openCases}
                       </span>
-                      <ChevronRight className="hidden size-4 text-[#c5ccd6] transition-transform group-hover:translate-x-0.5 group-hover:text-ink md:block" />
+                      <ChevronRight className="hidden size-4 text-ghost transition-transform group-hover:translate-x-0.5 group-hover:text-ink md:block" />
                     </span>
                     {/* phones: the columns the table has (sitios, 12 m, numeric CSAT / sin encuestas), under the name (42px mark + 12px gap) */}
                     <span className="col-span-full flex flex-wrap items-center justify-between gap-x-3 gap-y-1 pl-[54px] text-[13px] text-subtle md:hidden">

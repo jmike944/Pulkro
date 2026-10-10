@@ -71,9 +71,10 @@ function QrBody({ target }: { target: SurveyTarget }) {
           transition={{ type: "spring", stiffness: 260, damping: 20 }}
           className="bg-aurora-frame grain rounded-[28px] p-2.5 shadow-lift"
         >
-          <div className="relative z-[2] rounded-[22px] bg-white p-5">
+          {/* the code stays dark-on-light (with its quiet zone) in both themes: scanners need the contrast */}
+          <div className="theme-light relative z-[2] rounded-[22px] bg-surface p-5">
             <QRCodeSVG value={url} size={220} level="H" marginSize={0} fgColor="#07243f" bgColor="#ffffff" title={`Encuesta ${order.folio}`} className="size-[200px] sm:size-[220px]" />
-            <span className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 rounded-[12px] bg-white p-1.5">
+            <span className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 rounded-[12px] bg-surface p-1.5">
               <PulkroMark className="size-9" />
             </span>
           </div>
@@ -81,7 +82,7 @@ function QrBody({ target }: { target: SurveyTarget }) {
         <p className="mt-5 max-w-xs text-center text-[14px] text-subtle">
           Pida al cliente que escanee el código con la cámara de su teléfono. No necesita instalar nada ni iniciar sesión.
         </p>
-        <p className="mt-3 max-w-full truncate rounded-[10px] bg-[#f4f6f8] px-3 py-1.5 text-[12.5px] text-ink/70 tabular">{url.replace(/^https?:\/\//, "")}</p>
+        <p className="mt-3 max-w-full truncate rounded-[10px] bg-soft px-3 py-1.5 text-[12.5px] text-ink/70 tabular">{url.replace(/^https?:\/\//, "")}</p>
         <div className="mt-5 flex w-full flex-wrap justify-center gap-2">
           <Button
             variant="outline"
@@ -90,7 +91,7 @@ function QrBody({ target }: { target: SurveyTarget }) {
               void copySurveyLink(s.token).then(() => setCopied(true));
             }}
           >
-            {copied ? <Check className="text-st-teal" /> : <Copy />} {copied ? "Copiado" : "Copiar enlace"}
+            {copied ? <Check className="text-teal-fg" /> : <Copy />} {copied ? "Copiado" : "Copiar enlace"}
           </Button>
           <Button variant="outline" className={outlineBtnCls} onClick={() => shareSurveyWhatsapp(target)}>
             <MessageCircle /> WhatsApp

@@ -39,11 +39,11 @@ export function OrderContextRow({ f }: { f: FieldReady }) {
   const { order, client } = f;
   return (
     <>
-      <div className="rounded-[22px] border border-hairline bg-white px-4 shadow-soft">
+      <div className="rounded-[22px] border border-hairline bg-surface px-4 shadow-soft">
         <MobileRow
           onClick={() => setOpen(true)}
           leading={
-            <span className="inline-flex size-11 shrink-0 items-center justify-center rounded-[14px] bg-sky-soft text-[#1667e0]">
+            <span className="inline-flex size-11 shrink-0 items-center justify-center rounded-[14px] bg-sky-soft text-azure-fg">
               <ClipboardList className="size-5" />
             </span>
           }
@@ -118,13 +118,13 @@ function OrderMapCard({ f, showCall = true }: { f: FieldReady; showCall?: boolea
       <div className="space-y-5 p-5">
         <div className="flex gap-2">
           {/* 44px tap target on narrow layouts; the wide rail keeps its 40px buttons */}
-          <Button asChild variant="outline" className="h-11 flex-1 rounded-[12px] border-[#dfe3ea] font-semibold @min-[880px]:h-10">
+          <Button asChild variant="outline" className="h-11 flex-1 rounded-[12px] border-line font-semibold @min-[880px]:h-10">
             <a href={mapsLink(site.lat, site.lng)} target="_blank" rel="noreferrer">
               <Navigation /> Cómo llegar
             </a>
           </Button>
           {showCall && order.siteContact.phone && (
-            <Button asChild variant="outline" className="h-11 rounded-[12px] border-[#dfe3ea] px-3.5 @min-[880px]:h-10" aria-label={`Llamar a ${order.siteContact.name}`}>
+            <Button asChild variant="outline" className="h-11 rounded-[12px] border-line px-3.5 @min-[880px]:h-10" aria-label={`Llamar a ${order.siteContact.name}`}>
               <a href={`tel:${order.siteContact.phone.replace(/\s/g, "")}`}>
                 <Phone />
               </a>
@@ -170,7 +170,7 @@ function JornadaSwitcher({ f, onNavigate }: { f: FieldReady; onNavigate?: () => 
               <span
                 className={cn(
                   "inline-flex size-9 shrink-0 items-center justify-center rounded-[11px] text-[13px] font-bold tabular",
-                  current ? "bg-brand-deep text-white" : j.status === "cerrada" ? "bg-[#e7f7f4] text-st-teal" : "bg-[#f2f4f7] text-ink",
+                  current ? "bg-brand-deep text-white" : j.status === "cerrada" ? "bg-teal-soft text-teal-fg" : "bg-tile text-ink",
                 )}
               >
                 {j.status === "cerrada" && !current ? <CircleCheck className="size-4" /> : `J${j.dayIndex}`}
@@ -184,7 +184,7 @@ function JornadaSwitcher({ f, onNavigate }: { f: FieldReady; onNavigate?: () => 
                   {j.status === "en_curso" ? "En curso" : j.status === "cerrada" ? `Cerrada · ${fmtDuration(jornadaMinutes(j))}` : "Pendiente"}
                 </span>
               </span>
-              {current && <span className="text-[11.5px] font-semibold uppercase tracking-[0.08em] text-[#1667e0]">Aquí</span>}
+              {current && <span className="text-[11.5px] font-semibold uppercase tracking-[0.08em] text-azure-fg">Aquí</span>}
             </>
           );
           return (
@@ -224,8 +224,8 @@ function ScopePanel({ f }: { f: FieldReady }) {
         </ul>
       </div>
       {order.specialInstructions && (
-        <div className="rounded-[16px] bg-[#f4f8fd] p-4">
-          <p className="mb-1 flex items-center gap-1.5 text-[12px] font-semibold uppercase tracking-[0.1em] text-[#1667e0]">
+        <div className="rounded-[16px] bg-blue-wash p-4">
+          <p className="mb-1 flex items-center gap-1.5 text-[12px] font-semibold uppercase tracking-[0.1em] text-azure-fg">
             <ScrollText className="size-3.5" /> Instrucciones especiales
           </p>
           <p className="text-[14px] leading-relaxed text-ink">{order.specialInstructions}</p>

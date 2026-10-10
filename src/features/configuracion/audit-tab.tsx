@@ -175,7 +175,7 @@ export function AuditTab() {
               : "Todo cambio guarda usuario, fecha y motivo (doc §3)."
           }
           action={
-            <GatedButton allowed={canExcel} reason={NO_EXCEL} variant="outline" onClick={exportExcel} disabled={!filtered.length} className="border-[#dfe3ea]">
+            <GatedButton allowed={canExcel} reason={NO_EXCEL} variant="outline" onClick={exportExcel} disabled={!filtered.length} className="border-line">
               {canExcel && <FileSpreadsheet className="size-4" />} Excel
             </GatedButton>
           }
@@ -238,12 +238,12 @@ export function AuditTab() {
           <div>
             {groups.map((g) => (
               <section key={g.key} aria-label={fmtLongDay(g.date)} className="mb-2">
-                <div className="sticky top-0 z-10 -mx-2 flex items-center justify-between gap-3 bg-white/90 px-2 py-2.5 backdrop-blur-md">
+                <div className="sticky top-0 z-10 -mx-2 flex items-center justify-between gap-3 bg-surface/90 px-2 py-2.5 backdrop-blur-md">
                   <p className="text-[13px] font-semibold text-ink">
                     {fmtRelativeDay(g.date)}
                     <span className="font-normal text-subtle"> · {fmtLongDay(g.date)}</span>
                   </p>
-                  <span className="rounded-md bg-[#f2f4f7] px-1.5 py-0.5 text-[12px] font-semibold text-subtle tabular">{dayTotals.get(g.key)}</span>
+                  <span className="rounded-md bg-tile px-1.5 py-0.5 text-[12px] font-semibold text-subtle tabular">{dayTotals.get(g.key)}</span>
                 </div>
                 <ol className="relative ml-[19px] border-l border-hairline pb-2">
                   {g.items.map((a, i) => (
@@ -254,7 +254,7 @@ export function AuditTab() {
             ))}
             {filtered.length > limit && (
               <div className="mt-4 flex justify-center">
-                <Button variant="outline" onClick={() => setLimit((l) => l + PAGE)} className="h-11 rounded-[12px] border-[#dfe3ea] px-5 font-semibold">
+                <Button variant="outline" onClick={() => setLimit((l) => l + PAGE)} className="h-11 rounded-[12px] border-line px-5 font-semibold">
                   Ver {Math.min(PAGE, filtered.length - limit)} más · quedan {fmtNum(filtered.length - limit)}
                 </Button>
               </div>
@@ -287,7 +287,7 @@ export function AuditTab() {
                       {u ? (
                         <PersonAvatar name={u.name} initials={u.initials} hue={u.hue} size={32} />
                       ) : (
-                        <span className="inline-flex size-8 items-center justify-center rounded-full bg-[#f1edff] text-st-violet">
+                        <span className="inline-flex size-8 items-center justify-center rounded-full bg-violet-soft text-violet-fg">
                           <Star className="size-4" />
                         </span>
                       )}
@@ -326,7 +326,7 @@ function AuditRow({ entry: a, index, nameOf, folio }: { entry: AuditEntry; index
         {u ? (
           <PersonAvatar name={u.name} initials={u.initials} hue={u.hue} size={32} ring />
         ) : (
-          <span className="inline-flex size-8 items-center justify-center rounded-full bg-[#f1edff] text-st-violet ring-2 ring-white">
+          <span className="inline-flex size-8 items-center justify-center rounded-full bg-violet-soft text-violet-fg ring-2 ring-surface">
             <Star className="size-4" />
           </span>
         )}
@@ -350,7 +350,7 @@ function AuditRow({ entry: a, index, nameOf, folio }: { entry: AuditEntry; index
           {meta.label}
         </SoftBadge>
         {folio && (
-          <Link href={`/ordenes/${folio}?tab=actividad`} className="relative inline-flex h-[22px] items-center rounded-md bg-[#f2f4f7] px-2 text-[11.5px] font-semibold text-ink transition after:absolute after:-inset-x-1.5 after:-inset-y-3 after:content-[''] hover:bg-brand-deep hover:text-white tabular">
+          <Link href={`/ordenes/${folio}?tab=actividad`} className="relative inline-flex h-[22px] items-center rounded-md bg-tile px-2 text-[11.5px] font-semibold text-ink transition after:absolute after:-inset-x-1.5 after:-inset-y-3 after:content-[''] hover:bg-brand-deep hover:text-white tabular">
             {folio}
           </Link>
         )}

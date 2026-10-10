@@ -6,7 +6,8 @@ import L from "leaflet";
 import { Circle, MapContainer, Marker, Polyline, TileLayer, Tooltip, useMap } from "react-leaflet";
 import type { GeoMapProps } from "./geo-map";
 
-const COLORS = { site: "#023a63", checkin: "#2f80ed", checkout: "#12a594", live: "#7ad1f4", alert: "#e5484d" } as const;
+// CSS variables (the pin HTML lives in the page DOM, and SVG paint attributes accept var()), so pins follow the theme.
+const COLORS = { site: "var(--brand)", checkin: "var(--st-blue)", checkout: "var(--st-teal)", live: "var(--sky)", alert: "var(--st-red)" } as const;
 
 function pin(kind: keyof typeof COLORS, label?: string) {
   const color = COLORS[kind];
@@ -19,7 +20,7 @@ function pin(kind: keyof typeof COLORS, label?: string) {
       <div style="position:relative;width:28px;height:28px">
         ${pulse ? `<span style="position:absolute;inset:0;border-radius:999px;background:${color};opacity:.35;animation:ping-soft 2.4s cubic-bezier(0,0,.2,1) infinite"></span>` : ""}
         <span style="position:absolute;inset:6px;border-radius:999px;background:${color};border:3px solid #fff;box-shadow:0 4px 12px rgba(2,58,99,.35)"></span>
-        ${label ? `<span style="position:absolute;left:50%;top:-18px;transform:translateX(-50%);white-space:nowrap;font:600 11px/1 var(--font-geist),system-ui;color:#0e1726;background:#fff;padding:3px 6px;border-radius:6px;box-shadow:0 2px 8px rgba(16,24,40,.15)">${label}</span>` : ""}
+        ${label ? `<span style="position:absolute;left:50%;top:-18px;transform:translateX(-50%);white-space:nowrap;font:600 11px/1 var(--font-geist),system-ui;color:var(--ink);background:var(--surface);padding:3px 6px;border-radius:6px;box-shadow:0 2px 8px rgba(16,24,40,.15)">${label}</span>` : ""}
       </div>`,
   });
 }
@@ -61,8 +62,8 @@ export default function GeoMapInner({ markers, accuracy, zoom = 16, className, i
         subdomains="abcd"
         maxZoom={20}
       />
-      {accuracy && <Circle center={[accuracy.lat, accuracy.lng]} radius={accuracy.radius} pathOptions={{ color: "#2f80ed", weight: 1, fillColor: "#7ad1f4", fillOpacity: 0.18 }} />}
-      {connect && points.length > 1 && <Polyline positions={points} pathOptions={{ color: "#023a63", weight: 2, dashArray: "4 6", opacity: 0.6 }} />}
+      {accuracy && <Circle center={[accuracy.lat, accuracy.lng]} radius={accuracy.radius} pathOptions={{ color: "var(--st-blue)", weight: 1, fillColor: "var(--sky)", fillOpacity: 0.18 }} />}
+      {connect && points.length > 1 && <Polyline positions={points} pathOptions={{ color: "var(--brand)", weight: 2, dashArray: "4 6", opacity: 0.6, className: "pk-route" }} />}
       {markers.map((m, i) => (
         <Marker key={`${m.lat}-${m.lng}-${i}`} position={[m.lat, m.lng]} icon={pin(m.kind ?? "site", m.label)}>
           {m.tooltip && <Tooltip direction="top" offset={[0, -12]}>{m.tooltip}</Tooltip>}

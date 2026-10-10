@@ -96,7 +96,7 @@ function CaseStatusForm({ move, onDone }: { move: CaseMove; onDone: () => void }
       }
     >
       <div className="space-y-5">
-        <div className="rounded-[18px] border border-hairline bg-[#fafbfc] p-4">
+        <div className="rounded-[18px] border border-hairline bg-wash p-4">
           <KeyValues
             rows={[
               { k: "Caso", v: <span className="tabular">{c.folio}</span> },
@@ -138,7 +138,7 @@ function CaseStatusForm({ move, onDone }: { move: CaseMove; onDone: () => void }
           <motion.label
             initial={{ opacity: 0, y: 6 }}
             animate={{ opacity: 1, y: 0 }}
-            className="flex cursor-pointer items-start gap-3 rounded-[16px] bg-[#f4f8fd] p-4 text-[14px]"
+            className="flex cursor-pointer items-start gap-3 rounded-[16px] bg-blue-wash p-4 text-[14px]"
           >
             <Checkbox checked={agreed} onCheckedChange={(v) => setAgreed(v === true)} className="mt-0.5 size-5 rounded-[6px]" />
             <span>

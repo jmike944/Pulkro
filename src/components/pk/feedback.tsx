@@ -22,12 +22,12 @@ export function EmptyState({
     <motion.div
       initial={{ opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
-      className={cn("flex flex-col items-center justify-center rounded-[22px] border border-dashed border-[#d9dfe7] px-6 py-12 text-center", className)}
+      className={cn("flex flex-col items-center justify-center rounded-[22px] border border-dashed border-line-strong px-6 py-12 text-center", className)}
     >
       <div className="relative mb-4">
         <span className="absolute -left-4 -top-2 size-4 rounded-full border border-sky/60 bg-sky-soft animate-float" />
         <span className="absolute -right-3 top-6 size-2.5 rounded-full border border-sky/60 bg-sky-soft animate-float [animation-delay:1.2s]" />
-        <span className="inline-flex size-14 items-center justify-center rounded-[18px] bg-sky-soft text-[#1667e0] [&_svg]:size-6">{icon}</span>
+        <span className="inline-flex size-14 items-center justify-center rounded-[18px] bg-sky-soft text-azure-fg [&_svg]:size-6">{icon}</span>
       </div>
       <p className="font-serif text-[22px] text-ink">{title}</p>
       {children && <div className="mt-1.5 max-w-sm text-[14px] text-subtle">{children}</div>}
@@ -41,7 +41,8 @@ export function Shimmer({ className }: { className?: string }) {
   return <div className={cn("shimmer rounded-[14px]", className)} />;
 }
 
-const SPARK_COLORS = ["#7ad1f4", "#023a63", "#b9c7ff", "#ffffff", "#12a594", "#cfe8fb"];
+// brand/teal as CSS variables so the navy spark stays visible on the dark theme (same values in light)
+const SPARK_COLORS = ["#7ad1f4", "var(--brand)", "#b9c7ff", "#ffffff", "var(--st-teal)", "#cfe8fb"];
 
 /**
  * One-shot celebration burst (soap bubbles + sparkles). Render <Celebrate trigger={n} /> and

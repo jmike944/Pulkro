@@ -54,7 +54,7 @@ export function MobileNav() {
     <>
       <nav
         aria-label="Navegación principal"
-        className="fixed inset-x-0 bottom-0 z-40 bg-sand/92 px-2 pb-[max(10px,env(safe-area-inset-bottom))] pt-2 backdrop-blur-xl lg:hidden print:hidden"
+        className="fixed inset-x-0 bottom-0 z-40 bg-canvas/92 px-2 pb-[max(10px,env(safe-area-inset-bottom))] pt-2 backdrop-blur-xl lg:hidden print:hidden"
       >
         <MobileSyncPill hidden={hideSync} />
         <LayoutGroup id="tabbar">
@@ -77,12 +77,12 @@ export function MobileNav() {
                           key={badge}
                           initial={{ scale: 0.5 }}
                           animate={{ scale: 1 }}
-                          className="absolute -right-2.5 -top-1.5 inline-flex h-[17px] min-w-[17px] items-center justify-center rounded-full bg-st-red px-1 text-[10px] font-bold text-white ring-2 ring-sand"
+                          className="absolute -right-2.5 -top-1.5 inline-flex h-[17px] min-w-[17px] items-center justify-center rounded-full bg-st-red px-1 text-[10px] font-bold text-white ring-2 ring-canvas"
                         >
                           {badge}
                         </motion.span>
                       )}
-                      {t.href === "/" && live && !active && <span className="absolute -right-1 -top-0.5 size-2 animate-pulse rounded-full bg-sky ring-2 ring-sand" />}
+                      {t.href === "/" && live && !active && <span className="absolute -right-1 -top-0.5 size-2 animate-pulse rounded-full bg-sky ring-2 ring-canvas" />}
                     </TabFace>
                   </Link>
                 </li>
@@ -98,7 +98,7 @@ export function MobileNav() {
                 className={TILE}
               >
                 <TabFace icon={Menu} label="Menú" active={menuActive}>
-                  {menuDot && <span className={cn("absolute -right-1.5 -top-0.5 size-2.5 rounded-full bg-st-red ring-2", menuActive ? "ring-white" : "ring-sand")} />}
+                  {menuDot && <span className={cn("absolute -right-1.5 -top-0.5 size-2.5 rounded-full bg-st-red ring-2", menuActive ? "ring-surface" : "ring-canvas")} />}
                 </TabFace>
               </button>
             </li>
@@ -117,17 +117,17 @@ function TabFace({ icon: Icon, label, active, children }: { icon: LucideIcon; la
       {active && (
         <motion.span
           layoutId="tab-tile"
-          className="absolute inset-0 rounded-[16px] bg-white shadow-[0_1px_2px_rgb(16_24_40/0.05),0_8px_18px_-10px_rgb(16_24_40/0.25)]"
+          className="absolute inset-0 rounded-[16px] bg-surface shadow-[0_1px_2px_rgb(16_24_40/0.05),0_8px_18px_-10px_rgb(16_24_40/0.25)]"
           transition={{ type: "spring", stiffness: 520, damping: 38 }}
         />
       )}
       <span className="relative">
         <motion.span animate={active ? { y: [0, -3, 0] } : { y: 0 }} transition={{ duration: 0.35 }} className="block">
-          <Icon className={cn("size-[22px] transition-colors", active ? "text-[#1667e0]" : "text-[#5b6675]")} strokeWidth={1.8} />
+          <Icon className={cn("size-[22px] transition-colors", active ? "text-azure-fg" : "text-ink-muted")} strokeWidth={1.8} />
         </motion.span>
         {children}
       </span>
-      <span className={cn("relative whitespace-nowrap text-[12px] transition-colors", active ? "font-semibold text-ink" : "text-[#5b6675]")}>{label}</span>
+      <span className={cn("relative whitespace-nowrap text-[12px] transition-colors", active ? "font-semibold text-ink" : "text-ink-muted")}>{label}</span>
     </>
   );
 }

@@ -75,7 +75,7 @@ export function whenOf(it: PendingItem, now: Date): When {
   return { text: text.charAt(0).toUpperCase() + text.slice(1), level: waited >= 3 * DAY_MS ? "soon" : "calm" };
 }
 
-export const whenClass = (level: When["level"]) => (level === "late" ? "font-medium text-st-red" : level === "soon" ? "font-medium text-[#b86e00]" : "text-subtle");
+export const whenClass = (level: When["level"]) => (level === "late" ? "font-medium text-red-fg" : level === "soon" ? "font-medium text-amber-fg" : "text-subtle");
 
 /** Oldest-first detail for the "Por tipo" list: a due date for cases, the first start for entradas, otherwise how long the oldest has waited. */
 export function oldestNote(kind: PendingKind, items: PendingItem[], now: Date): string {

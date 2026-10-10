@@ -138,7 +138,7 @@ export function UsersTab() {
                         <div className="min-w-0">
                           <p className="flex items-center gap-2 truncate text-[16px] font-semibold text-ink xl:text-[15px]">
                             <span className="truncate">{u.name}</span>
-                            {isMe && <span className="shrink-0 rounded-md bg-sky-soft px-1.5 py-0.5 text-[10.5px] font-bold tracking-[0.06em] text-[#1667e0]">TÚ</span>}
+                            {isMe && <span className="shrink-0 rounded-md bg-sky-soft px-1.5 py-0.5 text-[10.5px] font-bold tracking-[0.06em] text-azure-fg">TÚ</span>}
                           </p>
                           <p className="truncate text-[13px] text-subtle">
                             {u.title}
@@ -172,13 +172,13 @@ export function UsersTab() {
                           disabled={!canAdmin}
                           onClick={() => dlg.show(u)}
                           aria-label={`Editar a ${u.name}`}
-                          className="size-11 rounded-[12px] border-[#dfe3ea] xl:hidden"
+                          className="size-11 rounded-[12px] border-line xl:hidden"
                         >
                           <Pencil className="size-4" />
                         </Button>
                       </div>
                       <div className="hidden justify-end xl:flex">
-                        <GatedButton allowed={canAdmin} reason={NO_USERS} variant="outline" onClick={() => dlg.show(u)} className="min-w-[84px] border-[#dfe3ea] shadow-[0_1px_2px_rgb(16_24_40/0.05)]">
+                        <GatedButton allowed={canAdmin} reason={NO_USERS} variant="outline" onClick={() => dlg.show(u)} className="min-w-[84px] border-line shadow-[0_1px_2px_rgb(16_24_40/0.05)]">
                           Editar
                         </GatedButton>
                       </div>
@@ -226,7 +226,7 @@ export function UsersTab() {
         }}
       >
         {deactivating && (openOrdersBy.get(deactivating.id) ?? 0) > 0 && (
-          <p className="rounded-[14px] bg-[#fff6e6] px-4 py-3 text-[13.5px] leading-snug text-[#8a5300]">
+          <p className="rounded-[14px] bg-amber-soft px-4 py-3 text-[13.5px] leading-snug text-amber-ink">
             Tiene órdenes abiertas. Reasígnalas desde el detalle de cada orden para que no queden sin supervisor.
           </p>
         )}

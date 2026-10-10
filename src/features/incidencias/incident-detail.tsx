@@ -98,7 +98,7 @@ function DesktopIncident({ incidentId }: { incidentId: string }) {
       </div>
 
       <SheetFooter className="flex-row flex-wrap items-center justify-end gap-2 border-t border-hairline p-4">
-        <Button asChild variant="outline" className="h-11 rounded-[12px] border-[#dfe3ea] px-4 font-semibold">
+        <Button asChild variant="outline" className="h-11 rounded-[12px] border-line px-4 font-semibold">
           <Link href={`/ordenes/${order.folio}?tab=incidencias`}>
             Ver orden <ArrowUpRight />
           </Link>
@@ -209,7 +209,7 @@ function PhoneIncident({
                 <CheckCircle2 /> Marcar como resuelta
               </BigButton>
             ) : (
-              <p className="rounded-[14px] bg-[#f5f7fa] px-4 py-3 text-center text-[13.5px] leading-snug text-subtle">{RESOLVE_REASON}</p>
+              <p className="rounded-[14px] bg-soft px-4 py-3 text-center text-[13.5px] leading-snug text-subtle">{RESOLVE_REASON}</p>
             )
           ) : (
             m.canClose &&
@@ -323,7 +323,7 @@ function Body({ m, wipe = 0, onPreview }: { m: Ready; wipe?: number; onPreview: 
             ))}
           </div>
         ) : (
-          <p className="flex items-center gap-2 rounded-[14px] border border-dashed border-[#d9dfe7] px-4 py-3 text-[13.5px] text-subtle">
+          <p className="flex items-center gap-2 rounded-[14px] border border-dashed border-line-strong px-4 py-3 text-[13.5px] text-subtle">
             <ImageOff className="size-4" /> Sin fotos adjuntas
           </p>
         )}
@@ -333,7 +333,7 @@ function Body({ m, wipe = 0, onPreview }: { m: Ready; wipe?: number; onPreview: 
       <div
         className={cn(
           "relative overflow-hidden rounded-[18px] p-4 transition-colors duration-500",
-          open ? (inc.blocksClosure ? "bg-[#fdf1f1]" : "bg-[#f5f7fa]") : "bg-[#e7f7f4]",
+          open ? (inc.blocksClosure ? "bg-red-wash" : "bg-soft") : "bg-teal-soft",
         )}
       >
         {wipe > 0 && <SqueegeeWipe key={wipe} />}
@@ -348,8 +348,8 @@ function Body({ m, wipe = 0, onPreview }: { m: Ready; wipe?: number; onPreview: 
           >
             <span
               className={cn(
-                "inline-flex size-9 shrink-0 items-center justify-center rounded-[11px] bg-white [&_svg]:size-[18px]",
-                open ? (inc.blocksClosure ? "text-st-red" : "text-subtle") : "text-st-teal",
+                "inline-flex size-9 shrink-0 items-center justify-center rounded-[11px] bg-surface [&_svg]:size-[18px]",
+                open ? (inc.blocksClosure ? "text-red-fg" : "text-subtle") : "text-teal-fg",
               )}
             >
               {open ? inc.blocksClosure ? <Lock /> : <LockOpen /> : <CheckCircle2 />}
@@ -365,7 +365,7 @@ function Body({ m, wipe = 0, onPreview }: { m: Ready; wipe?: number; onPreview: 
                     : "Se documenta en la orden y en el reporte final; no detiene la validación."
                   : `Resuelta el ${fmtDay(inc.resolvedAt ?? inc.createdAt)}. Estado actual de la orden:`}
               </p>
-              <OrderStatusPill status={order.status} className="mt-2.5 bg-white" />
+              <OrderStatusPill status={order.status} className="mt-2.5 bg-surface" />
             </div>
           </motion.div>
         </AnimatePresence>
@@ -422,7 +422,7 @@ function ResolutionForm({ value, onChange }: { value: string; onChange: (v: stri
             onClick={() => onChange(s)}
             className={cn(
               "min-h-11 rounded-[12px] border px-3 py-2 text-left text-[13px] leading-snug transition md:min-h-10",
-              value === s ? "border-ink bg-ink text-white" : "border-hairline bg-white text-ink hover:bg-muted",
+              value === s ? "border-ink bg-ink text-on-ink" : "border-hairline bg-surface text-ink hover:bg-muted",
             )}
           >
             {s}

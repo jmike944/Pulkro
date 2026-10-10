@@ -74,7 +74,7 @@ export function PhotoLightbox({
       <DialogContent
         showCloseButton={false}
         onKeyDown={onKeyDown}
-        className="max-h-[94dvh] gap-0 overflow-y-auto rounded-[26px] p-0 ring-black/5 sm:max-w-[min(1100px,calc(100%-3rem))] lg:grid-cols-[minmax(0,1fr)_340px] lg:overflow-hidden"
+        className="max-h-[94dvh] gap-0 overflow-y-auto rounded-[26px] p-0 ring-edge sm:max-w-[min(1100px,calc(100%-3rem))] lg:grid-cols-[minmax(0,1fr)_340px] lg:overflow-hidden"
       >
         {photo ? (
           <LightboxBody
@@ -220,7 +220,7 @@ function LightboxBody({
         </AnimatePresence>
 
         {!showCompare && (
-          <span className="pointer-events-none absolute left-3.5 top-3.5 inline-flex items-center gap-1.5 rounded-full bg-white/90 px-2.5 py-1 text-[11px] font-bold tracking-[0.08em] text-ink backdrop-blur">
+          <span className="pointer-events-none absolute left-3.5 top-3.5 inline-flex items-center gap-1.5 rounded-full bg-white/90 px-2.5 py-1 text-[11px] font-bold tracking-[0.08em] text-ink backdrop-blur dark:text-on-light">
             <span className={cn("size-1.5 rounded-full", toneDot[kind.tone])} />
             {kind.label.toUpperCase()}
           </span>
@@ -237,7 +237,7 @@ function LightboxBody({
       </div>
 
       {/* metadata */}
-      <aside className="relative min-w-0 bg-white">
+      <aside className="relative min-w-0 bg-surface">
         <div className="p-5 sm:p-6 lg:absolute lg:inset-0 lg:overflow-y-auto">
           <div className="flex flex-wrap items-center gap-2 pr-12">
             <SoftBadge tone={kind.tone}>{kind.label.toUpperCase()}</SoftBadge>
@@ -268,10 +268,10 @@ function LightboxBody({
           {showCompare && <p className="mt-2 text-[12.5px] text-subtle">Arrastra el jalador para comparar.</p>}
 
           <KeyValues className="mt-6" rows={rows} />
-          {photo.note && <p className="mt-5 rounded-[14px] bg-[#f5f7fa] p-3.5 text-[13.5px] leading-relaxed text-ink">{photo.note}</p>}
+          {photo.note && <p className="mt-5 rounded-[14px] bg-soft p-3.5 text-[13.5px] leading-relaxed text-ink">{photo.note}</p>}
 
           {order && (
-            <Button asChild variant="outline" className="mt-6 h-10 rounded-[12px] border-[#dfe3ea] px-4 font-semibold">
+            <Button asChild variant="outline" className="mt-6 h-10 rounded-[12px] border-line px-4 font-semibold">
               <Link href={`/ordenes/${order.folio}?tab=evidencia`}>
                 Evidencia de la orden <ArrowUpRight />
               </Link>
@@ -285,7 +285,7 @@ function LightboxBody({
         <button
           type="button"
           aria-label="Cerrar"
-          className="absolute right-3 top-3 z-10 inline-flex size-11 items-center justify-center rounded-full bg-white/95 text-ink shadow-[0_2px_10px_rgb(16_24_40/0.18)] transition hover:bg-white lg:size-10"
+          className="absolute right-3 top-3 z-10 inline-flex size-11 items-center justify-center rounded-full bg-surface/95 text-ink shadow-[0_2px_10px_rgb(16_24_40/0.18)] transition hover:bg-surface dark:bg-tile dark:ring-1 dark:ring-edge-strong dark:hover:bg-well lg:size-10"
         >
           <X className="size-[18px]" />
         </button>
@@ -304,7 +304,7 @@ function StageButton({ side, onClick, label }: { side: "left" | "right"; onClick
       whileHover={{ scale: 1.06 }}
       whileTap={{ scale: 0.94 }}
       className={cn(
-        "absolute top-1/2 z-[2] inline-flex size-11 -translate-y-1/2 items-center justify-center rounded-full bg-white/90 text-ink shadow-[0_6px_20px_-6px_rgb(0_0_0/0.45)] backdrop-blur",
+        "absolute top-1/2 z-[2] inline-flex size-11 -translate-y-1/2 items-center justify-center rounded-full bg-white/90 text-ink shadow-[0_6px_20px_-6px_rgb(0_0_0/0.45)] backdrop-blur dark:text-on-light",
         side === "left" ? "left-3" : "right-3",
       )}
     >

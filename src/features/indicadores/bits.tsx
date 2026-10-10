@@ -53,7 +53,7 @@ export function DeltaChip({
   label?: string;
 }) {
   if (delta === null || !Number.isFinite(delta)) {
-    return <span className={cn("inline-flex h-7 items-center rounded-[8px] bg-[#f2f4f7] px-2 text-[12.5px] font-medium text-subtle", className)}>{label ?? "Sin comparativo"}</span>;
+    return <span className={cn("inline-flex h-7 items-center rounded-[8px] bg-tile px-2 text-[12.5px] font-medium text-subtle", className)}>{label ?? "Sin comparativo"}</span>;
   }
   const zero = Math.abs(delta) < 0.005;
   const neutral = Math.abs(delta) < tolerance;
@@ -63,7 +63,7 @@ export function DeltaChip({
     <span
       className={cn(
         "inline-flex h-7 items-center gap-1.5 rounded-[8px] px-2 text-[13px] font-semibold tabular",
-        good === null ? "bg-[#f2f4f7] text-subtle" : good ? "bg-[#e6f0fd] text-[#1667e0]" : "bg-[#fdeeee] text-st-red",
+        good === null ? "bg-tile text-subtle" : good ? "bg-blue-tint text-azure-fg" : "bg-red-soft text-red-fg",
         className,
       )}
     >
@@ -82,14 +82,14 @@ export function Stars({ value, size = 16, className }: { value: number; size?: n
         const fill = Math.max(0, Math.min(1, value - i));
         return (
           <span key={i} className="relative inline-flex" style={{ width: size, height: size }}>
-            <Star className="absolute inset-0 text-[#dfe5ee]" style={{ width: size, height: size }} fill="currentColor" strokeWidth={0} />
+            <Star className="absolute inset-0 text-track" style={{ width: size, height: size }} fill="currentColor" strokeWidth={0} />
             <motion.span
               initial={{ width: 0 }}
               animate={{ width: `${fill * 100}%` }}
               transition={{ duration: 0.5, delay: 0.3 + i * 0.08 }}
               className="absolute inset-y-0 left-0 overflow-hidden"
             >
-              <Star className="text-[#f0a020]" style={{ width: size, height: size }} fill="currentColor" strokeWidth={0} />
+              <Star className="text-st-amber" style={{ width: size, height: size }} fill="currentColor" strokeWidth={0} />
             </motion.span>
           </span>
         );
@@ -103,12 +103,12 @@ export function ScoreLine({ label, value, max = 5, delay = 0 }: { label: string;
   return (
     <div className="grid grid-cols-[96px_minmax(0,1fr)_36px] items-center gap-3">
       <span className="truncate text-[13.5px] text-subtle">{label}</span>
-      <span className="h-[6px] overflow-hidden rounded-full bg-[#eef1f5]">
+      <span className="h-[6px] overflow-hidden rounded-full bg-well">
         <motion.span
           initial={{ width: 0 }}
           animate={{ width: `${Math.max(0, Math.min(1, value / max)) * 100}%` }}
           transition={{ duration: 0.9, ease: [0.22, 1, 0.36, 1], delay: 0.2 + delay }}
-          className="block h-full rounded-full bg-[#1667e0]"
+          className="block h-full rounded-full bg-azure"
         />
       </span>
       <span className="text-right text-[13.5px] font-semibold text-ink tabular">{value ? value.toFixed(1) : "—"}</span>

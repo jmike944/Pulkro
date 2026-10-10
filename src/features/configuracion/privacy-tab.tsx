@@ -74,7 +74,7 @@ export function PrivacyTab() {
   return (
     <div className="grid gap-10 xl:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)] xl:gap-0">
       <article className="min-w-0 xl:border-r xl:border-hairline xl:pr-10">
-        <div className="relative overflow-hidden rounded-[24px] border border-hairline bg-white shadow-soft">
+        <div className="relative overflow-hidden rounded-[24px] border border-hairline bg-surface shadow-soft">
           <div className="bg-aurora-frame grain relative px-5 pb-6 pt-6 sm:px-8 sm:pt-8">
             <div className="relative z-[2]">
               <div className="flex flex-wrap items-center gap-2">
@@ -89,7 +89,7 @@ export function PrivacyTab() {
                 <Button onClick={copy} className="h-11 rounded-[12px] px-4 font-semibold">
                   <Copy className="size-4" /> Copiar texto
                 </Button>
-                <Button variant="outline" onClick={download} className="h-11 rounded-[12px] border-white bg-white/80 px-4 font-semibold">
+                <Button variant="outline" onClick={download} className="h-11 rounded-[12px] border-surface bg-surface/80 px-4 font-semibold">
                   <Download className="size-4" /> Descargar .txt
                 </Button>
               </div>
@@ -106,7 +106,7 @@ export function PrivacyTab() {
                   transition={{ duration: 0.45, ease: EASE }}
                   className="grid gap-x-4 sm:grid-cols-[32px_minmax(0,1fr)]"
                 >
-                  <span className="mb-1 font-serif text-[18px] text-[#98a2b3] tabular sm:mb-0 sm:pt-0.5">{String(i + 1).padStart(2, "0")}</span>
+                  <span className="mb-1 font-serif text-[18px] text-faint tabular sm:mb-0 sm:pt-0.5">{String(i + 1).padStart(2, "0")}</span>
                   <div className="min-w-0">
                     <h3 className="flex flex-wrap items-center gap-2 text-[16px] font-semibold text-ink">
                       {s.title}
@@ -147,7 +147,7 @@ export function PrivacyTab() {
                 transition={{ delay: 0.1 + i * 0.05, duration: 0.4, ease: EASE }}
                 className="flex items-start gap-3 border-b border-hairline py-3.5 last:border-0"
               >
-                <span className="inline-flex size-9 shrink-0 items-center justify-center rounded-[11px] bg-[#e3f1fd] text-[#1667e0] [&_svg]:size-[17px]">{d.icon}</span>
+                <span className="inline-flex size-9 shrink-0 items-center justify-center rounded-[11px] bg-blue-tint text-azure-fg [&_svg]:size-[17px]">{d.icon}</span>
                 <div className="min-w-0 flex-1">
                   <p className="flex items-baseline justify-between gap-3">
                     <span className="text-[14.5px] font-semibold text-ink">{d.title}</span>
@@ -165,7 +165,7 @@ export function PrivacyTab() {
           <ul className="space-y-3">
             {CONSENT.map((c, i) => (
               <li key={c} className="flex gap-3 text-[14px] leading-relaxed text-ink/80">
-                <span className="mt-0.5 inline-flex size-6 shrink-0 items-center justify-center rounded-full bg-[#f2f4f7] text-[12px] font-semibold text-ink tabular">{i + 1}</span>
+                <span className="mt-0.5 inline-flex size-6 shrink-0 items-center justify-center rounded-full bg-tile text-[12px] font-semibold text-ink tabular">{i + 1}</span>
                 {c}
               </li>
             ))}

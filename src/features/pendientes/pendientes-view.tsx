@@ -107,7 +107,7 @@ export function PendientesView() {
                   <CalendarDays /> Ver agenda de mañana
                 </Link>
               </Button>
-              <Button asChild variant="outline" className="h-11 rounded-[12px] border-[#dfe3ea] px-4 font-semibold">
+              <Button asChild variant="outline" className="h-11 rounded-[12px] border-line px-4 font-semibold">
                 <Link href="/ordenes">Ver órdenes abiertas</Link>
               </Button>
             </div>

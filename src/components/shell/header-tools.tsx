@@ -25,11 +25,11 @@ export function HeaderTools() {
     <div className="grid grid-cols-[auto_auto] items-center justify-items-end gap-x-2.5 gap-y-2 sm:flex sm:gap-2.5 lg:gap-3">
       <button
         onClick={() => setCommandOpen(true)}
-        className="hidden h-12 w-[min(420px,32vw)] items-center gap-3 rounded-[16px] border border-hairline bg-white px-4 text-left text-[15px] text-[#98a2b3] shadow-[0_1px_2px_rgb(16_24_40/0.03)] transition hover:border-[#d5dbe3] lg:flex"
+        className="hidden h-12 w-[min(420px,32vw)] items-center gap-3 rounded-[16px] border border-hairline bg-surface px-4 text-left text-[15px] text-faint shadow-[0_1px_2px_rgb(16_24_40/0.03)] transition hover:border-line-strong lg:flex"
       >
         <Search className="size-[18px] text-subtle" />
         <span className="flex-1 truncate">Buscar órdenes, clientes, folios</span>
-        <Kbd className="bg-[#f2f4f7] text-[11px]">⌘K</Kbd>
+        <Kbd className="bg-tile text-[11px]">⌘K</Kbd>
       </button>
       <SearchButton className="order-1 sm:order-none" />
       <MobileUnitButton phoneScopedOnly className="order-3 col-span-2 sm:order-none" />
@@ -86,7 +86,7 @@ export function ProfileAvatar({ className }: { className?: string }) {
     >
       {user.initials}
       {(offline || pending.length > 0) && (
-        <span className={cn("absolute right-0 top-0 size-3 rounded-full ring-2 ring-white", offline ? "bg-st-amber" : "bg-sky animate-pulse")} />
+        <span className={cn("absolute right-0 top-0 size-3 rounded-full ring-2 ring-surface", offline ? "bg-st-amber" : "bg-sky animate-pulse")} />
       )}
     </Link>
   );

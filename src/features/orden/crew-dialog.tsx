@@ -79,7 +79,7 @@ function CrewForm({ jornadaId, scope, onDone }: { jornadaId?: string; scope: str
         suggestions={["Ausencia de personal", "Reforzar cuadrilla", "Especialidad requerida", "Cambio de turno"]}
       />
       <DialogActions hint={hint}>
-        <Button variant="outline" onClick={onDone} className="h-11 rounded-[12px] border-[#dfe3ea] px-5 font-semibold">
+        <Button variant="outline" onClick={onDone} className="h-11 rounded-[12px] border-line px-5 font-semibold">
           Cancelar
         </Button>
         <Button onClick={save} disabled={!valid} className="h-11 rounded-[12px] px-5 font-semibold">

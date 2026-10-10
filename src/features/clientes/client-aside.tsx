@@ -71,7 +71,7 @@ export function ClientAside({ stats, surveys }: { stats: ClientStats; surveys: S
                 target="_blank"
                 rel="noopener noreferrer"
                 aria-label={`Cómo llegar a ${s.name}`}
-                className="inline-flex size-10 shrink-0 items-center justify-center rounded-[12px] bg-[#f2f4f7] text-ink transition hover:bg-brand-deep hover:text-white"
+                className="inline-flex size-10 shrink-0 items-center justify-center rounded-[12px] bg-tile text-ink transition hover:bg-brand-deep hover:text-white"
               >
                 <Navigation className="size-4" />
               </a>
@@ -91,11 +91,11 @@ export function ClientAside({ stats, surveys }: { stats: ClientStats; surveys: S
                 initial={{ opacity: 0, x: -6 }}
                 animate={{ opacity: 1, x: 0 }}
                 transition={{ duration: 0.4, ease: EASE, delay: 0.1 + i * 0.06 }}
-                className="flex items-start gap-3 rounded-[16px] bg-[#f6f8fa] p-3.5"
+                className="flex items-start gap-3 rounded-[16px] bg-soft p-3.5"
               >
-                <ScrollText className="mt-0.5 size-4 shrink-0 text-[#1667e0]" />
+                <ScrollText className="mt-0.5 size-4 shrink-0 text-azure-fg" />
                 <span className="min-w-0 flex-1 text-[14px] leading-snug text-ink">{text}</span>
-                <span className="shrink-0 rounded-md bg-white px-1.5 py-0.5 text-[12px] font-semibold text-subtle tabular">
+                <span className="shrink-0 rounded-md bg-surface px-1.5 py-0.5 text-[12px] font-semibold text-subtle tabular">
                   {/* no hover on touch: spell the count out below lg, keep the compact ×n (with its tooltip) on desktop */}
                   <span className="lg:hidden">{n === 1 ? "1 orden" : `${n} órdenes`}</span>
                   <span className="max-lg:hidden" title={n === 1 ? "En 1 orden" : `En ${n} órdenes`}>
@@ -106,7 +106,7 @@ export function ClientAside({ stats, surveys }: { stats: ClientStats; surveys: S
             ))}
           </ul>
         ) : (
-          <p className="rounded-[16px] bg-[#f6f8fa] px-4 py-4 text-[14px] text-subtle">Sin instrucciones especiales registradas.</p>
+          <p className="rounded-[16px] bg-soft px-4 py-4 text-[14px] text-subtle">Sin instrucciones especiales registradas.</p>
         )}
       </section>
 
@@ -116,7 +116,7 @@ export function ClientAside({ stats, surveys }: { stats: ClientStats; surveys: S
         {reasons.length ? (
           <BarList showCount items={reasons.map((r) => ({ label: r.label, value: r.value, pct: r.pct }))} />
         ) : (
-          <p className="rounded-[16px] bg-[#e7f7f4] px-4 py-4 text-[14px] text-st-teal">Sin quejas registradas. ¡Impecable!</p>
+          <p className="rounded-[16px] bg-teal-soft px-4 py-4 text-[14px] text-teal-fg">Sin quejas registradas. ¡Impecable!</p>
         )}
       </section>
 
@@ -126,7 +126,7 @@ export function ClientAside({ stats, surveys }: { stats: ClientStats; surveys: S
         {comments.length ? (
           <ul className="space-y-3">
             {comments.map((s) => (
-              <li key={s.id} className="rounded-[20px] border border-hairline bg-white p-4 shadow-[0_1px_2px_rgb(16_24_40/0.04)]">
+              <li key={s.id} className="rounded-[20px] border border-hairline bg-surface p-4 shadow-[0_1px_2px_rgb(16_24_40/0.04)]">
                 <div className="flex items-center justify-between gap-3">
                   <Stars value={s.answers!.overall} size={14} />
                   <Eyebrow className="text-[11px]">{fmtDay(s.respondedAt!)}</Eyebrow>
@@ -140,7 +140,7 @@ export function ClientAside({ stats, surveys }: { stats: ClientStats; surveys: S
             ))}
           </ul>
         ) : (
-          <p className="rounded-[16px] bg-[#f6f8fa] px-4 py-4 text-[14px] text-subtle">Aún no hay comentarios de encuesta.</p>
+          <p className="rounded-[16px] bg-soft px-4 py-4 text-[14px] text-subtle">Aún no hay comentarios de encuesta.</p>
         )}
       </section>
     </div>

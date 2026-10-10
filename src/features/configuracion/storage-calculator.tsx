@@ -48,7 +48,7 @@ export function StorageCalculator() {
   const yearGb = monthGb * 12;
 
   return (
-    <div className="rounded-[22px] border border-hairline bg-white p-5 shadow-soft sm:p-6">
+    <div className="rounded-[22px] border border-hairline bg-surface p-5 shadow-soft sm:p-6">
       <div className="flex items-start justify-between gap-3">
         <div className="flex items-center gap-3">
           <IconTile>
@@ -72,12 +72,12 @@ export function StorageCalculator() {
             <p className="mt-2 text-[12.5px] text-subtle">{SIZE_HINT[size]}</p>
           </div>
         </div>
-        <div className="flex flex-col justify-between gap-4 rounded-[18px] bg-[#f4f8fd] p-5">
+        <div className="flex flex-col justify-between gap-4 rounded-[18px] bg-blue-wash p-5">
           <div>
             <p className="text-[13px] text-subtle">Fotos por mes</p>
             <AnimatedNumber value={monthGb} format={{ maximumFractionDigits: 1, minimumFractionDigits: 1 }} suffix=" GB" className="text-[40px] font-medium leading-none tracking-[-0.04em] text-ink" />
           </div>
-          <div className="grid grid-cols-2 gap-3 border-t border-[#dbe7f5] pt-4">
+          <div className="grid grid-cols-2 gap-3 border-t border-blue-mid pt-4">
             <div>
               <p className="text-[12.5px] text-subtle">Al año</p>
               <AnimatedNumber value={yearGb} format={{ maximumFractionDigits: 0 }} suffix=" GB" className="text-[20px] font-medium tracking-[-0.02em] text-ink" />
@@ -123,8 +123,8 @@ function Slider({
         </span>
       </span>
       <span className="relative mt-1 block h-10">
-        <span aria-hidden className="absolute inset-x-0 top-1/2 h-[6px] -translate-y-1/2 rounded-full bg-[#eef1f5]" />
-        <span aria-hidden className="absolute left-0 top-1/2 h-[6px] -translate-y-1/2 rounded-full bg-[#1667e0]" style={{ width: `${pct}%` }} />
+        <span aria-hidden className="absolute inset-x-0 top-1/2 h-[6px] -translate-y-1/2 rounded-full bg-well" />
+        <span aria-hidden className="absolute left-0 top-1/2 h-[6px] -translate-y-1/2 rounded-full bg-azure" style={{ width: `${pct}%` }} />
         <input
           type="range"
           min={min}
@@ -132,7 +132,7 @@ function Slider({
           step={step}
           value={value}
           onChange={(e) => onChange(Number(e.target.value))}
-          className="absolute inset-0 h-10 w-full cursor-pointer appearance-none bg-transparent outline-none [&::-moz-range-thumb]:size-5 [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:border-[3px] [&::-moz-range-thumb]:border-white [&::-moz-range-thumb]:bg-brand-deep [&::-moz-range-track]:bg-transparent [&::-webkit-slider-thumb]:size-[22px] [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:border-[3px] [&::-webkit-slider-thumb]:border-white [&::-webkit-slider-thumb]:bg-brand-deep [&::-webkit-slider-thumb]:shadow-[0_2px_8px_rgb(2_58_99/0.4)]"
+          className="absolute inset-0 h-10 w-full cursor-pointer appearance-none bg-transparent outline-none [&::-moz-range-thumb]:size-5 [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:border-[3px] [&::-moz-range-thumb]:border-surface [&::-moz-range-thumb]:bg-brand-deep [&::-moz-range-track]:bg-transparent [&::-webkit-slider-thumb]:size-[22px] [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:border-[3px] [&::-webkit-slider-thumb]:border-surface [&::-webkit-slider-thumb]:bg-brand-deep [&::-webkit-slider-thumb]:shadow-[0_2px_8px_rgb(2_58_99/0.4)]"
         />
       </span>
     </label>

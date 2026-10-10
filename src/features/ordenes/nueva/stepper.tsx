@@ -49,9 +49,9 @@ export function Stepper({
               onClick={() => onSelect(i)}
               className="relative h-10 disabled:cursor-not-allowed"
             >
-              <span className="absolute inset-x-0 top-1/2 h-[6px] -translate-y-1/2 overflow-hidden rounded-full bg-[#e9edf2]">
+              <span className="absolute inset-x-0 top-1/2 h-[6px] -translate-y-1/2 overflow-hidden rounded-full bg-press">
                 <motion.span
-                  className="absolute inset-y-0 left-0 rounded-full bg-[#1667e0]"
+                  className="absolute inset-y-0 left-0 rounded-full bg-azure"
                   initial={false}
                   animate={{ width: i < current || done[i] ? "100%" : i === current ? "45%" : "0%" }}
                   transition={{ duration: 0.5, ease: EASE }}
@@ -66,7 +66,7 @@ export function Stepper({
       </div>
 
       {/* tablet / desktop */}
-      <ol className="hidden items-center gap-2 rounded-[20px] border border-hairline bg-[#fbfcfd] p-1.5 sm:flex" aria-label="Pasos">
+      <ol className="hidden items-center gap-2 rounded-[20px] border border-hairline bg-wash p-1.5 sm:flex" aria-label="Pasos">
         {STEPS.map((s, i) => {
           const active = i === current;
           const complete = done[i] && !active;
@@ -80,20 +80,20 @@ export function Stepper({
                 aria-current={active ? "step" : undefined}
                 className={cn(
                   "relative flex h-12 min-w-0 flex-1 items-center gap-2.5 rounded-[15px] px-2.5 text-left outline-none transition-colors focus-visible:ring-3 focus-visible:ring-ring/50 disabled:cursor-not-allowed",
-                  !active && can && "hover:bg-white/80",
+                  !active && can && "hover:bg-surface/80",
                 )}
               >
                 {active && (
                   <motion.span
                     layoutId="step-pill"
-                    className="absolute inset-0 rounded-[15px] bg-white shadow-[0_1px_2px_rgb(16_24_40/0.06),0_10px_24px_-14px_rgb(2_58_99/0.35)] ring-1 ring-[#e3eaf3]"
+                    className="absolute inset-0 rounded-[15px] bg-surface shadow-[0_1px_2px_rgb(16_24_40/0.06),0_10px_24px_-14px_rgb(2_58_99/0.35)] ring-1 ring-line"
                     transition={spring}
                   />
                 )}
                 <span
                   className={cn(
                     "relative inline-flex size-7 shrink-0 items-center justify-center rounded-full text-[13px] font-semibold tabular transition-colors duration-300",
-                    active ? "bg-brand-deep text-white" : complete ? "bg-[#1667e0] text-white" : "bg-[#eef1f5] text-subtle",
+                    active ? "bg-brand-deep text-white" : complete ? "bg-azure text-white" : "bg-well text-subtle",
                   )}
                 >
                   {complete ? (
@@ -112,9 +112,9 @@ export function Stepper({
                 </span>
               </button>
               {i < STEPS.length - 1 && (
-                <span aria-hidden className="relative hidden h-[3px] w-8 shrink-0 overflow-hidden rounded-full bg-[#e5e9ef] xl:block 2xl:w-10">
+                <span aria-hidden className="relative hidden h-[3px] w-8 shrink-0 overflow-hidden rounded-full bg-track xl:block 2xl:w-10">
                   <motion.span
-                    className="absolute inset-y-0 left-0 rounded-full bg-[#1667e0]"
+                    className="absolute inset-y-0 left-0 rounded-full bg-azure"
                     initial={false}
                     animate={{ width: i < current ? "100%" : "0%" }}
                     transition={{ duration: 0.5, ease: EASE }}

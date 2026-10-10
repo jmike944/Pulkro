@@ -78,7 +78,7 @@ export function FlowChart() {
         <button
           type="button"
           onClick={togglePlay}
-          className="relative inline-flex h-12 items-center justify-center gap-2 overflow-hidden rounded-[14px] bg-brand-deep px-4 text-[14px] font-semibold text-white shadow-[0_10px_24px_-12px_rgb(7_36_63/0.7)] transition hover:bg-[#0b2f52] max-md:w-full md:h-11"
+          className="relative inline-flex h-12 items-center justify-center gap-2 overflow-hidden rounded-[14px] bg-brand-deep px-4 text-[14px] font-semibold text-white shadow-[0_10px_24px_-12px_rgb(7_36_63/0.7)] transition hover:bg-brand-hover max-md:w-full md:h-11"
         >
           {playing ? <Pause className="size-4 fill-white" /> : <Play className="size-4 fill-white" />}
           {playing ? "Pausar recorrido" : selected > 1 && selected < 15 ? "Continuar recorrido" : "Ver recorrido"}
@@ -203,9 +203,10 @@ function Serpentine({ selected, onSelect }: { selected: number; onSelect: (n: nu
           <svg aria-hidden className="pointer-events-none absolute inset-0 z-0 overflow-visible" width={geo.w} height={geo.h} viewBox={`0 0 ${geo.w} ${geo.h}`}>
             <defs>
               <linearGradient id={`${uid}-line`} x1="0" y1="0" x2={geo.w} y2={geo.h} gradientUnits="userSpaceOnUse">
-                <stop offset="0" stopColor="#023a63" stopOpacity="0.55" />
-                <stop offset="0.55" stopColor="#1667e0" stopOpacity="0.55" />
-                <stop offset="1" stopColor="#023a63" stopOpacity="0.6" />
+                {/* navy → azure on the light aurora; sky → periwinkle on the dark one (CSS-driven, so it follows the theme) */}
+                <stop offset="0" stopOpacity="0.55" className="[stop-color:var(--brand)] dark:[stop-color:var(--sky)]" />
+                <stop offset="0.55" stopOpacity="0.55" className="[stop-color:var(--azure)] dark:[stop-color:var(--chart-4)]" />
+                <stop offset="1" stopOpacity="0.6" className="[stop-color:var(--brand)] dark:[stop-color:var(--sky)]" />
               </linearGradient>
               <marker id={`${uid}-arrow`} viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
                 <path d="M 0 0 L 10 5 L 0 10 z" fill="#d48806" />
@@ -276,12 +277,12 @@ function Serpentine({ selected, onSelect }: { selected: number; onSelect: (n: nu
                 animate={{ opacity: 1 }}
                 transition={{ delay: nodeDelay(ch.n) + 0.18, duration: 0.3 }}
               >
-                <circle cx={ch.x} cy={ch.y} r={5.5} fill="white" fillOpacity={0.95} />
+                <circle cx={ch.x} cy={ch.y} r={5.5} className="fill-surface" fillOpacity={0.95} />
                 <path
                   d={`M ${ch.x - 1.5} ${ch.y - 2.75} L ${ch.x + 1.75} ${ch.y} L ${ch.x - 1.5} ${ch.y + 2.75}`}
                   transform={`rotate(${ch.rot} ${ch.x} ${ch.y})`}
                   fill="none"
-                  stroke="#023a63"
+                  className="stroke-brand dark:stroke-brand-ink"
                   strokeWidth={1.75}
                   strokeLinecap="round"
                   strokeLinejoin="round"
@@ -339,7 +340,7 @@ function FlowNode({
       className={cn(
         "relative z-10 flex min-h-[84px] min-w-0 flex-col rounded-[18px] p-3 text-left outline-none focus-visible:ring-3 focus-visible:ring-sky/70 xl:p-3.5",
         decision
-          ? "border border-[#f3c97a] bg-[#fff7e8]/95 shadow-[0_10px_24px_-16px_rgb(184_110_0/0.6)] backdrop-blur-md"
+          ? "border border-amber-line-strong bg-amber-soft/95 shadow-[0_10px_24px_-16px_rgb(184_110_0/0.6)] backdrop-blur-md"
           : "glass-card",
       )}
     >
@@ -347,13 +348,13 @@ function FlowNode({
         <motion.span
           layoutId={`${layoutKey}-selected`}
           aria-hidden
-          className="absolute -inset-[4px] rounded-[22px] ring-2 ring-brand-deep"
+          className="absolute -inset-[4px] rounded-[22px] ring-2 ring-brand-deep dark:ring-sky"
           transition={{ type: "spring", stiffness: 520, damping: 38 }}
         />
       )}
       <span className="flex items-center gap-2 text-[11.5px] font-semibold text-subtle">
-        <span className={cn("tabular", decision ? "text-[#b86e00]" : "text-ink")}>{pad2(s.n)}</span>
-        {decision ? <GitBranch className="size-3.5 text-[#b86e00]" /> : <span className={cn("size-[6px] rounded-full", toneDot[FLOW_ROLE_TONE[s.role]])} />}
+        <span className={cn("tabular", decision ? "text-amber-fg" : "text-ink")}>{pad2(s.n)}</span>
+        {decision ? <GitBranch className="size-3.5 text-amber-fg" /> : <span className={cn("size-[6px] rounded-full", toneDot[FLOW_ROLE_TONE[s.role]])} />}
         <span className="truncate">{ROLE_SHORT[s.role] ?? s.role}</span>
       </span>
       <span className="mt-1.5 text-[13px] font-medium leading-snug text-ink xl:text-[14px]">{s.title}</span>
@@ -369,7 +370,7 @@ function BranchChips({ branches, className }: { branches: NonNullable<FlowStep["
       {branches.map((b) => (
         <span
           key={b.label}
-          className={cn("inline-flex h-[20px] items-center rounded-md px-1.5 text-[10.5px] font-bold tabular", b.label === "Sí" ? "bg-[#dcf4ef] text-st-teal" : "bg-white text-[#b86e00] ring-1 ring-[#f3c97a]")}
+          className={cn("inline-flex h-[20px] items-center rounded-md px-1.5 text-[10.5px] font-bold tabular", b.label === "Sí" ? "bg-teal-tint text-teal-fg" : "bg-surface text-amber-fg ring-1 ring-amber-line-strong")}
         >
           {b.label} → {pad2(b.to)}
         </span>
@@ -421,7 +422,7 @@ function FlowRail({ selected, playing, onPick }: { selected: number; playing: bo
                   whileInView={{ opacity: 1, y: 0 }}
                   viewport={{ once: true, margin: "-20px" }}
                   transition={{ duration: 0.35, ease: EASE, delay: i * 0.04 }}
-                  className={cn("overflow-hidden rounded-[18px]", decision ? "border border-[#f3c97a] bg-[#fff7e8]" : "glass-card")}
+                  className={cn("overflow-hidden rounded-[18px]", decision ? "border border-amber-line-strong bg-amber-soft" : "glass-card")}
                 >
                   <button
                     type="button"
@@ -435,7 +436,7 @@ function FlowRail({ selected, playing, onPick }: { selected: number; playing: bo
                     <span
                       className={cn(
                         "inline-flex size-9 shrink-0 items-center justify-center rounded-full text-[13px] font-semibold tabular",
-                        decision ? "bg-[#ffe7bd] text-[#8a5300]" : isOpen ? "bg-brand-deep text-white" : "bg-[#eef3f9] text-ink",
+                        decision ? "bg-amber-mid text-amber-ink" : isOpen ? "bg-brand-deep text-white" : "bg-well text-ink",
                       )}
                     >
                       {pad2(s.n)}
@@ -461,7 +462,7 @@ function FlowRail({ selected, playing, onPick }: { selected: number; playing: bo
                         transition={{ duration: 0.3, ease: EASE }}
                         className="overflow-hidden"
                       >
-                        <div className="border-t border-black/5 px-3.5 pb-4 pt-3">
+                        <div className="border-t border-edge px-3.5 pb-4 pt-3">
                           <FlowDetail step={s} onSelect={jumpTo} compact />
                         </div>
                       </motion.div>

@@ -36,7 +36,7 @@ export function VersionsList({
 }) {
   if (!reports.length)
     return (
-      <p className={cn("rounded-[16px] border border-dashed border-[#d9dfe7] px-4 py-5 text-center text-[14px] text-subtle", className)}>
+      <p className={cn("rounded-[16px] border border-dashed border-line-strong px-4 py-5 text-center text-[14px] text-subtle", className)}>
         Aún no hay versiones. La primera se crea al generar el PDF.
       </p>
     );
@@ -47,7 +47,7 @@ export function VersionsList({
           <span
             className={cn(
               "inline-flex size-10 shrink-0 items-center justify-center rounded-[12px] text-[13px] font-bold tabular",
-              i === 0 ? "bg-brand-deep text-white" : "bg-[#f2f4f7] text-subtle",
+              i === 0 ? "bg-brand-deep text-white" : "bg-tile text-subtle",
             )}
           >
             v{r.version}
@@ -71,7 +71,7 @@ export function VersionsList({
               disabled={!!downloadReason || busyId === r.id}
               onClick={() => onDownload(r)}
               aria-label={`Descargar PDF versión ${r.version}`}
-              className="size-11 rounded-[12px] border-[#dfe3ea] lg:size-10"
+              className="size-11 rounded-[12px] border-line lg:size-10"
             >
               {busyId === r.id ? <LoaderCircle className="animate-spin" /> : <Download />}
             </Button>
@@ -89,7 +89,7 @@ export function ShareHistory({ reports, users, className }: { reports: Report[];
     .sort((a, b) => b.s.at.localeCompare(a.s.at));
   if (!items.length)
     return (
-      <div className={cn("flex gap-3 rounded-[16px] bg-[#f4f8fd] p-4 text-[14px] leading-relaxed text-ink", className)}>
+      <div className={cn("flex gap-3 rounded-[16px] bg-blue-wash p-4 text-[14px] leading-relaxed text-ink", className)}>
         <IconTile>
           <Send />
         </IconTile>
@@ -124,7 +124,7 @@ function ShareRow({ s, version, by }: { s: ShareAttempt; version: number; by?: U
         <p className="mt-0.5 text-[13px] text-subtle">
           v{version} · inició {shortName(by)}
         </p>
-        <p className="mt-1.5 flex items-start gap-1.5 text-[12.5px] leading-snug text-[#8a5300]">
+        <p className="mt-1.5 flex items-start gap-1.5 text-[12.5px] leading-snug text-amber-ink">
           <Info className="mt-px size-3.5 shrink-0" />
           {s.note}
         </p>

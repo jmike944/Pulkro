@@ -44,7 +44,7 @@ export function SatisfactionCard({
             <p className="text-[13.5px] text-subtle">Encuestas enviadas en {win.phrase} · enlace o captura manual</p>
           </div>
         </div>
-        <Link href="/postventa" className="inline-flex h-10 items-center gap-2 rounded-[12px] border border-[#dfe3ea] px-4 text-[14px] font-semibold text-ink shadow-[0_1px_2px_rgb(16_24_40/0.05)] transition hover:bg-muted">
+        <Link href="/postventa" className="inline-flex h-10 items-center gap-2 rounded-[12px] border border-line px-4 text-[14px] font-semibold text-ink shadow-[0_1px_2px_rgb(16_24_40/0.05)] transition hover:bg-muted">
           <MessageSquareHeart className="size-4" /> Postventa
         </Link>
       </div>
@@ -95,26 +95,26 @@ export function SatisfactionCard({
                   <li key={d.score} className="grid grid-cols-[34px_minmax(0,1fr)_28px] items-center gap-3">
                     <span className="inline-flex items-center gap-1 text-[13px] font-semibold text-ink tabular">
                       {d.score}
-                      <Star className="size-3.5 text-[#f0a020]" fill="currentColor" strokeWidth={0} />
+                      <Star className="size-3.5 text-st-amber" fill="currentColor" strokeWidth={0} />
                     </span>
-                    <span className="h-[8px] overflow-hidden rounded-full bg-[#eef1f5]">
+                    <span className="h-[8px] overflow-hidden rounded-full bg-well">
                       <motion.span
                         initial={{ width: 0 }}
                         animate={{ width: `${(d.count / distMax) * 100}%` }}
                         transition={{ duration: 0.8, ease: EASE, delay: 0.25 + i * 0.07 }}
-                        className={cn("block h-full rounded-full", d.score >= 4 ? "bg-[#1667e0]" : d.score === 3 ? "bg-[#b9d8fb]" : "bg-st-red/70")}
+                        className={cn("block h-full rounded-full", d.score >= 4 ? "bg-azure" : d.score === 3 ? "bg-blue-line" : "bg-st-red/70")}
                       />
                     </span>
                     <span className="text-right text-[13px] text-subtle tabular">{d.count}</span>
                   </li>
                 ))}
               </ul>
-              <div className="mt-6 rounded-[16px] bg-[#f4f8fd] p-4">
+              <div className="mt-6 rounded-[16px] bg-blue-wash p-4">
                 <div className="flex items-baseline justify-between gap-3">
                   <span className="text-[13.5px] font-medium text-ink">Tasa de respuesta</span>
                   <span className="text-[18px] font-semibold text-ink tabular">{fmtPct(sat.responseRate)}</span>
                 </div>
-                <ProgressLine value={sat.responseRate} className="mt-2.5 bg-white" />
+                <ProgressLine value={sat.responseRate} className="mt-2.5 bg-surface" />
                 <p className="mt-2 text-[12.5px] text-subtle">
                   {sat.answered} de {plural(sat.sent, "encuesta", "encuestas")}
                   {manual > 0 ? ` · ${manual} capturadas a mano` : ""}
@@ -132,7 +132,7 @@ export function SatisfactionCard({
 
 function NpsBucket({ tone, label, value }: { tone: string; label: string; value: number }) {
   return (
-    <div className="rounded-[12px] bg-[#f6f8fb] px-1 py-2">
+    <div className="rounded-[12px] bg-soft px-1 py-2">
       <p className="text-[18px] font-semibold text-ink tabular">{value}</p>
       <p className="flex items-center justify-center gap-1.5 text-[11.5px] text-subtle">
         <span className={cn("size-[6px] rounded-full", tone)} />
@@ -165,25 +165,25 @@ function NpsGauge({ nps, answered }: { nps: number; answered: number }) {
       <svg viewBox="0 0 200 118" className="w-full" role="img" aria-label={`NPS ${nps}: ${verdict}`}>
         <defs>
           <linearGradient id={`nps-${gid}`} x1="0" x2="1" y1="0" y2="0">
-            <stop offset="0%" stopColor="#b9c7ff" />
-            <stop offset="55%" stopColor="#7ad1f4" />
-            <stop offset="100%" stopColor="#1667e0" />
+            <stop offset="0%" style={{ stopColor: "var(--chart-4)" }} />
+            <stop offset="55%" style={{ stopColor: "var(--sky)" }} />
+            <stop offset="100%" style={{ stopColor: "var(--azure)" }} />
           </linearGradient>
         </defs>
-        <path d={arc} fill="none" stroke="#eef1f5" strokeWidth={14} strokeLinecap="round" />
+        <path d={arc} fill="none" className="stroke-well" strokeWidth={14} strokeLinecap="round" />
         <motion.path d={arc} fill="none" stroke={`url(#nps-${gid})`} strokeWidth={14} strokeLinecap="round" style={{ pathLength: progress }} />
-        <line x1={CX} x2={CX} y1={CY - R - 11} y2={CY - R + 11} stroke="#ffffff" strokeWidth={2} />
-        {answered > 0 && <motion.circle r={9} cx={cx} cy={cy} fill="#ffffff" stroke="#07243f" strokeWidth={3} />}
-        <text x={CX - R} y={CY + 18} textAnchor="middle" className="fill-[#98a2b3] text-[10px]">
+        <line x1={CX} x2={CX} y1={CY - R - 11} y2={CY - R + 11} className="stroke-surface" strokeWidth={2} />
+        {answered > 0 && <motion.circle r={9} cx={cx} cy={cy} className="fill-surface stroke-brand-ink" strokeWidth={3} />}
+        <text x={CX - R} y={CY + 18} textAnchor="middle" className="fill-faint text-[10px]">
           −100
         </text>
-        <text x={CX + R} y={CY + 18} textAnchor="middle" className="fill-[#98a2b3] text-[10px]">
+        <text x={CX + R} y={CY + 18} textAnchor="middle" className="fill-faint text-[10px]">
           100
         </text>
       </svg>
       <div className="absolute inset-x-0 bottom-[14px] flex flex-col items-center">
         <AnimatedNumber value={answered ? nps : 0} format={{ signDisplay: "exceptZero" }} className="text-[38px] font-medium leading-none tracking-[-0.04em] text-ink" />
-        <span className="mt-1 rounded-md bg-[#e6f0fd] px-2 py-0.5 text-[11.5px] font-semibold text-[#1667e0]">{verdict}</span>
+        <span className="mt-1 rounded-md bg-blue-tint px-2 py-0.5 text-[11.5px] font-semibold text-azure-fg">{verdict}</span>
       </div>
     </div>
   );
@@ -202,7 +202,7 @@ function Comments({ comments, orderById, clientName }: { comments: Survey[]; ord
             <motion.li key={s.id} variants={rowVariants}>
               <Link
                 href={order ? `/ordenes/${order.folio}` : "/postventa"}
-                className="group flex h-full flex-col rounded-[18px] border border-hairline bg-white p-4 transition hover:-translate-y-0.5 hover:shadow-soft"
+                className="group flex h-full flex-col rounded-[18px] border border-hairline bg-surface p-4 transition hover:-translate-y-0.5 hover:shadow-soft"
               >
                 <div className="flex items-start gap-3">
                   <Quote className="mt-0.5 size-4 shrink-0 text-sky" />
@@ -212,9 +212,9 @@ function Comments({ comments, orderById, clientName }: { comments: Survey[]; ord
                   <span className="min-w-0 truncate">
                     {s.respondentName ?? "Cliente"} · {clientName(s.clientId)} · {fmtDay(s.respondedAt!)}
                   </span>
-                  <span className={cn("inline-flex items-center gap-1 font-semibold tabular", score >= 4 ? "text-ink" : "text-st-red")}>
+                  <span className={cn("inline-flex items-center gap-1 font-semibold tabular", score >= 4 ? "text-ink" : "text-red-fg")}>
                     {score}
-                    <Star className="size-3.5 text-[#f0a020]" fill="currentColor" strokeWidth={0} />
+                    <Star className="size-3.5 text-st-amber" fill="currentColor" strokeWidth={0} />
                     {order && <span className="ml-1 font-medium text-link group-hover:underline">{order.folio}</span>}
                   </span>
                 </div>

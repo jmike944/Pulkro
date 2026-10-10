@@ -48,12 +48,12 @@ export function NewCaseDialog({ open, defaults, onOpenChange }: { open: boolean;
 }
 
 const TONE_SOFT: Record<string, string> = {
-  sky: "bg-[#e3f1fd] text-[#1667e0]",
-  amber: "bg-[#fff1d6] text-[#b86e00]",
-  violet: "bg-[#ebe5ff] text-st-violet",
-  red: "bg-[#fde4e4] text-st-red",
-  navy: "bg-[#e8eef5] text-brand",
-  teal: "bg-[#dcf4ef] text-st-teal",
+  sky: "bg-blue-tint text-azure-fg",
+  amber: "bg-amber-tint text-amber-fg",
+  violet: "bg-violet-tint text-violet-fg",
+  red: "bg-red-tint text-red-fg",
+  navy: "bg-press text-brand-ink",
+  teal: "bg-teal-tint text-teal-fg",
 };
 
 function NewCaseForm({
@@ -177,7 +177,7 @@ function NewCaseForm({
                 initial={{ opacity: 0, y: 4 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -4 }}
-                className="flex items-center gap-3 rounded-[16px] border border-hairline bg-[#fafbfc] p-3"
+                className="flex items-center gap-3 rounded-[16px] border border-hairline bg-wash p-3"
               >
                 {client && <ClientMark name={client.name} hue={client.hue} size={40} />}
                 <div className="min-w-0 flex-1">
@@ -224,7 +224,7 @@ function NewCaseForm({
                             setOrderId(o.id);
                             setPicking(false);
                           }}
-                          className={cn("flex min-h-12 w-full items-center gap-3 rounded-[12px] px-2.5 py-2 text-left transition", on ? "bg-sky-soft" : "hover:bg-[#f5f7fa]")}
+                          className={cn("flex min-h-12 w-full items-center gap-3 rounded-[12px] px-2.5 py-2 text-left transition", on ? "bg-sky-soft" : "hover:bg-soft")}
                         >
                           {c && <ClientMark name={c.name} hue={c.hue} size={32} />}
                           <span className="min-w-0 flex-1">
@@ -260,7 +260,7 @@ function NewCaseForm({
                   aria-pressed={on}
                   className={cn(
                     "flex min-h-12 items-center gap-2.5 rounded-[14px] border p-2.5 text-left text-[13.5px] transition",
-                    on ? "border-transparent bg-[#f2f8fe] font-semibold text-ink ring-2 ring-[#1667e0]" : "border-hairline text-ink hover:bg-muted",
+                    on ? "border-transparent bg-blue-wash font-semibold text-ink ring-2 ring-azure" : "border-hairline text-ink hover:bg-muted",
                   )}
                 >
                   <span className={cn("inline-flex size-8 shrink-0 items-center justify-center rounded-[10px]", TONE_SOFT[CATEGORY_TONE[k]])}>
@@ -287,7 +287,7 @@ function NewCaseForm({
                 type="button"
                 aria-pressed={channel === ch}
                 onClick={() => setChannel(ch)}
-                className={cn("h-10 rounded-full border px-4 text-[13.5px] transition", channel === ch ? "border-ink bg-ink font-semibold text-white" : "border-hairline hover:bg-muted")}
+                className={cn("h-10 rounded-full border px-4 text-[13.5px] transition", channel === ch ? "border-ink bg-ink font-semibold text-on-ink" : "border-hairline hover:bg-muted")}
               >
                 {CASE_CHANNEL[ch]}
               </button>
@@ -365,7 +365,7 @@ function NewCaseForm({
         </div>
 
         {order && ownerId && (
-          <p className="rounded-[14px] bg-[#f4f8fd] px-4 py-3 text-[13.5px] text-ink">
+          <p className="rounded-[14px] bg-blue-wash px-4 py-3 text-[13.5px] text-ink">
             {ownerId === user.id ? "Usted" : <b className="font-semibold">{firstName(lk.users.get(ownerId)?.name ?? "")}</b>} verá el caso en su tablero de Postventa. El cliente no recibe avisos automáticos.
           </p>
         )}

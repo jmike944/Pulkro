@@ -120,7 +120,7 @@ export function IncidentSheet({
                     onClick={() => setType(t)}
                     className={cn(
                       "flex items-center gap-2.5 rounded-[14px] border p-3 text-left text-[13.5px] transition",
-                      active ? "border-transparent bg-[#f2f8fe] font-semibold text-ink ring-2 ring-[#1667e0]" : "border-hairline text-ink hover:bg-muted",
+                      active ? "border-transparent bg-blue-wash font-semibold text-ink ring-2 ring-azure" : "border-hairline text-ink hover:bg-muted",
                     )}
                   >
                     <span className={cn("inline-flex size-8 shrink-0 items-center justify-center rounded-[10px]", toneSoftBg[meta.tone], toneText[meta.tone])}>
@@ -152,7 +152,7 @@ export function IncidentSheet({
                     key={j.id}
                     type="button"
                     onClick={() => setJId(j.id)}
-                    className={cn("rounded-[10px] border px-3 py-1.5 text-[13px]", jId === j.id ? "border-ink bg-ink text-white" : "border-hairline hover:bg-muted")}
+                    className={cn("rounded-[10px] border px-3 py-1.5 text-[13px]", jId === j.id ? "border-ink bg-ink text-on-ink" : "border-hairline hover:bg-muted")}
                   >
                     Jornada {j.dayIndex}
                   </button>
@@ -192,7 +192,7 @@ export function IncidentSheet({
             </AnimatePresence>
           </div>
 
-          <label className="flex items-start justify-between gap-4 rounded-[16px] bg-[#fdf3f3] p-4">
+          <label className="flex items-start justify-between gap-4 rounded-[16px] bg-red-wash p-4">
             <span className="text-[14px]">
               <span className="block font-semibold text-ink">Impide el cierre</span>
               <span className="text-subtle">La orden pasa a “Con incidencia” hasta resolverla.</span>

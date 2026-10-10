@@ -21,7 +21,7 @@ export function HubHero({ m, onPick }: { m: HubMetrics; onPick: (tab: HubTab) =>
               </IconTile>
               <span className="text-[15px] font-medium text-ink">Reportes generados</span>
             </div>
-            <span className="inline-flex h-9 items-center rounded-[10px] bg-[#f2f4f7] px-3 text-[14px] font-medium text-ink">Esta semana</span>
+            <span className="inline-flex h-9 items-center rounded-[10px] bg-tile px-3 text-[14px] font-medium text-ink">Esta semana</span>
           </div>
           <div className="mt-5 flex items-end gap-3">
             <AnimatedNumber value={m.thisWeek} className="text-[64px] font-medium leading-none tracking-[-0.045em] text-ink sm:text-[76px]" />
@@ -75,7 +75,7 @@ export function DeltaChip({ delta, className }: { delta: number; className?: str
     <span
       className={cn(
         "inline-flex items-center gap-1.5 rounded-[8px] px-2 py-1 text-[13px] font-semibold",
-        delta >= 0 ? "bg-[#e6f0fd] text-[#1667e0]" : "bg-[#fdeeee] text-st-red",
+        delta >= 0 ? "bg-blue-tint text-azure-fg" : "bg-red-soft text-red-fg",
         className,
       )}
     >

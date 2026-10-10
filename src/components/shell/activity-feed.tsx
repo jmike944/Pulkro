@@ -59,10 +59,10 @@ export function ActivityBell() {
     <Popover>
       <PopoverTrigger
         aria-label="Actividad reciente"
-        className="relative inline-flex size-12 items-center justify-center rounded-[16px] border border-hairline bg-white shadow-[0_1px_2px_rgb(16_24_40/0.03)] transition hover:border-[#d5dbe3] max-md:size-11 max-md:rounded-[14px]"
+        className="relative inline-flex size-12 items-center justify-center rounded-[16px] border border-hairline bg-surface shadow-[0_1px_2px_rgb(16_24_40/0.03)] transition hover:border-line-strong max-md:size-11 max-md:rounded-[14px]"
       >
         <Bell className="size-[19px] text-ink" />
-        {fresh && <span className="absolute right-3 top-2.5 size-2 rounded-full bg-st-red ring-2 ring-white" />}
+        {fresh && <span className="absolute right-3 top-2.5 size-2 rounded-full bg-st-red ring-2 ring-surface" />}
       </PopoverTrigger>
       <PopoverContent align="end" className="w-[min(360px,calc(100vw-24px))] p-0">
         <div className="border-b border-hairline px-4 py-3">

@@ -30,7 +30,7 @@ export function TonePill({
     <span
       className={cn(
         "inline-flex h-6 items-center gap-1.5 whitespace-nowrap rounded-md px-2 text-[12.5px] font-medium text-ink",
-        solid ? "bg-[#f2f4f7]" : "bg-transparent px-0",
+        solid ? "bg-tile" : "bg-transparent px-0",
         className,
       )}
     >

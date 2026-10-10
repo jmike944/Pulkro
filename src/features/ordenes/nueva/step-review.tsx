@@ -46,12 +46,12 @@ export function StepReview({
       {/* status preview */}
       <motion.div
         layout
-        className={cn("flex gap-4 rounded-[20px] p-5", scheduled ? "bg-[#eef6fe]" : "bg-[#f4f5f7]")}
+        className={cn("flex gap-4 rounded-[20px] p-5", scheduled ? "bg-blue-soft" : "bg-soft")}
         initial={{ opacity: 0, y: 8 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.4, ease: EASE }}
       >
-        <span className={cn("inline-flex size-10 shrink-0 items-center justify-center rounded-[12px]", scheduled ? "bg-[#cfe6fd] text-[#1667e0]" : "bg-white text-subtle")}>
+        <span className={cn("inline-flex size-10 shrink-0 items-center justify-center rounded-[12px]", scheduled ? "bg-blue-mid text-azure-fg" : "bg-surface text-subtle")}>
           {scheduled ? <CalendarCheck className="size-5" /> : <CircleDashed className="size-5" />}
         </span>
         <div className="min-w-0 text-[14px] leading-relaxed">
@@ -59,7 +59,7 @@ export function StepReview({
             Se guardará como
             <AnimatePresence mode="wait" initial={false}>
               <motion.span key={scheduled ? "p" : "b"} initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -6 }} transition={{ duration: 0.2 }}>
-                <OrderStatusPill status={scheduled ? "programada" : "borrador"} className="bg-white" />
+                <OrderStatusPill status={scheduled ? "programada" : "borrador"} className="bg-surface" />
               </motion.span>
             </AnimatePresence>
           </p>
@@ -74,8 +74,8 @@ export function StepReview({
       </motion.div>
 
       {/* receipt */}
-      <div className="rounded-[28px] bg-[#f3f6fa] p-2 sm:p-3">
-        <div className="relative overflow-hidden rounded-[22px] bg-white shadow-soft">
+      <div className="rounded-[28px] bg-soft p-2 sm:p-3">
+        <div className="relative overflow-hidden rounded-[22px] bg-surface shadow-soft">
           <SqueegeeWipe />
           <header className="flex items-start justify-between gap-4 px-5 pb-4 pt-6 sm:px-7">
             <div className="min-w-0">
@@ -87,7 +87,7 @@ export function StepReview({
               <p className="mt-1.5 text-[12.5px] text-subtle">Folio provisional · se confirma al guardar</p>
             </div>
             {draft.priority === "alta" && (
-              <span className="inline-flex h-7 shrink-0 items-center gap-1 rounded-[8px] bg-[#fdeeee] px-2 text-[12px] font-semibold text-st-red">
+              <span className="inline-flex h-7 shrink-0 items-center gap-1 rounded-[8px] bg-red-soft px-2 text-[12px] font-semibold text-red-fg">
                 <Flame className="size-3.5" /> Alta
               </span>
             )}
@@ -127,19 +127,19 @@ export function StepReview({
             <ul className="space-y-1.5">
               {draft.activities.map((a) => (
                 <li key={a} className="flex items-start gap-2.5 text-[14px] text-ink">
-                  <span className="mt-[7px] size-1.5 shrink-0 rounded-full bg-[#1667e0]" />
+                  <span className="mt-[7px] size-1.5 shrink-0 rounded-full bg-azure" />
                   {a}
                 </li>
               ))}
             </ul>
             {mats.length > 0 && (
-              <div className="mt-4 rounded-[14px] bg-[#f7f9fc] px-3.5 py-3">
+              <div className="mt-4 rounded-[14px] bg-soft px-3.5 py-3">
                 <p className="mb-2 text-[11.5px] font-semibold uppercase tracking-[0.1em] text-subtle">Materiales</p>
                 <ul className="space-y-1.5">
                   {mats.map(({ m, qty }) => (
                     <li key={m!.id} className="flex items-baseline justify-between gap-4 text-[13.5px]">
                       <span className="min-w-0 truncate text-ink">{m!.name}</span>
-                      <span className="shrink-0 border-b border-dotted border-[#cfd6df] font-semibold text-ink tabular">
+                      <span className="shrink-0 border-b border-dotted border-line-heavy font-semibold text-ink tabular">
                         {qty} {m!.unit}
                       </span>
                     </li>
@@ -155,7 +155,7 @@ export function StepReview({
           </ReceiptSection>
 
           <ReceiptSection title="Programación y cuadrilla" onEdit={() => onEdit(2)}>
-            <ul className="divide-y divide-dashed divide-[#e3e8ef]">
+            <ul className="divide-y divide-dashed divide-line">
               {days.map((d, i) => (
                 <li key={d.id} className="flex items-baseline justify-between gap-4 py-2 text-[14px] first:pt-0">
                   <span className="min-w-0 truncate">
@@ -184,7 +184,7 @@ export function StepReview({
                     <span className="truncate text-[13px] text-subtle">{plural(crew.length, "persona", "personas")}</span>
                   </div>
                 ) : (
-                  <p className="text-[14px] font-medium text-[#b86e00]">Por asignar</p>
+                  <p className="text-[14px] font-medium text-amber-fg">Por asignar</p>
                 )}
               </div>
             </div>
@@ -215,7 +215,7 @@ export function StepReview({
           }}
           className={cn(
             "flex min-h-14 w-full items-start gap-3 rounded-[18px] border p-4 text-left transition-colors",
-            draft.authorized ? "border-[#bcd8fb] bg-[#f6faff]" : "border-hairline bg-white hover:border-[#d5dbe3]",
+            draft.authorized ? "border-blue-line bg-blue-wash" : "border-hairline bg-surface hover:border-line-strong",
           )}
         >
           <CheckMark on={draft.authorized} className="mt-0.5" />
@@ -228,7 +228,7 @@ export function StepReview({
       </div>
 
       {offline && (
-        <div className="flex items-center gap-3 rounded-[16px] bg-[#fff6e6] px-4 py-3 text-[13.5px] text-[#8a5300]">
+        <div className="flex items-center gap-3 rounded-[16px] bg-amber-soft px-4 py-3 text-[13.5px] text-amber-ink">
           <WifiOff className="size-4 shrink-0" />
           <span>
             <b className="font-semibold">Sin conexión.</b> La orden se guarda en este dispositivo y se sincroniza al reconectar.
@@ -247,7 +247,7 @@ function ReceiptSection({ title, onEdit, children }: { title: string; onEdit: ()
         <button
           type="button"
           onClick={onEdit}
-          className="-mr-2 inline-flex h-10 items-center gap-1.5 rounded-[11px] px-2.5 text-[13px] font-medium text-link transition hover:bg-[#f2f8fe]"
+          className="-mr-2 inline-flex h-10 items-center gap-1.5 rounded-[11px] px-2.5 text-[13px] font-medium text-link transition hover:bg-blue-wash"
           aria-label={`Editar ${title.toLowerCase()}`}
         >
           <Pencil className="size-3.5" />
@@ -263,9 +263,9 @@ function ReceiptSection({ title, onEdit, children }: { title: string; onEdit: ()
 function Perforation() {
   return (
     <div aria-hidden className="relative h-6">
-      <span className="absolute left-0 top-1/2 size-6 -translate-x-1/2 -translate-y-1/2 rounded-full bg-[#f3f6fa]" />
-      <span className="absolute right-0 top-1/2 size-6 -translate-y-1/2 translate-x-1/2 rounded-full bg-[#f3f6fa]" />
-      <span className="absolute inset-x-6 top-1/2 border-t-2 border-dashed border-[#e3e8ef]" />
+      <span className="absolute left-0 top-1/2 size-6 -translate-x-1/2 -translate-y-1/2 rounded-full bg-soft" />
+      <span className="absolute right-0 top-1/2 size-6 -translate-y-1/2 translate-x-1/2 rounded-full bg-soft" />
+      <span className="absolute inset-x-6 top-1/2 border-t-2 border-dashed border-line" />
     </div>
   );
 }
@@ -309,7 +309,7 @@ function SqueegeeWipe() {
     <>
       <motion.div
         aria-hidden
-        className="pointer-events-none absolute inset-0 z-10 bg-[#e8f1fb]/80"
+        className="pointer-events-none absolute inset-0 z-10 bg-blue-soft/80"
         initial={{ clipPath: "inset(0 0 0 0%)" }}
         animate={{ clipPath: "inset(0 0 0 100%)" }}
         transition={{ duration: 0.95, ease: EASE, delay: 0.2 }}

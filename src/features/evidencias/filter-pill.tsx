@@ -17,7 +17,7 @@ export type PillOption = { value: string; label: string; hint?: React.ReactNode;
 export const ALL = "all";
 
 export const pillClass =
-  "inline-flex h-11 max-w-full items-center gap-1.5 rounded-full border bg-white px-4 lg:h-10 text-[14px] text-ink shadow-[0_1px_2px_rgb(16_24_40/0.04)] outline-none transition hover:border-[#d5dbe3] focus-visible:ring-3 focus-visible:ring-ring/50 data-[state=open]:border-[#cfd6df] data-[state=open]:bg-[#f8fafc]";
+  "inline-flex h-11 max-w-full items-center gap-1.5 rounded-full border bg-surface px-4 lg:h-10 text-[14px] text-ink shadow-[0_1px_2px_rgb(16_24_40/0.04)] outline-none transition hover:border-line-strong focus-visible:ring-3 focus-visible:ring-ring/50 data-[state=open]:border-line-heavy data-[state=open]:bg-wash";
 
 /**
  * Reference-style filter pill ("Supervisor ⌄", "Estado: Abiertas ⌄") backed by a radio DropdownMenu.
@@ -46,7 +46,7 @@ export function FilterPill({
   return (
     <DropdownMenu>
       <DropdownMenuTrigger
-        className={cn(pillClass, active ? "border-[#cfe3fb] bg-[#f4f8fe]" : "border-hairline", className)}
+        className={cn(pillClass, active ? "border-blue-mid bg-blue-wash" : "border-hairline", className)}
         aria-label={`Filtrar por ${label.toLowerCase()}`}
       >
         <span className={cn("shrink-0", showValue || !allLabel ? "text-subtle" : "font-medium")}>

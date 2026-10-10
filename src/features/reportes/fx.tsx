@@ -7,9 +7,10 @@ import { cn } from "@/lib/utils";
 export function SqueegeeGlyph({ className }: { className?: string }) {
   return (
     <svg viewBox="0 0 24 24" aria-hidden className={cn("size-6", className)}>
-      <path d="M13 12 L3.5 5.5" stroke="#07243f" strokeWidth="2.6" strokeLinecap="round" />
-      <rect x="12" y="2.5" width="5" height="19" rx="2.2" fill="#07243f" />
-      <rect x="16" y="3.5" width="2.2" height="17" rx="1.1" fill="#7ad1f4" />
+      {/* brand-ink is the navy in light and a pale navy tint in dark, so the blade stays visible on the dark track */}
+      <path d="M13 12 L3.5 5.5" className="stroke-brand-ink" strokeWidth="2.6" strokeLinecap="round" />
+      <rect x="12" y="2.5" width="5" height="19" rx="2.2" className="fill-brand-ink" />
+      <rect x="16" y="3.5" width="2.2" height="17" rx="1.1" className="fill-sky" />
     </svg>
   );
 }
@@ -21,9 +22,9 @@ export function SqueegeeGlyph({ className }: { className?: string }) {
 export function SqueegeeProgress({ value, indeterminate, className }: { value: number; indeterminate?: boolean; className?: string }) {
   const pct = Math.max(0.04, Math.min(1, value)) * 100;
   return (
-    <div className={cn("relative h-3 rounded-full bg-[#eef1f5] shadow-[inset_0_1px_2px_rgb(16_24_40/0.06)]", className)} role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(pct)}>
+    <div className={cn("relative h-3 rounded-full bg-well shadow-[inset_0_1px_2px_rgb(16_24_40/0.06)]", className)} role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(pct)}>
       <motion.div
-        className="absolute inset-y-0 left-0 rounded-full bg-[linear-gradient(90deg,#bfe7fb,#7ad1f4_45%,#1667e0)]"
+        className="absolute inset-y-0 left-0 rounded-full bg-[linear-gradient(90deg,#bfe7fb,var(--sky)_45%,var(--azure))]"
         initial={{ width: "4%" }}
         animate={{ width: `${pct}%` }}
         transition={{ type: "spring", stiffness: 70, damping: 18 }}
