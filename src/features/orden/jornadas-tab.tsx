@@ -25,7 +25,7 @@ export function JornadasTab() {
   const closed = jornadas.filter((j) => j.status === "cerrada").length;
   const reprogrammed = order.status === "reprogramada";
   const lastReprogram = audit.find((a) => /reprogram/i.test(a.action));
-  const confirmGate: Gate = d.perms.crew || d.perms.edit ? { ok: true } : { ok: false, reason: DENY.reschedule };
+  const confirmGate: Gate = d.gates.reschedule;
 
   return (
     <div>

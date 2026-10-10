@@ -5,6 +5,7 @@ import { format } from "date-fns";
 import { es } from "date-fns/locale";
 import { cn } from "@/lib/utils";
 import { d } from "@/lib/format";
+import type { GeoStamp } from "@/lib/types";
 import { GeoMap } from "@/components/pk/geo-map";
 import { ReasonTip } from "@/components/pk/reason-tip";
 
@@ -19,6 +20,13 @@ export const fmtDistance = (m: number) => (m < 1000 ? `${Math.round(m)} m` : `${
 
 /** Max distance (m) from the site before a GPS stamp needs a justification. */
 export const MAX_SITE_DISTANCE = 300;
+
+/**
+ * How a check-in/out location was obtained, for bitácora lines and toasts. Remote supervision is its own source: it is
+ * never described as GPS, and its accuracy (if any) is the supervisor's phone, not the site.
+ */
+export const stampHow = (s: Pick<GeoStamp, "source" | "accuracy">) =>
+  s.source === "remota" ? "supervisión remota" : s.source === "manual" ? "ubicación manual justificada" : `GPS ±${Math.round(s.accuracy)} m`;
 
 /**
  * GeoMap that only re-renders when its (memoized) props change, so unrelated store updates

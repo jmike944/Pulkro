@@ -5,20 +5,23 @@ import { useAppStore, useCurrentUser, useLookups, useNow, useOrderBundle, type O
 import { can, canSeeOrder } from "@/lib/permissions";
 import { activeJornada, closureBlockers, jornadaMinutes, nextAction, orderEvidence, plannedMinutes, type Blocker, type NextAction, type OrderEvidence } from "@/lib/domain";
 import { DONE_STATUSES, OPEN_STATUSES } from "@/lib/status";
-import type { Incident, Jornada, OrderStatus, User } from "@/lib/types";
+import type { Incident, Jornada, OrderStatus, Report, User } from "@/lib/types";
 
 export type Lookups = ReturnType<typeof useLookups>;
 
 /** Who may do what (doc §2), with the sentence shown in tooltips when they can't. */
 export const DENY = {
   edit: "Dirección solo consulta. Edita Administración (todo) o el supervisor (datos operativos).",
-  reschedule: "Solo el supervisor o Administración reprograman jornadas.",
+  reschedule: "Solo el supervisor reprograma jornadas y confirma fechas: mueve la agenda de su cuadrilla.",
   cancel: "Solo Administración puede cancelar órdenes.",
-  reopen: "Solo el supervisor o Administración reabren una orden cerrada.",
+  reopen: "Solo el supervisor de la orden puede reabrirla.",
+  archive: "Solo Administración y el supervisor de la orden archivan una orden.",
   crew: "Solo el supervisor asigna la cuadrilla.",
   capture: "Solo el supervisor captura en campo.",
   closure: "Solo el supervisor autoriza el cierre",
   photos: "Solo el supervisor selecciona las fotos del reporte.",
+  postventa: "Su rol solo consulta la postventa: la gestionan Administración y supervisores.",
+  share: "Solo el supervisor genera y comparte el reporte con el cliente.",
 } as const;
 
 export type Gate = { ok: boolean; reason?: string };
@@ -29,6 +32,8 @@ const gate = (perm: boolean, permReason: string, state: boolean, stateReason: st
 /** Statuses where the closure dialog makes sense (blockers explain the rest). */
 export const CLOSABLE: OrderStatus[] = ["pendiente_validacion", "reabierta", "con_incidencia"];
 export const REOPENABLE: OrderStatus[] = ["finalizada", "reporte_enviado", "seguimiento"];
+/** Same rule as store.archiveOrder: the post-sale cycle closes from "reporte enviado" or "seguimiento". */
+export const ARCHIVABLE: OrderStatus[] = ["reporte_enviado", "seguimiento"];
 const RESCHEDULABLE: OrderStatus[] = ["borrador", "programada", "en_ejecucion", "jornada_cerrada", "reprogramada", "con_incidencia"];
 
 export type MissingEvidence = { jornada: Jornada; kind: "antes" | "despues" };
@@ -39,7 +44,14 @@ export type OrderDetail = OrderBundle & {
   user: User;
   evidence: OrderEvidence;
   blockers: Blocker[];
+  /** Next step for the current role (a role that can't take it gets "Ver" into the right tab). */
   action: NextAction;
+  /** The raw next step regardless of role: lets the UI show a disabled CTA that explains who acts. */
+  step: NextAction;
+  /** Reopened and not yet re-validated: the closure on file is stale, a new report needs a fresh validation. */
+  needsRevalidation: boolean;
+  /** Latest generated report version (what the order PDF download serves). */
+  latestReport?: Report;
   active?: Jornada;
   live?: Jornada;
   realMinutes: number;
@@ -53,16 +65,24 @@ export type OrderDetail = OrderBundle & {
   perms: {
     edit: boolean;
     editOperational: boolean;
+    reschedule: boolean;
+    reopen: boolean;
+    archive: boolean;
     crew: boolean;
     capture: boolean;
     closure: boolean;
     share: boolean;
+    postventa: boolean;
+    exportPdf: boolean;
   };
   gates: {
     edit: Gate;
     reschedule: Gate;
+    /** "Confirmar fechas" of a reprogrammed order (same permission as rescheduling). */
+    confirm: Gate;
     cancel: Gate;
     reopen: Gate;
+    archive: Gate;
     crew: Gate;
     addJornada: Gate;
     closure: Gate;
@@ -81,6 +101,7 @@ export type OrderUi = {
   openEdit: () => void;
   openCancel: () => void;
   openReopen: () => void;
+  openArchive: () => void;
   openPhoto: (photoId: string) => void;
   confirmDates: () => void;
 };
@@ -102,8 +123,11 @@ export function useOrderDetailData(folio: string): OrderDetail | null {
     if (!canSeeOrder(user, order, unitFilter)) return null;
 
     const evidence = orderEvidence(order, jornadas, photos);
-    const blockers = closureBlockers(order, jornadas, photos, incidents, pendingSync.length);
-    const action = nextAction(order, { jornadas, photos, incidents, reports, surveys, cases }, now);
+    const blockers = closureBlockers(order, jornadas, photos, incidents, pendingSync.length, user.role);
+    const nextCtx = { jornadas, photos, incidents, reports, surveys, cases };
+    const action = nextAction(order, { ...nextCtx, role: user.role }, now);
+    const step = nextAction(order, nextCtx, now);
+    const needsRevalidation = order.status === "reabierta" || (!!order.reopenedAt && (!order.closure || order.closure.validatedAt < order.reopenedAt));
     const missing: MissingEvidence[] = evidence.perJornada
       .filter((x) => x.jornada.checkIn)
       .flatMap((x) => [
@@ -119,11 +143,17 @@ export function useOrderDetailData(folio: string): OrderDetail | null {
     const perms = {
       edit: can(role, "order.edit"),
       editOperational: can(role, "order.editOperational"),
+      reschedule: can(role, "order.reschedule"),
+      reopen: can(role, "order.reopen"),
+      archive: can(role, "order.archive"),
       crew: can(role, "crew.assign"),
       capture: can(role, "field.capture"),
       closure: can(role, "closure.authorize"),
       share: can(role, "report.share"),
+      postventa: can(role, "postventa.manage"),
+      exportPdf: can(role, "export.pdf"),
     };
+    const openCases = cases.some((c) => c.status === "abierto" || c.status === "en_proceso");
 
     const doneReason = status === "cancelada" ? "La orden está cancelada." : "Orden cerrada: reábrala para hacer cambios (se generará una nueva versión del reporte).";
     const closureReason = isDone
@@ -135,13 +165,20 @@ export function useOrderDetailData(folio: string): OrderDetail | null {
     const gates = {
       edit: gate(perms.edit || perms.editOperational, DENY.edit, !isTerminal, doneReason),
       reschedule: gate(
-        perms.crew || perms.edit,
+        perms.reschedule,
         DENY.reschedule,
         RESCHEDULABLE.includes(status) && (pendingJornadas.length > 0 || status === "borrador"),
         isTerminal ? doneReason : "No hay jornadas pendientes por reprogramar.",
       ),
+      confirm: gate(perms.reschedule, DENY.reschedule, status === "reprogramada", "Solo se confirman las fechas de una orden reprogramada."),
       cancel: gate(perms.edit, DENY.cancel, OPEN_STATUSES.includes(status), isTerminal ? doneReason : "Solo se cancelan órdenes abiertas."),
-      reopen: gate(perms.closure || perms.edit, DENY.reopen, REOPENABLE.includes(status), "Solo se reabren órdenes finalizadas o con reporte enviado."),
+      reopen: gate(perms.reopen, DENY.reopen, REOPENABLE.includes(status), "Solo se reabren órdenes finalizadas o con reporte enviado."),
+      archive: gate(
+        perms.archive,
+        DENY.archive,
+        ARCHIVABLE.includes(status) && !openCases,
+        openCases ? "Hay casos postventa abiertos: resuélvalos antes de archivar." : "Solo se archivan órdenes con reporte enviado o en seguimiento.",
+      ),
       crew: gate(perms.crew, DENY.crew, !isTerminal && (jornadas.length === 0 || jornadas.some((j) => j.status !== "cerrada")), isTerminal ? doneReason : "Todas las jornadas ya están cerradas."),
       addJornada: gate(perms.crew, DENY.crew, !isTerminal, doneReason),
       closure: gate(perms.closure, DENY.closure, CLOSABLE.includes(status), closureReason),
@@ -158,6 +195,9 @@ export function useOrderDetailData(folio: string): OrderDetail | null {
       evidence,
       blockers,
       action,
+      step,
+      needsRevalidation,
+      latestReport: reports[0],
       active: activeJornada(order.id, jornadas, now),
       live: jornadas.find((j) => j.status === "en_curso"),
       realMinutes: jornadas.reduce((s, j) => s + jornadaMinutes(j, now), 0),

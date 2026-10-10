@@ -3,8 +3,8 @@
 import { useEffect, useMemo, useState } from "react";
 import { useShallow } from "zustand/react/shallow";
 import { isOffline, useAppStore } from "./store";
-import { can, canSeeOrder, type Action } from "./permissions";
-import type { Client, Jornada, Order, ServiceType, Site, User, Worker, Material, Unit } from "./types";
+import { can, canSeeAuditEntry, canSeeOrder, scopedUnitIds, type Action } from "./permissions";
+import type { AuditEntry, Client, Jornada, Order, ServiceType, Site, User, Worker, Material, Unit } from "./types";
 
 export { useAppStore } from "./store";
 export { useShallow } from "zustand/react/shallow";
@@ -30,7 +30,10 @@ export function useCan(action: Action) {
   return can(user.role, action);
 }
 
-/** Id → entity maps for fast joins. */
+/**
+ * Id → entity maps for fast joins. UNSCOPED: use it only to resolve names of ids that already come from scoped data
+ * (useScopedData / useOrderBundle / useScopedCatalog). To list clients, sites, workers or users use useScopedCatalog().
+ */
 export function useLookups() {
   const { units, users, workers, clients, sites, serviceTypes, materials } = useAppStore(
     useShallow((s) => ({ units: s.units, users: s.users, workers: s.workers, clients: s.clients, sites: s.sites, serviceTypes: s.serviceTypes, materials: s.materials })),
@@ -83,9 +86,74 @@ export function useScopedData() {
   }, [raw, user, unitFilter]);
 }
 
-/** Everything about one order, by folio ("OS-24817") or id. */
+/**
+ * Clients, sites, workers and users the current role may list (doc §2):
+ * supervisor → clients/sites of own orders, own unit's crew, self + people on own orders · administración → own unit ·
+ * dirección → all or the selected unit. Inactive records are included (callers filter `active` where it matters).
+ */
+export function useScopedCatalog() {
+  const { user, unitFilter, orders, cases, audit } = useScopedData();
+  const raw = useAppStore(useShallow((s) => ({ clients: s.clients, sites: s.sites, workers: s.workers, users: s.users, units: s.units })));
+  return useMemo(() => {
+    const units = scopedUnitIds(user, unitFilter);
+    const inUnit = (unitId: string) => !units || units.has(unitId);
+    const orderClientIds = new Set(orders.map((o) => o.clientId));
+    const orderSiteIds = new Set(orders.map((o) => o.siteId));
+    const clients = user.role === "supervisor" ? raw.clients.filter((c) => orderClientIds.has(c.id)) : raw.clients.filter((c) => inUnit(c.unitId));
+    const clientIds = new Set(clients.map((c) => c.id));
+    // Supervisors see the sites they work at; the other roles every site of a visible client.
+    const sites = raw.sites.filter((x) => clientIds.has(x.clientId) && (user.role !== "supervisor" || orderSiteIds.has(x.id)));
+    const workers = raw.workers.filter((w) => inUnit(w.unitId));
+    let users: User[];
+    if (user.role === "supervisor") {
+      const ids = new Set<string>([user.id]);
+      orders.forEach((o) => (ids.add(o.supervisorId), ids.add(o.createdBy)));
+      cases.forEach((c) => (ids.add(c.ownerId), ids.add(c.createdBy)));
+      audit.forEach((a) => ids.add(a.by));
+      users = raw.users.filter((u) => ids.has(u.id));
+    } else {
+      // Dirección accounts span every unit; they stay visible to the units they oversee.
+      users = raw.users.filter((u) => inUnit(u.unitId) || u.role === "direccion");
+    }
+    return {
+      clients,
+      sites,
+      workers,
+      users,
+      units: units ? raw.units.filter((u) => units.has(u.id)) : raw.units,
+      clientIds,
+      workerIds: new Set(workers.map((w) => w.id)),
+      userIds: new Set(users.map((u) => u.id)),
+    };
+  }, [raw, user, unitFilter, orders, cases, audit]);
+}
+
+/**
+ * The Bitácora the current role may read (and export): entries of visible orders, plus entries without an order only when
+ * the actor or the touched catalog / user record is in scope (supervisor: only their own). Newest first, like the store.
+ */
+export function useScopedAudit(): AuditEntry[] {
+  const { user, unitFilter, orderIds } = useScopedData();
+  const raw = useAppStore(useShallow((s) => ({ audit: s.audit, users: s.users, clients: s.clients, sites: s.sites, workers: s.workers })));
+  return useMemo(() => {
+    const users = new Map(raw.users.map((u) => [u.id, u] as const));
+    const clientUnit = new Map(raw.clients.map((c) => [c.id, c.unitId] as const));
+    const recordUnit = new Map<string, string>([
+      ...raw.clients.map((c) => [c.id, c.unitId] as const),
+      ...raw.workers.map((w) => [w.id, w.unitId] as const),
+      ...raw.users.map((u) => [u.id, u.unitId] as const),
+      ...raw.sites.flatMap((x) => (clientUnit.has(x.clientId) ? [[x.id, clientUnit.get(x.clientId)!] as const] : [])),
+    ]);
+    const ctx = { unitFilter, orderIds, users, entityUnit: (a: AuditEntry) => recordUnit.get(a.entityId) };
+    return raw.audit.filter((a) => canSeeAuditEntry(user, a, ctx));
+  }, [raw, user, unitFilter, orderIds]);
+}
+
+/** Everything about one order, by folio ("OS-24817") or id. `null` = not found OR outside the current role's scope (doc §2). */
 export function useOrderBundle(folioOrId: string) {
   const lk = useLookups();
+  const user = useCurrentUser();
+  const unitFilter = useAppStore((st) => st.session.unitFilter);
   const s = useAppStore(
     useShallow((st) => ({
       orders: st.orders, jornadas: st.jornadas, photos: st.photos, incidents: st.incidents, reports: st.reports,
@@ -94,7 +162,7 @@ export function useOrderBundle(folioOrId: string) {
   );
   return useMemo(() => {
     const order = s.orders.find((o) => o.folio === folioOrId || o.id === folioOrId);
-    if (!order) return null;
+    if (!order || !canSeeOrder(user, order, unitFilter)) return null;
     const jornadas = s.jornadas.filter((j) => j.orderId === order.id).sort((a, b) => a.dayIndex - b.dayIndex);
     return {
       order,
@@ -113,11 +181,12 @@ export function useOrderBundle(folioOrId: string) {
       pendingSync: s.queue.filter((q) => q.orderId === order.id && q.state !== "sincronizado"),
       currentCrew: (jornadas.find((j) => j.status !== "cerrada") ?? jornadas.at(-1))?.workerIds.map((id) => lk.workers.get(id)!).filter(Boolean) ?? [],
     };
-  }, [s, lk, folioOrId]);
+  }, [s, lk, folioOrId, user, unitFilter]);
 }
 
 export type OrderBundle = NonNullable<ReturnType<typeof useOrderBundle>>;
 
+/** One jornada with its order bundle; `null` = not found or the order is outside the current role's scope. */
 export function useJornadaBundle(jornadaId: string) {
   const jornada = useAppStore((s) => s.jornadas.find((j) => j.id === jornadaId));
   const orderId = jornada?.orderId ?? "";

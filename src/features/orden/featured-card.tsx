@@ -27,7 +27,7 @@ import { OrderStatusPill, StatusDot, ToneText } from "@/components/pk/status";
 import { Button } from "@/components/ui/button";
 import { EASE } from "@/components/pk/motion";
 import { toHours } from "./orden-format";
-import { DENY, useOrder, type Gate, type OrderDetail, type OrderUi } from "./order-context";
+import { useOrder, type Gate, type OrderDetail, type OrderUi } from "./order-context";
 import { Gated, GateHint } from "./ui";
 
 const OPEN: Gate = { ok: true };
@@ -47,6 +47,11 @@ type Cta = {
 function resolveCta(d: OrderDetail, ui: OrderUi): Cta | null {
   const { order, action, perms } = d;
   const folio = order.folio;
+  if (!perms.capture && ["Entrada", "Continuar", "Solicitar"].includes(action.label))
+    return { label: "Ver detalle operativo", icon: CalendarDays, gate: OPEN, onClick: () => ui.setTab(action.label === "Solicitar" ? "evidencia" : "jornadas", { scroll: true }) };
+  if (!perms.share && ["Generar", "Compartir"].includes(action.label))
+    return { label: "Ver resumen", icon: FileText, gate: OPEN, onClick: () => ui.setTab("resumen", { scroll: true }) };
+
   switch (action.label) {
     case "Asignar":
       return { label: "Asignar cuadrilla", icon: Users, gate: d.gates.crew, onClick: () => ui.openCrew() };
@@ -81,7 +86,7 @@ function resolveCta(d: OrderDetail, ui: OrderUi): Cta | null {
       return {
         label: "Confirmar fechas",
         icon: CalendarCheck,
-        gate: perms.crew || perms.edit ? OPEN : { ok: false, reason: DENY.reschedule },
+        gate: d.gates.reschedule,
         onClick: ui.confirmDates,
         secondary: { label: "Cambiar fechas", gate: d.gates.reschedule, onClick: () => ui.openSchedule("reprogramar") },
       };
@@ -91,7 +96,7 @@ function resolveCta(d: OrderDetail, ui: OrderUi): Cta | null {
         return { label: order.status === "jornada_cerrada" ? "Ver próxima jornada" : "Ver jornadas", icon: CalendarDays, gate: OPEN, onClick: () => ui.setTab("jornadas", { scroll: true }) };
       if (order.status === "reporte_enviado" || order.status === "seguimiento")
         return { label: "Ver seguimiento", icon: MessageCircleHeart, gate: OPEN, href: `/postventa?orden=${folio}` };
-      return { label: "Ver reporte", icon: FileText, gate: OPEN, href: `/ordenes/${folio}/reporte` };
+      return perms.share ? { label: "Ver reporte", icon: FileText, gate: OPEN, href: `/ordenes/${folio}/reporte` } : null;
   }
 }
 

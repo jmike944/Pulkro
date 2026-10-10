@@ -12,7 +12,12 @@ import { create } from "zustand";
 import { createJSONStorage, persist, type StateStorage } from "zustand/middleware";
 import { createStore as createIdbStore, del, get, set } from "idb-keyval";
 import { differenceInCalendarDays, format, parseISO, startOfDay } from "date-fns";
+import { toast } from "sonner";
 import { DEMO_USER_BY_ROLE, SEED_VERSION, generateSeed, shiftSnapshotDates } from "./seed";
+import { can, canSeeOrder, canSeeUnit, type Action } from "./permissions";
+import { GEO_NOTE_MIN, closureBlockers, photoTimingIssues } from "./domain";
+import { DONE_STATUSES, OPEN_STATUSES } from "./status";
+import { DEMO_ENABLED } from "./demo";
 import type {
   AuditEntity,
   CaseStatus,
@@ -42,12 +47,28 @@ import type {
 /* ───────────── persistence (IndexedDB, debounced writes) ───────────── */
 const idb = typeof indexedDB !== "undefined" ? createIdbStore("pulkro-cuadrillas", "state") : undefined;
 let writeTimer: ReturnType<typeof setTimeout> | undefined;
+let pendingWrite: { name: string; value: string } | null = null;
+const flushWrite = () => {
+  clearTimeout(writeTimer);
+  if (!idb || !pendingWrite) return;
+  const { name, value } = pendingWrite;
+  pendingWrite = null;
+  void set(name, value, idb);
+};
+// A reload / app switch right after a capture must not lose the debounced write (the service worker may hard-navigate offline).
+if (typeof window !== "undefined") {
+  window.addEventListener("pagehide", flushWrite);
+  document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState === "hidden") flushWrite();
+  });
+}
 const idbStorage: StateStorage = {
   getItem: async (name) => (idb ? ((await get<string>(name, idb)) ?? null) : null),
   setItem: (name, value) => {
     if (!idb) return;
+    pendingWrite = { name, value };
     clearTimeout(writeTimer);
-    writeTimer = setTimeout(() => void set(name, value, idb), 350);
+    writeTimer = setTimeout(flushWrite, 350);
   },
   removeItem: async (name) => {
     if (idb) await del(name, idb);
@@ -62,6 +83,48 @@ const nextFolio = (items: { folio: string }[], prefix: string, width: number) =>
   return `${prefix}-${String(max + 1).padStart(width, "0")}`;
 };
 const surveyToken = () => crypto.randomUUID().replace(/-/g, "").slice(0, 10);
+const omit = <T extends object, K extends keyof T>(obj: T, keys: K[]): Omit<T, K> =>
+  Object.fromEntries(Object.entries(obj).filter(([k]) => !keys.includes(k as K))) as Omit<T, K>;
+
+/** Thrown by value-returning actions when the session may not perform them (the UI should have hidden the control). */
+export class PermissionDeniedError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "PermissionDeniedError";
+  }
+}
+
+const OUT_OF_SCOPE = "No encontrado o fuera de su alcance.";
+const CLOSED_ORDER = "Orden cerrada: reábrala para hacer cambios (se generará una nueva versión del reporte).";
+
+/** Why a role can't do an action — the store's guard messages (the UI's tooltips say the same). */
+export const DENIED_REASON: Partial<Record<Action, string>> = {
+  "order.create": "Solo Administración da de alta órdenes.",
+  "order.edit": "Solo Administración edita los datos generales de la orden.",
+  "order.editOperational": "Su rol solo consulta esta orden.",
+  "order.reschedule": "Solo el supervisor reprograma jornadas y confirma fechas.",
+  "order.reopen": "Solo el supervisor de la orden puede reabrirla.",
+  "order.archive": "Su rol no archiva órdenes.",
+  "crew.assign": "Solo el supervisor asigna la cuadrilla.",
+  "field.capture": "Solo el supervisor captura en campo.",
+  "closure.authorize": "Solo el supervisor autoriza el cierre.",
+  "report.share": "Solo el supervisor genera y comparte el reporte con el cliente.",
+  "postventa.manage": "Su rol solo consulta la postventa.",
+  "users.admin": "Su rol no administra usuarios.",
+  "catalogs.admin": "Su rol no administra catálogos.",
+  "view.allUnits": "Su rol solo ve su propio alcance.",
+};
+
+/** Fields a supervisor (order.editOperational) may change; order.edit adds the general data. */
+const OPERATIONAL_FIELDS: (keyof Order)[] = ["specialInstructions", "siteContact", "activities", "materials"];
+const FULL_EDIT_FIELDS: (keyof Order)[] = [...OPERATIONAL_FIELDS, "title", "priority", "commercialRef", "serviceTypeId", "siteId", "supervisorId"];
+const REOPENABLE: OrderStatus[] = ["finalizada", "reporte_enviado", "seguimiento"];
+const CLOSABLE: OrderStatus[] = ["pendiente_validacion", "reabierta", "con_incidencia"];
+const ARCHIVABLE: OrderStatus[] = ["reporte_enviado", "seguimiento"];
+const REPORTABLE: OrderStatus[] = ["finalizada", "reporte_enviado", "seguimiento"];
+/** Statuses a supervisor may set by hand (the rest are derived from jornadas, closure, incidents and reports). */
+const RESCHEDULE_TARGETS: OrderStatus[] = ["reprogramada", "programada", "en_ejecucion", "jornada_cerrada"];
+const isTerminal = (st: OrderStatus) => DONE_STATUSES.includes(st) || st === "cancelada";
 
 export type NewOrderInput = {
   clientId: string;
@@ -81,6 +144,9 @@ export type NewOrderInput = {
 };
 
 export type GeoInput = Pick<GeoStamp, "lat" | "lng" | "accuracy" | "source"> & { note?: string };
+
+/** What addPhoto accepts: capture metadata (EXIF time, origin, position) is kept as given; `by`/`uploadedAt` are stamped. */
+export type NewPhotoInput = Omit<Photo, "id" | "by" | "takenAt" | "uploadedAt"> & { takenAt?: string; bytes?: number };
 
 type Session = {
   signedIn: boolean;
@@ -105,7 +171,9 @@ export type AppState = DataSnapshot & {
   /* session */
   signIn: (userId: string) => void;
   signOut: () => void;
+  /** Demo only (NEXT_PUBLIC_DEMO ≠ "0"). */
   switchRole: (role: Role) => void;
+  /** No-op for roles without view.allUnits. */
   setUnitFilter: (unit: string | "all") => void;
 
   /* orders */
@@ -113,8 +181,10 @@ export type AppState = DataSnapshot & {
   updateOrder: (orderId: string, patch: Partial<Order>, action?: string, reason?: string) => void;
   setOrderStatus: (orderId: string, status: OrderStatus, reason?: string) => void;
   cancelOrder: (orderId: string, reason: string) => void;
+  /** Reabrir (order.reopen): the next report version needs a fresh validateClosure. */
   reopenOrder: (orderId: string, reason: string) => void;
-  archiveOrder: (orderId: string) => void;
+  /** Archivar (order.archive): reporte enviado / seguimiento with no open post-sale cases. */
+  archiveOrder: (orderId: string, reason?: string) => void;
 
   /* scheduling */
   assignCrew: (orderId: string, workerIds: string[], reason: string, jornadaId?: string) => void;
@@ -124,10 +194,12 @@ export type AppState = DataSnapshot & {
   checkIn: (jornadaId: string, geo: GeoInput) => void;
   checkOut: (jornadaId: string, geo: GeoInput) => void;
   addJornadaNote: (jornadaId: string, text: string) => void;
+  /** Audit-only reminder about missing evidence (Evidencias): never writes into the jornada's bitácora. */
+  logReminder: (orderId: string, jornadaId?: string, note?: string) => void;
   /** Save the activity-hours split for a jornada (mobile "Desglose de horas" flow). */
   setJornadaBreakdown: (jornadaId: string, breakdown: { activity: string; hours: number }[], note?: string) => void;
-  addPhoto: (photo: Omit<Photo, "id" | "by" | "takenAt"> & { takenAt?: string; bytes?: number }) => string;
-  updatePhoto: (photoId: string, patch: Partial<Photo>) => void;
+  addPhoto: (photo: NewPhotoInput) => string;
+  updatePhoto: (photoId: string, patch: Partial<Pick<Photo, "area" | "note" | "caseId" | "incidentId">>) => void;
   deletePhoto: (photoId: string) => void;
   togglePhotoForReport: (photoId: string) => void;
 
@@ -153,7 +225,10 @@ export type AppState = DataSnapshot & {
   upsertClient: (client: Client) => void;
   upsertSite: (site: Site) => void;
   upsertWorker: (worker: Worker) => void;
+  /** users.admin, or self-service on one's own record limited to phone/email (role, unit and active never change here). */
   upsertUser: (user: User) => void;
+  /** Self-service "Mis datos": phone / email of the signed-in user. */
+  updateMyContact: (contact: { phone?: string; email?: string }) => void;
   upsertServiceType: (st: ServiceType) => void;
   upsertMaterial: (m: Material) => void;
 
@@ -164,6 +239,7 @@ export type AppState = DataSnapshot & {
   retrySync: () => void;
 
   /* demo */
+  /** Demo only (NEXT_PUBLIC_DEMO ≠ "0"); the UI must confirm first (DemoResetDialog). */
   resetDemo: () => void;
   ensureSeeded: () => void;
 };
@@ -181,6 +257,9 @@ const emptyData: DataSnapshot = {
 
 export const isOffline = (s: Pick<AppState, "sync">) => s.sync.forcedOffline || s.sync.browserOffline;
 
+/** Items that were mid-upload when the app closed go back to "pendiente" so the engine retries them. */
+const unstick = (queue: SyncItem[]) => queue.map((q) => (q.state === "sincronizando" ? { ...q, state: "pendiente" as const } : q));
+
 export const useAppStore = create<AppState>()(
   persist(
     (setState, getState) => {
@@ -189,11 +268,11 @@ export const useAppStore = create<AppState>()(
         entity: AuditEntity,
         entityId: string,
         action: string,
-        opts: { orderId?: string; reason?: string; syncLabel?: string; bytes?: number } = {},
+        opts: { orderId?: string; reason?: string; syncLabel?: string; bytes?: number; by?: string } = {},
       ) => {
         const s = getState();
         const at = nowIso();
-        const entry = { id: uid("aud"), at, by: s.session.userId, entity, entityId, orderId: opts.orderId, action, reason: opts.reason };
+        const entry = { id: uid("aud"), at, by: opts.by ?? s.session.userId, entity, entityId, orderId: opts.orderId, action, reason: opts.reason };
         const item: SyncItem = {
           id: uid("syn"), at, label: opts.syncLabel ?? action, entity, entityId, orderId: opts.orderId,
           state: "pendiente", bytes: opts.bytes,
@@ -202,7 +281,64 @@ export const useAppStore = create<AppState>()(
         if (!isOffline(getState())) queueMicrotask(() => void getState().processSyncQueue());
       };
 
-      const folioOf = (orderId: string) => getState().orders.find((o) => o.id === orderId)?.folio ?? "";
+      /* internal: permission + scope guards (doc §2). The UI hides what a role can't do; these make it hold for every caller. */
+      let lastDenied = "";
+      const denied = (message: string): null => {
+        lastDenied = message;
+        toast.error("Acción no permitida", { id: "pk-denied", description: message });
+        return null;
+      };
+      /** For actions that must return a value: stop the caller after telling the user why. */
+      const must = <T>(v: T | null): T => {
+        if (v === null) throw new PermissionDeniedError(lastDenied || "Acción no permitida");
+        return v;
+      };
+      /** The signed-in, active user. */
+      const sessionUser = () => {
+        const s = getState();
+        return s.session.signedIn ? s.users.find((u) => u.id === s.session.userId && u.active) : undefined;
+      };
+      /** The user may do any of `actions` (null = any signed-in user). */
+      const allowRole = (actions: Action[] | null): User | null => {
+        const user = sessionUser();
+        if (!user) return denied("Inicie sesión para continuar.");
+        if (actions && !actions.some((a) => can(user.role, a))) return denied(DENIED_REASON[actions[0]] ?? "Su rol no permite esta acción.");
+        return user;
+      };
+      /** allowRole + the order exists and is inside the user's scope. */
+      const allowOrder = (actions: Action[] | null, orderId: string | undefined): { user: User; order: Order } | null => {
+        const user = allowRole(actions);
+        if (!user) return null;
+        const s = getState();
+        const order = orderId ? s.orders.find((o) => o.id === orderId) : undefined;
+        if (!order || !canSeeOrder(user, order, s.session.unitFilter)) return denied(OUT_OF_SCOPE);
+        return { user, order };
+      };
+      const allowJornada = (actions: Action[] | null, jornadaId: string) => {
+        const jornada = getState().jornadas.find((x) => x.id === jornadaId);
+        if (!jornada) return denied(OUT_OF_SCOPE);
+        const ok = allowOrder(actions, jornada.orderId);
+        return ok ? { ...ok, jornada } : null;
+      };
+      /** Field photos follow field.capture; post-sale photos follow postventa.manage. */
+      const photoAction = (kind: Photo["kind"]): Action => (kind === "postventa" ? "postventa.manage" : "field.capture");
+      const allowPhotoEdit = (photoId: string) => {
+        const photo = getState().photos.find((p) => p.id === photoId);
+        if (!photo) return denied(OUT_OF_SCOPE);
+        const ok = allowOrder([photoAction(photo.kind)], photo.orderId);
+        if (!ok) return null;
+        if (photo.kind !== "postventa" && isTerminal(ok.order.status)) return denied(CLOSED_ORDER);
+        return { ...ok, photo };
+      };
+      /** Catalog writes: catalogs.admin, and Administración only inside its own unit. */
+      const allowCatalog = (unitId: string | undefined) => {
+        const user = allowRole(["catalogs.admin"]);
+        if (!user) return null;
+        if (unitId && !canSeeUnit(user, unitId, "all")) return denied("Solo puede modificar el catálogo de su unidad.");
+        return user;
+      };
+
+      const userName = (id: string) => getState().users.find((u) => u.id === id)?.name ?? id;
 
       const patchOrder = (orderId: string, patch: Partial<Order>) =>
         setState((st) => ({
@@ -219,6 +355,7 @@ export const useAppStore = create<AppState>()(
         con_incidencia: "Con incidencia", reabierta: "Reabierta",
       };
 
+      /** Internal transition (callers have already been authorized). */
       const changeStatus = (orderId: string, status: OrderStatus, reason?: string) => {
         const order = getState().orders.find((o) => o.id === orderId);
         if (!order || order.status === status) return;
@@ -230,7 +367,25 @@ export const useAppStore = create<AppState>()(
         const s = getState();
         const offline = isOffline(s);
         const t = nowIso();
-        return { ...geo, deviceAt: t, serverAt: offline ? undefined : t, by: s.session.userId, offline };
+        const note = geo.note?.trim() || undefined;
+        return { ...geo, note, deviceAt: t, serverAt: offline ? undefined : t, by: s.session.userId, offline };
+      };
+      const geoLabel = (geo: GeoInput) =>
+        geo.source === "remota" ? "supervisión remota" : geo.source === "manual" ? "ubicación manual" : `GPS ±${Math.round(geo.accuracy)} m`;
+      /** Manual pins and remote supervision always carry a justification. */
+      const geoNoteOk = (geo: GeoInput) =>
+        geo.source === "gps" || (geo.note?.trim().length ?? 0) >= GEO_NOTE_MIN
+          ? true
+          : denied(geo.source === "remota" ? "Explique la supervisión remota (quién está en sitio y cómo se confirmó)." : "Justifique la ubicación manual.");
+
+      const reseed = () => {
+        const seed = generateSeed(new Date());
+        const { seededAt, ...data } = seed;
+        setState((st) => ({
+          ...data,
+          meta: { seededAt, seedVersion: SEED_VERSION },
+          sync: { ...st.sync, queue: [], lastSyncAt: new Date(Date.now() - 4 * 60_000).toISOString(), processing: false },
+        }));
       };
 
       return {
@@ -241,23 +396,54 @@ export const useAppStore = create<AppState>()(
         hydrated: false,
 
         /* ── session ── */
-        signIn: (userId) => setState((st) => ({ session: { ...st.session, signedIn: true, userId, unitFilter: "all" } })),
+        signIn: (userId) => {
+          const user = getState().users.find((u) => u.id === userId);
+          if (!user || !user.active) {
+            denied("La cuenta no existe o está desactivada.");
+            return;
+          }
+          setState((st) => ({ session: { ...st.session, signedIn: true, userId, unitFilter: "all" } }));
+        },
         signOut: () => setState((st) => ({ session: { ...st.session, signedIn: false } })),
-        switchRole: (role) =>
-          setState((st) => ({ session: { ...st.session, userId: DEMO_USER_BY_ROLE[role], unitFilter: "all" } })),
-        setUnitFilter: (unit) => setState((st) => ({ session: { ...st.session, unitFilter: unit } })),
+        switchRole: (role) => {
+          if (!DEMO_ENABLED) {
+            denied("El cambio de rol solo existe en la versión de demostración.");
+            return;
+          }
+          setState((st) => ({ session: { ...st.session, userId: DEMO_USER_BY_ROLE[role], unitFilter: "all" } }));
+        },
+        setUnitFilter: (unit) => {
+          const user = sessionUser();
+          if (!user || !can(user.role, "view.allUnits")) {
+            if (getState().session.unitFilter !== "all") setState((st) => ({ session: { ...st.session, unitFilter: "all" } }));
+            return;
+          }
+          if (unit !== "all" && !getState().units.some((u) => u.id === unit)) return;
+          setState((st) => ({ session: { ...st.session, unitFilter: unit } }));
+        },
 
         /* ── orders ── */
         createOrder: (input) => {
+          const user = must(allowRole(["order.create"]));
           const s = getState();
+          const found = s.clients.find((c) => c.id === input.clientId);
+          const client = must(found && canSeeUnit(user, found.unitId, s.session.unitFilter) ? found : denied("El cliente no existe o está fuera de su alcance."));
+          const unitId = client.unitId;
+          must(client.siteIds.includes(input.siteId) ? true : denied("El sitio no pertenece al cliente."));
+          const supervisor = s.users.find((u) => u.id === input.supervisorId && u.role === "supervisor" && u.active && u.unitId === unitId);
+          must(supervisor ? true : denied("El supervisor debe estar activo y pertenecer a la unidad del cliente."));
+          if (user.role === "supervisor") must(input.supervisorId === user.id ? true : denied("Un supervisor solo registra órdenes a su cargo."));
           const id = uid("ord");
           const folio = nextFolio(s.orders, "OS", 5);
           const at = nowIso();
           const sorted = [...input.days].sort((a, b) => a.date.localeCompare(b.date));
           const toIso = (date: string, hm: string) => new Date(`${date}T${hm}:00`).toISOString();
-          const hasPlan = sorted.length > 0 && input.workerIds.length > 0;
+          // Only whoever assigns crews can pre-staff the order; anyone else leaves the dates for the supervisor to confirm.
+          const pool = new Set(s.workers.filter((w) => w.active && w.unitId === unitId).map((w) => w.id));
+          const workerIds = can(user.role, "crew.assign") ? input.workerIds.filter((w) => pool.has(w)) : [];
+          const hasPlan = sorted.length > 0 && workerIds.length > 0;
           const order: Order = {
-            id, folio, unitId: s.clients.find((c) => c.id === input.clientId)?.unitId ?? "u_mty",
+            id, folio, unitId,
             clientId: input.clientId, siteId: input.siteId, serviceTypeId: input.serviceTypeId, supervisorId: input.supervisorId,
             status: hasPlan ? "programada" : "borrador",
             title: input.title, activities: input.activities, materials: input.materials,
@@ -265,13 +451,13 @@ export const useAppStore = create<AppState>()(
             scheduledStart: sorted[0] ? toIso(sorted[0].date, sorted[0].start) : at,
             scheduledEnd: sorted.length ? toIso(sorted[sorted.length - 1].date, sorted[sorted.length - 1].end) : at,
             plannedDays: Math.max(1, sorted.length), commercialRef: input.commercialRef,
-            crewHistory: input.workerIds.length ? [{ at, workerIds: input.workerIds, by: s.session.userId, reason: "Asignación inicial" }] : [],
-            createdAt: at, createdBy: s.session.userId, updatedAt: at, priority: input.priority,
+            crewHistory: workerIds.length ? [{ at, workerIds, by: user.id, reason: "Asignación inicial" }] : [],
+            createdAt: at, createdBy: user.id, updatedAt: at, priority: input.priority,
           };
           const jornadas: Jornada[] = sorted.map((d, i) => ({
             id: uid("jor"), orderId: id, dayIndex: i + 1, date: d.date,
             plannedStart: toIso(d.date, d.start), plannedEnd: toIso(d.date, d.end),
-            workerIds: input.workerIds, status: "pendiente", log: [],
+            workerIds, status: "pendiente", log: [],
           }));
           setState((st) => ({ orders: [order, ...st.orders], jornadas: [...st.jornadas, ...jornadas] }));
           record("orden", id, "Alta manual de orden de servicio", { orderId: id, reason: input.commercialRef ? `Trabajo autorizado ${input.commercialRef}` : undefined, syncLabel: `Nueva orden ${folio}` });
@@ -279,36 +465,137 @@ export const useAppStore = create<AppState>()(
         },
 
         updateOrder: (orderId, patch, action = "Editó datos de la orden", reason) => {
-          patchOrder(orderId, patch);
-          record("orden", orderId, action, { orderId, reason, syncLabel: `Edición · ${folioOf(orderId)}` });
+          const keys = (Object.keys(patch) as (keyof Order)[]).filter((k) => patch[k] !== undefined);
+          if (keys.some((k) => !FULL_EDIT_FIELDS.includes(k))) {
+            denied("Ese dato de la orden no se edita aquí.");
+            return;
+          }
+          const general = keys.some((k) => !OPERATIONAL_FIELDS.includes(k));
+          const ok = allowOrder(general ? ["order.edit"] : ["order.edit", "order.editOperational"], orderId);
+          if (!ok) return;
+          const { order } = ok;
+          if (isTerminal(order.status)) {
+            denied(order.status === "cancelada" ? "La orden está cancelada." : CLOSED_ORDER);
+            return;
+          }
+          const s = getState();
+          if (patch.supervisorId && patch.supervisorId !== order.supervisorId) {
+            const sup = s.users.find((u) => u.id === patch.supervisorId && u.role === "supervisor" && u.active && u.unitId === order.unitId);
+            if (!sup) {
+              denied("El supervisor debe estar activo y pertenecer a la unidad de la orden.");
+              return;
+            }
+          }
+          if (patch.siteId && !s.clients.find((c) => c.id === order.clientId)?.siteIds.includes(patch.siteId)) {
+            denied("El sitio no pertenece al cliente de la orden.");
+            return;
+          }
+          const clean = Object.fromEntries(keys.map((k) => [k, patch[k]])) as Partial<Order>;
+          patchOrder(orderId, clean);
+          record("orden", orderId, action, { orderId, reason, syncLabel: `Edición · ${order.folio}` });
+          if (clean.supervisorId && clean.supervisorId !== order.supervisorId) {
+            // Reassignment history (doc §4.1): who had it, who has it now.
+            record("orden", orderId, `Reasignó la orden de ${userName(order.supervisorId)} a ${userName(clean.supervisorId)}`, { orderId, reason });
+          }
         },
 
-        setOrderStatus: (orderId, status, reason) => changeStatus(orderId, status, reason),
+        setOrderStatus: (orderId, status, reason) => {
+          const s = getState();
+          const current = s.orders.find((o) => o.id === orderId)?.status;
+          if (status === "cancelada") return getState().cancelOrder(orderId, reason ?? "");
+          if (status === "reabierta") return getState().reopenOrder(orderId, reason ?? "");
+          if (status === "archivada") return getState().archiveOrder(orderId, reason);
+          if (!RESCHEDULE_TARGETS.includes(status)) {
+            denied("Ese estado lo calcula el sistema a partir de las jornadas, el cierre y el reporte.");
+            return;
+          }
+          const ok = allowOrder(["order.reschedule"], orderId);
+          if (!ok) return;
+          if (isTerminal(ok.order.status)) {
+            denied(CLOSED_ORDER);
+            return;
+          }
+          // Confirming dates only leaves "Reprogramada"; flagging it only enters it.
+          if (status !== "reprogramada" && current !== "reprogramada") {
+            denied("Solo se confirman fechas de una orden reprogramada.");
+            return;
+          }
+          changeStatus(orderId, status, reason);
+        },
 
-        cancelOrder: (orderId, reason) => changeStatus(orderId, "cancelada", reason),
+        cancelOrder: (orderId, reason) => {
+          const ok = allowOrder(["order.edit"], orderId);
+          if (!ok) return;
+          if (!OPEN_STATUSES.includes(ok.order.status)) {
+            denied("Solo se cancelan órdenes abiertas.");
+            return;
+          }
+          if (reason.trim().length < 5) {
+            denied("Indique el motivo de la cancelación.");
+            return;
+          }
+          changeStatus(orderId, "cancelada", reason.trim());
+        },
 
         reopenOrder: (orderId, reason) => {
-          const o = getState().orders.find((x) => x.id === orderId);
-          if (!o) return;
-          patchOrder(orderId, { previousStatus: o.status });
-          changeStatus(orderId, "reabierta", reason);
+          const ok = allowOrder(["order.reopen"], orderId);
+          if (!ok) return;
+          const o = ok.order;
+          if (!REOPENABLE.includes(o.status)) {
+            denied("Solo se reabren órdenes finalizadas o con reporte enviado.");
+            return;
+          }
+          if (reason.trim().length < 5) {
+            denied("Indique el motivo para reabrir la orden.");
+            return;
+          }
+          patchOrder(orderId, { previousStatus: o.status, reopenedAt: nowIso() });
+          changeStatus(orderId, "reabierta", reason.trim());
         },
 
-        archiveOrder: (orderId) => changeStatus(orderId, "archivada", "Ciclo postventa completo"),
+        archiveOrder: (orderId, reason) => {
+          const ok = allowOrder(["order.archive"], orderId);
+          if (!ok) return;
+          if (!ARCHIVABLE.includes(ok.order.status)) {
+            denied("Solo se archivan órdenes con reporte enviado o en seguimiento.");
+            return;
+          }
+          const open = getState().cases.some((c) => c.orderId === orderId && (c.status === "abierto" || c.status === "en_proceso"));
+          if (open) {
+            denied("Hay casos postventa abiertos: resuélvalos antes de archivar.");
+            return;
+          }
+          patchOrder(orderId, { archivedAt: nowIso() });
+          changeStatus(orderId, "archivada", reason?.trim() || "Ciclo postventa completo");
+        },
 
         /* ── scheduling ── */
         assignCrew: (orderId, workerIds, reason, jornadaId) => {
+          const ok = allowOrder(["crew.assign"], orderId);
+          if (!ok) return;
+          const { user, order } = ok;
+          if (isTerminal(order.status)) {
+            denied(CLOSED_ORDER);
+            return;
+          }
           const s = getState();
+          if (jornadaId && !s.jornadas.some((j) => j.id === jornadaId && j.orderId === orderId)) {
+            denied(OUT_OF_SCOPE);
+            return;
+          }
+          const pool = new Set(s.workers.filter((w) => w.active && w.unitId === order.unitId).map((w) => w.id));
+          if (workerIds.some((w) => !pool.has(w))) {
+            denied("La cuadrilla debe ser personal activo de la unidad de la orden.");
+            return;
+          }
           const at = nowIso();
-          const order = s.orders.find((o) => o.id === orderId);
-          if (!order) return;
           setState((st) => ({
             jornadas: st.jornadas.map((j) =>
               j.orderId === orderId && (jornadaId ? j.id === jornadaId : j.status === "pendiente") ? { ...j, workerIds } : j,
             ),
           }));
           patchOrder(orderId, {
-            crewHistory: [...order.crewHistory, { at, workerIds, by: s.session.userId, reason, jornadaId }],
+            crewHistory: [...order.crewHistory, { at, workerIds, by: user.id, reason, jornadaId }],
           });
           record("orden", orderId, `Asignó cuadrilla de ${workerIds.length} personas`, { orderId, reason, syncLabel: `Cuadrilla · ${order.folio}` });
           const hasJornadas = getState().jornadas.some((j) => j.orderId === orderId);
@@ -316,9 +603,14 @@ export const useAppStore = create<AppState>()(
         },
 
         scheduleJornadas: (orderId, days, reason) => {
+          const ok = allowOrder(["order.reschedule", "crew.assign"], orderId);
+          if (!ok) return;
+          const { order } = ok;
+          if (isTerminal(order.status)) {
+            denied(CLOSED_ORDER);
+            return;
+          }
           const s = getState();
-          const order = s.orders.find((o) => o.id === orderId);
-          if (!order) return;
           const kept = s.jornadas.filter((j) => j.orderId === orderId && j.status !== "pendiente");
           const crew = order.crewHistory.at(-1)?.workerIds ?? [];
           const toIso = (date: string, hm: string) => new Date(`${date}T${hm}:00`).toISOString();
@@ -341,25 +633,42 @@ export const useAppStore = create<AppState>()(
 
         /* ── field execution ── */
         checkIn: (jornadaId, geo) => {
-          const j = getState().jornadas.find((x) => x.id === jornadaId);
-          if (!j || j.checkIn) return;
+          const ok = allowJornada(["field.capture"], jornadaId);
+          if (!ok) return;
+          const { jornada: j, order } = ok;
+          if (j.checkIn) return;
+          if (isTerminal(order.status)) {
+            denied(CLOSED_ORDER);
+            return;
+          }
+          if (!geoNoteOk(geo)) return;
           const stamp = geoStamp(geo);
           patchJornada(jornadaId, { checkIn: stamp, status: "en_curso" });
-          record("jornada", jornadaId, `Registro de entrada · Jornada ${j.dayIndex} (GPS ±${Math.round(geo.accuracy)} m)`, {
-            orderId: j.orderId, reason: geo.note, syncLabel: `Entrada GPS · ${folioOf(j.orderId)}`,
+          record("jornada", jornadaId, `Registro de entrada · Jornada ${j.dayIndex} (${geoLabel(geo)})`, {
+            orderId: j.orderId, reason: stamp.note, syncLabel: `Entrada ${geo.source === "remota" ? "remota" : "GPS"} · ${order.folio}`,
           });
           const o = getState().orders.find((x) => x.id === j.orderId);
           if (o && o.status !== "con_incidencia") changeStatus(j.orderId, "en_ejecucion");
         },
 
         checkOut: (jornadaId, geo) => {
-          const j = getState().jornadas.find((x) => x.id === jornadaId);
-          if (!j || !j.checkIn || j.checkOut) return;
+          const ok = allowJornada(["field.capture"], jornadaId);
+          if (!ok) return;
+          const { jornada: j, order } = ok;
+          if (!j.checkIn || j.checkOut) return;
+          if (isTerminal(order.status)) {
+            denied(CLOSED_ORDER);
+            return;
+          }
+          if (!geoNoteOk(geo)) return;
           const stamp = geoStamp(geo);
-          if (stamp.deviceAt < j.checkIn.deviceAt) return; // secuencia temporal inválida
+          if (stamp.deviceAt < j.checkIn.deviceAt) {
+            denied("La hora de salida no puede ser anterior a la entrada. Revise el reloj del dispositivo.");
+            return;
+          }
           patchJornada(jornadaId, { checkOut: stamp, status: "cerrada" });
-          record("jornada", jornadaId, `Registro de salida · Jornada ${j.dayIndex} (GPS ±${Math.round(geo.accuracy)} m)`, {
-            orderId: j.orderId, reason: geo.note, syncLabel: `Salida GPS · ${folioOf(j.orderId)}`,
+          record("jornada", jornadaId, `Registro de salida · Jornada ${j.dayIndex} (${geoLabel(geo)})`, {
+            orderId: j.orderId, reason: stamp.note, syncLabel: `Salida ${geo.source === "remota" ? "remota" : "GPS"} · ${order.folio}`,
           });
           const remaining = getState().jornadas.filter((x) => x.orderId === j.orderId && x.status === "pendiente").length;
           const o = getState().orders.find((x) => x.id === j.orderId);
@@ -367,52 +676,105 @@ export const useAppStore = create<AppState>()(
         },
 
         addJornadaNote: (jornadaId, text) => {
-          const s = getState();
-          const j = s.jornadas.find((x) => x.id === jornadaId);
-          if (!j) return;
-          patchJornada(jornadaId, { log: [...j.log, { at: nowIso(), by: s.session.userId, text }] });
-          record("jornada", jornadaId, "Agregó nota a la bitácora", { orderId: j.orderId, syncLabel: `Bitácora · ${folioOf(j.orderId)}` });
+          const ok = allowJornada(["field.capture"], jornadaId);
+          if (!ok) return;
+          const { jornada: j, order, user } = ok;
+          if (order.status === "cancelada" || order.status === "archivada") {
+            denied("La orden ya no admite cambios.");
+            return;
+          }
+          patchJornada(jornadaId, { log: [...j.log, { at: nowIso(), by: user.id, text }] });
+          record("jornada", jornadaId, "Agregó nota a la bitácora", { orderId: j.orderId, syncLabel: `Bitácora · ${order.folio}` });
+        },
+
+        logReminder: (orderId, jornadaId, note) => {
+          const ok = allowOrder(null, orderId);
+          if (!ok) return;
+          const j = jornadaId ? getState().jornadas.find((x) => x.id === jornadaId && x.orderId === orderId) : undefined;
+          record(j ? "jornada" : "orden", j?.id ?? orderId, `Envió recordatorio de evidencia${j ? ` · Jornada ${j.dayIndex}` : ""}`, {
+            orderId, reason: note?.trim() || undefined, syncLabel: `Recordatorio · ${ok.order.folio}`,
+          });
         },
 
         setJornadaBreakdown: (jornadaId, breakdown, note) => {
-          const j = getState().jornadas.find((x) => x.id === jornadaId);
-          if (!j) return;
+          const ok = allowJornada(["field.capture"], jornadaId);
+          if (!ok) return;
+          const { jornada: j } = ok;
           const total = breakdown.reduce((sum, b) => sum + b.hours, 0);
           patchJornada(jornadaId, { breakdown, breakdownNote: note?.trim() || undefined });
           record("jornada", jornadaId, `Registró desglose de horas · Jornada ${j.dayIndex} (${total.toFixed(1)} h)`, {
-            orderId: j.orderId, reason: note?.trim() || undefined, syncLabel: `Desglose de horas · ${folioOf(j.orderId)}`,
+            orderId: j.orderId, reason: note?.trim() || undefined, syncLabel: `Desglose de horas · ${ok.order.folio}`,
           });
         },
 
         addPhoto: (photo) => {
+          const { order, user } = must(allowOrder([photoAction(photo.kind)], photo.orderId));
+          if (photo.kind !== "postventa") must(isTerminal(order.status) ? denied(CLOSED_ORDER) : true);
           const s = getState();
           const id = uid("pho");
           const { bytes, ...rest } = photo;
-          const p: Photo = { ...rest, id, by: s.session.userId, takenAt: photo.takenAt ?? nowIso() };
+          const at = nowIso();
+          const p: Photo = {
+            ...rest, id, by: user.id, uploadedAt: at,
+            takenAt: photo.takenAt ?? at,
+            takenAtSource: rest.takenAtSource ?? (photo.takenAt ? undefined : "device"),
+          };
           setState((st) => ({ photos: [...st.photos, p] }));
           const kindLabel = { antes: "ANTES", despues: "DESPUÉS", incidencia: "incidencia", postventa: "postventa" }[p.kind];
-          record("foto", id, `Adjuntó foto ${kindLabel} · ${p.area}`, { orderId: p.orderId, syncLabel: `Foto ${kindLabel} · ${folioOf(p.orderId)}`, bytes: bytes ?? 380_000 });
+          const jornada = p.jornadaId ? s.jornadas.find((j) => j.id === p.jornadaId) : undefined;
+          const notes = [
+            p.origin === "gallery" ? "Desde galería" : p.origin === "camera" ? "Cámara" : "",
+            p.takenAtSource === "exif" ? `tomada ${format(parseISO(p.takenAt), "dd/MM/yyyy HH:mm")}` : "",
+            p.takenAtSource === "file" ? `fecha del archivo ${format(parseISO(p.takenAt), "dd/MM/yyyy HH:mm")} (sin fecha de la toma)` : "",
+            p.geoSource === "exif" ? "ubicación de la foto" : p.geoSource === "device" ? "ubicación del teléfono al adjuntar" : "",
+            ...photoTimingIssues(p, jornada).map((x) => `Advertencia: ${x.label}`),
+          ].filter(Boolean);
+          record("foto", id, `Adjuntó foto ${kindLabel} · ${p.area}`, {
+            orderId: p.orderId, reason: notes.length ? notes.join(" · ") : undefined, syncLabel: `Foto ${kindLabel} · ${order.folio}`, bytes: bytes ?? 380_000,
+          });
           return id;
         },
 
-        updatePhoto: (photoId, patch) =>
-          setState((st) => ({ photos: st.photos.map((p) => (p.id === photoId ? { ...p, ...patch } : p)) })),
-
-        deletePhoto: (photoId) => {
-          const p = getState().photos.find((x) => x.id === photoId);
-          setState((st) => ({ photos: st.photos.filter((x) => x.id !== photoId) }));
-          if (p) record("foto", photoId, `Eliminó foto · ${p.area}`, { orderId: p.orderId });
+        updatePhoto: (photoId, patch) => {
+          const ok = allowPhotoEdit(photoId);
+          if (!ok) return;
+          const allowed: (keyof Photo)[] = ["area", "note", "caseId", "incidentId"];
+          const clean = Object.fromEntries(Object.entries(patch).filter(([k]) => allowed.includes(k as keyof Photo))) as Partial<Photo>;
+          if (!Object.keys(clean).length) return;
+          setState((st) => ({ photos: st.photos.map((p) => (p.id === photoId ? { ...p, ...clean } : p)) }));
+          record("foto", photoId, `Editó foto · ${clean.area ?? ok.photo.area}`, { orderId: ok.photo.orderId });
         },
 
-        togglePhotoForReport: (photoId) =>
-          setState((st) => ({ photos: st.photos.map((p) => (p.id === photoId ? { ...p, selectedForReport: !p.selectedForReport } : p)) })),
+        deletePhoto: (photoId) => {
+          const ok = allowPhotoEdit(photoId);
+          if (!ok) return;
+          setState((st) => ({ photos: st.photos.filter((x) => x.id !== photoId) }));
+          record("foto", photoId, `Eliminó foto · ${ok.photo.area}`, { orderId: ok.photo.orderId });
+        },
+
+        togglePhotoForReport: (photoId) => {
+          const photo = getState().photos.find((p) => p.id === photoId);
+          const ok = allowOrder(["field.capture"], photo?.orderId);
+          if (!ok || !photo) return;
+          if (ok.order.status === "cancelada" || ok.order.status === "archivada") {
+            denied("La orden ya no admite cambios.");
+            return;
+          }
+          const selected = !photo.selectedForReport;
+          setState((st) => ({ photos: st.photos.map((p) => (p.id === photoId ? { ...p, selectedForReport: selected } : p)) }));
+          record("foto", photoId, `${selected ? "Incluyó" : "Quitó"} foto ${selected ? "en" : "del"} reporte · ${photo.area}`, {
+            orderId: photo.orderId, syncLabel: `Selección de fotos · ${ok.order.folio}`,
+          });
+        },
 
         /* ── incidents ── */
         addIncident: (input) => {
+          const { order, user } = must(allowOrder(["field.capture"], input.orderId));
+          must(isTerminal(order.status) ? denied(CLOSED_ORDER) : true);
           const s = getState();
           const inc: Incident = {
             ...input, id: uid("inc"), folio: nextFolio(s.incidents, "INC", 4), status: "abierta",
-            createdAt: nowIso(), createdBy: s.session.userId,
+            createdAt: nowIso(), createdBy: user.id,
           };
           setState((st) => ({ incidents: [inc, ...st.incidents] }));
           record("incidencia", inc.id, `Registró incidencia ${inc.folio}`, { orderId: inc.orderId, syncLabel: `Incidencia ${inc.folio}` });
@@ -428,17 +790,30 @@ export const useAppStore = create<AppState>()(
 
         updateIncident: (incidentId, patch) => {
           const inc = getState().incidents.find((i) => i.id === incidentId);
-          setState((st) => ({ incidents: st.incidents.map((i) => (i.id === incidentId ? { ...i, ...patch } : i)) }));
-          if (inc) record("incidencia", incidentId, `Actualizó incidencia ${inc.folio}`, { orderId: inc.orderId });
+          const ok = allowOrder(["field.capture"], inc?.orderId);
+          if (!ok || !inc) return;
+          if (ok.order.status === "cancelada" || ok.order.status === "archivada") {
+            denied("La orden ya no admite cambios.");
+            return;
+          }
+          // Identity and authorship never change; resolution goes through resolveIncident.
+          const rest = omit(patch, ["id", "folio", "orderId", "createdAt", "createdBy", "status", "resolvedAt", "resolvedBy"]);
+          setState((st) => ({ incidents: st.incidents.map((i) => (i.id === incidentId ? { ...i, ...rest } : i)) }));
+          record("incidencia", incidentId, `Actualizó incidencia ${inc.folio}`, { orderId: inc.orderId });
         },
 
         resolveIncident: (incidentId, resolution) => {
           const s = getState();
           const inc = s.incidents.find((i) => i.id === incidentId);
-          if (!inc) return;
+          const ok = allowOrder(["field.capture"], inc?.orderId);
+          if (!ok || !inc) return;
+          if (ok.order.status === "cancelada" || ok.order.status === "archivada") {
+            denied("La orden ya no admite cambios.");
+            return;
+          }
           setState((st) => ({
             incidents: st.incidents.map((i) =>
-              i.id === incidentId ? { ...i, status: "resuelta", resolution, resolvedAt: nowIso(), resolvedBy: s.session.userId } : i,
+              i.id === incidentId ? { ...i, status: "resuelta", resolution, resolvedAt: nowIso(), resolvedBy: ok.user.id } : i,
             ),
           }));
           record("incidencia", incidentId, `Resolvió incidencia ${inc.folio}`, { orderId: inc.orderId, reason: resolution });
@@ -460,35 +835,59 @@ export const useAppStore = create<AppState>()(
 
         /* ── closure + report ── */
         validateClosure: (orderId, closure) => {
+          const ok = allowOrder(["closure.authorize"], orderId);
+          if (!ok) return;
+          const { order, user } = ok;
+          if (!CLOSABLE.includes(order.status)) {
+            denied(DONE_STATUSES.includes(order.status) ? "El cierre ya fue validado." : "Registre la salida de todas las jornadas antes de validar el cierre.");
+            return;
+          }
+          // Re-check the rules here, not only in the dialog (doc §8): jornadas closed, no blocking incident, ANTES + DESPUÉS
+          // per executed jornada unless a justified exception is recorded.
           const s = getState();
-          const full: Closure = { ...closure, validatedAt: nowIso(), validatedBy: s.session.userId };
+          const blockers = closureBlockers(order, s.jornadas, s.photos, s.incidents).filter((b) => b.severity === "block");
+          const evidenceOnly = (id: string) => id.startsWith("antes-") || id.startsWith("despues-");
+          const hard = blockers.filter((b) => !evidenceOnly(b.id));
+          if (hard.length) {
+            denied(`No se puede cerrar: ${hard.map((b) => b.label).join(" · ")}.`);
+            return;
+          }
+          const missingEvidence = blockers.filter((b) => evidenceOnly(b.id));
+          if (missingEvidence.length && (closure.exception?.reason.trim().length ?? 0) < 15) {
+            denied("Faltan fotos ANTES o DESPUÉS: registre una excepción autorizada y justificada para cerrar.");
+            return;
+          }
+          const full: Closure = { ...closure, validatedAt: nowIso(), validatedBy: user.id };
           patchOrder(orderId, { closure: full });
-          record("orden", orderId, "Validó cierre definitivo", {
-            orderId, reason: closure.exception ? `Excepción: ${closure.exception.reason}` : undefined, syncLabel: `Cierre · ${folioOf(orderId)}`,
+          record("orden", orderId, order.status === "reabierta" ? "Validó de nuevo el cierre (orden reabierta)" : "Validó cierre definitivo", {
+            orderId, reason: closure.exception ? `Excepción: ${closure.exception.reason}` : undefined, syncLabel: `Cierre · ${order.folio}`,
           });
           changeStatus(orderId, "finalizada");
         },
 
         generateReport: (orderId, photoIds, summary) => {
+          const { order, user } = must(allowOrder(["report.share"], orderId));
+          if (order.status === "reabierta" || (order.reopenedAt && (!order.closure || order.closure.validatedAt < order.reopenedAt)))
+            must(denied("La orden se reabrió: valide de nuevo el cierre antes de generar una nueva versión del reporte."));
+          if (!REPORTABLE.includes(order.status)) must(denied("El reporte se genera cuando el cierre está validado."));
           const s = getState();
+          const own = new Set(s.photos.filter((p) => p.orderId === orderId).map((p) => p.id));
           const prev = s.reports.filter((r) => r.orderId === orderId);
           const rep: Report = {
-            id: uid("rep"), orderId, version: prev.length + 1, generatedAt: nowIso(), generatedBy: s.session.userId,
-            photoIds, summary, shares: [],
+            id: uid("rep"), orderId, version: prev.length + 1, generatedAt: nowIso(), generatedBy: user.id,
+            photoIds: photoIds.filter((id) => own.has(id)), summary, shares: [],
           };
           setState((st) => ({ reports: [rep, ...st.reports] }));
-          record("reporte", rep.id, `Generó reporte PDF v${rep.version}`, { orderId, syncLabel: `Reporte v${rep.version} · ${folioOf(orderId)}`, bytes: 1_200_000 });
-          const o = getState().orders.find((x) => x.id === orderId);
-          if (o?.status === "reabierta") changeStatus(orderId, "finalizada", "Nueva versión del reporte");
+          record("reporte", rep.id, `Generó reporte PDF v${rep.version}`, { orderId, syncLabel: `Reporte v${rep.version} · ${order.folio}`, bytes: 1_200_000 });
           return rep;
         },
 
         logShare: (reportId, channel, to) => {
-          const s = getState();
-          const rep = s.reports.find((r) => r.id === reportId);
-          if (!rep) return;
+          const rep = getState().reports.find((r) => r.id === reportId);
+          const ok = allowOrder(["report.share"], rep?.orderId);
+          if (!ok || !rep) return;
           const share = {
-            id: uid("shr"), channel, to, at: nowIso(), by: s.session.userId,
+            id: uid("shr"), channel, to, at: nowIso(), by: ok.user.id,
             note: "Envío iniciado desde el dispositivo · sin confirmación de entrega",
           };
           setState((st) => ({ reports: st.reports.map((r) => (r.id === reportId ? { ...r, shares: [...r.shares, share] } : r)) }));
@@ -500,12 +899,13 @@ export const useAppStore = create<AppState>()(
 
         /* ── post-sale ── */
         createCase: (input) => {
+          const { user } = must(allowOrder(["postventa.manage"], input.orderId));
           const s = getState();
           const at = nowIso();
           const c: PostSaleCase = {
             ...input, status: input.status ?? "abierto", id: uid("cas"), folio: nextFolio(s.cases, "PV", 4),
-            createdAt: at, createdBy: s.session.userId, updatedAt: at,
-            timeline: [{ at, by: s.session.userId, text: "Caso registrado y asignado." }],
+            createdAt: at, createdBy: user.id, updatedAt: at,
+            timeline: [{ at, by: user.id, text: "Caso registrado y asignado." }],
           };
           setState((st) => ({ cases: [c, ...st.cases] }));
           record("caso", c.id, `Abrió caso postventa ${c.folio}`, { orderId: c.orderId, syncLabel: `Caso ${c.folio}` });
@@ -515,22 +915,22 @@ export const useAppStore = create<AppState>()(
         },
 
         updateCase: (caseId, patch, note) => {
-          const s = getState();
-          const c = s.cases.find((x) => x.id === caseId);
-          if (!c) return;
+          const c = getState().cases.find((x) => x.id === caseId);
+          const ok = allowOrder(["postventa.manage"], c?.orderId);
+          if (!ok || !c) return;
           const at = nowIso();
-          const timeline = note ? [...c.timeline, { at, by: s.session.userId, text: note }] : c.timeline;
-          setState((st) => ({ cases: st.cases.map((x) => (x.id === caseId ? { ...x, ...patch, timeline, updatedAt: at } : x)) }));
+          const rest = omit(patch, ["id", "folio", "orderId", "clientId", "createdAt", "createdBy", "timeline"]);
+          const timeline = note ? [...c.timeline, { at, by: ok.user.id, text: note }] : c.timeline;
+          setState((st) => ({ cases: st.cases.map((x) => (x.id === caseId ? { ...x, ...rest, timeline, updatedAt: at } : x)) }));
           record("caso", caseId, note ?? `Actualizó caso ${c.folio}`, { orderId: c.orderId });
         },
 
         addCaseNote: (caseId, text) => getState().updateCase(caseId, {}, text),
 
         createSurvey: (orderId, channel) => {
-          const s = getState();
-          const o = s.orders.find((x) => x.id === orderId)!;
+          const { order: o, user } = must(allowOrder(["postventa.manage"], orderId));
           const sv: Survey = {
-            id: uid("sur"), token: surveyToken(), orderId, clientId: o.clientId, sentAt: nowIso(), sentBy: s.session.userId,
+            id: uid("sur"), token: surveyToken(), orderId, clientId: o.clientId, sentAt: nowIso(), sentBy: user.id,
             channel, manual: false,
           };
           setState((st) => ({ surveys: [sv, ...st.surveys] }));
@@ -539,25 +939,25 @@ export const useAppStore = create<AppState>()(
           return sv;
         },
 
+        // Public (/encuesta/[token]): the client answers without a session; the token is the only key.
         submitSurvey: (token, answers, respondentName) => {
           const sv = getState().surveys.find((x) => x.token === token);
           if (!sv || sv.respondedAt) return false;
           setState((st) => ({
             surveys: st.surveys.map((x) => (x.token === token ? { ...x, answers, respondentName, respondedAt: nowIso() } : x)),
           }));
-          const a = getState().audit;
-          setState({ audit: [{ id: uid("aud"), at: nowIso(), by: "cliente", entity: "encuesta", entityId: sv.id, orderId: sv.orderId, action: `Cliente respondió encuesta (${answers.overall}/5)` }, ...a] });
+          record("encuesta", sv.id, `Cliente respondió encuesta (${answers.overall}/5)`, { orderId: sv.orderId, by: "cliente", syncLabel: "Respuesta de encuesta" });
           return true;
         },
 
         recordManualSurvey: (orderId, answers, respondentName) => {
+          const { order: o, user } = must(allowOrder(["postventa.manage"], orderId));
           const s = getState();
-          const o = s.orders.find((x) => x.id === orderId)!;
           const existing = s.surveys.find((x) => x.orderId === orderId && !x.respondedAt);
           const at = nowIso();
           const sv: Survey = existing
             ? { ...existing, answers, respondentName, respondedAt: at, manual: true }
-            : { id: uid("sur"), token: surveyToken(), orderId, clientId: o.clientId, sentAt: at, sentBy: s.session.userId, channel: "descarga", manual: true, answers, respondentName, respondedAt: at };
+            : { id: uid("sur"), token: surveyToken(), orderId, clientId: o.clientId, sentAt: at, sentBy: user.id, channel: "descarga", manual: true, answers, respondentName, respondedAt: at };
           setState((st) => ({ surveys: existing ? st.surveys.map((x) => (x.id === sv.id ? sv : x)) : [sv, ...st.surveys] }));
           record("encuesta", sv.id, "Registró respuesta de encuesta manualmente", { orderId });
           return sv;
@@ -565,26 +965,63 @@ export const useAppStore = create<AppState>()(
 
         /* ── catalogs ── */
         upsertClient: (client) => {
-          setState((st) => ({ clients: st.clients.some((c) => c.id === client.id) ? st.clients.map((c) => (c.id === client.id ? client : c)) : [...st.clients, client] }));
+          const prev = getState().clients.find((c) => c.id === client.id);
+          if (!allowCatalog(prev?.unitId) || !allowCatalog(client.unitId)) return;
+          setState((st) => ({ clients: prev ? st.clients.map((c) => (c.id === client.id ? client : c)) : [...st.clients, client] }));
           record("catalogo", client.id, `Guardó cliente ${client.shortName}`);
         },
         upsertSite: (site) => {
+          const client = getState().clients.find((c) => c.id === site.clientId);
+          if (!client) {
+            denied(OUT_OF_SCOPE);
+            return;
+          }
+          if (!allowCatalog(client.unitId)) return;
           setState((st) => ({ sites: st.sites.some((c) => c.id === site.id) ? st.sites.map((c) => (c.id === site.id ? site : c)) : [...st.sites, site] }));
           record("catalogo", site.id, `Guardó sitio ${site.name}`);
         },
         upsertWorker: (worker) => {
-          setState((st) => ({ workers: st.workers.some((c) => c.id === worker.id) ? st.workers.map((c) => (c.id === worker.id ? worker : c)) : [...st.workers, worker] }));
+          const prev = getState().workers.find((w) => w.id === worker.id);
+          if (!allowCatalog(prev?.unitId) || !allowCatalog(worker.unitId)) return;
+          setState((st) => ({ workers: prev ? st.workers.map((c) => (c.id === worker.id ? worker : c)) : [...st.workers, worker] }));
           record("catalogo", worker.id, `Guardó trabajador ${worker.name}`);
         },
-        upsertUser: (user) => {
-          setState((st) => ({ users: st.users.some((c) => c.id === user.id) ? st.users.map((c) => (c.id === user.id ? user : c)) : [...st.users, user] }));
-          record("usuario", user.id, `Guardó usuario ${user.name}`);
+        upsertUser: (next) => {
+          const me = allowRole(null);
+          if (!me) return;
+          const prev = getState().users.find((u) => u.id === next.id);
+          if (!can(me.role, "users.admin")) {
+            // Self-service: only one's own phone / email.
+            const sameIdentity =
+              !!prev && prev.id === me.id && (Object.keys(next) as (keyof User)[]).every((k) => k === "phone" || k === "email" || next[k] === prev[k]);
+            if (!sameIdentity) {
+              denied(DENIED_REASON["users.admin"]!);
+              return;
+            }
+          } else if (next.id === me.id && (next.role !== me.role || !next.active || next.unitId !== me.unitId)) {
+            denied("No puede cambiar su propio rol, unidad o estado: pídalo a otra persona de Dirección.");
+            return;
+          }
+          setState((st) => ({ users: prev ? st.users.map((c) => (c.id === next.id ? next : c)) : [...st.users, next] }));
+          record("usuario", next.id, `Guardó usuario ${next.name}`);
+        },
+        updateMyContact: (contact) => {
+          const me = allowRole(null);
+          if (!me) return;
+          const patch: Partial<User> = {};
+          if (contact.phone !== undefined) patch.phone = contact.phone.trim();
+          if (contact.email !== undefined) patch.email = contact.email.trim();
+          if (!Object.keys(patch).length) return;
+          setState((st) => ({ users: st.users.map((u) => (u.id === me.id ? { ...u, ...patch } : u)) }));
+          record("usuario", me.id, "Actualizó sus datos de contacto");
         },
         upsertServiceType: (stype) => {
+          if (!allowCatalog(undefined)) return;
           setState((st) => ({ serviceTypes: st.serviceTypes.some((c) => c.id === stype.id) ? st.serviceTypes.map((c) => (c.id === stype.id ? stype : c)) : [...st.serviceTypes, stype] }));
           record("catalogo", stype.id, `Guardó tipo de servicio ${stype.name}`);
         },
         upsertMaterial: (m) => {
+          if (!allowCatalog(undefined)) return;
           setState((st) => ({ materials: st.materials.some((c) => c.id === m.id) ? st.materials.map((c) => (c.id === m.id ? m : c)) : [...st.materials, m] }));
           record("catalogo", m.id, `Guardó material ${m.name}`);
         },
@@ -599,7 +1036,13 @@ export const useAppStore = create<AppState>()(
           if (!v) void getState().processSyncQueue();
         },
         retrySync: () => {
-          setState((st) => ({ sync: { ...st.sync, queue: st.sync.queue.map((q) => (q.state === "error" ? { ...q, state: "pendiente" } : q)) } }));
+          // Errors go back to the queue; so does anything left "sincronizando" by an interrupted run (nothing is uploading now).
+          setState((st) => ({
+            sync: {
+              ...st.sync,
+              queue: st.sync.queue.map((q) => (q.state === "error" || (q.state === "sincronizando" && !st.sync.processing) ? { ...q, state: "pendiente" } : q)),
+            },
+          }));
           void getState().processSyncQueue();
         },
         processSyncQueue: async () => {
@@ -649,19 +1092,17 @@ export const useAppStore = create<AppState>()(
 
         /* ── demo data ── */
         resetDemo: () => {
-          const seed = generateSeed(new Date());
-          const { seededAt, ...data } = seed;
-          setState((st) => ({
-            ...data,
-            meta: { seededAt, seedVersion: SEED_VERSION },
-            sync: { ...st.sync, queue: [], lastSyncAt: new Date(Date.now() - 4 * 60_000).toISOString(), processing: false },
-          }));
+          if (!DEMO_ENABLED) {
+            denied("Restablecer datos solo existe en la versión de demostración.");
+            return;
+          }
+          reseed();
         },
 
         ensureSeeded: () => {
           const s = getState();
           if (!s.meta.seededAt || s.meta.seedVersion !== SEED_VERSION || s.orders.length === 0) {
-            getState().resetDemo();
+            reseed();
             return;
           }
           // Re-anchor the demo dataset to today so "Hoy" always has live work.
@@ -693,7 +1134,7 @@ export const useAppStore = create<AppState>()(
       partialize: (s) => {
         const out: Record<string, unknown> = {};
         for (const k of DATA_KEYS) out[k] = s[k];
-        out.sync = { ...s.sync, processing: false, browserOffline: false };
+        out.sync = { ...s.sync, queue: unstick(s.sync.queue), processing: false, browserOffline: false };
         return out as Partial<AppState>;
       },
       migrate: () => ({}) as AppState, // version bump → reseed
@@ -705,6 +1146,8 @@ export const useAppStore = create<AppState>()(
 export async function bootstrapStore() {
   if (useAppStore.getState().hydrated) return;
   await useAppStore.persist.rehydrate();
+  // A reload in the middle of an upload leaves items "sincronizando": put them back in line (retried once online below).
+  useAppStore.setState((st) => ({ sync: { ...st.sync, processing: false, queue: unstick(st.sync.queue) } }));
   useAppStore.getState().ensureSeeded();
   useAppStore.setState({ hydrated: true });
   if (typeof navigator !== "undefined") useAppStore.getState().setBrowserOffline(!navigator.onLine);

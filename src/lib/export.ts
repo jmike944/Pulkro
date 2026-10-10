@@ -7,15 +7,39 @@ export type SheetSpec = {
   rows: Record<string, string | number | Date | null | undefined>[];
 };
 
+/** Pulkro's operating time zone: every date in an export is Monterrey wall-clock time, whatever the device is set to. */
+export const BUSINESS_TZ = "America/Monterrey";
+
+const tzParts = new Intl.DateTimeFormat("en-US", {
+  timeZone: BUSINESS_TZ,
+  year: "numeric",
+  month: "2-digit",
+  day: "2-digit",
+  hour: "2-digit",
+  minute: "2-digit",
+  second: "2-digit",
+  hourCycle: "h23",
+});
+
+/**
+ * Excel cells have no time zone and exceljs writes a Date as its UTC value, so a check-in at 08:14 in Monterrey showed as
+ * 14:14. This returns a Date whose UTC fields are the Monterrey wall-clock fields, which Excel then shows as 08:14.
+ */
+export function toBusinessWallClock(date: Date): Date {
+  if (Number.isNaN(date.getTime())) return date;
+  const p = Object.fromEntries(tzParts.formatToParts(date).map((x) => [x.type, x.value]));
+  return new Date(Date.UTC(+p.year, +p.month - 1, +p.day, +p.hour % 24, +p.minute, +p.second));
+}
+
 export async function exportToExcel(filename: string, sheets: SheetSpec[]) {
   const ExcelJS = (await import("exceljs")).default;
   const wb = new ExcelJS.Workbook();
   wb.creator = "Pulkro Cuadrillas";
-  wb.created = new Date();
+  wb.created = toBusinessWallClock(new Date());
   for (const spec of sheets) {
     const ws = wb.addWorksheet(spec.name.slice(0, 31), { views: [{ state: "frozen", ySplit: 1 }] });
     ws.columns = spec.columns.map((c) => ({ header: c.header, key: c.key, width: c.width ?? Math.max(12, c.header.length + 4), style: c.numFmt ? { numFmt: c.numFmt } : undefined }));
-    spec.rows.forEach((r) => ws.addRow(r));
+    spec.rows.forEach((r) => ws.addRow(Object.fromEntries(Object.entries(r).map(([k, v]) => [k, v instanceof Date ? toBusinessWallClock(v) : v]))));
     const header = ws.getRow(1);
     header.font = { bold: true, color: { argb: "FFFFFFFF" } };
     header.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FF07243F" } };

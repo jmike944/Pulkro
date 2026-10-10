@@ -26,7 +26,7 @@ import { ClosureDialog } from "./closure-dialog";
 import { CrewDialog } from "./crew-dialog";
 import { ScheduleDialog } from "./schedule-dialog";
 import { EditOrderDialog } from "./edit-order-dialog";
-import { CancelDialog, ReopenDialog } from "./status-dialogs";
+import { ArchiveDialog, CancelDialog, ReopenDialog } from "./status-dialogs";
 import { PhotoDialog } from "./photo-dialog";
 
 /**
@@ -79,6 +79,7 @@ function OrderDetailScreen({ d }: { d: OrderDetail }) {
   const [schedule, setSchedule] = useState<{ open: boolean; mode: "reprogramar" | "agregar" }>({ open: false, mode: "reprogramar" });
   const [editOpen, setEditOpen] = useState(false);
   const [cancelOpen, setCancelOpen] = useState(false);
+  const [archiveOpen, setArchiveOpen] = useState(false);
   const [reopenOpen, setReopenOpen] = useState(false);
   const [photoId, setPhotoId] = useState<string | null>(null);
 
@@ -127,6 +128,7 @@ function OrderDetailScreen({ d }: { d: OrderDetail }) {
     openEdit: () => setEditOpen(true),
     openCancel: () => setCancelOpen(true),
     openReopen: () => setReopenOpen(true),
+    openArchive: () => setArchiveOpen(true),
     openPhoto: (id) => setPhotoId(id),
     confirmDates: () => {
       const js = d.jornadas;
@@ -175,6 +177,7 @@ function OrderDetailScreen({ d }: { d: OrderDetail }) {
       <ScheduleDialog open={schedule.open} mode={schedule.mode} onOpenChange={(v) => setSchedule((s) => ({ ...s, open: v }))} />
       <EditOrderDialog open={editOpen} onOpenChange={setEditOpen} />
       <CancelDialog open={cancelOpen} onOpenChange={setCancelOpen} />
+      <ArchiveDialog open={archiveOpen} onOpenChange={setArchiveOpen} />
       <ReopenDialog open={reopenOpen} onOpenChange={setReopenOpen} />
       <PhotoDialog photoId={photoId} onOpenChange={(v) => !v && setPhotoId(null)} />
       <IncidentSheet

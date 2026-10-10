@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Ban, RotateCcw } from "lucide-react";
+import { Archive, Ban, RotateCcw } from "lucide-react";
 import { toast } from "sonner";
 import { useAppStore } from "@/lib/store";
 import { fmtDateTime, plural } from "@/lib/format";
@@ -94,8 +94,8 @@ export function ReopenDialog({ open, onOpenChange }: { open: boolean; onOpenChan
       title={`Reabrir ${d.order.folio}`}
       description={
         <>
-          La orden vuelve a edición y deberá validar el cierre otra vez. Al regenerar se emitirá el <b>reporte v{nextVersion}</b>; las versiones anteriores y sus
-          envíos se conservan en el historial.
+          La orden vuelve a edición y <b>el cierre deberá validarse de nuevo</b> antes de generar el <b>reporte v{nextVersion}</b>; las versiones anteriores y sus envíos se
+          conservan en el historial.
         </>
       }
     >
@@ -117,7 +117,7 @@ function ReopenForm({ onDone }: { onDone: () => void }) {
   const submit = () => {
     if (!valid) return;
     reopenOrder(order.id, reason.trim());
-    toast.success(`${order.folio} reabierta`, { description: `Valide el cierre de nuevo para emitir el reporte v${(latest?.version ?? 0) + 1}.` });
+    toast.success(`${order.folio} reabierta`, { description: `El cierre anterior ya no vale: valídelo de nuevo para emitir el reporte v${(latest?.version ?? 0) + 1}.` });
     onDone();
   };
 
@@ -141,7 +141,7 @@ function ReopenForm({ onDone }: { onDone: () => void }) {
         suggestions={["Corrección de datos del reporte", "Queja del cliente: repaso de áreas", "Fotos adicionales solicitadas"]}
       />
       <ConfirmCheck checked={confirmed} onChange={setConfirmed}>
-        Entiendo que se generará una <b className="font-semibold">nueva versión del reporte</b> y que el cambio queda auditado.
+        Entiendo que debo <b className="font-semibold">validar el cierre otra vez</b> para generar una nueva versión del reporte y que el cambio queda auditado.
       </ConfirmCheck>
       <DialogActions hint={!reason.trim() ? "Indique el motivo" : !confirmed ? "Confirme la reapertura" : undefined}>
         <Button variant="outline" onClick={onDone} className="h-11 rounded-[12px] border-line px-5 font-semibold">
@@ -149,6 +149,69 @@ function ReopenForm({ onDone }: { onDone: () => void }) {
         </Button>
         <Button onClick={submit} disabled={!valid} className="h-11 rounded-[12px] px-5 font-semibold">
           <RotateCcw className="size-4" /> Reabrir orden
+        </Button>
+      </DialogActions>
+    </div>
+  );
+}
+
+/** Archivar — closes the post-sale cycle of an order with its report sent (reporte enviado / seguimiento, no open cases). */
+export function ArchiveDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (v: boolean) => void }) {
+  const { d } = useOrder();
+  return (
+    <OrderDialog
+      open={open}
+      onOpenChange={onOpenChange}
+      icon={
+        <IconTile tone="navy" className="size-11 rounded-[13px] [&_svg]:size-5">
+          <Archive />
+        </IconTile>
+      }
+      title={`Archivar ${d.order.folio}`}
+      description="El ciclo de la orden queda completo: ya no aparece entre las abiertas y se conserva en el historial con su reporte, evidencia y bitácora."
+    >
+      <ArchiveForm onDone={() => onOpenChange(false)} />
+    </OrderDialog>
+  );
+}
+
+function ArchiveForm({ onDone }: { onDone: () => void }) {
+  const { d } = useOrder();
+  const { order, client, reports, surveys, cases } = d;
+  const archiveOrder = useAppStore((s) => s.archiveOrder);
+  const [reason, setReason] = useState("Ciclo postventa completo");
+  const [confirmed, setConfirmed] = useState(false);
+  const answered = surveys.filter((s) => s.respondedAt).length;
+  const valid = reason.trim().length >= 5 && confirmed;
+
+  const submit = () => {
+    if (!valid) return;
+    archiveOrder(order.id, reason.trim());
+    toast.success(`${order.folio} archivada`, { description: "Se conserva en el historial; el motivo quedó en la actividad." });
+    onDone();
+  };
+
+  return (
+    <div className="space-y-5">
+      <SummaryRows
+        rows={[
+          { k: "Cliente", v: client.name },
+          { k: "Estado actual", v: ORDER_STATUS[order.status].label },
+          { k: "Reporte vigente", v: reports[0] ? `v${reports[0].version}` : "Sin generar" },
+          { k: "Encuestas respondidas", v: `${answered} de ${surveys.length}`, tone: surveys.length > answered ? "warn" : "ok" },
+          { k: "Casos postventa", v: cases.length ? `${cases.length} · todos resueltos` : "Ninguno", tone: "ok" },
+        ]}
+      />
+      <ReasonField value={reason} onChange={setReason} id="archive-reason" suggestions={["Ciclo postventa completo", "Cliente conforme, sin seguimiento pendiente"]} />
+      <ConfirmCheck checked={confirmed} onChange={setConfirmed}>
+        Entiendo que la orden <b className="font-semibold">sale de las abiertas</b>. Para hacer cambios deberá reabrirse.
+      </ConfirmCheck>
+      <DialogActions hint={!reason.trim() ? "Indique el motivo" : !confirmed ? "Confirme el archivado" : undefined}>
+        <Button variant="outline" onClick={onDone} className="h-11 rounded-[12px] border-line px-5 font-semibold">
+          Volver
+        </Button>
+        <Button onClick={submit} disabled={!valid} className="h-11 rounded-[12px] px-5 font-semibold">
+          <Archive className="size-4" /> Archivar orden
         </Button>
       </DialogActions>
     </div>

@@ -1,18 +1,12 @@
 "use client";
-
 import { useMemo } from "react";
-import { useAppStore, useCurrentUser, useScopedData } from "@/lib/hooks";
+import { useAppStore, useScopedData, useLookups } from "@/lib/hooks";
+import { canSeeAuditEntry } from "@/lib/permissions";
 
-/**
- * Audit entries the current user may read (doc §2 + §3):
- * supervisor → entries on their own orders plus anything they did themselves; others → the full log.
- */
+/** Audit entries follow the same order and unit scope as the rest of the app. */
 export function useVisibleAudit() {
-  const user = useCurrentUser();
   const all = useAppStore((s) => s.audit);
-  const { orderIds } = useScopedData();
-  return useMemo(() => {
-    if (user.role !== "supervisor") return all;
-    return all.filter((a) => (a.orderId ? orderIds.has(a.orderId) : a.by === user.id));
-  }, [all, orderIds, user.id, user.role]);
+  const { user, unitFilter, orderIds } = useScopedData();
+  const { users } = useLookups();
+  return useMemo(() => all.filter((entry) => canSeeAuditEntry(user, entry, { unitFilter, orderIds, users })), [all, user, unitFilter, orderIds, users]);
 }

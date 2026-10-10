@@ -2,15 +2,17 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { AnimatePresence, motion } from "motion/react";
-import { Camera, CircleAlert, CloudOff, Crosshair, Info, LocateFixed, MapPin, MapPinned, RefreshCw, ShieldCheck, Sparkles, Timer, Wifi } from "lucide-react";
+import { Camera, CircleAlert, CloudOff, Crosshair, Headset, Info, LocateFixed, MapPin, MapPinned, RefreshCw, ShieldCheck, Sparkles, Timer, Wifi } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { GeoInput } from "@/lib/store";
+import { GEO_NOTE_MIN } from "@/lib/domain";
 import { fmtCoords } from "@/lib/format";
 import { ClientMark } from "@/components/pk/client-mark";
 import { distanceMeters, readPosition, type GeoMarker, type GeoReading } from "@/components/pk/geo-map";
 import { AuroraStat, BigButton, FlowHeading, FlowScreen, ItemCard, MobileRow } from "@/components/pk/mobile";
 import { AnimatedNumber } from "@/components/pk/bits";
 import { EASE } from "@/components/pk/motion";
+import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Textarea } from "@/components/ui/textarea";
 import { Chip, MAX_SITE_DISTANCE, StableMap, fmtClock, fmtDistance } from "./field-bits";
@@ -23,12 +25,13 @@ export type GpsNext = "antes" | "despues" | "desglose";
 
 type Reading = GeoReading & { simulated: boolean; error?: string; at: string };
 
-const COPY: Record<GpsMode, { screen: string; title: string; confirm: string; ack: string; done: string }> = {
+const COPY: Record<GpsMode, { screen: string; title: string; confirm: string; ack: string; ackRemote: string; done: string }> = {
   entrada: {
     screen: "Registro de entrada",
     title: "Registrar entrada",
     confirm: "Confirmar entrada",
     ack: "Confirmo que estoy en el sitio con la cuadrilla.",
+    ackRemote: "Confirmo que la cuadrilla ya está en el sitio y que registro esta entrada a distancia.",
     done: "Entrada registrada",
   },
   salida: {
@@ -36,6 +39,7 @@ const COPY: Record<GpsMode, { screen: string; title: string; confirm: string; ac
     title: "Registrar salida",
     confirm: "Confirmar salida",
     ack: "Confirmo que la cuadrilla terminó los trabajos de esta jornada.",
+    ackRemote: "Confirmo que la cuadrilla terminó los trabajos de esta jornada y que registro esta salida a distancia.",
     done: "Salida registrada",
   },
 };
@@ -47,13 +51,22 @@ const REASONS = [
   "Sitio extenso: la cuadrilla trabaja en otra área",
 ];
 
+/** Supervisión remota: how the entrada/salida was confirmed without being on site (the note is mandatory). */
+const REMOTE_REASONS = [
+  "Confirmado por videollamada con el líder de cuadrilla",
+  "Confirmado por llamada con el contacto en el sitio",
+  "Confirmado con fotos enviadas por el líder de cuadrilla",
+  "Superviso otra obra; el líder de cuadrilla avisó la hora",
+];
+
 const wait = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
 /**
  * GPS stamp flow for check-in / check-out (doc §4.2): radar while reading the position, then a map with
  * the site and the captured point, distance, accuracy and device time. Simulated readings, GPS failures
- * or distances over 300 m require a justification (stored as source "manual" + note). Ends in a
- * success screen with a pin drop and the next field step.
+ * or distances over 300 m require a justification (stored as source "manual" + note). "Supervisión remota" is the
+ * alternative when the supervisor is not on site: its own source ("remota"), a mandatory note, no geofence and no
+ * "estoy en el sitio" acknowledgement. Ends in a success screen with a pin drop and the next field step.
  */
 export function GpsFlow({
   f,
@@ -79,6 +92,7 @@ export function GpsFlow({
   const [attempt, setAttempt] = useState(0);
   const [reading, setReading] = useState<Reading | null>(null);
   const [useSite, setUseSite] = useState(false);
+  const [remote, setRemote] = useState(false);
   const [note, setNote] = useState("");
   const [ack, setAck] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -107,8 +121,19 @@ export function GpsFlow({
     setReading(null);
     setSlow(false);
     setUseSite(false);
+    setRemote(false);
+    setNote("");
+    setAck(false);
     setError(null);
     setAttempt((a) => a + 1);
+  };
+  /** Switch between "estoy en el sitio" (GPS) and "supervisión remota": the note and the acknowledgement start over. */
+  const chooseRemote = (v: boolean) => {
+    setRemote(v);
+    setUseSite(false);
+    setNote("");
+    setAck(false);
+    setError(null);
   };
 
   /* ── success ── */
@@ -180,7 +205,7 @@ export function GpsFlow({
   }
 
   /* ── locating ── */
-  if (!reading) {
+  if (!reading && !remote) {
     return (
       <FlowScreen
         open={open}
@@ -213,28 +238,45 @@ export function GpsFlow({
             </motion.div>
           )}
         </AnimatePresence>
+        <button
+          type="button"
+          onClick={() => chooseRemote(true)}
+          className="mx-auto mt-3 flex min-h-11 items-center gap-2 rounded-[12px] px-4 text-[14px] font-semibold text-link transition hover:bg-sky-soft"
+        >
+          <Headset className="size-4" /> No estoy en el sitio · Supervisión remota
+        </button>
       </FlowScreen>
     );
   }
 
   /* ── review ── */
-  const point = useSite ? { lat: site.lat, lng: site.lng, accuracy: 15 } : { lat: reading.lat, lng: reading.lng, accuracy: reading.accuracy };
+  // A real reading of the phone (never the simulated fallback). In remote supervision it is where the SUPERVISOR is, not the site.
+  const live = reading && !reading.simulated ? { lat: reading.lat, lng: reading.lng, accuracy: reading.accuracy } : null;
+  const point = remote
+    ? (live ?? { lat: site.lat, lng: site.lng, accuracy: 0 })
+    : useSite || !reading
+      ? { lat: site.lat, lng: site.lng, accuracy: 15 }
+      : { lat: reading.lat, lng: reading.lng, accuracy: reading.accuracy };
   const distance = distanceMeters(point, site);
   const issues: string[] = [];
-  if (useSite) issues.push("Se usará la ubicación registrada del sitio, sin lectura GPS del dispositivo.");
-  else {
+  if (remote) {
+    // no geofence: the supervisor is not at the site by definition
+  } else if (useSite) issues.push("Se usará la ubicación registrada del sitio, sin lectura GPS del dispositivo.");
+  else if (reading) {
     if (reading.error) issues.push(`${reading.error}: la posición es aproximada.`);
     if (reading.simulated && !reading.error) issues.push("El dispositivo no entregó una lectura GPS real; la posición es aproximada.");
     if (distance > MAX_SITE_DISTANCE) issues.push(`Estás a ${fmtDistance(distance)} del sitio (máximo ${MAX_SITE_DISTANCE} m).`);
   }
-  const needsNote = issues.length > 0;
-  const noteOk = note.trim().length >= 8;
+  const needsNote = remote || issues.length > 0;
+  const noteOk = note.trim().length >= GEO_NOTE_MIN;
   const canConfirm = (!needsNote || noteOk) && ack;
 
   const confirm = () => {
-    const geo: GeoInput = needsNote
-      ? { lat: point.lat, lng: point.lng, accuracy: point.accuracy, source: "manual", note: note.trim() }
-      : { lat: point.lat, lng: point.lng, accuracy: point.accuracy, source: "gps" };
+    const geo: GeoInput = remote
+      ? { lat: point.lat, lng: point.lng, accuracy: point.accuracy, source: "remota", note: note.trim() }
+      : needsNote
+        ? { lat: point.lat, lng: point.lng, accuracy: point.accuracy, source: "manual", note: note.trim() }
+        : { lat: point.lat, lng: point.lng, accuracy: point.accuracy, source: "gps" };
     const res = onConfirm(geo);
     if (res.ok) setDone(res);
     else setError(res.error);
@@ -256,6 +298,9 @@ export function GpsFlow({
         {site.name} · {site.address}
       </FlowHeading>
 
+      <Button variant="outline" className="mb-4 min-h-11" onClick={() => chooseRemote(!remote)}>
+        <Headset className="size-4" /> {remote ? "Estoy en el sitio · Usar GPS" : "No estoy en el sitio · Supervisión remota"}
+      </Button>
       <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4, ease: EASE }} className="space-y-4">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <span className={cn("inline-flex h-8 items-center gap-2 rounded-full px-3 text-[13px] font-semibold", needsNote ? "bg-amber-soft text-amber-fg" : "bg-teal-soft text-teal-fg")}>
@@ -272,7 +317,7 @@ export function GpsFlow({
         <dl className="grid grid-cols-2 gap-px overflow-hidden rounded-[18px] bg-hairline ring-1 ring-hairline">
           <Stat label="Distancia al sitio" value={useSite ? "0 m" : fmtDistance(distance)} tone={!useSite && distance > MAX_SITE_DISTANCE ? "red" : "ok"} />
           <Stat label="Precisión" value={`±${Math.round(point.accuracy)} m`} tone={point.accuracy > 50 ? "amber" : "ok"} />
-          <Stat label="Hora del dispositivo" value={fmtClock(reading.at)} />
+          <Stat label="Hora del dispositivo" value={fmtClock(reading?.at ?? new Date())} />
           <Stat
             label="Se guarda"
             value={
@@ -285,7 +330,7 @@ export function GpsFlow({
           />
         </dl>
         <p className="flex items-center gap-1.5 text-[12.5px] text-subtle tabular">
-          <Crosshair className="size-3.5 shrink-0" /> {needsNote ? "Manual justificada" : "GPS del dispositivo"} · {fmtCoords(point.lat, point.lng)}
+          <Crosshair className="size-3.5 shrink-0" /> {remote ? "Supervisión remota · ubicación de referencia del sitio" : needsNote ? "Manual justificada" : "GPS del dispositivo"} · {fmtCoords(point.lat, point.lng)}
         </p>
       </motion.div>
 
@@ -315,17 +360,17 @@ export function GpsFlow({
                 id="gps-note"
                 value={note}
                 onChange={(e) => setNote(e.target.value)}
-                placeholder="¿Por qué no hay lectura GPS confiable en el sitio?"
+                placeholder={remote ? "¿Cómo confirmó la entrada o salida de la cuadrilla?" : "¿Por qué no hay lectura GPS confiable en el sitio?"}
                 className="min-h-[84px] rounded-[14px] border-amber-line bg-surface text-[16px]"
               />
               <div className="scrollbar-none -mx-1 flex gap-2 overflow-x-auto px-1 pb-0.5">
-                {REASONS.map((r) => (
+                {(remote ? REMOTE_REASONS : REASONS).map((r) => (
                   <Chip key={r} active={note === r} onClick={() => setNote(r)}>
                     {r}
                   </Chip>
                 ))}
               </div>
-              {!useSite && (
+              {!remote && !useSite && (
                 <button
                   type="button"
                   onClick={() => {
@@ -355,7 +400,7 @@ export function GpsFlow({
 
       <label className={cn("mt-5 flex min-h-12 cursor-pointer items-start gap-3 rounded-[16px] border p-4 transition", ack ? "border-blue-line bg-blue-wash" : "border-hairline hover:bg-sand/40")}>
         <Checkbox checked={ack} onCheckedChange={(v) => setAck(v === true)} className="mt-0.5 size-5 rounded-[6px]" />
-        <span className="text-[15px] leading-snug text-ink">{copy.ack}</span>
+        <span className="text-[15px] leading-snug text-ink">{remote ? "Confirmo que verifiqué la entrada o salida de la cuadrilla a distancia." : copy.ack}</span>
       </label>
 
       {error && (

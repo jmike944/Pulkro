@@ -9,8 +9,9 @@ import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { useAppStore, useCan, useCurrentUser } from "@/lib/hooks";
 import { ROLE_LABEL } from "@/lib/status";
+import { DEMO_ENABLED } from "@/lib/demo";
 import type { Role } from "@/lib/types";
-import { PulkroMark } from "@/components/pk/brand";
+import { PulkroEmblem, PulkroLetters } from "@/components/pk/brand";
 import { PersonAvatar } from "@/components/pk/bits";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import {
@@ -22,11 +23,12 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
-import { NAV_FOOT, NAV_GROUPS, NAV_HOME, isActive, type NavGroup, type NavItem } from "./nav";
+import { isActive, navFor, type NavGroup, type NavItem } from "./nav";
 import { useNavBadges } from "./use-nav-badges";
 import { useOpenGroups } from "./use-open-groups";
 import { SyncChip } from "./sync-indicator";
 import { ThemeMenuGroup } from "./theme-switcher";
+import { DemoResetDialog } from "./demo-reset-dialog";
 
 const COLLAPSE_KEY = "pk.sidebar.collapsed";
 
@@ -45,6 +47,8 @@ const ROW_FOCUS = "outline-none focus-visible:ring-2 focus-visible:ring-inset fo
 
 export function Sidebar() {
   const pathname = usePathname();
+  const role = useCurrentUser().role;
+  const nav = navFor(role);
   const [collapsed, setCollapsed] = useState(readCollapsed);
   const groups = useOpenGroups(pathname);
   const toggle = () => {
@@ -63,8 +67,8 @@ export function Sidebar() {
     >
       <div className={cn("flex items-center justify-between px-1.5", collapsed && "flex-col gap-2")}>
         <Link href="/" className="flex items-center gap-3">
-          <PulkroMark />
-          {!collapsed && <span className="font-brand text-[19px] font-extrabold tracking-[0.16em] text-brand-ink">PULKRO</span>}
+          <PulkroEmblem className="text-brand-ink" />
+          {!collapsed && <PulkroLetters className="text-brand-ink" />}
         </Link>
         <button onClick={toggle} className="rounded-lg p-1.5 text-subtle transition hover:bg-surface hover:text-ink" aria-label="Contraer menú">
           <PanelLeft className="size-[18px]" />
@@ -80,10 +84,10 @@ export function Sidebar() {
       <LayoutGroup id="sidebar">
         <NavScroller>
           <ul className="space-y-0.5">
-            {NAV_HOME.map((item) => (
+            {nav.home.map((item) => (
               <NavLink key={item.key} item={item} collapsed={collapsed} />
             ))}
-            {NAV_GROUPS.map((group) =>
+            {nav.groups.map((group) =>
               collapsed ? (
                 <CollapsedGroup key={group.key} group={group} />
               ) : (
@@ -95,7 +99,7 @@ export function Sidebar() {
 
         <div className="mt-1.5">
           <ul className="space-y-0.5">
-            {NAV_FOOT.map((item) => (
+            {nav.foot.map((item) => (
               <NavLink key={item.key} item={item} collapsed={collapsed} />
             ))}
           </ul>
@@ -450,8 +454,8 @@ export function UserCard({ collapsed }: { collapsed?: boolean }) {
   const user = useCurrentUser();
   const switchRole = useAppStore((s) => s.switchRole);
   const signOut = useAppStore((s) => s.signOut);
-  const resetDemo = useAppStore((s) => s.resetDemo);
   const router = useRouter();
+  const [resetOpen, setResetOpen] = useState(false);
   return (
     <div className={cn("mt-0.5 flex items-center gap-3 rounded-[14px] px-2 py-1", collapsed && "justify-center")}>
       <PersonAvatar name={user.name} initials={user.initials} hue={user.hue} size={36} />
@@ -470,31 +474,32 @@ export function UserCard({ collapsed }: { collapsed?: boolean }) {
           <EllipsisVertical className="size-4" />
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end" side="top" className="w-60">
-          <DropdownMenuLabel>Ver la app como</DropdownMenuLabel>
-          {(["direccion", "administracion", "supervisor"] as Role[]).map((r) => (
-            <DropdownMenuItem
-              key={r}
-              onClick={() => {
-                switchRole(r);
-                toast.success(`Ahora ves Pulkro como ${ROLE_LABEL[r]}`);
-              }}
-            >
-              <UserRound className="size-4" />
-              <span className="flex-1">{ROLE_LABEL[r]}</span>
-              {user.role === r && <Check className="size-4" />}
-            </DropdownMenuItem>
-          ))}
-          <DropdownMenuSeparator />
+          {DEMO_ENABLED && (
+            <>
+              <DropdownMenuLabel>Ver la app como (demo)</DropdownMenuLabel>
+              {(["direccion", "administracion", "supervisor"] as Role[]).map((r) => (
+                <DropdownMenuItem
+                  key={r}
+                  onClick={() => {
+                    switchRole(r);
+                    toast.success(`Ahora ves Pulkro como ${ROLE_LABEL[r]}`);
+                  }}
+                >
+                  <UserRound className="size-4" />
+                  <span className="flex-1">{ROLE_LABEL[r]}</span>
+                  {user.role === r && <Check className="size-4" />}
+                </DropdownMenuItem>
+              ))}
+              <DropdownMenuSeparator />
+            </>
+          )}
           <ThemeMenuGroup />
           <DropdownMenuSeparator />
-          <DropdownMenuItem
-            onClick={() => {
-              resetDemo();
-              toast("Datos de demostración restablecidos");
-            }}
-          >
-            <RotateCcw className="size-4" /> Restablecer datos demo
-          </DropdownMenuItem>
+          {DEMO_ENABLED && (
+            <DropdownMenuItem onClick={() => setResetOpen(true)}>
+              <RotateCcw className="size-4" /> Restablecer datos demo…
+            </DropdownMenuItem>
+          )}
           <DropdownMenuItem
             onClick={() => {
               signOut();
@@ -505,6 +510,7 @@ export function UserCard({ collapsed }: { collapsed?: boolean }) {
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
+      <DemoResetDialog open={resetOpen} onOpenChange={setResetOpen} />
     </div>
   );
 }

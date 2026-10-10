@@ -151,7 +151,18 @@ export type Order = {
   createdBy: string;
   updatedAt: string;
   priority: "normal" | "alta";
+  /** Set by reopenOrder: a new report version needs a closure validated after this moment. */
+  reopenedAt?: string;
+  /** Set by archiveOrder (end of the post-sale cycle). */
+  archivedAt?: string;
 };
+
+/**
+ * How a check-in/out location was obtained:
+ * gps = device GPS at the site · manual = GPS unavailable, justified pin · remota = "Supervisión remota": the supervisor
+ * records the crew's entrada/salida without being on site (own source, mandatory note, never claims "estoy en el sitio").
+ */
+export type GeoSource = "gps" | "manual" | "remota";
 
 export type GeoStamp = {
   deviceAt: string; // device clock
@@ -161,7 +172,7 @@ export type GeoStamp = {
   accuracy: number; // meters
   by: string; // user id
   offline: boolean; // captured without connection
-  source: "gps" | "manual"; // manual = GPS unavailable (justified)
+  source: GeoSource;
   note?: string;
 };
 
@@ -204,6 +215,9 @@ export type PhotoSource =
   | { type: "scene"; scene: SceneKind; seed: number }
   | { type: "idb"; key: string; width: number; height: number };
 
+/** Where a real capture came from: the camera input right now, or picked from the gallery (may be older / taken by someone else). */
+export type PhotoOrigin = "camera" | "gallery";
+
 export type Photo = {
   id: string;
   orderId: string;
@@ -212,10 +226,23 @@ export type Photo = {
   caseId?: string;
   kind: PhotoKind;
   area: string; // "Baños planta baja"
+  /** When the photo was actually taken: EXIF DateTimeOriginal when present, else the moment it was attached. */
   takenAt: string;
+  /**
+   * Where takenAt comes from: "exif" = the shot time stored in the file; "file" = the file's last-modified date (gallery pick
+   * without EXIF, e.g. HEIC or a stripped copy); "device" = the moment it was attached (camera input without EXIF). Seed photos omit it.
+   */
+  takenAtSource?: "exif" | "file" | "device";
+  /** When it was attached in the app (≠ takenAt for gallery picks). */
+  uploadedAt?: string;
+  /** Camera vs gallery (real captures only). */
+  origin?: PhotoOrigin;
   by: string;
+  /** Position: EXIF GPS of the file, else the device position when it was attached (if available). */
   lat?: number;
   lng?: number;
+  accuracy?: number;
+  geoSource?: "exif" | "device";
   source: PhotoSource;
   selectedForReport: boolean;
   note?: string;

@@ -3,7 +3,7 @@
 import { useRef } from "react";
 import Link from "next/link";
 import { isSameDay, parseISO } from "date-fns";
-import { Ban, CalendarClock, Ellipsis, FileText, Flame, MapPin, Navigation, Pencil, RotateCcw, type LucideIcon } from "lucide-react";
+import { Archive, Ban, CalendarClock, Ellipsis, FileText, Flame, MapPin, Navigation, Pencil, RotateCcw, type LucideIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { fmtHours, fmtTime, plural } from "@/lib/format";
 import { useMediaQuery } from "@/lib/hooks";
@@ -13,6 +13,7 @@ import { PersonAvatar } from "@/components/pk/bits";
 import { OrderStatusPill, SoftBadge } from "@/components/pk/status";
 import { Button } from "@/components/ui/button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { OrderPdfButton } from "./order-pdf";
 import { REOPENABLE, useOrder, type Gate, type OrderDetail } from "./order-context";
 
 const Dot = () => <span className="hidden text-ghost sm:inline" aria-hidden>·</span>;
@@ -143,17 +144,17 @@ function OrderMoreMenu() {
           openedDialog.current = false;
         }}
       >
+        <MenuAction icon={Archive} label="Archivar" hint="Cerrar el ciclo postventa" gate={gates.archive} onSelect={pick(ui.openArchive)} />
         <MenuAction icon={Pencil} label="Editar datos" hint={perms.edit ? "Todos los campos" : "Datos operativos"} gate={gates.edit} onSelect={pick(ui.openEdit)} />
         <MenuAction icon={CalendarClock} label="Reprogramar" hint="Mover jornadas pendientes" gate={gates.reschedule} onSelect={pick(() => ui.openSchedule("reprogramar"))} />
         {REOPENABLE.includes(order.status) && (
           <MenuAction icon={RotateCcw} label="Reabrir" hint="Genera una nueva versión del reporte" gate={gates.reopen} onSelect={pick(ui.openReopen)} />
         )}
-        <DropdownMenuItem asChild className="min-h-11 gap-3 rounded-[10px] px-2.5">
-          <Link href={`/ordenes/${order.folio}/reporte`}>
-            <FileText className="size-4 text-subtle" />
-            <span className="text-[14px] font-medium">Ver reporte</span>
-          </Link>
-        </DropdownMenuItem>
+        {perms.share ? (
+          <DropdownMenuItem asChild className="min-h-11 gap-3 rounded-[10px] px-2.5">
+            <Link href={`/ordenes/${order.folio}/reporte`}><FileText className="size-4 text-subtle" />Ver reporte</Link>
+          </DropdownMenuItem>
+        ) : <OrderPdfButton />}
         {order.status !== "cancelada" && (
           <>
             <DropdownMenuSeparator />
