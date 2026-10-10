@@ -6,37 +6,25 @@ import { useCan, useCurrentUser, useSyncSummary } from "@/lib/hooks";
 import { cn } from "@/lib/utils";
 import { useUi } from "@/lib/ui-store";
 import { Kbd } from "@/components/ui/kbd";
-import { ActivityBell, MobileActivityButton } from "./activity-feed";
+import { MobileActivityButton } from "./activity-feed";
 import { MobileUnitButton } from "./unit-picker";
 
 export { ActivityList, MobileActivityButton } from "./activity-feed";
 export { MobileUnitButton, UnitPickerSheet, useUnitScope } from "./unit-picker";
 
 /**
- * Desktop: search pill (⌘K) + recent-activity bell.
- * Phone/tablet (mobile reference): compact search + round initials avatar → Perfil, with a sync dot.
+ * Phone/tablet (mobile reference): compact search + round initials avatar → Perfil, with a sync dot. Renders nothing visible from `lg`:
+ * there the search pill and the activity bell live in the card header (`card-header.tsx`), which every page shares.
  * Dirección also gets the unit pill: inline from 640px (where the activity bell joins too); on phones only while a
  * single unit is selected (row 2, as a scope reminder that opens the picker) so sub-page titles keep their space.
  * The phone unit control with all units visible lives in `MobileToolbar` (Hoy) and the Perfil unit card.
  */
 export function HeaderTools() {
-  const setCommandOpen = useUi((s) => s.setCommandOpen);
   return (
-    <div className="grid grid-cols-[auto_auto] items-center justify-items-end gap-x-2.5 gap-y-2 sm:flex sm:gap-2.5 lg:gap-3">
-      <button
-        onClick={() => setCommandOpen(true)}
-        className="hidden h-12 w-[min(420px,32vw)] items-center gap-3 rounded-[16px] border border-hairline bg-white px-4 text-left text-[15px] text-[#98a2b3] shadow-[0_1px_2px_rgb(16_24_40/0.03)] transition hover:border-[#d5dbe3] lg:flex"
-      >
-        <Search className="size-[18px] text-subtle" />
-        <span className="flex-1 truncate">Buscar órdenes, clientes, folios</span>
-        <Kbd className="bg-[#f2f4f7] text-[11px]">⌘K</Kbd>
-      </button>
+    <div className="grid grid-cols-[auto_auto] items-center justify-items-end gap-x-2.5 gap-y-2 sm:flex sm:gap-2.5 lg:hidden">
       <SearchButton className="order-1 sm:order-none" />
       <MobileUnitButton phoneScopedOnly className="order-3 col-span-2 sm:order-none" />
       <MobileActivityButton className="max-sm:hidden" />
-      <span className="hidden lg:block">
-        <ActivityBell />
-      </span>
       <ProfileAvatar className="order-2 sm:order-none lg:hidden" />
     </div>
   );
@@ -53,6 +41,27 @@ export function SearchButton({ className }: { className?: string }) {
       className={cn("inline-flex size-11 shrink-0 items-center justify-center rounded-full bg-sand text-ink transition active:scale-95 lg:hidden", className)}
     >
       <Search className="size-[18px]" />
+    </button>
+  );
+}
+
+/** Desktop (from `lg`): the ⌘K search pill of the card header — "Buscar órdenes, clientes, folios" + shortcut hint; opens the command palette. */
+export function SearchPill({ className }: { className?: string }) {
+  const setCommandOpen = useUi((s) => s.setCommandOpen);
+  return (
+    <button
+      type="button"
+      onClick={() => setCommandOpen(true)}
+      aria-haspopup="dialog"
+      aria-keyshortcuts="Control+K Meta+K"
+      className={cn(
+        "hidden h-10 w-[clamp(240px,24vw,380px)] items-center gap-2.5 rounded-[14px] border border-hairline bg-white px-3.5 text-left text-[14px] text-[#98a2b3] shadow-[0_1px_2px_rgb(16_24_40/0.03)] transition hover:border-[#d5dbe3] lg:flex",
+        className,
+      )}
+    >
+      <Search className="size-[17px] shrink-0 text-subtle" />
+      <span className="flex-1 truncate">Buscar órdenes, clientes, folios</span>
+      <Kbd className="bg-[#f2f4f7] text-[11px]">⌘K</Kbd>
     </button>
   );
 }

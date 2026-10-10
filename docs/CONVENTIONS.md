@@ -52,7 +52,7 @@ Read `src/features/inicio/dashboard-view.tsx` — it is the reference implementa
 
 | Need | Use |
 |---|---|
-| Page title row (serif title, narrative description with `<b>`, search + bell, actions, breadcrumb) | `PageHeader` from `@/components/pk/page` |
+| Page title row (serif title, narrative description with `<b>`, actions, `breadcrumb` for detail pages) | `PageHeader` from `@/components/pk/page` |
 | ONE hero KPI block per page | `AuroraPanel` + `GlassCard` (`@/components/pk/aurora`) |
 | Featured side card (e.g. "Listo para cierre") | `AuroraFrame` |
 | Month bars / funnel capsules | `PillBars`, `CapsuleMeter` (`@/components/pk/pill-bars`) |
@@ -72,6 +72,12 @@ Read `src/features/inicio/dashboard-view.tsx` — it is the reference implementa
 | Excel | `exportToExcel(filename, sheets)` (`@/lib/export`) |
 
 Visual rules:
+- **Desktop work panel (≥ lg):** the panel is fixed in the window; its top is a fixed **card header** (`src/components/shell/card-header.tsx`:
+  breadcrumbs on the left, the ⌘K search pill and the notifications bell on the right) and the page scrolls inside `#main-scroll` underneath it
+  (hairline + soft shadow appear once scrolled). Pages never draw search/bell themselves: `PageHeader` only draws them below `lg`. Breadcrumbs
+  come from `nav.ts` (`Operación › Órdenes`); a detail page adds its tail by passing `breadcrumb` to `PageHeader` (`[{ label: "Órdenes", href: "/ordenes" }, { label: folio }]`),
+  or `usePublishCrumbs()` (`shell/crumbs.ts`) where it has no PageHeader — the card header prefixes the group and shows it at `lg+`, PageHeader keeps
+  its back-chevron trail below `lg`. Size sticky asides with `--pk-pane-h` (the scroller's height, header excluded), never `100dvh`.
 - Canvas `bg-canvas`, the white work panel is provided by the shell. Cards: `rounded-[22px] border border-hairline bg-white shadow-soft` (or `Panel`).
 - Ink `text-ink`, secondary `text-subtle`, links `text-link`. Primary buttons are navy (`Button` default), secondary = `variant="outline"`. Buttons in tables: `h-10 rounded-[12px] px-4 font-semibold`.
 - Section titles: `text-[19px] font-medium`. Table headers: `text-[12px] font-semibold uppercase tracking-[0.1em] text-subtle`. Rows separated by `border-b border-hairline`, generous `py-4`.

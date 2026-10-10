@@ -7,11 +7,14 @@ import { ChevronLeft } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { EDGE_FADE_PX, useEdgeFade } from "./edge-fade";
 import { HeaderTools } from "@/components/shell/header-tools";
+import { usePublishCrumbs } from "@/components/shell/crumbs";
 import { EASE } from "./motion";
 
 /**
- * Page header: serif display title, one-line narrative summary with <b> emphasis,
- * search + notifications at the right, optional breadcrumb and actions.
+ * Page header: serif display title, one-line narrative summary with <b> emphasis, optional breadcrumb and actions.
+ * Phones/tablets: search + avatar/bell at the right and the breadcrumb (back chevron) above the title. From `lg` the work panel's
+ * card header owns both (search + notifications, and the breadcrumb: `breadcrumb` is published there, prefixed with the section's
+ * group), so this header only draws the title block and its `actions`.
  */
 export function PageHeader({
   title,
@@ -30,6 +33,7 @@ export function PageHeader({
   actions?: React.ReactNode;
   className?: string;
 }) {
+  usePublishCrumbs(breadcrumb);
   return (
     <header className={cn("mb-7 sm:mb-8", className)}>
       <div className="flex items-start justify-between gap-4">
@@ -39,7 +43,7 @@ export function PageHeader({
               initial={{ opacity: 0, x: -6 }}
               animate={{ opacity: 1, x: 0 }}
               transition={{ duration: 0.4, ease: EASE }}
-              className="mb-4 flex items-center gap-2 text-[14px] sm:mb-5"
+              className="mb-4 flex items-center gap-2 text-[14px] sm:mb-5 lg:hidden"
               aria-label="Ruta"
             >
               {breadcrumb[0]?.href && (
@@ -92,7 +96,9 @@ export function PageHeader({
           )}
         </div>
         <div className="flex shrink-0 flex-col items-end gap-4">
-          <HeaderTools />
+          <div className="lg:hidden">
+            <HeaderTools />
+          </div>
           {actions && (
             <motion.div
               initial={{ opacity: 0, y: 6 }}
