@@ -7,7 +7,7 @@ import { cn } from "@/lib/utils";
 export type PillDatum = { label: string; value: number; key?: string };
 
 /**
- * Rounded "pill" column chart from the reference hero (white highlighted bar + translucent rest).
+ * Rounded "pill" column chart from the reference hero (white highlighted bar + opaque pale-blue rest).
  * Designed to sit on an AuroraPanel. Bars grow from the baseline with a staggered spring.
  */
 export function PillBars({
@@ -70,8 +70,8 @@ export function PillBars({
                   isHighlight
                     ? "bg-white shadow-[0_10px_30px_-8px_rgb(2_58_99/0.45),inset_0_-6px_12px_rgb(122_209_244/0.25)]"
                     : isActive
-                      ? "bg-white/80 shadow-[0_8px_20px_-10px_rgb(2_58_99/0.35)]"
-                      : "bg-white/40 shadow-[inset_0_1px_0_rgb(255_255_255/0.7)] group-hover:bg-white/60",
+                      ? "bg-[color-mix(in_srgb,white_80%,var(--sky))] shadow-[0_8px_20px_-10px_rgb(2_58_99/0.35)]"
+                      : "bg-[color-mix(in_srgb,white_40%,var(--sky))] shadow-[inset_0_1px_0_rgb(255_255_255/0.7)] group-hover:bg-[color-mix(in_srgb,white_60%,var(--sky))]",
                 )}
               />
             </button>
@@ -99,7 +99,7 @@ export function PillBars({
 export function CapsuleMeter({ value, max, delay = 0, className }: { value: number; max: number; delay?: number; className?: string }) {
   const pct = Math.max(0.12, Math.min(1, max ? value / max : 0));
   return (
-    <div className={cn("relative h-[200px] w-[64px] overflow-hidden rounded-full bg-white/35 shadow-[inset_0_1px_0_rgb(255_255_255/0.8)]", className)}>
+    <div className={cn("relative h-[200px] w-[64px] overflow-hidden rounded-full bg-[color-mix(in_srgb,white_35%,var(--sky))] shadow-[inset_0_1px_0_rgb(255_255_255/0.8)]", className)}>
       <motion.div
         initial={{ height: 0 }}
         animate={{ height: `${pct * 100}%` }}
