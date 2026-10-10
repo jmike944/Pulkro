@@ -483,6 +483,8 @@
 @layer base {
   * {
     @apply border-border outline-ring/50;
+    /* ring-offset-N gaps follow the surface (Tailwind's default is a literal #fff, a white halo in dark) */
+    --tw-ring-offset-color: var(--surface);
   }
   html {
     @apply bg-canvas font-sans;

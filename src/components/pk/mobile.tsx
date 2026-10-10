@@ -349,11 +349,11 @@ export function SuccessHero({ title, children, icon }: { title: React.ReactNode;
         initial={{ scale: 0.4, rotate: -12, opacity: 0 }}
         animate={{ scale: 1, rotate: 0, opacity: 1 }}
         transition={{ type: "spring", stiffness: 260, damping: 16, delay: 0.1 }}
-        className="relative inline-flex size-[72px] items-center justify-center rounded-[20px] bg-[linear-gradient(140deg,#a9d4ff,#6aa9f7)] text-on-light shadow-[0_14px_30px_-14px_rgb(47_128_237/0.8)]"
+        className="relative inline-flex size-[72px] items-center justify-center rounded-[20px] bg-[linear-gradient(140deg,#a9d4ff,#6aa9f7)] text-on-light shadow-[0_14px_30px_-14px_rgb(47_128_237/0.8)] dark:bg-[linear-gradient(140deg,var(--azure),var(--brand-deep))] dark:text-white dark:ring-1 dark:ring-edge-strong"
       >
-        <span className="absolute inset-0 rounded-[20px] bg-white/30 animate-ping-soft" />
+        <span className="absolute inset-0 rounded-[20px] bg-white/30 animate-ping-soft dark:bg-white/15" />
         {icon ?? (
-          <span className="relative inline-flex size-9 items-center justify-center rounded-full border-[2.5px] border-brand-deep">
+          <span className="relative inline-flex size-9 items-center justify-center rounded-full border-[2.5px] border-brand-deep dark:border-white">
             <Check className="size-5" strokeWidth={2.6} />
           </span>
         )}

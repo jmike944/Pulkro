@@ -7,7 +7,7 @@ export function PulkroMark({ className, animated = false }: { className?: string
   return (
     <span
       className={cn(
-        "relative inline-flex size-9 shrink-0 items-center justify-center overflow-hidden rounded-[11px] bg-brand-deep shadow-[inset_0_1px_0_rgb(255_255_255/0.12),0_6px_14px_-6px_rgb(2_58_99/0.6)]",
+        "relative inline-flex size-9 shrink-0 items-center justify-center overflow-hidden rounded-[11px] bg-brand-deep shadow-[inset_0_1px_0_rgb(255_255_255/0.12),0_6px_14px_-6px_rgb(2_58_99/0.6)] dark:ring-1 dark:ring-white/10",
         className,
       )}
       aria-hidden

@@ -41,7 +41,8 @@ export function Shimmer({ className }: { className?: string }) {
   return <div className={cn("shimmer rounded-[14px]", className)} />;
 }
 
-const SPARK_COLORS = ["#7ad1f4", "#023a63", "#b9c7ff", "#ffffff", "#12a594", "#cfe8fb"];
+// brand/teal as CSS variables so the navy spark stays visible on the dark theme (same values in light)
+const SPARK_COLORS = ["#7ad1f4", "var(--brand)", "#b9c7ff", "#ffffff", "var(--st-teal)", "#cfe8fb"];
 
 /**
  * One-shot celebration burst (soap bubbles + sparkles). Render <Celebrate trigger={n} /> and

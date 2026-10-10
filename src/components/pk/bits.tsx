@@ -79,14 +79,21 @@ export function PersonAvatar({
   return (
     <span
       title={name}
-      className={cn("inline-flex shrink-0 select-none items-center justify-center rounded-full font-semibold tracking-wide", ring && "ring-2 ring-surface", className)}
-      style={{
-        width: size,
-        height: size,
-        fontSize: Math.max(10, size * 0.34),
-        background: `oklch(0.95 0.03 ${hue})`,
-        color: `oklch(0.38 0.08 ${hue})`,
-      }}
+      className={cn(
+        "inline-flex shrink-0 select-none items-center justify-center rounded-full font-semibold tracking-wide",
+        // pastel disc + deep initials by hue; in dark the disc deepens and the initials lighten so avatars don't glow
+        "bg-[oklch(0.95_0.03_var(--hue))] text-[oklch(0.38_0.08_var(--hue))] dark:bg-[oklch(0.36_0.06_var(--hue))] dark:text-[oklch(0.92_0.05_var(--hue))]",
+        ring && "ring-2 ring-surface",
+        className,
+      )}
+      style={
+        {
+          "--hue": hue,
+          width: size,
+          height: size,
+          fontSize: Math.max(10, size * 0.34),
+        } as React.CSSProperties
+      }
     >
       {initials}
     </span>

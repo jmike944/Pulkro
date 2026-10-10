@@ -30,7 +30,7 @@ const Inner = dynamic(() => import("./geo-map-inner"), {
 /** Soft, on-brand Leaflet map (CARTO light tiles). Client-only, lazy-loaded. */
 export function GeoMap({ className, ...props }: GeoMapProps) {
   return (
-    <div className={cn("relative isolate h-[220px] overflow-hidden rounded-[20px] ring-1 ring-edge", className)}>
+    <div className={cn("relative isolate h-[220px] overflow-hidden rounded-[20px] ring-1 ring-edge dark:[&_.pk-route]:stroke-sky", className)}>
       <Inner {...props} />
     </div>
   );

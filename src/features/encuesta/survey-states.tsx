@@ -71,11 +71,11 @@ export function SurveyThanks({ answers, name, respondedAt, fresh }: { answers: S
           initial={{ opacity: 0, y: 8 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5, ease: EASE, delay: 0.5 }}
-          className="mx-auto mt-6 flex w-fit items-center gap-3 rounded-[16px] bg-blue-wash px-4 py-3"
+          className="mx-auto mt-6 flex w-fit max-w-full flex-wrap items-center justify-center gap-x-3 gap-y-1.5 rounded-[16px] bg-blue-wash px-4 py-3"
         >
           <Stars value={answers.overall} size={20} delay={0.6} />
-          <span className="text-[14px] font-medium text-ink">{RATING_LABELS[answers.overall - 1]}</span>
-          <span className="h-4 w-px bg-hairline" />
+          <span className="whitespace-nowrap text-[14px] font-medium text-ink">{RATING_LABELS[answers.overall - 1]}</span>
+          <span className="hidden h-4 w-px bg-hairline min-[480px]:block" />
           <span className="flex items-center gap-1.5 text-[13px] text-subtle">
             Recomendación <NpsValue value={answers.nps} />
           </span>

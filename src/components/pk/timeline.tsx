@@ -40,7 +40,7 @@ export function Timeline({ steps, className }: { steps: TimelineStep[]; classNam
               className={cn(
                 "relative z-[1] inline-flex size-9 shrink-0 items-center justify-center rounded-[11px] [&_svg]:size-[17px]",
                 s.state === "done" && "bg-blue-soft text-azure-fg",
-                s.state === "current" && "bg-blue-mid text-azure-fg shadow-[0_0_0_4px_rgb(207_227_251/0.45)]",
+                s.state === "current" && "bg-blue-mid text-azure-fg shadow-[0_0_0_4px_rgb(207_227_251/0.45)] dark:shadow-[0_0_0_4px_rgb(79_148_255/0.22)]",
                 s.state === "upcoming" && "border border-dashed border-line-heavy bg-surface text-faint",
                 s.state === "alert" && "bg-red-tint text-red-fg",
               )}

@@ -131,7 +131,10 @@ export function MobileSyncPill({ hidden }: { hidden?: boolean }) {
             aria-label={`${label}, ${detail}. Abrir la cola de sincronización`}
             className={cn(
               "pointer-events-auto inline-flex min-h-11 max-w-full items-center gap-2.5 rounded-full py-2 pl-4 pr-3 text-[13.5px] shadow-lift ring-1",
-              warn ? "bg-amber-soft text-amber-olive ring-amber-line" : "bg-sky-soft text-azure-fg ring-blue-mid",
+              // floats over page content: in dark the translucent tint needs an opaque surface under it
+              warn
+                ? "bg-amber-soft text-amber-olive ring-amber-line dark:bg-surface dark:bg-[image:linear-gradient(var(--amber-soft),var(--amber-soft))]"
+                : "bg-sky-soft text-azure-fg ring-blue-mid dark:bg-surface dark:bg-[image:linear-gradient(var(--sky-soft),var(--sky-soft))]",
             )}
           >
             <span className={cn("size-2.5 shrink-0 rounded-full", warn ? "bg-st-amber" : "bg-sky animate-pulse")} />

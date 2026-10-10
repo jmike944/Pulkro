@@ -317,7 +317,7 @@ export function PhotoThumb({
       animate={{ opacity: 1, scale: 1 }}
       whileHover={onClick ? { y: -2 } : undefined}
       className={cn(
-        "group relative aspect-[4/3] overflow-hidden rounded-[16px] bg-[#eef1f5] text-left ring-1 ring-black/5",
+        "group relative aspect-[4/3] overflow-hidden rounded-[16px] bg-well text-left ring-1 ring-edge",
         selected && "ring-2 ring-link ring-offset-2",
         className,
       )}
@@ -326,7 +326,7 @@ export function PhotoThumb({
       {meta && (
         <>
           <div className="pointer-events-none absolute inset-x-0 bottom-0 h-1/2 bg-gradient-to-t from-black/55 to-transparent" />
-          <span className="absolute left-2.5 top-2.5 inline-flex items-center gap-1.5 rounded-full bg-white/90 px-2 py-0.5 text-[10.5px] font-bold tracking-[0.08em] text-ink backdrop-blur">
+          <span className="absolute left-2.5 top-2.5 inline-flex items-center gap-1.5 rounded-full bg-white/90 px-2 py-0.5 text-[10.5px] font-bold tracking-[0.08em] text-ink backdrop-blur dark:text-on-light">
             <span className={cn("size-1.5 rounded-full", toneDot[k.tone])} />
             {k.label.toUpperCase()}
           </span>
@@ -373,7 +373,7 @@ export function BeforeAfter({ before, after, className }: { before: Photo; after
   return (
     <div
       ref={ref}
-      className={cn("relative aspect-[4/3] w-full touch-pan-y select-none overflow-hidden rounded-[20px] ring-1 ring-black/5", className)}
+      className={cn("relative aspect-[4/3] w-full touch-pan-y select-none overflow-hidden rounded-[20px] ring-1 ring-edge", className)}
       onPointerDown={(e) => {
         (e.target as HTMLElement).setPointerCapture?.(e.pointerId);
         // touch waits for a horizontal drag or a tap: a vertical page scroll starting here must not move the slider
@@ -398,7 +398,7 @@ export function BeforeAfter({ before, after, className }: { before: Photo; after
         <PhotoImage photo={after} />
       </motion.div>
       <span className="absolute left-3 top-3 rounded-full bg-black/45 px-2.5 py-1 text-[11px] font-bold tracking-[0.1em] text-white backdrop-blur">ANTES</span>
-      <span className="absolute right-3 top-3 rounded-full bg-white/85 px-2.5 py-1 text-[11px] font-bold tracking-[0.1em] text-ink backdrop-blur">DESPUÉS</span>
+      <span className="absolute right-3 top-3 rounded-full bg-white/85 px-2.5 py-1 text-[11px] font-bold tracking-[0.1em] text-ink backdrop-blur dark:text-on-light">DESPUÉS</span>
       {/* touch-none: dragging the handle never turns into a page scroll; 44px grab zone on touch screens */}
       <motion.div className="absolute inset-y-0 -ml-[3px] w-[6px] cursor-ew-resize touch-none pointer-coarse:-ml-[22px] pointer-coarse:w-11" style={{ left }}>
         <div className="absolute inset-y-0 left-1/2 w-[3px] -translate-x-1/2 bg-white shadow-[0_0_14px_rgb(122_209_244/0.9)]" />

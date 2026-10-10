@@ -50,7 +50,7 @@ function LoginInner() {
   };
 
   return (
-    <div className="grid min-h-dvh bg-canvas lg:grid-cols-[1.1fr_1fr]">
+    <div className="grid min-h-dvh grid-cols-[minmax(0,1fr)] bg-canvas lg:grid-cols-[1.1fr_1fr]">
       {/* Brand side */}
       <div className="bg-aurora grain relative hidden overflow-hidden lg:block">
         <Bubbles />
