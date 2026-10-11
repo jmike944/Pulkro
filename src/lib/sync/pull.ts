@@ -363,15 +363,21 @@ async function head(ctx: Ctx, table: SyncTable): Promise<string> {
   return rows[0]?.updated_at ?? EPOCH;
 }
 
-/** Whole subtrees of the queued orders, a chunk at a time (orders with unsent work wait for the push). */
+/**
+ * Whole subtrees of the queued orders, a chunk at a time (orders with unsent work wait for the push). An order is read at
+ * most twice per cycle: one whose read keeps being held (an item that reached the server during it) waits in
+ * `pull.subtrees` for the next cycle, and the other queued orders are read meanwhile.
+ */
 async function pullSubtrees(ctx: Ctx) {
+  const reads = new Map<string, number>();
   for (let guard = 0; guard < 1_000; guard++) {
     const st = ctx.store.getState();
     const pending = pendingIndex(st.sync.queue);
-    const due = (st.session.pull?.subtrees ?? []).filter((id) => isUuid(id) && !pending.orders.has(id));
+    const due = (st.session.pull?.subtrees ?? []).filter((id) => isUuid(id) && !pending.orders.has(id) && (reads.get(id) ?? 0) < 2);
     if (!due.length) return;
     usePullStatus.setState({ initial: true });
     const chunk = due.slice(0, SUBTREE_CHUNK);
+    for (const id of chunk) reads.set(id, (reads.get(id) ?? 0) + 1);
     const readAt = nowIso();
     const batch: RowsByTable = {};
     batch.orders = await readAll<Row<"orders">>(ctx, "orders", (q) => q.in("id", chunk));

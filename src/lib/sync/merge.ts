@@ -52,13 +52,18 @@ export type PendingIndex = { orders: Set<string>; entities: Set<string> };
 /**
  * `readAt`: when the rows about to be merged were read. Items that reached the server after that count as unsent too: the
  * read is older than what they wrote (a check-in sent while a whole subtree was being read must not be wiped by it).
+ * Both are the phone's clock: a send time later than the clock now means the clock was set back since that send (the
+ * person corrected it), so the send came before this read — counting it as later would hold its order for as long as the
+ * correction, every cycle.
  */
 export function pendingIndex(queue: SyncItem[], readAt?: string): PendingIndex {
   const orders = new Set<string>();
   const entities = new Set<string>();
   const since = readAt ? Date.parse(readAt) : NaN;
+  const now = Date.now();
   for (const q of queue) {
-    if (q.state === "sincronizado" && !(q.syncedAt && Date.parse(q.syncedAt) >= since)) continue;
+    const sent = q.syncedAt ? Date.parse(q.syncedAt) : NaN;
+    if (q.state === "sincronizado" && !(sent >= since && sent <= now)) continue;
     if (q.orderId) orders.add(q.orderId);
     if (q.entity === "orden") orders.add(q.entityId);
     entities.add(`${q.entity}:${q.entityId}`);
