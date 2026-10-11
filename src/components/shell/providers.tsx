@@ -7,6 +7,7 @@ import { ThemeProvider, useTheme } from "next-themes";
 import { bootstrapStore, useAppStore } from "@/lib/store";
 import { useUi } from "@/lib/ui-store";
 import { usePullScheduler } from "@/lib/sync/use-pull-scheduler";
+import { isForwardingAuthLink } from "@/features/auth/auth-link-forward";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { Toaster } from "@/components/ui/sonner";
 import { Celebrate } from "@/components/pk/feedback";
@@ -18,6 +19,9 @@ import { PwaRegistrar } from "./pwa";
  */
 export function Providers({ children }: { children: React.ReactNode }) {
   useEffect(() => {
+    // An e-mail link that landed here is on its way to /acceso/definir-contrasena (the root layout's inline script): this page
+    // is about to go, so nothing reads the store or the session, and the shell does not redirect it to /login first.
+    if (isForwardingAuthLink()) return;
     void bootstrapStore();
   }, []);
   return (
