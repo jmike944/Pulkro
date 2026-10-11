@@ -377,6 +377,13 @@ export const isStopped = (q: SyncItem) => q.state === "error" || (q.state === "p
 /** "Reintentar" can help: a stopped item with a request to resend, refused for a reason a resend may not meet again. */
 export const isRetryable = (q: SyncItem) => q.state === "error" && !!q.op && !NO_RETRY_HINTS.has(q.problem?.hint ?? "");
 
+/**
+ * The bulk "Reintentar N envíos": retryable items except the REVERSIBLE_HINTS ones, which only go through once the order
+ * changes on the server (reopened, assigned back); resending them all at once would only be refused again. Each keeps its
+ * own "Reintentar".
+ */
+export const isBulkRetryable = (q: SyncItem) => isRetryable(q) && !REVERSIBLE_HINTS.has(q.problem?.hint ?? "");
+
 /** What a discard set holds, by kind (the confirmation names the field captures that leave the device). */
 export type DiscardSummary = { photos: number; checks: number; notes: number; other: number };
 

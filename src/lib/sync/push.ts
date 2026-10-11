@@ -39,7 +39,7 @@ import {
   classifyUpload,
   discardSet,
   discardedCaptures,
-  isRetryable,
+  isBulkRetryable,
   isUnsent,
   lostAnswer,
   nextReady,
@@ -135,10 +135,10 @@ export function resumeAfterReconnect(store: Store): Promise<void> {
 
 /**
  * "Reintentar": stopped items go back in line (same arguments) and delayed retries run now. Without `ids` (the sheet's
- * "Reintentar N envíos"): only the stopped items a resend can help (isRetryable), never the ones the server would refuse again.
+ * "Reintentar N envíos"): only the stopped items a resend can help (isBulkRetryable): never the ones the server would refuse again, nor the reversible refusals, which keep their own Reintentar.
  */
 export function retryItems(store: Store, ids?: string[]) {
-  const pick = (q: SyncItem) => (ids ? ids.includes(q.id) : q.state !== "error" || isRetryable(q));
+  const pick = (q: SyncItem) => (ids ? ids.includes(q.id) : q.state !== "error" || isBulkRetryable(q));
   store.setState((st) => ({
     sync: {
       ...st.sync,

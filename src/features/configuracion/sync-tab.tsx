@@ -7,7 +7,7 @@ import { cn } from "@/lib/utils";
 import { useAppStore, useNow, useScopedAudit, useScopedData, useSyncSummary } from "@/lib/hooks";
 import { fmtAgo, fmtNum, fmtRelativeDay, fmtTime, plural } from "@/lib/format";
 import type { SyncItem } from "@/lib/types";
-import { isRetryable } from "@/lib/sync/queue";
+import { isBulkRetryable } from "@/lib/sync/queue";
 import { AuroraPanel, GlassCard } from "@/components/pk/aurora";
 import { AnimatedNumber, IconTile, MiniStat, SectionHeader } from "@/components/pk/bits";
 import { Segmented } from "@/components/pk/page";
@@ -82,7 +82,7 @@ export function SyncTab() {
 
   const errors = queue.filter((q) => q.state === "error").length;
   // Account sessions: "Reintentar" only resends what a resend can help (the sync sheet offers Descartar for the rest).
-  const retryable = account ? queue.filter(isRetryable).length : errors;
+  const retryable = account ? queue.filter(isBulkRetryable).length : errors;
   const waiting = pending.length - errors;
   const sent = queue.filter((q) => q.state === "sincronizado").length;
   const toSend = pending.length + syncing.length;

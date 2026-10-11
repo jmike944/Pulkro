@@ -16,7 +16,7 @@ import {
   discardSet,
   discardSummary,
   discardedCaptures,
-  isRetryable,
+  isBulkRetryable,
   isStopped,
   likelyRefusedAfter,
   outcomeUnknown,
@@ -258,7 +258,7 @@ export function SyncSheet() {
   const { queue, offline, account } = useSyncSummary();
   const retry = useAppStore((s) => s.retrySync);
   // Account sessions: only what a resend can help (a duplicate check-in, a reused op id… only Descartar fixes those).
-  const failed = queue.reduce((n, q) => n + ((account ? isRetryable(q) : q.state === "error") ? 1 : 0), 0);
+  const failed = queue.reduce((n, q) => n + ((account ? isBulkRetryable(q) : q.state === "error") ? 1 : 0), 0);
 
   return (
     <ModalShell
