@@ -1,10 +1,15 @@
 "use client";
 
-import { useMemo } from "react";
-import { UserMinus } from "lucide-react";
+import { useMemo, useRef, useState } from "react";
+import Link from "next/link";
+import { ChevronRight, ClipboardList, UserMinus, WifiOff } from "lucide-react";
 import { useAppStore, useLookups } from "@/lib/hooks";
+import { plural } from "@/lib/format";
 import { OPEN_STATUSES, ROLE_LABEL } from "@/lib/status";
 import type { User } from "@/lib/types";
+import { IconTile } from "@/components/pk/bits";
+import { ModalCancel, ModalShell } from "@/components/pk/modal-shell";
+import { NEEDS_CONNECTION, NEEDS_CONNECTION_DETAIL, newOpId, setUserActive, useAccountAdmin } from "./account-admin";
 import { ConfirmDialog } from "./shared";
 
 /** Open orders per supervisor (a deactivated supervisor leaves these without an owner until they are reassigned). */
@@ -22,38 +27,84 @@ export function useOpenOrdersBy() {
 /**
  * THE confirmation for turning a user account off: the users list and the "Cuenta activa" switch of the user editor both go
  * through it. `deferred` is for the editor, where the change is only stored with "Guardar cambios".
+ *
+ * Demo: `onConfirm` applies it locally. Account session (not deferred): the dialog itself asks the server (admin-users:
+ * profile off, sessions revoked, access banned), stays open with the reason if that fails, and hands the server's list of
+ * open orders left to reassign to `onDeactivated`. Offline it explains that it needs a connection.
  */
 export function DeactivateUserDialog({
   user,
   open,
   onOpenChange,
   onConfirm,
+  onDeactivated,
   deferred,
 }: {
   user: User | null;
   open: boolean;
   onOpenChange: (v: boolean) => void;
   onConfirm: (user: User) => void;
+  /** account sessions: the server deactivated the account; `openOrders` = folios it still supervises */
+  onDeactivated?: (user: User, openOrders: string[]) => void;
   deferred?: boolean;
 }) {
   const lk = useLookups();
   const openOrdersBy = useOpenOrdersBy();
+  const { account, offline } = useAccountAdmin();
+  const server = account && !deferred;
+  const [error, setError] = useState<string | null>(null);
+  // One op id per opening: a second click after a lost answer is a retry the server answers, not a new deactivation.
+  const op = useRef<{ userId: string; id: string } | null>(null);
+
   const openOrders = user ? (openOrdersBy.get(user.id) ?? 0) : 0;
   const notes =
-    openOrders > 0 || deferred ? (
+    openOrders > 0 || deferred || (server && (offline || error)) ? (
       <div className="space-y-3">
+        {server && offline && (
+          <p className="flex gap-2.5 rounded-[14px] bg-soft px-4 py-3 text-[13.5px] leading-snug text-ink-soft">
+            <WifiOff className="mt-0.5 size-4 shrink-0 text-subtle" aria-hidden />
+            <span>{NEEDS_CONNECTION_DETAIL}</span>
+          </p>
+        )}
         {openOrders > 0 && (
           <p className="rounded-[14px] bg-amber-soft px-4 py-3 text-[13.5px] leading-snug text-amber-ink">
             Tiene órdenes abiertas. Reasígnelas desde el detalle de cada orden para que no queden sin supervisor.
           </p>
         )}
         {deferred && <p className="text-[13px] leading-snug text-subtle">La cuenta se desactiva al guardar los cambios del usuario.</p>}
+        {server && error && (
+          <p role="alert" className="rounded-[14px] bg-red-soft px-4 py-3 text-[13.5px] font-medium leading-snug text-red-fg">
+            {error}
+          </p>
+        )}
       </div>
     ) : null;
+
+  const confirmOnServer = async (u: User): Promise<boolean> => {
+    if (op.current?.userId !== u.id) op.current = { userId: u.id, id: newOpId() };
+    setError(null);
+    const result = await setUserActive(u, false, op.current.id);
+    if (!result.ok) {
+      setError(result.message);
+      return false;
+    }
+    op.current = null;
+    // after this dialog has started closing, so whatever comes next (the open-orders notice) opens on top of nothing
+    const folios = result.open_orders;
+    setTimeout(() => onDeactivated?.(u, folios), 0);
+    return true;
+  };
+
   return (
     <ConfirmDialog
       open={open}
-      onOpenChange={onOpenChange}
+      onOpenChange={(v) => {
+        if (!v) {
+          setError(null);
+          op.current = null;
+        }
+        onOpenChange(v);
+      }}
       icon={<UserMinus />}
       iconTone="red"
       title="Desactivar usuario"
@@ -70,10 +121,73 @@ export function DeactivateUserDialog({
       }
       checkboxLabel={`Entiendo que ${user?.name.split(" ")[0] ?? "la persona"} ya no podrá iniciar sesión.`}
       confirmLabel="Desactivar usuario"
+      busyLabel="Desactivando…"
+      confirmDisabled={server && offline}
+      disabledHint={NEEDS_CONNECTION}
       destructive
-      onConfirm={() => user && onConfirm(user)}
+      onConfirm={() => {
+        if (!user) return;
+        if (server) return confirmOnServer(user);
+        onConfirm(user);
+      }}
     >
       {notes}
     </ConfirmDialog>
+  );
+}
+
+/**
+ * After an account deactivation: the open orders the server says the person still supervises (also in the audit reason),
+ * each a link to the order, where Administración reassigns it.
+ */
+export function OpenOrdersNotice({
+  target,
+  open,
+  onOpenChange,
+}: {
+  target: { user: User; folios: string[] } | null;
+  open: boolean;
+  onOpenChange: (v: boolean) => void;
+}) {
+  const orders = useAppStore((s) => s.orders);
+  const titles = useMemo(() => new Map(orders.map((o) => [o.folio, o.title])), [orders]);
+  if (!target) return null;
+  const { user, folios } = target;
+  return (
+    <ModalShell
+      open={open}
+      onOpenChange={onOpenChange}
+      size="sm"
+      icon={
+        <IconTile tone="amber" className="size-11 rounded-[14px] [&_svg]:size-5">
+          <ClipboardList />
+        </IconTile>
+      }
+      title="Órdenes por reasignar"
+      description={
+        <>
+          <b className="font-semibold text-ink">{user.name}</b> quedó desactivado y aún supervisa{" "}
+          {plural(folios.length, "orden abierta", "órdenes abiertas")}. Reasígnelas desde el detalle de cada orden para que no
+          queden sin supervisor.
+        </>
+      }
+      footer={<ModalCancel>Cerrar</ModalCancel>}
+    >
+      <ul className="mt-2 divide-y divide-hairline rounded-[18px] border border-hairline">
+        {folios.map((folio) => (
+          <li key={folio}>
+            <Link
+              href={`/ordenes/${encodeURIComponent(folio)}`}
+              onClick={() => onOpenChange(false)}
+              className="flex min-h-12 items-center gap-3 px-4 py-3 text-[14px] outline-none transition-colors hover:bg-wash focus-visible:bg-wash"
+            >
+              <span className="shrink-0 font-semibold text-ink tabular">{folio}</span>
+              <span className="min-w-0 flex-1 truncate text-subtle">{titles.get(folio) ?? ""}</span>
+              <ChevronRight className="size-4 shrink-0 text-faint" aria-hidden />
+            </Link>
+          </li>
+        ))}
+      </ul>
+    </ModalShell>
   );
 }

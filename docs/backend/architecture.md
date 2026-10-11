@@ -29,9 +29,13 @@ backend is the phased plan in §12.
 | `20261011065308_review_pr9_cubic_round3` | PR #9 review (cubic, round 3): `referenced_profile_ids` reads every profile reference of a visible order and its records (field capture, incidents, photos, closures, reports, shares, surveys, cases) |
 | `20261011125657_decision_closed_order_reassign` | owner decision 19 (§14): Administración reassigns the supervisor of a closed order (only that field) without reopening it |
 
+Written, **not applied yet** (the owner applies it): `20261011140000_admin_users_email_sync` — `sync_profile_email`, the RPC
+the `admin-users` Edge Function calls after changing a login e-mail (§2, decision 11); suite `18_admin_users`.
+
 Sources of truth mirrored here: `docs/requisitos.md`, `src/lib/types.ts`, `src/lib/permissions.ts`, `src/lib/hooks.ts`,
 `src/lib/store.ts`, `src/lib/domain.ts`. Tests: `supabase/tests/` (all 18 files pass, including the review regression suites
-`09` to `16` and the owner-decision suite `17`; they ignore the rows of the demo dataset). Types: `src/lib/supabase/database.types.ts` (regenerated after migration `20261011043034`).
+`09` to `16` and the owner-decision suite `17`; they ignore the rows of the demo dataset; `00` — which now lists
+`sync_profile_email` — and the new `18_admin_users` need the migration `admin_users_email_sync` applied first). Types: `src/lib/supabase/database.types.ts` (regenerated after migration `20261011043034`).
 
 ---
 
@@ -44,7 +48,7 @@ PWA (Next.js 16, zustand + IndexedDB, works offline)
  │          re-checks role, scope and every business rule against server state, writes rows + audit, idempotent
  ├─ files:  Storage bucket `evidencias` (private): upload → then RPC add_photo links the metadata
  └─ auth:   Supabase Auth, e-mail + password; JWT carries role/unit hints from the hook (UI only)
-Edge Function `admin-users` (designed, not deployed): invites/bans accounts with the secret key; profiles via RPC
+Edge Function `admin-users` (built, not deployed): invites/bans accounts with the secret key; profiles via RPC
 Public survey page (/encuesta/[token]): anon → public.get_survey / public.submit_survey only
 ```
 
@@ -78,35 +82,21 @@ answers `PT401`.
 change or deactivation is effective **immediately** for data. The client calls `supabase.auth.refreshSession()` after any
 `PT401`/`PT403` or when it pulls a changed own profile, so menus catch up (and runs a full re-sync, §8).
 
-**Account lifecycle (Dirección = `users.admin`)** — Edge Function `admin-users` (design, not deployed):
+**Account lifecycle (Dirección = `users.admin`)** — Edge Function `admin-users` (`supabase/functions/admin-users/`,
+built, **not deployed yet**; contract, secrets, deploy and test steps in its `README.md`). `verify_jwt` on; the function
+re-verifies the JWT with `@supabase/server` (`createSupabaseContext`, project JWKS), requires an **active Dirección**
+profile before any Auth admin call, and writes every profile change **with the caller's JWT** so the database re-checks
+`users.admin` and audits who did it. The secret key only reaches `auth.admin` (and the caller's own profile row).
 
-```ts
-// supabase/functions/admin-users/index.ts — verify_jwt = true (user JWT); secret key only inside the function
-import { withSupabase } from 'npm:@supabase/server@1'
-export default { fetch: withSupabase({ auth: 'user' }, async (req, ctx) => {
-  const body = await req.json()                       // { action, opId, email?, userId?, name?, role?, unitId? }
-  const { data: me } = await ctx.supabase.from('profiles').select('role, active').eq('id', ctx.userClaims!.id).single()
-  if (me?.role !== 'direccion' || !me.active) return Response.json({ code: 'forbidden' }, { status: 403 })
-  if (body.action === 'invite') {
-    const { data, error } = await ctx.supabaseAdmin.auth.admin.inviteUserByEmail(body.email, { redirectTo: `${Deno.env.get('APP_URL')}/acceso/definir-contrasena` })
-    if (error) return Response.json({ code: 'invite_failed', message: error.message }, { status: 400 })
-    // the profile is written with the CALLER's JWT: the DB re-checks users.admin and audits who did it
-    const { error: rpcError } = await ctx.supabase.rpc('provision_profile', { p_op_id: body.opId, p_user_id: data.user.id,
-      p_name: body.name, p_role: body.role, p_unit_id: body.unitId, p_title: body.title ?? '', p_phone: body.phone ?? '' })
-    if (rpcError) { await ctx.supabaseAdmin.auth.admin.deleteUser(data.user.id); return Response.json(rpcError, { status: 400 }) }
-    return Response.json({ userId: data.user.id })
-  }
-  if (body.action === 'deactivate' || body.action === 'reactivate') {
-    const active = body.action === 'reactivate'
-    const { data, error } = await ctx.supabase.rpc('update_profile', { p_op_id: body.opId, p_user_id: body.userId, p_patch: { active } })
-    if (error) return Response.json(error, { status: 400 })
-    await ctx.supabaseAdmin.auth.admin.updateUserById(body.userId, { ban_duration: active ? 'none' : '876000h' })
-    return Response.json({ ok: true, openOrders: data?.open_orders ?? [] })   // folios left to reassign
-  }
-  // 'change_email': auth.admin.updateUserById(id, { email }) + profile e-mail sync (RPC still to add, see §14)
-  return Response.json({ code: 'unknown_action' }, { status: 400 })
-}) }
-```
+| Action | Auth admin (secret key) | RPC (caller's JWT) |
+|---|---|---|
+| `invite {opId, email, name, role, unitId, title?, phone?, hue?}` | `inviteUserByEmail` (`redirectTo` = `APP_URL/acceso/definir-contrasena`); the auth user is deleted again if the profile fails | `provision_profile` |
+| `deactivate` / `reactivate {opId, userId}` | ban (`876000h`) / unban, mirroring the profile's `active` | `update_profile {active}` (returns `open_orders`) |
+| `change_email {opId, userId, email}` | `updateUserById {email, email_confirm: true}`; restored if the sync fails | `sync_profile_email` |
+
+Answers `{ ok: true, …, profile }` or `{ ok: false, code, message }` (stable code = the database hint for RPC refusals;
+Spanish message). `opId` makes retries idempotent. CORS only for `APP_ORIGINS`. The app calls it from Configuración →
+Usuarios in account sessions, online only ("Necesita conexión" offline); the demo keeps its local store.
 
 **Deactivation is layered**: `update_profile(active=false)` (in the same transaction) sets `deactivated_at`, **deletes the
 user's `auth.sessions`** (refresh tokens die with them) and returns `open_orders` (folios of the open orders the person
@@ -134,7 +124,7 @@ rows, `deleted_at` tombstones where rows can disappear. Every FK has an index (a
 | Type | Table | Notes |
 |---|---|---|
 | `Unit` | `units` | `code` unique (`^[A-Z0-9]{2,8}$`) |
-| `User` | `profiles` | PK/FK `auth.users(id)` restrict; `role`, `unit_id`, `active` + `deactivated_at`; `email` unique, lower-case |
+| `User` | `profiles` | PK/FK `auth.users(id)` restrict; `role`, `unit_id`, `active` + `deactivated_at`; `email` unique, lower-case, a copy of `auth.users.email` written only by `provision_profile` and `sync_profile_email` |
 | `Worker` | `workers` | unit-scoped crew; never deleted (`active`) |
 | `Client` | `clients` | `siteIds` derived from `sites.client_id`; a client with orders cannot change unit (`client_in_use`) |
 | `Site` | `sites` | `unique (id, client_id)` is the target of `orders (site_id, client_id)` → a site always belongs to the order's client |
@@ -249,6 +239,7 @@ RPCs take the token instead of an op id.
 | `upsert_client`, `upsert_site`, `upsert_worker` | catalogs.admin (Administración own unit; Dirección all) | previous and new unit both checked; a client with orders cannot change unit (`client_in_use`), a client without orders that moves touches its sites; a site with orders cannot change client |
 | `upsert_service_type`, `upsert_material` | catalogs.admin | company-wide (as coded in `store.ts`) |
 | `provision_profile`, `update_profile` | users.admin | auth user must exist; no self role/unit/status change; no unit/role change with open orders or open cases; deactivation revokes sessions and returns `open_orders` |
+| `sync_profile_email` | users.admin | after `admin-users` changed the login e-mail: copies `lower(auth.users.email)` into `profiles.email`, audited (old → new); an address another profile uses → `email_taken`; already in sync → `changed: false` (migration `admin_users_email_sync`, not applied yet) |
 | `update_my_contact` | any active account | own phone only |
 | `sync_reconcile` (read) | any active account (SECURITY INVOKER, plain RLS) | returns the subset of ids still visible |
 
@@ -258,7 +249,7 @@ RPCs take the token instead of an op id.
 `order_not_open`, `duplicate_check`, `check_in_missing`, `not_closable`, `closure_blocked`, `evidence_missing`,
 `revalidation_required`, `closure_required`, `open_cases`, `not_reopenable`, `not_archivable`, `not_rescheduled`,
 `already_resolved`, `already_provisioned`, `self_change`, `site_in_use`, `site_changed`, `client_in_use`,
-`has_open_orders`, `has_open_cases`, `op_id_reused`, `object_missing`, `parent_missing`, `order_reassigned`,
+`has_open_orders`, `has_open_cases`, `email_taken`, `op_id_reused`, `object_missing`, `parent_missing`, `order_reassigned`,
 `jornada_rescheduled`, `jornada_closed`, `photo_deleted`, `supervisor_other_unit`, `append_only`; owner-only
 `drop_demo_data`: `demo_in_use`, `demo_storage_objects`) · `PT422` (`invalid_value` — any malformed or out-of-range input,
 mapped by the wrappers — and `invalid_activities`, `invalid_answers`, `invalid_breakdown`, `invalid_case_owner`,
@@ -469,8 +460,9 @@ of the integration (phase 1 of §12); the app still runs on its local demo store
    `add_photo`); folios from results. The store guards already mirror the server rules changed in the review
    (`closureBlockers` "ninguna jornada ejecutada", `derivedExecutionStatus`, day numbering, frozen incidents, 256-bit
    survey tokens).
-5. **Admin**: deploy `admin-users`, users screen calls it (shows `open_orders` after a deactivation); catalogs via RPCs;
-   import real catalogs.
+5. **Admin**: deploy `admin-users`, users screen calls it (shows `open_orders` after a deactivation) — **built** (function,
+   migration `admin_users_email_sync`, suite 18, users screen); deploying it and applying the migration remain; catalogs
+   via RPCs; import real catalogs.
 6. **Pilot hardening**: run `supabase/tests` in CI against a branch, `pg_cron` purge of `private.sync_ops` (> 90 days),
    storage retention job, PITR/backups, monitoring of advisors and logs.
 
@@ -527,7 +519,8 @@ las marcadas **[implementado]** ya están en el servidor y en la app.
     la hora del teléfono. **[implementado]**
 11. **Correo**: por decisión del dueño, el remitente por defecto de Supabase por ahora (solo entrega a miembros del equipo,
     ~2 correos por hora); plantillas en español en `supabase/templates/`. SMTP propio antes del piloto. Cambio de correo
-    de un usuario: acción `change_email` de la Edge Function `admin-users` (fase 5).
+    de un usuario: acción `change_email` de la Edge Function `admin-users` (fase 5). **[construido: función `admin-users`,
+    RPC `sync_profile_email` (migración `admin_users_email_sync`), pantalla de usuarios; falta desplegar y aplicar]**
 12. **Sesiones**: token de acceso de 1 h y rotación de *refresh tokens* (valores por defecto). Inactividad y sesión única
     requieren Pro: se revisan al pasar a Pro.
 13. **Encuesta pública**: un solo envío por enlace, sin vencimiento por ahora; la bitácora registra quién generó y envió

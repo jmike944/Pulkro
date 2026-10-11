@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { motion } from "motion/react";
-import { Lock, X } from "lucide-react";
+import { Loader2, Lock, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { ROLE_LABEL, type Tone } from "@/lib/status";
 import type { Role } from "@/lib/types";
@@ -57,13 +57,19 @@ export function RoleBadge({ role, className }: { role: Role; className?: string 
 export function GatedButton({
   allowed,
   reason,
+  lockIcon,
   className,
   children,
   ...props
-}: React.ComponentProps<typeof Button> & { allowed: boolean; reason: string }) {
+}: React.ComponentProps<typeof Button> & {
+  allowed: boolean;
+  reason: string;
+  /** shown instead of the padlock when the action is unavailable for another reason (e.g. no connection) */
+  lockIcon?: React.ReactNode;
+}) {
   const button = (
     <Button {...props} disabled={!allowed || props.disabled} className={cn("h-11 rounded-[12px] px-4 text-[14px] font-semibold lg:h-10", className)}>
-      {!allowed && <Lock className="size-3.5" />}
+      {!allowed && (lockIcon ?? <Lock className="size-3.5" />)}
       {children}
     </Button>
   );
@@ -252,6 +258,8 @@ export function ConfirmDialog({
   checkboxLabel,
   confirmLabel,
   confirmDisabled,
+  disabledHint,
+  busyLabel,
   destructive,
   onConfirm,
   children,
@@ -267,14 +275,26 @@ export function ConfirmDialog({
   confirmLabel: string;
   /** Keeps the confirm button off whatever the checkbox says (a precondition the dialog explains in its children). */
   confirmDisabled?: boolean;
+  /** footer hint while `confirmDisabled` ("Necesita conexión") */
+  disabledHint?: string;
+  /** confirm label while an async `onConfirm` runs ("Desactivando…") */
+  busyLabel?: string;
   destructive?: boolean;
-  onConfirm: () => void;
+  /**
+   * Sync: the dialog closes right after. Async (a server call): the dialog stays open, busy, until it settles; it closes
+   * unless the promise resolves to `false` (the caller shows why in `children` and the person can try again).
+   */
+  onConfirm: () => unknown;
   children?: React.ReactNode;
 }) {
+  const [busy, setBusy] = useState(false);
   return (
     <ModalShell
       open={open}
-      onOpenChange={onOpenChange}
+      onOpenChange={(v) => {
+        if (!v && busy) return;
+        onOpenChange(v);
+      }}
       size="sm"
       title={title}
       description={description}
@@ -283,12 +303,23 @@ export function ConfirmDialog({
       <ConfirmBody
         rows={rows}
         checkboxLabel={checkboxLabel}
-        confirmLabel={confirmLabel}
-        confirmDisabled={confirmDisabled}
+        confirmLabel={busy ? (busyLabel ?? confirmLabel) : confirmLabel}
+        confirmDisabled={confirmDisabled || busy}
+        disabledHint={busy ? undefined : disabledHint}
+        busy={busy}
         destructive={destructive}
         onConfirm={() => {
-          onConfirm();
-          onOpenChange(false);
+          const pending = onConfirm();
+          if (!(pending instanceof Promise)) {
+            onOpenChange(false);
+            return;
+          }
+          setBusy(true);
+          void pending
+            .then((keepOpen) => {
+              if (keepOpen !== false) onOpenChange(false);
+            })
+            .finally(() => setBusy(false));
         }}
       >
         {children}
@@ -303,10 +334,15 @@ function ConfirmBody({
   checkboxLabel,
   confirmLabel,
   confirmDisabled,
+  disabledHint,
+  busy,
   destructive,
   onConfirm,
   children,
-}: Pick<React.ComponentProps<typeof ConfirmDialog>, "rows" | "checkboxLabel" | "confirmLabel" | "confirmDisabled" | "destructive" | "onConfirm" | "children">) {
+}: Pick<React.ComponentProps<typeof ConfirmDialog>, "rows" | "checkboxLabel" | "confirmLabel" | "confirmDisabled" | "disabledHint" | "destructive" | "children"> & {
+  busy: boolean;
+  onConfirm: () => void;
+}) {
   const [checked, setChecked] = useState(false);
   return (
     <>
@@ -329,14 +365,15 @@ function ConfirmBody({
         <Checkbox checked={checked} onCheckedChange={(v) => setChecked(v === true)} className="mt-0.5 size-[18px] rounded-[5px]" />
         <span className="leading-snug">{checkboxLabel}</span>
       </label>
-      <ModalFooter hint={!checked && !confirmDisabled ? "Marque la casilla de confirmación" : undefined}>
-        <ModalCancel />
+      <ModalFooter hint={confirmDisabled ? disabledHint : !checked ? "Marque la casilla de confirmación" : undefined}>
+        <ModalCancel disabled={busy} />
         <Button
           type="button"
           disabled={!checked || confirmDisabled}
           onClick={onConfirm}
           className={cn("h-11 rounded-[12px] px-5 text-[14px] font-semibold", destructive && "bg-st-red text-white hover:bg-st-red/90")}
         >
+          {busy && <Loader2 className="animate-spin" aria-hidden />}
           {confirmLabel}
         </Button>
       </ModalFooter>

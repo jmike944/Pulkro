@@ -299,6 +299,13 @@ export type AppState = DataSnapshot & {
   upsertWorker: (worker: Worker) => void;
   /** users.admin, or self-service on one's own record limited to the phone (role, unit, e-mail and active never change here). */
   upsertUser: (user: User) => void;
+  /**
+   * Account sessions: a profile the server already changed (invite, deactivation, reactivation and e-mail change go through
+   * the `admin-users` Edge Function, online). Applied as is, without a queue item or a local audit entry (the server wrote
+   * it; the next pull brings both). `fields` limits an existing user to the fields that action changed, so unsent local
+   * edits of the others stay on the device. No-op for the demo.
+   */
+  applyServerUser: (user: User, fields?: (keyof User)[]) => void;
   /** Self-service "Mis datos": the phone of the signed-in user (the e-mail is the account's identity: Dirección manages it). */
   updateMyContact: (contact: { phone?: string }) => void;
   upsertServiceType: (st: ServiceType) => void;
@@ -1276,6 +1283,15 @@ export const useAppStore = create<AppState>()(
           }
           setState((st) => ({ users: prev ? st.users.map((c) => (c.id === next.id ? next : c)) : [...st.users, next] }));
           record("usuario", next.id, `Guardó usuario ${next.name}`);
+        },
+        applyServerUser: (server, fields) => {
+          if (getState().session.mode !== "supabase") return;
+          setState((st) => {
+            const prev = st.users.find((u) => u.id === server.id);
+            if (!prev) return { users: [...st.users, server] };
+            const next: User = fields ? { ...prev, ...Object.fromEntries(fields.map((k) => [k, server[k]])) } : server;
+            return { users: st.users.map((u) => (u.id === server.id ? next : u)) };
+          });
         },
         updateMyContact: (contact) => {
           const me = allowRole(null);
