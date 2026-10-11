@@ -18,8 +18,12 @@
  *    tab is refused). A writer that cannot save what it holds (storage full) says so and stays: its captures exist only in
  *    its memory. While its saves fail it also leaves a mark on the origin (`pulkro-unsaved`): when it does not answer at all
  *    (frozen in the background), the new tab does not take over silently — the person decides («Usar aquí de todos modos»).
- *  - Without Web Locks, the epoch alone: a tab asks on the channel whether a writer is there, and the writer announces its
- *    epoch (a writer that hears a newer one has lost).
+ *  - Without Web Locks (or when the browser refuses them), the epoch alone: a tab asks on the channel whether a writer is
+ *    there, and the writer announces its epoch (a writer that hears a newer one has lost). The writer also stamps the origin
+ *    every 1.5 s (`pulkro-writer-alive`): a tab that gets no answer claims only once that stamp is 5 s old, since a writer
+ *    busy for a few seconds (a PDF, a large save) answers nothing meanwhile. A tab that is still claiming, or waits on a
+ *    full device, steps back when another becomes the writer. Without BroadcastChannel either (Safari < 15.4), a recent stamp
+ *    is the only sign of a writer: the tab waits behind the blocker; it cannot ask that writer to save first.
  *  Only once it holds the epoch does a tab read IndexedDB and hydrate the store (bootstrapStore). The other tabs never read,
  *  write, push or pull: they hold nothing.
  * The device's owner ("demo", or "supabase:<user id>") is stored next to the data, and every write checks it too: a write
@@ -48,6 +52,13 @@ const ACK_MS = 1500;
 const HANDOVER_MS = 10_000;
 /** Without Web Locks: how long a writer has to answer "writer?". */
 const PROBE_MS = 400;
+/**
+ * Without Web Locks the writer stamps the origin every BEAT_MS; a tab whose "writer?" gets no answer claims only once that
+ * stamp is ALIVE_MS old (a writer busy for a few seconds answers nothing meanwhile, and must not lose its pending write).
+ */
+const ALIVE_KEY = "pulkro-writer-alive";
+const BEAT_MS = 1500;
+const ALIVE_MS = 5000;
 
 const browser = typeof window !== "undefined";
 const idb: UseStore | undefined = browser && typeof indexedDB !== "undefined" ? createStore("pulkro-cuadrillas", "state") : undefined;
@@ -117,6 +128,8 @@ let writer: WriterState = browser ? "starting" : "writer";
 let epoch: number | undefined;
 /** This tab holds the lock (or, without Web Locks, decided to claim): it is claiming, or it is the writer. */
 let held = false;
+/** The epoch's transaction is under way. */
+let claiming = false;
 /** Another tab takes the device: this one stops claiming. */
 let gaveUp = false;
 const watchers = new Set<() => void>();
@@ -248,13 +261,16 @@ export function retryClaim() {
 async function claim() {
   held = true;
   for (let attempt = 0; !gaveUp; attempt++) {
+    claiming = true;
     const claimed = await claimEpoch();
+    claiming = false;
     if (gaveUp) return;
     if ("epoch" in claimed) {
       epoch = claimed.epoch;
       // Whatever a previous writer could not save is gone with it now.
       markUnsaved(false);
       setWriter("writer");
+      startBeat();
       post({ t: "writer", epoch });
       becameWriter();
       return;
@@ -271,9 +287,9 @@ async function claim() {
   }
 }
 
-/** Without Web Locks: is a writer there? None answers → this tab becomes it. */
-async function probe() {
-  const answered = await new Promise<boolean>((resolve) => {
+/** Without Web Locks: does a writer answer "writer?" within PROBE_MS? */
+function askForWriter(): Promise<boolean> {
+  return new Promise<boolean>((resolve) => {
     if (!channel) return resolve(false);
     const onMessage = (event: MessageEvent<Message>) => {
       if (event.data.t !== "writer") return;
@@ -287,9 +303,44 @@ async function probe() {
       resolve(false);
     }, PROBE_MS);
   });
-  if (held || writer === "taking" || writer === "lost") return;
-  if (answered) setWriter("blocked");
-  else await claim();
+}
+
+/** Without Web Locks: is a writer there? None answers and none stamped lately → this tab becomes it. */
+async function probe() {
+  for (;;) {
+    const answered = await askForWriter();
+    if (held || writer === "taking" || writer === "lost") return;
+    if (answered) return setWriter("blocked");
+    if (!writerAlive()) break;
+    // A writer stamped lately but did not answer: it is busy, ask again. With no channel to ask on, the stamp is all there is.
+    if (!channel) return setWriter("blocked");
+  }
+  await claim();
+}
+
+let beat: ReturnType<typeof setInterval> | undefined;
+function stampAlive() {
+  try {
+    window.localStorage.setItem(ALIVE_KEY, String(Date.now()));
+  } catch {
+    // no localStorage: a tab that gets no answer claims at once, as before
+  }
+}
+/** A writer stamped the origin lately (a clock set back or forward meanwhile counts as not lately). */
+const writerAlive = () => {
+  try {
+    const at = Number(window.localStorage.getItem(ALIVE_KEY));
+    return at > 0 && Math.abs(Date.now() - at) < ALIVE_MS;
+  } catch {
+    return false;
+  }
+};
+/** Without Web Locks, the writer stamps the origin while it writes the device. */
+function startBeat() {
+  if (locks()) return;
+  stampAlive();
+  clearInterval(beat);
+  beat = setInterval(() => (writing() ? stampAlive() : clearInterval(beat)), BEAT_MS);
 }
 
 /**
@@ -723,6 +774,11 @@ channel?.addEventListener("message", (event: MessageEvent<Message>) => {
   } else if (held && !left && m.t === "release?") {
     // Claiming, or waiting on a full or unreadable device: this tab holds no data, so it lets the other take over.
     giveUp(m.id);
+  } else if (held && !left && !claiming && !locks() && m.t === "writer") {
+    // Without Web Locks: waiting on a full or unreadable device while another tab became the writer. This tab holds no data:
+    // it starts over behind the blocker instead of claiming over that writer later.
+    stopWriting();
+    startOver();
   } else if (writer === "blocked" && m.t === "bye" && !locks()) {
     void probe();
   }
@@ -732,7 +788,15 @@ if (browser) {
   // A reload / app switch right after a capture must not lose the debounced write (the service worker may hard-navigate offline).
   window.addEventListener("pagehide", () => {
     void flushWrite();
-    if (writer === "writer" && !locks()) post({ t: "bye" });
+    if (writer === "writer" && !locks()) {
+      post({ t: "bye" });
+      // A reload, or a waiting tab, need not wait for the stamp to age.
+      try {
+        window.localStorage.removeItem(ALIVE_KEY);
+      } catch {
+        // no localStorage: nothing was stamped
+      }
+    }
   });
   const wake = () => {
     // A writer back from the background (or the back-forward cache) may have been taken over meanwhile: blocker at once.
