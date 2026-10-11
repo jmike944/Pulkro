@@ -120,6 +120,7 @@ export function attempt<T>(run: () => T): T | undefined {
 }
 
 const OUT_OF_SCOPE = "No encontrado o fuera de su alcance.";
+const ORDER_TITLE_RULE = `El título de la orden va de ${TEXT_LIMITS.orderTitle.min} a ${TEXT_LIMITS.orderTitle.max} caracteres.`;
 const CLOSED_ORDER = "Orden cerrada: reábrala para hacer cambios (se generará una nueva versión del reporte).";
 
 /** Why a role can't do an action — the store's guard messages (the UI's tooltips say the same). */
@@ -352,6 +353,26 @@ const signedOutSession = (): Session => ({ signedIn: false, userId: DEMO_USER_BY
 /** Items that were mid-upload when the app closed go back to "pendiente" so the engine retries them (same array when none was). */
 const unstick = (queue: SyncItem[]) =>
   queue.some((q) => q.state === "sincronizando") ? queue.map((q) => (q.state === "sincronizando" ? { ...q, state: "pendiente" as const } : q)) : queue;
+
+/**
+ * Why the store would refuse an administrator's change of a profile (`next` over `prev`, by `me`), or null. One's own role,
+ * unit or state; a name the server refuses; a new role or unit while the person still supervises open orders or owns open
+ * post-sale cases (server: update_profile → has_open_orders / has_open_cases: they are reassigned first). The user dialog
+ * asks it before any server call, so an e-mail change or a deactivation never goes through when the rest would be refused.
+ */
+export function profileChangeBlocker(s: Pick<DataSnapshot, "orders" | "cases">, me: User, prev: User | undefined, next: User): string | null {
+  if (next.id === me.id && (next.role !== me.role || !next.active || next.unitId !== me.unitId))
+    return "No puede cambiar su propio rol, unidad o estado: pídalo a otra persona de Dirección.";
+  if (prev && next.name !== prev.name && !fitsText(next.name, TEXT_LIMITS.personName))
+    return `El nombre va de ${TEXT_LIMITS.personName.min} a ${TEXT_LIMITS.personName.max} caracteres.`;
+  if (prev && (next.role !== prev.role || next.unitId !== prev.unitId)) {
+    const orders = s.orders.filter((o) => o.supervisorId === next.id && !isTerminal(o.status)).map((o) => o.folio);
+    if (orders.length) return `Tiene órdenes abiertas como supervisor (${orders.join(", ")}): reasígnelas antes de cambiar su unidad o rol.`;
+    const cases = s.cases.filter((c) => c.ownerId === next.id && (c.status === "abierto" || c.status === "en_proceso")).map((c) => c.folio);
+    if (cases.length) return `Es responsable de casos postventa abiertos (${cases.join(", ")}): reasígnelos antes de cambiar su unidad o rol.`;
+  }
+  return null;
+}
 
 /** Asks the browser to keep this site's storage (the unsent captures are the only copy until they are sent). Once per tab. */
 let persistAsked = false;
@@ -697,6 +718,7 @@ export const useAppStore = create<AppState>()(
           const supervisor = s.users.find((u) => u.id === input.supervisorId && u.role === "supervisor" && u.active && u.unitId === unitId);
           must(supervisor ? true : denied("El supervisor debe estar activo y pertenecer a la unidad del cliente."));
           if (user.role === "supervisor") must(input.supervisorId === user.id ? true : denied("Un supervisor solo registra órdenes a su cargo."));
+          must(textOk(input.title, TEXT_LIMITS.orderTitle, ORDER_TITLE_RULE));
           const id = uid("ord");
           const folio = account() ? provisionalFolio("OS", id) : nextFolio(s.orders, "OS", 5);
           const at = nowIso();
@@ -759,6 +781,7 @@ export const useAppStore = create<AppState>()(
             denied(order.status === "cancelada" ? "La orden está cancelada." : CLOSED_ORDER);
             return;
           }
+          if (patch.title !== undefined && !textOk(patch.title, TEXT_LIMITS.orderTitle, ORDER_TITLE_RULE)) return;
           const s = getState();
           if (patch.supervisorId && patch.supervisorId !== order.supervisorId) {
             const sup = s.users.find((u) => u.id === patch.supervisorId && u.role === "supervisor" && u.active && u.unitId === order.unitId);
@@ -1621,23 +1644,10 @@ export const useAppStore = create<AppState>()(
               denied(DENIED_REASON["users.admin"]!);
               return false;
             }
-          } else if (next.id === me.id && (next.role !== me.role || !next.active || next.unitId !== me.unitId)) {
-            denied("No puede cambiar su propio rol, unidad o estado: pídalo a otra persona de Dirección.");
-            return false;
-          }
-          if (prev && next.name !== prev.name && !textOk(next.name, TEXT_LIMITS.personName, `El nombre va de ${TEXT_LIMITS.personName.min} a ${TEXT_LIMITS.personName.max} caracteres.`)) return false;
-          // A new role or unit leaves the person's open orders and cases out of reach: they are reassigned first (server:
-          // update_profile → has_open_orders / has_open_cases).
-          if (prev && (next.role !== prev.role || next.unitId !== prev.unitId)) {
-            const s = getState();
-            const orders = s.orders.filter((o) => o.supervisorId === next.id && !isTerminal(o.status)).map((o) => o.folio);
-            if (orders.length) {
-              denied(`Tiene órdenes abiertas como supervisor (${orders.join(", ")}): reasígnelas antes de cambiar su unidad o rol.`);
-              return false;
-            }
-            const cases = s.cases.filter((c) => c.ownerId === next.id && (c.status === "abierto" || c.status === "en_proceso")).map((c) => c.folio);
-            if (cases.length) {
-              denied(`Es responsable de casos postventa abiertos (${cases.join(", ")}): reasígnelos antes de cambiar su unidad o rol.`);
+          } else {
+            const blocker = profileChangeBlocker(getState(), me, prev, next);
+            if (blocker) {
+              denied(blocker);
               return false;
             }
           }

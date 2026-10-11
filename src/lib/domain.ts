@@ -129,6 +129,8 @@ export const CASE_RESOLUTION_MIN = 10;
  * for good once its capture is queued (the same request is resent), so the store refuses it first and the fields stop there.
  */
 export const TEXT_LIMITS = {
+  /** orders.title (create_order, update_order) */
+  orderTitle: { min: 3, max: 200 },
   /** jornada_checks.note: the justification of a manual or remote check-in / check-out. */
   geoNote: { max: 500 },
   /** jornada_notes.text */

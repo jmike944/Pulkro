@@ -5,6 +5,7 @@ import { AnimatePresence, motion } from "motion/react";
 import { Info, Plus, Trash2, X } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { TEXT_LIMITS } from "@/lib/domain";
 import { useAppStore } from "@/lib/store";
 import type { Order } from "@/lib/types";
 import { Segmented } from "@/components/pk/page";
@@ -73,10 +74,10 @@ function EditForm({ open, onOpenChange }: { open: boolean; onOpenChange: (v: boo
   if (!sameList(activities, order.activities)) changes.push({ label: "actividades", patch: { activities } });
   if (!sameList(cleanMaterials, order.materials)) changes.push({ label: "materiales", patch: { materials: cleanMaterials } });
 
-  const titleOk = !full || title.trim().length >= 4;
+  const titleOk = !full || (title.trim().length >= 4 && title.trim().length <= TEXT_LIMITS.orderTitle.max);
   const reasonOk = reason.trim().length >= 5;
   const valid = changes.length > 0 && titleOk && reasonOk;
-  const hint = !changes.length ? "Aún no hay cambios que guardar" : !titleOk ? "Escriba un título de al menos 4 caracteres" : !reasonOk ? "Indique el motivo del cambio" : `Cambios: ${changes.map((c) => c.label).join(", ")}`;
+  const hint = !changes.length ? "Aún no hay cambios que guardar" : !titleOk ? `Escriba un título de 4 a ${TEXT_LIMITS.orderTitle.max} caracteres` : !reasonOk ? "Indique el motivo del cambio" : `Cambios: ${changes.map((c) => c.label).join(", ")}`;
 
   const addActivity = () => {
     const v = draft.trim();
@@ -111,7 +112,7 @@ function EditForm({ open, onOpenChange }: { open: boolean; onOpenChange: (v: boo
           <FormSection title="Datos generales">
             <div className="grid gap-3">
               <Field label="Título" htmlFor="ed-title">
-                <input id="ed-title" value={title} onChange={(e) => setTitle(e.target.value)} className={inputClass} />
+                <input id="ed-title" value={title} onChange={(e) => setTitle(e.target.value)} maxLength={TEXT_LIMITS.orderTitle.max} className={inputClass} />
               </Field>
               <div className="grid gap-3 sm:grid-cols-2">
                 <Field label="Tipo de servicio" htmlFor="ed-st">

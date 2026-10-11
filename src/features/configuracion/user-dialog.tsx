@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { Info, KeyRound, Loader2, Send, TriangleAlert, UserCog, UserPlus, WifiOff } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
-import { uid } from "@/lib/store";
+import { profileChangeBlocker, uid } from "@/lib/store";
 import { useAppStore, useCurrentUser } from "@/lib/hooks";
 import { ROLE_LABEL } from "@/lib/status";
 import type { Role, User } from "@/lib/types";
@@ -217,6 +217,15 @@ export function UserDialog({
       }
 
       const target = user!;
+      // What the store would refuse is refused here first, before the server changes the e-mail or the account's state:
+      // never an e-mail changed, or an account deactivated, with the rest then refused.
+      const current = useAppStore.getState().users.find((u) => u.id === target.id) ?? target;
+      const next: User = { ...current, name: clean, initials: initialsOf(clean), role, title: title.trim(), unitId, phone: phone.trim(), active };
+      const blocker = profileChanged || activeChanged ? profileChangeBlocker(useAppStore.getState(), me, current, next) : null;
+      if (blocker) {
+        setServerError(blocker);
+        return;
+      }
       let invitePending = false;
       if (emailChanged) {
         const changed = await changeUserEmail(target, mail, opFor("email", mail));
@@ -250,8 +259,17 @@ export function UserDialog({
       }
       if (profileChanged) {
         // The other fields go through the store (queued); e-mail and active are the server's values applied above.
-        const current = useAppStore.getState().users.find((u) => u.id === target.id) ?? target;
-        if (!upsertUser({ ...current, name: clean, initials: initialsOf(clean), role, title: title.trim(), unitId, phone: phone.trim() })) return;
+        const now = useAppStore.getState().users.find((u) => u.id === target.id) ?? target;
+        if (!upsertUser({ ...now, name: clean, initials: initialsOf(clean), role, title: title.trim(), unitId, phone: phone.trim() })) {
+          // Refused after the server already changed something (the store's data moved meanwhile): say what did change.
+          const done = [emailChanged ? "el correo ya quedó cambiado" : "", activeChanged ? (active ? "la cuenta ya quedó activada" : "la cuenta ya quedó desactivada") : ""].filter(Boolean);
+          if (done.length) {
+            const said = done.join(" y ");
+            setServerError(`${said[0].toUpperCase()}${said.slice(1)}, pero el resto de los cambios no se guardó: vea el aviso y vuelva a guardar.`);
+          }
+          if (willDeactivate) setTimeout(() => onDeactivated?.(target, openOrders), 0);
+          return;
+        }
       }
 
       toast.success("Cambios guardados", {

@@ -3,6 +3,7 @@
  * Pure helpers: defaults, suggestions derived from past orders, per-step validation.
  */
 import { addDays, format, isSunday, parseISO } from "date-fns";
+import { TEXT_LIMITS } from "@/lib/domain";
 import type { NewOrderInput } from "@/lib/store";
 import type { Client, Order, ServiceType, User } from "@/lib/types";
 
@@ -199,6 +200,8 @@ export function validateStep(step: number, d: Draft, ctx: Ctx): Issues {
   if (step === 1) {
     if (!d.serviceTypeId) errors.service = "Elija el tipo de servicio";
     if (ctx.title.trim().length < 4) errors.title = "Escriba un título descriptivo";
+    // The suggested title (service · site) can be longer than the server stores.
+    else if (ctx.title.trim().length > TEXT_LIMITS.orderTitle.max) errors.title = `El título admite hasta ${TEXT_LIMITS.orderTitle.max} caracteres: acórtelo`;
     if (d.serviceTypeId && d.activities.length === 0) errors.activities = "Seleccione al menos una actividad";
   }
 
