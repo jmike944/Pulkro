@@ -16,7 +16,8 @@
  *    save what it has pending and step aside; it does, stops sending and reading, and shows the blocker. When it does not
  *    answer in time (frozen, discarded), the new tab takes over anyway (`steal`, then a new epoch: any late write of the old
  *    tab is refused). A writer that cannot save what it holds (storage full) says so and stays: its captures exist only in
- *    its memory.
+ *    its memory. While its saves fail it also leaves a mark on the origin (`pulkro-unsaved`): when it does not answer at all
+ *    (frozen in the background), the new tab does not take over silently — the person decides («Usar aquí de todos modos»).
  *  - Without Web Locks, the epoch alone: a tab asks on the channel whether a writer is there, and the writer announces its
  *    epoch (a writer that hears a newer one has lost).
  *  Only once it holds the epoch does a tab read IndexedDB and hydrate the store (bootstrapStore). The other tabs never read,
@@ -104,11 +105,12 @@ const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
  * "starting": finding out, or claiming the epoch (a few milliseconds). "writer": this tab holds the device. "blocked":
  * another tab does (the blocker shows). "taking": «Usar aquí» was pressed, the writer is saving and stepping aside. "kept":
  * the writer could not save what it holds and stays. "handing": this tab is saving and stepping aside for another.
- * "lost": another tab took over (this one starts over behind the blocker). "full": the device refuses even the epoch's
+ * "unanswered": the writer did not answer «Usar aquí» and its last save failed (what it holds is only in its memory): the
+ * person decides. "lost": another tab took over (this one starts over behind the blocker). "full": the device refuses even the epoch's
  * write (storage full): this tab waits, without the data, until it can. "unreadable": the device could not be read, or
  * refuses the epoch's write for another reason (site data blocked, a broken database).
  */
-export type WriterState = "starting" | "writer" | "blocked" | "taking" | "kept" | "handing" | "lost" | "full" | "unreadable";
+export type WriterState = "starting" | "writer" | "blocked" | "taking" | "kept" | "unanswered" | "handing" | "lost" | "full" | "unreadable";
 
 let writer: WriterState = browser ? "starting" : "writer";
 /** This tab's writer epoch, once claimed: a tab is never the writer without one stored. */
@@ -190,7 +192,7 @@ function requestLock(how: "first" | "wait" | "steal") {
     waiting = undefined;
     held = true;
     // Claiming: «Usar aquí» is not offered any more (it would take the lock from this very tab).
-    if (writer === "blocked" || writer === "kept") setWriter("starting");
+    if (writer === "blocked" || writer === "kept" || writer === "unanswered") setWriter("starting");
     await claim();
     // Held while this tab lives: a takeover reloads this tab (or steals the lock from it).
     await new Promise<void>(() => {});
@@ -250,6 +252,8 @@ async function claim() {
     if (gaveUp) return;
     if ("epoch" in claimed) {
       epoch = claimed.epoch;
+      // Whatever a previous writer could not save is gone with it now.
+      markUnsaved(false);
       setWriter("writer");
       post({ t: "writer", epoch });
       becameWriter();
@@ -290,24 +294,31 @@ async function probe() {
 
 /**
  * «Usar aquí»: asks the writer to save what it has pending and step aside, then takes the device. A writer that does not
- * answer (frozen, discarded) loses it anyway; one that cannot save what it holds keeps it ("kept").
+ * answer (frozen, discarded) loses it anyway — unless its last save failed ("unanswered": the person decides); one that cannot
+ * save what it holds keeps it ("kept").
  */
-export function takeOver() {
-  if (held || (writer !== "blocked" && writer !== "kept")) return;
+export const takeOver = () => requestRelease(false);
+/** «Usar aquí de todos modos»: a writer that does not answer loses even what it could not save. */
+export const takeOverAnyway = () => requestRelease(true);
+
+function requestRelease(anyway: boolean) {
+  if (held || (writer !== "blocked" && writer !== "kept" && writer !== "unanswered")) return;
   setWriter("taking");
   waiting?.abort();
   waiting = undefined;
   const id = messageId();
   let done = false;
   let timer: ReturnType<typeof setTimeout> | undefined;
-  const finish = (how: "take" | "kept") => {
+  const finish = (how: "take" | "kept" | "silent") => {
     if (done) return;
     done = true;
     clearTimeout(timer);
     channel?.removeEventListener("message", onMessage);
     if (held || writer === "lost") return;
-    if (how === "kept") {
-      setWriter("kept");
+    // No answer at all, from a writer whose last save failed: taking over would lose what it holds. The person decides.
+    const unsaved = how === "silent" && !anyway && unsavedElsewhere();
+    if (how === "kept" || unsaved) {
+      setWriter(unsaved ? "unanswered" : "kept");
       if (locks()) requestLock("wait");
     } else if (locks()) requestLock("steal");
     else void claim();
@@ -323,7 +334,7 @@ export function takeOver() {
   };
   channel?.addEventListener("message", onMessage);
   post({ t: "release?", id });
-  timer = setTimeout(() => finish("take"), channel ? ACK_MS : 0);
+  timer = setTimeout(() => finish("silent"), channel ? ACK_MS : 0);
 }
 
 /** The writer's side of «Usar aquí»: stop, save what is pending, step aside (or say it cannot). Every requester is answered. */
@@ -419,6 +430,27 @@ let timer: ReturnType<typeof setTimeout> | undefined;
 let failing = false;
 let failures = 0;
 
+/**
+ * Set on this origin while the writer's saves fail (its captures exist only in its memory), cleared once one works or another
+ * tab claims the device: a tab whose «Usar aquí» gets no answer at all does not take over silently then.
+ */
+const UNSAVED_KEY = "pulkro-unsaved";
+function markUnsaved(on: boolean) {
+  try {
+    if (on) window.localStorage.setItem(UNSAVED_KEY, String(epoch ?? ""));
+    else window.localStorage.removeItem(UNSAVED_KEY);
+  } catch {
+    // no localStorage (blocked, private mode): a writer that does not answer is taken over, as before
+  }
+}
+const unsavedElsewhere = () => {
+  try {
+    return window.localStorage.getItem(UNSAVED_KEY) !== null;
+  } catch {
+    return false;
+  }
+};
+
 /** "committed": on the device. "refused": this tab no longer writes (another tab holds the device, or another owner). "failed": the device could not store it (kept and retried). */
 export type SaveResult = "committed" | "refused" | "failed";
 
@@ -455,6 +487,7 @@ async function commitNow(w: Write, evicted: boolean): Promise<SaveResult> {
     console.warn("[store] No se pudieron guardar los datos en el dispositivo.", error);
     failing = true;
     failures++;
+    markUnsaved(true);
     hooks?.saveFailed(error);
     // Retried (unless a newer write is waiting: it carries this one's changes).
     if (!pending) pending = w;
@@ -476,6 +509,7 @@ async function commitNow(w: Write, evicted: boolean): Promise<SaveResult> {
   if (failing) {
     failing = false;
     failures = 0;
+    markUnsaved(false);
     hooks?.saveFailed(null);
   }
   return "committed";

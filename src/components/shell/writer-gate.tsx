@@ -2,12 +2,12 @@
 
 import { useSyncExternalStore } from "react";
 import { AppWindow, HardDrive, Loader2, RefreshCw, TriangleAlert } from "lucide-react";
-import { retryClaim, subscribeWriter, takeOver, writerState, type WriterState } from "@/lib/device-storage";
+import { retryClaim, subscribeWriter, takeOver, takeOverAnyway, writerState, type WriterState } from "@/lib/device-storage";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
 import { BigButton } from "@/components/pk/mobile";
 import { AuthFrame, AuthHeading } from "@/features/auth/auth-frame";
 
-const BLOCKED: WriterState[] = ["blocked", "taking", "kept", "handing", "lost", "full", "unreadable"];
+const BLOCKED: WriterState[] = ["blocked", "taking", "kept", "unanswered", "handing", "lost", "full", "unreadable"];
 
 /**
  * An account build's client survey is read and answered on the server (features/encuesta): a device that cannot hold the
@@ -49,6 +49,10 @@ const COPY: Partial<Record<WriterState, { title: string; body: string }>> = {
     title: "Pulkro está abierta en otra ventana",
     body: "Para que sus capturas no se mezclen ni se pierdan, Pulkro trabaja en una sola ventana a la vez en este dispositivo. Siga en la otra ventana, o use Pulkro aquí: la otra guardará lo que tenga pendiente y se detendrá.",
   },
+  unanswered: {
+    title: "La otra ventana no responde",
+    body: "Pulkro está abierta en otra ventana que no responde (puede estar en segundo plano) y que no pudo guardar en el dispositivo sus últimos cambios: siguen solo en esa ventana. Vaya a esa ventana y espere a que se guarden. Si usa Pulkro aquí de todos modos, esos cambios se perderán.",
+  },
   handing: { title: "Pulkro se abrió en otra ventana", body: "Esta ventana está guardando lo pendiente para que la otra siga con sus datos." },
   lost: { title: "Pulkro se abrió en otra ventana", body: "Esta ventana dejó de usarse para que sus capturas no se mezclen ni se pierdan." },
   full: {
@@ -64,7 +68,7 @@ const COPY: Partial<Record<WriterState, { title: string; body: string }>> = {
 /** The full-screen blocker for `state`. */
 export function WriterBlocker({ state }: { state: WriterState }) {
   const copy = COPY[state] ?? COPY.blocked!;
-  const icon = state === "full" ? <HardDrive /> : state === "unreadable" ? <TriangleAlert /> : <AppWindow />;
+  const icon = state === "full" ? <HardDrive /> : state === "unreadable" || state === "unanswered" ? <TriangleAlert /> : <AppWindow />;
   return (
     <div role="dialog" aria-modal="true" aria-label={copy.title} className="fixed inset-0 z-[300] overflow-y-auto bg-canvas">
       <AuthFrame cardKey={state === "kept" || state === "taking" ? "blocked" : state}>
@@ -90,6 +94,11 @@ export function WriterBlocker({ state }: { state: WriterState }) {
                 </p>
               )}
             </>
+          )}
+          {state === "unanswered" && (
+            <BigButton variant="outline" onClick={takeOverAnyway}>
+              Usar aquí de todos modos
+            </BigButton>
           )}
           {state === "handing" && (
             <BigButton disabled>
