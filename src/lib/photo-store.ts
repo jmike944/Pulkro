@@ -8,7 +8,7 @@
  * short-lived signed URL (architecture §7), and every picture that was displayed is also kept on the device (same IndexedDB
  * store, key `st:<path>`, the most recent ones only) so it still shows offline. Nothing is downloaded before it is shown.
  */
-import { clear, createStore, del, get, set } from "idb-keyval";
+import { clear, createStore, del, delMany, get, keys, set } from "idb-keyval";
 import { readCaptureMeta, type CaptureMeta } from "./exif";
 import { getSupabaseBrowserClient, isSupabaseConfigured } from "./supabase/client";
 import type { Photo, PhotoOrigin } from "./types";
@@ -16,8 +16,27 @@ import type { Photo, PhotoOrigin } from "./types";
 const store = typeof indexedDB !== "undefined" ? createStore("pulkro-photos", "blobs") : undefined;
 const urlCache = new Map<string, string>();
 
+/** The browser could not open the file as a picture (HEIC on Chrome or Firefox, a damaged file…). */
+export class UndecodableImageError extends Error {
+  constructor(readonly heic: boolean) {
+    super(
+      heic
+        ? "Formato HEIC no compatible con este navegador: conviértala a JPEG o use «Tomar foto»."
+        : "El archivo no es una imagen que este navegador pueda abrir.",
+    );
+    this.name = "UndecodableImageError";
+  }
+}
+
+const isHeic = (file: Blob) => /hei[cf]/i.test(file.type) || (file instanceof File && /\.hei[cf]$/i.test(file.name));
+
 export async function compressImage(file: Blob, maxSide = 1600, quality = 0.82) {
-  const bitmap = await createImageBitmap(file);
+  let bitmap: ImageBitmap;
+  try {
+    bitmap = await createImageBitmap(file);
+  } catch {
+    throw new UndecodableImageError(isHeic(file));
+  }
   const scale = Math.min(1, maxSide / Math.max(bitmap.width, bitmap.height));
   const width = Math.round(bitmap.width * scale);
   const height = Math.round(bitmap.height * scale);
@@ -98,12 +117,42 @@ export async function deletePhotoFile(key: string) {
   if (store) await del(key, store);
 }
 
+/**
+ * Bumped by clearPhotoFiles: work started before the wipe (a server photo being kept for offline viewing, a download for a
+ * report) never writes the previous account's pictures back into the emptied store.
+ */
+let epoch = 0;
+
 /** Every photo blob on the device (account sign-out, or another account's data being replaced), server copies included. */
 export async function clearPhotoFiles() {
+  epoch++;
+  keeping.clear();
+  const waiting = signQueue;
+  signQueue = null;
+  waiting?.forEach((waiters) => waiters.forEach((done) => done({ url: null, retry: false })));
+  keepChain = Promise.resolve();
   urlCache.forEach((url) => URL.revokeObjectURL(url));
   urlCache.clear();
   signedUrls.clear();
   if (store) await clear(store);
+}
+
+/**
+ * The device is out of space: free the copies of server photos kept for offline viewing (the server gives them back).
+ * Captures that have not been sent are never touched.
+ */
+export async function evictKeptPhotos(): Promise<void> {
+  if (!store) return;
+  epoch++; // copies being written now would only fill the space again
+  keeping.clear();
+  keepChain = Promise.resolve();
+  const kept = (await keys<string>(store)).filter((k) => typeof k === "string" && k.startsWith("st:"));
+  for (const k of kept) {
+    const url = urlCache.get(k);
+    if (url) URL.revokeObjectURL(url);
+    urlCache.delete(k);
+  }
+  if (kept.length) await delMany(kept, store);
 }
 
 /* ───────────── server evidence (Storage bucket `evidencias`) ───────────── */
@@ -119,10 +168,17 @@ const INDEX_KEY = "st:__index";
 const blobKey = (path: string) => `st:${path}`;
 
 const signedUrls = new Map<string, { url: string; expiresAt: number }>();
-let signQueue: Map<string, ((url: string | null) => void)[]> | null = null;
+
+/**
+ * Where a server photo can be shown from. `url: null, retry: true`: the server could not be reached (a weak signal while the
+ * browser says online) — show it like offline and ask again later; `retry: false`: not readable for this account.
+ */
+export type StoragePhotoUrl = { url: string } | { url: null; retry: boolean };
+
+let signQueue: Map<string, ((result: StoragePhotoUrl) => void)[]> | null = null;
 
 /** Signs every path asked for in the same tick in one request (a gallery asks for dozens at once). */
-function signSoon(path: string): Promise<string | null> {
+function signSoon(path: string): Promise<StoragePhotoUrl> {
   return new Promise((resolve) => {
     if (!signQueue) {
       signQueue = new Map();
@@ -138,12 +194,20 @@ async function flushSigning() {
   if (!batch) return;
   const paths = [...batch.keys()];
   const got = new Map<string, string>();
+  // Paths whose request got no answer from the server (vs. an answer that denied them).
+  const unreached = new Set<string>();
+  const transport = (error: { name?: string; status?: number } | null) =>
+    !!error && (error.name === "StorageUnknownError" || (typeof error.status === "number" && (error.status >= 500 || error.status === 408 || error.status === 429)));
   try {
     const bucket = getSupabaseBrowserClient().storage.from(BUCKET);
     for (let i = 0; i < paths.length; i += 100) {
+      const chunk = paths.slice(i, i + 100);
       const issuedAt = Date.now();
-      const { data, error } = await bucket.createSignedUrls(paths.slice(i, i + 100), SIGN_SECONDS);
-      if (error || !data) continue;
+      const { data, error } = await bucket.createSignedUrls(chunk, SIGN_SECONDS);
+      if (error || !data) {
+        if (!error || transport(error as { name?: string; status?: number })) chunk.forEach((p) => unreached.add(p));
+        continue;
+      }
       for (const d of data) {
         if (!d.path || !d.signedUrl || d.error) continue;
         signedUrls.set(d.path, { url: d.signedUrl, expiresAt: issuedAt + SIGN_SECONDS * 1000 });
@@ -151,9 +215,13 @@ async function flushSigning() {
       }
     }
   } catch {
-    // offline or not configured: the caller falls back
+    // offline or not configured: ask again later
+    paths.forEach((p) => unreached.add(p));
   }
-  for (const [path, waiters] of batch) waiters.forEach((done) => done(got.get(path) ?? null));
+  for (const [path, waiters] of batch) {
+    const url = got.get(path);
+    waiters.forEach((done) => done(url ? { url } : { url: null, retry: unreached.has(path) }));
+  }
 }
 
 /** A copy of the picture kept on the device, as an object URL. */
@@ -170,14 +238,14 @@ async function keptUrl(path: string): Promise<string | null> {
 
 /**
  * What to put in <img src> for a server photo: the copy kept on this device, else a signed URL (reused until shortly before
- * it expires), else null — offline and never displayed here, or not readable for this account.
+ * it expires), else none — offline or unreachable and never displayed here (`retry`), or not readable for this account.
  */
-export async function getStoragePhotoUrl(path: string, online: boolean): Promise<string | null> {
+export async function getStoragePhotoUrl(path: string, online: boolean): Promise<StoragePhotoUrl> {
   const kept = await keptUrl(path);
-  if (kept) return kept;
+  if (kept) return { url: kept };
   const signed = signedUrls.get(path);
-  if (signed && signed.expiresAt - Date.now() > RENEW_BEFORE_MS) return signed.url;
-  if (!online || !isSupabaseConfigured) return null;
+  if (signed && signed.expiresAt - Date.now() > RENEW_BEFORE_MS) return { url: signed.url };
+  if (!online || !isSupabaseConfigured) return { url: null, retry: true };
   return signSoon(path);
 }
 
@@ -190,19 +258,24 @@ const keeping = new Set<string>();
 
 let keepChain: Promise<void> = Promise.resolve();
 
-/** Stores a server photo's copy and trims the oldest beyond KEEP_OFFLINE (serialized: the index is read-modify-write). */
-function keepBlob(path: string, blob: Blob): Promise<void> {
-  const run = keepChain.then(() => writeKept(path, blob));
+/**
+ * Stores a server photo's copy and trims the oldest beyond KEEP_OFFLINE (serialized: the index is read-modify-write).
+ * `since`: the epoch the work started in; a wipe since then (clearPhotoFiles) cancels the write.
+ */
+function keepBlob(path: string, blob: Blob, since: number): Promise<void> {
+  const run = keepChain.then(() => writeKept(path, blob, since));
   keepChain = run.catch(() => undefined);
   return run;
 }
 
-async function writeKept(path: string, blob: Blob) {
-  if (!store) return;
+async function writeKept(path: string, blob: Blob, since: number) {
+  if (!store || since !== epoch) return;
   await set(blobKey(path), blob, store);
+  if (since !== epoch) return void (await del(blobKey(path), store));
   const index = ((await get<string[]>(INDEX_KEY, store)) ?? []).filter((p) => p !== path);
   index.push(path);
   const drop = index.splice(0, Math.max(0, index.length - KEEP_OFFLINE));
+  if (since !== epoch) return void (await del(blobKey(path), store));
   await set(INDEX_KEY, index, store);
   for (const p of drop) {
     const key = blobKey(p);
@@ -220,11 +293,12 @@ async function writeKept(path: string, blob: Blob) {
 export function rememberStoragePhoto(path: string, signedUrl: string) {
   if (!store || keeping.has(path) || urlCache.has(blobKey(path))) return;
   keeping.add(path);
+  const since = epoch;
   void (async () => {
     try {
       if (await get(blobKey(path), store)) return;
       const res = await fetch(signedUrl);
-      if (res.ok) await keepBlob(path, await res.blob());
+      if (res.ok) await keepBlob(path, await res.blob(), since);
     } catch {
       // offline or quota: it shows online anyway
     } finally {
@@ -240,9 +314,10 @@ export function rememberStoragePhoto(path: string, signedUrl: string) {
  */
 export async function keepCaptureAs(key: string, path: string): Promise<void> {
   if (!store) return;
+  const since = epoch;
   try {
     const blob = await get<Blob>(key, store);
-    if (blob) await keepBlob(path, blob);
+    if (blob) await keepBlob(path, blob, since);
   } catch {
     // quota or a closed database: the photo shows through its signed URL online
   }
@@ -255,10 +330,11 @@ export async function getStoragePhotoBlob(path: string): Promise<Blob | null> {
     if (kept) return kept;
   }
   if (!isSupabaseConfigured) return null;
+  const since = epoch;
   try {
     const { data, error } = await getSupabaseBrowserClient().storage.from(BUCKET).download(path);
     if (error || !data) return null;
-    await keepBlob(path, data).catch(() => undefined);
+    await keepBlob(path, data, since).catch(() => undefined);
     return data;
   } catch {
     return null;

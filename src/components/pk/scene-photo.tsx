@@ -300,28 +300,46 @@ function DeviceImage({ idbKey, alt, className }: { idbKey: string; alt: string; 
 
 /**
  * Evidence stored on the server (bucket `evidencias`): the copy kept on this device, else a signed URL. Once shown, a copy
- * stays on the device for offline viewing. Offline and never shown here → a placeholder that says so (retried on reconnect).
+ * stays on the device for offline viewing. Offline (or the server out of reach on a weak signal) and never shown here → a
+ * placeholder that says so, asked again on reconnect, on focus and every so often; not readable for this account → said so.
  */
 function StorageImage({ path, alt, className }: { path: string; alt: string; className?: string }) {
   const offline = useAppStore((s) => isOffline(s));
   const [attempt, setAttempt] = useState(0);
-  const [resolved, setResolved] = useState<{ path: string; url: string | null } | null>(null);
+  // Unanswered requests so far (the server out of reach while the browser says online).
+  const [tries, setTries] = useState(0);
+  const [resolved, setResolved] = useState<{ path: string; url: string | null; retry: boolean } | null>(null);
   useEffect(() => {
     let alive = true;
-    void getStoragePhotoUrl(path, !offline).then((url) => alive && setResolved({ path, url }));
+    void getStoragePhotoUrl(path, !offline).then((r) => alive && setResolved({ path, url: r.url, retry: r.url === null && r.retry }));
     return () => {
       alive = false;
     };
-  }, [path, offline, attempt]);
-  const url = resolved?.path === path ? resolved.url : undefined;
+  }, [path, offline, attempt, tries]);
+  const current = resolved?.path === path ? resolved : undefined;
+  const waiting = !!current && current.url === null && current.retry && !offline;
+  // Ask again (backoff 10 s → 60 s), and as soon as the window gets focus.
+  useEffect(() => {
+    if (!waiting) return;
+    const again = () => setTries((n) => n + 1);
+    const timer = setTimeout(again, Math.min(60_000, 10_000 * 2 ** tries));
+    window.addEventListener("focus", again);
+    return () => {
+      clearTimeout(timer);
+      window.removeEventListener("focus", again);
+    };
+  }, [waiting, tries]);
+  const url = current ? current.url : undefined;
   if (url === undefined) return <div className={cn("h-full w-full shimmer", className)} />;
-  if (url === null)
+  if (url === null) {
+    const later = offline || current?.retry;
     return (
-      <div className={cn("flex h-full w-full flex-col items-center justify-center gap-1 bg-well px-2 text-center text-subtle", className)} role="img" aria-label={`${alt}: ${offline ? "disponible con conexión" : "no disponible"}`}>
+      <div className={cn("flex h-full w-full flex-col items-center justify-center gap-1 bg-well px-2 text-center text-subtle", className)} role="img" aria-label={`${alt}: ${later ? "disponible con conexión" : "no disponible"}`}>
         <CloudOff className="size-5" aria-hidden />
-        <span className="text-[11px] leading-tight">{offline ? "Disponible con conexión" : "Foto no disponible"}</span>
+        <span className="text-[11px] leading-tight">{later ? "Disponible con conexión" : "Foto no disponible"}</span>
       </div>
     );
+  }
   const signed = !url.startsWith("blob:");
   return (
     // eslint-disable-next-line @next/next/no-img-element
@@ -336,7 +354,7 @@ function StorageImage({ path, alt, className }: { path: string; alt: string; cla
         // An expired or revoked link: sign once more, then give up.
         if (signed) forgetSignedUrl(path);
         if (signed && attempt < 1) setAttempt((n) => n + 1);
-        else setResolved({ path, url: null });
+        else setResolved({ path, url: null, retry: false });
       }}
     />
   );
