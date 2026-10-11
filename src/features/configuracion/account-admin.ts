@@ -1,8 +1,8 @@
 "use client";
 
 /**
- * Account administration for account sessions (Dirección): invite, deactivate, reactivate and change e-mail go through the
- * `admin-users` Edge Function (supabase/functions/admin-users), which holds the Auth admin key. They are ONLINE-ONLY
+ * Account administration for account sessions (Dirección): invite, deactivate, reactivate, change e-mail and resend an
+ * invitation go through the `admin-users` Edge Function (supabase/functions/admin-users), which holds the Auth admin key. They are ONLINE-ONLY
  * actions: nothing is queued for later (an invitation or a ban cannot wait in a phone's queue), so the UI says
  * "Necesita conexión" while offline. A success applies the server's profile on the device (applyServerUser) and asks for a
  * pull, which also brings the audit entries the server wrote. The demo keeps using the store's upsertUser.
@@ -21,7 +21,7 @@ import type { Role, User } from "@/lib/types";
 
 export const NEEDS_CONNECTION = "Necesita conexión";
 export const NEEDS_CONNECTION_DETAIL =
-  "Invitar, desactivar, reactivar y cambiar el correo de una cuenta se hace en el servidor: conéctese e intente de nuevo.";
+  "Invitar (o reenviar una invitación), desactivar, reactivar y cambiar el correo de una cuenta se hace en el servidor: conéctese e intente de nuevo.";
 
 const NETWORK_MESSAGE = "No hay conexión con el servidor. Revise su señal o su red e intente de nuevo.";
 /** The device says it is online, yet the request never got an answer (the service down, a blocked origin, DNS…). */
@@ -32,6 +32,8 @@ const EXPIRED_MESSAGE = "Su sesión venció. Vuelva a iniciar sesión e intente 
 export const REAUTH = "Vuelva a entrar con su cuenta";
 export const REAUTH_DETAIL =
   "La sesión de su cuenta ya no está abierta en este dispositivo: vuelva a entrar con su cuenta para invitar, desactivar, reactivar o cambiar correos.";
+/** resend_invite: the account has no pending invitation (already in use, or confirmed). Informational, not an error. */
+export const ALREADY_ACTIVE = "already_active";
 const GENERIC_MESSAGE = "El servicio de cuentas no respondió. Intente de nuevo en unos minutos.";
 const MISSING_MESSAGE = "El servicio de cuentas todavía no está disponible en el servidor. Avise a quien administra el sistema.";
 const TIMEOUT_MS = 30_000;
@@ -48,6 +50,8 @@ type Base = { ok: true; duplicate: boolean; user_id: string; profile: ProfileFie
 export type InviteResult = Base | AdminFailure;
 export type ActiveResult = (Base & { active: boolean; open_orders: string[] }) | AdminFailure;
 export type EmailResult = (Base & { email: string; invite_pending: boolean }) | AdminFailure;
+/** resend_invite writes nothing in the database: no profile, no duplicate flag. */
+export type ResendResult = { ok: true; resent: true; user_id: string } | AdminFailure;
 
 export type InviteInput = { email: string; name: string; role: Role; unitId: string; title: string; phone: string; hue: number };
 
@@ -123,7 +127,8 @@ async function sessionProblem(): Promise<AdminFailure | null> {
   return reauth;
 }
 
-async function invokeAdmin<T extends { ok: true }>(body: Record<string, unknown>): Promise<T | AdminFailure> {
+/** `pull`: read the server's state afterwards (profiles, audit). Off for an action that writes nothing there. */
+async function invokeAdmin<T extends { ok: true }>(body: Record<string, unknown>, pull = true): Promise<T | AdminFailure> {
   if (isOffline(useAppStore.getState())) return { ok: false, code: "offline", message: NEEDS_CONNECTION_DETAIL };
   const refused = await sessionProblem();
   if (refused) return refused;
@@ -136,7 +141,7 @@ async function invokeAdmin<T extends { ok: true }>(body: Record<string, unknown>
     return networkFailure();
   } finally {
     // Success or not (a timeout may have reached the server anyway), read the server's state: profiles and audit.
-    if (!isOffline(useAppStore.getState())) void useAppStore.getState().pullNow({ manual: true });
+    if (pull && !isOffline(useAppStore.getState())) void useAppStore.getState().pullNow({ manual: true });
   }
 }
 
@@ -168,6 +173,15 @@ export async function changeUserEmail(user: User, email: string, opId: string): 
   const result = await invokeAdmin<Extract<EmailResult, { ok: true }>>({ action: "change_email", opId, userId: user.id, email });
   if (result.ok) apply(result.profile, ["email"]);
   return result;
+}
+
+/**
+ * The invitation e-mail again (an active account invited and never signed in). `code === ALREADY_ACTIVE`: there is no
+ * pending invitation, and the message says the way in («¿Olvidó su contraseña?») — show it as information, not as an error.
+ * Each click is a new operation (nothing is stored on the server for it).
+ */
+export function resendInvitation(user: User): Promise<ResendResult> {
+  return invokeAdmin<Extract<ResendResult, { ok: true }>>({ action: "resend_invite", opId: newOpId(), userId: user.id }, false);
 }
 
 /**

@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { Info, KeyRound, TriangleAlert, UserCog, UserPlus, WifiOff } from "lucide-react";
+import { Info, KeyRound, Loader2, Send, TriangleAlert, UserCog, UserPlus, WifiOff } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { uid } from "@/lib/store";
@@ -12,9 +12,10 @@ import { PersonAvatar } from "@/components/pk/bits";
 import { firstMissing } from "@/components/pk/modal-shell";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { ChipSelect, Field, FormDialog, ROLES, SwitchLite, hueFrom, initialsOf, inputCls, isEmail, norm, phoneDigits, selectTriggerCls } from "./shared";
+import { ChipSelect, Field, FormDialog, GatedButton, ROLES, SwitchLite, hueFrom, initialsOf, inputCls, isEmail, norm, phoneDigits, selectTriggerCls } from "./shared";
 import { DeactivateUserDialog } from "./deactivate-user";
 import {
+  ALREADY_ACTIVE,
   NEEDS_CONNECTION,
   NEEDS_CONNECTION_DETAIL,
   REAUTH,
@@ -22,6 +23,7 @@ import {
   changeUserEmail,
   inviteUser,
   isUnknownOutcome,
+  resendInvitation,
   setUserActive,
   useAccountAdmin,
   useOpIds,
@@ -41,6 +43,8 @@ type FieldKey = "name" | "title" | "email" | "phone";
  * Demo: the store applies everything locally. Account session: a new user is an INVITATION (admin-users sends the e-mail and
  * creates the profile), and the e-mail and the active switch of an existing user change on the server when saving — all
  * three need a connection. Name, title, role, unit and phone keep going through the store (queued for the server).
+ * "Reenviar invitación" (an existing, active account; account sessions online only) sends the invitation e-mail again
+ * right away, apart from "Guardar".
  */
 export function UserDialog({
   user,
@@ -84,6 +88,9 @@ export function UserDialog({
   const [activeAttempt, setActiveAttempt] = useState(0);
   // what the form opened with: drives "¿Descartar cambios?" and "Aún no hay cambios que guardar"
   const [start] = useState({ name, title, role, unitId, email, phone, active });
+  const [resending, setResending] = useState(false);
+  // the answer of "Reenviar invitación" when it did not go out: "info" = no pending invitation (the message says the way in)
+  const [resendNote, setResendNote] = useState<{ tone: "info" | "error"; message: string } | null>(null);
 
   const mail = email.trim().toLowerCase();
   const clean = name.trim().replace(/\s+/g, " ");
@@ -130,6 +137,36 @@ export function UserDialog({
   const toggleActive = (next: boolean) => {
     if (!next && user?.active) setConfirmOff(true);
     else setActive(next);
+  };
+
+  // "Reenviar invitación": an existing, active account other than one's own. It goes to the login address the account has
+  // now, so an e-mail change still in the form is saved (or undone) first.
+  const showResend = !isNew && !isMe && !!user?.active;
+  const resendBlocked = !account
+    ? "En la demostración no se envían correos."
+    : offline
+      ? `${NEEDS_CONNECTION}: las invitaciones se envían desde el servidor.`
+      : reauth
+        ? "Vuelva a entrar con su cuenta: las invitaciones se envían a su nombre."
+        : emailChanged
+          ? "Guarde o descarte primero el cambio de correo: la invitación va al correo actual."
+          : null;
+  const resend = async () => {
+    if (!user || resending || resendBlocked) return;
+    setResending(true);
+    setResendNote(null);
+    try {
+      const result = await resendInvitation(user);
+      if (result.ok) {
+        toast.success(`Invitación reenviada a ${user.email}`, {
+          description: "Pídale que abra el enlace del correo más reciente: el de una invitación anterior puede ya no funcionar.",
+        });
+        return;
+      }
+      setResendNote({ tone: result.code === ALREADY_ACTIVE ? "info" : "error", message: result.message });
+    } finally {
+      setResending(false);
+    }
   };
 
   const preview = name.trim() || "Nuevo usuario";
@@ -220,11 +257,13 @@ export function UserDialog({
         description: invitePending
           ? "La persona aún no ha aceptado su invitación: pídale que use «¿Olvidó su contraseña?» con el nuevo correo para definir su contraseña."
           : emailChanged
-            ? `Desde ahora inicia sesión con ${mail}.`
+            ? isMe
+              ? `Sus sesiones se cerraron: vuelva a entrar con ${mail} cuando la app se lo pida.`
+              : `Sus sesiones abiertas se cerraron: debe volver a iniciar sesión con ${mail}. Avísele del cambio.`
             : willDeactivate
               ? "Cuenta desactivada: ya no puede iniciar sesión."
               : `${ROLE_LABEL[role]} · ${unitName}`,
-        duration: invitePending ? 12_000 : undefined,
+        duration: invitePending || emailChanged ? 12_000 : undefined,
       });
       onOpenChange(false);
       if (willDeactivate) setTimeout(() => onDeactivated?.(target, openOrders), 0);
@@ -327,7 +366,7 @@ export function UserDialog({
               hint={
                 account && !isNew
                   ? emailChanged
-                    ? "Al guardar, la persona inicia sesión con este correo: avísele del cambio."
+                    ? "Al guardar, se cierran sus sesiones y vuelve a entrar con este correo: avísele del cambio."
                     : "Es el correo con el que inicia sesión. Cambiarlo necesita conexión."
                   : account
                     ? "La invitación llega a este correo; con él iniciará sesión."
@@ -373,6 +412,43 @@ export function UserDialog({
               </span>
               <SwitchLite checked={active} onChange={toggleActive} disabled={isMe} label="Cuenta activa" />
             </label>
+          )}
+
+          {showResend && (
+            <div className="rounded-[16px] border border-hairline px-4 py-3">
+              <div className="flex min-h-11 flex-wrap items-center justify-between gap-x-4 gap-y-2">
+                <span className="min-w-0">
+                  <span className="block text-[14px] font-semibold text-ink">Invitación</span>
+                  <span className="block text-[12.5px] text-subtle">Si la persona aún no la acepta, se le envía de nuevo a su correo actual.</span>
+                </span>
+                <GatedButton
+                  type="button"
+                  variant="outline"
+                  allowed={!resendBlocked}
+                  reason={resendBlocked ?? ""}
+                  lockIcon={account && offline ? <WifiOff className="size-3.5" /> : account && reauth ? <KeyRound className="size-3.5" /> : undefined}
+                  disabled={resending}
+                  aria-busy={resending || undefined}
+                  onClick={() => void resend()}
+                  className="border-line"
+                >
+                  {resending ? <Loader2 className="animate-spin" aria-hidden /> : <Send className="size-4" aria-hidden />}
+                  {resending ? "Enviando…" : "Reenviar invitación"}
+                </GatedButton>
+              </div>
+              {resendNote && (
+                <p
+                  role={resendNote.tone === "error" ? "alert" : "status"}
+                  className={cn(
+                    "mt-3 flex gap-2.5 rounded-[12px] px-3.5 py-2.5 text-[13px] leading-snug",
+                    resendNote.tone === "error" ? "bg-red-soft font-medium text-red-fg" : "bg-blue-soft text-ink-soft",
+                  )}
+                >
+                  {resendNote.tone === "info" && <Info className="mt-0.5 size-4 shrink-0 text-azure-fg" aria-hidden />}
+                  <span>{resendNote.message}</span>
+                </p>
+              )}
+            </div>
           )}
 
           {/* not a footer hint: the footer slot only says what is missing, and this stays true after validation passes */}
