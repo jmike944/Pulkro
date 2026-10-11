@@ -409,18 +409,30 @@ One RPC per queue item keeps generated TypeScript types for every argument (a ba
   `create_order` → `schedule_jornadas`, upload → `add_photo`, `add_incident` → photo linked to it). When an item fails
   permanently, later items of the same order are held ("bloqueado por…") until resolved.
 - **Outcome classes** for the queue:
-  - *retry with backoff*: network errors, 5xx, `408/429`, `PT409 object_missing` (upload still running) and
-    `PT409 parent_missing` (a parent still in the queue) — server answers are capped (20 attempts / 24 h), then
-    quarantine; requests that got no answer only space the retries out and never count toward the cap;
+  - *retry with backoff*: network errors, 5xx, `408/429`, `PT409 object_missing` (upload still running),
+    `PT409 parent_missing` (a parent still in the queue) and `PT422 device_time_future` (the phone's clock is ahead: the
+    same request goes once the server's clock passes the stamped time) — server answers are capped (20 attempts / 24 h),
+    then quarantine; requests that got no answer only space the retries out and never count toward the cap;
   - *re-authenticate, keep the queue*: `PT401`;
   - *conflict → quarantine* (keep the payload and blobs on the device, show "no se aplicó" with the server message, offer
     redo/hand-off/discard): `order_reassigned`, `jornada_rescheduled`, `photo_deleted`, `order_closed`, `order_cancelled`,
     `order_frozen`, `duplicate_check`, `op_id_reused`, a permanently failed upload. Exception: `photo_deleted` answering
     `delete_photo` means the photo is already deleted — the item counts as sent;
   - *permanent error* (bug or invalid input): other `PT403/PT404/PT409/PT422`; re-pull the order, let the user decide.
-  Field evidence is never dropped silently: a quarantined capture can be exported (photos + times) and handed to the
-  current supervisor. Discarding an item takes along the later items that name a record it creates (they could only
-  answer `parent_missing`) — unless its last attempt got no answer: the server may have applied it, so it goes alone.
+  - *never retried* — a resend of the same request cannot change the answer, so the sync sheet offers only "Descartar"
+    and "Reintentar N envíos" skips them (`NO_RETRY_HINTS`, queue.ts): `op_id_reused`, `duplicate_check`,
+    `already_resolved`, `already_provisioned`, `photo_lost`, `device_time_stale`, `jornada_rescheduled`,
+    `order_reassigned`, `out_of_scope`, `order_closed`, `order_cancelled`, and a photo file the bucket refused (Storage
+    403 / RLS → hint `upload_forbidden`).
+  Field evidence is never dropped silently: a quarantined capture stays on the device until the person discards it, and
+  the "Descartar" confirmation first offers «Guardar fotos en el teléfono» for every photo it would delete (the share
+  sheet with the files where supported, else one download each, named `<folio>_<kind>_<yyyy-MM-dd_HH-mm-ss>`); the device
+  copies are deleted only once the discard is confirmed. Discarding an item takes along the later items that name a
+  record it creates (they could only answer `parent_missing`) — unless its last attempt got no answer: the server may have
+  applied it, so it goes alone (a new order discarded that way keeps the pictures its still-queued photos need).
+  Discarding a refused `validate_closure` or `check_in` also names the later `generate_report` / `log_share` of that order
+  (or the `check_out` of that jornada): the server will probably refuse them too, but they are not taken along — they can
+  be discarded when that happens.
 - **Whose session**: a push burst and a pull cycle check once that the browser's session is the account's on the device,
   then send every request with that session's access token (`getTokenClient`): the cookies are shared by every tab, and
   an e-mail link or a sign-in in another tab may replace them mid-run.
@@ -430,9 +442,15 @@ One RPC per queue item keeps generated TypeScript types for every argument (a ba
   order cancelled meanwhile, closure after an incident was opened on another device) are rejected by the rules — the
   server state wins.
 - **Device time**: `p_device_at` (check-in/out, notes, incidents, closure, reports, shares) and `p_taken_at`/`p_attached_at`
-  (photos) are stored next to the server time, bounded (§6) and never used for authorization. A phone clock more than
-  5 minutes fast is refused (`device_time_future`): the app compares its clock with the server's `Date` header and warns
-  before capturing (policy in §14).
+  (photos) are stored next to the server time, bounded (§6) and never used for authorization, and the app never rewrites
+  them (they are evidence). A time more than 5 minutes ahead of the server's clock (`device_time_future`) is retried as
+  above until the server's clock passes it; one older than 45 days (`device_time_stale`) is never retried. The app keeps
+  an estimate of the phone's clock offset (`sync.clock`, persisted, per device; sync/clock.ts) from server times it
+  already receives: `server_at` of check-in/out and `reopened_at` of reopen_order (timed around the request; a
+  `duplicate` answer is ignored), the `iat` of every access token a sign-in or refresh returns (read from a copy of the
+  Auth answer in supabase/client.ts), and the newest `updated_at` a pull reads (a lower bound: it only raises the
+  estimate). While the offset exceeds 5 minutes, the capture screens (check-in/out, photos, notes, incidents, closure)
+  show a non-blocking warning to correct the phone's date and time (`ClockWarning`); nothing is blocked (policy in §14).
 
 **Pull — RLS-scoped table reads with incremental cursors, plus fetch-by-reference for scope gain.**
 
@@ -593,7 +611,9 @@ las marcadas **[implementado]** ya están en el servidor y en la app.
 9. **Carga inicial**: 6 meses de historial para Dirección y Administración; el supervisor baja todas sus órdenes abiertas
    y 6 meses de cerradas. Lo anterior se consulta en línea.
 10. **Reloj del dispositivo**: se mantiene el rechazo (> 5 min adelantado o > 45 días de atraso), con mensaje para revisar
-    la hora del teléfono. **[implementado]**
+    la hora del teléfono. **[implementado]** Decisión del dueño (CAP-1): lo adelantado se reintenta hasta que la hora del
+    servidor lo alcanza (sin reescribir la hora del dispositivo), lo demasiado antiguo solo se puede descartar, y las
+    pantallas de captura avisan sin bloquear mientras el reloj del teléfono difiere más de 5 min del servidor (§8).
 11. **Correo**: por decisión del dueño, el remitente por defecto de Supabase por ahora (solo entrega a miembros del equipo,
     ~2 correos por hora); plantillas en español en `supabase/templates/`. SMTP propio antes del piloto. Cambio de correo
     de un usuario: acción `change_email` de la Edge Function `admin-users` (fase 5). **[desplegado y aplicado: función
