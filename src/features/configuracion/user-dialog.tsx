@@ -1,7 +1,7 @@
 "use client";
 
-import { useState } from "react";
-import { Info, TriangleAlert, UserCog, UserPlus, WifiOff } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { Info, KeyRound, TriangleAlert, UserCog, UserPlus, WifiOff } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { uid } from "@/lib/store";
@@ -14,7 +14,18 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ChipSelect, Field, FormDialog, ROLES, SwitchLite, hueFrom, initialsOf, inputCls, isEmail, norm, phoneDigits, selectTriggerCls } from "./shared";
 import { DeactivateUserDialog } from "./deactivate-user";
-import { NEEDS_CONNECTION, NEEDS_CONNECTION_DETAIL, changeUserEmail, inviteUser, setUserActive, useAccountAdmin, useOpIds } from "./account-admin";
+import {
+  NEEDS_CONNECTION,
+  NEEDS_CONNECTION_DETAIL,
+  REAUTH,
+  REAUTH_DETAIL,
+  changeUserEmail,
+  inviteUser,
+  isUnknownOutcome,
+  setUserActive,
+  useAccountAdmin,
+  useOpIds,
+} from "./account-admin";
 
 const DEFAULT_TITLE: Record<Role, string> = {
   direccion: "Dirección",
@@ -47,7 +58,7 @@ export function UserDialog({
   const users = useAppStore((s) => s.users);
   const units = useAppStore((s) => s.units);
   const upsertUser = useAppStore((s) => s.upsertUser);
-  const { account, offline } = useAccountAdmin();
+  const { account, offline, reauth } = useAccountAdmin();
   const opFor = useOpIds();
   const isNew = !user;
   const isMe = user?.id === me.id;
@@ -63,13 +74,22 @@ export function UserDialog({
   const [confirmOff, setConfirmOff] = useState(false);
   const [busy, setBusy] = useState(false);
   const [serverError, setServerError] = useState<string | null>(null);
+  const errorRef = useRef<HTMLParagraphElement>(null);
+  // An invitation whose answer never came (timeout, no answer, 5xx) may have gone out: the profile the pull then brings is
+  // this same invitation, not another person's. While the form stays as it was sent, the address is not "taken" and
+  // "Enviar invitación" resends the same operation (same op id: the server answers its stored result, nothing is e-mailed
+  // twice). Holds the payload of that attempt.
+  const [uncertainInvite, setUncertainInvite] = useState<string | null>(null);
   // bumped when the server answered another status than asked (a stale retry): the next "Guardar" is a new operation
   const [activeAttempt, setActiveAttempt] = useState(0);
   // what the form opened with: drives "¿Descartar cambios?" and "Aún no hay cambios que guardar"
   const [start] = useState({ name, title, role, unitId, email, phone, active });
 
   const mail = email.trim().toLowerCase();
-  const emailTaken = users.some((u) => u.id !== user?.id && norm(u.email) === norm(email.trim()));
+  const clean = name.trim().replace(/\s+/g, " ");
+  const inviteInput = { email: mail, name: clean, role, unitId, title: title.trim(), phone: phone.trim(), hue: hueFrom(clean) };
+  const resendingInvite = isNew && uncertainInvite === JSON.stringify(inviteInput);
+  const emailTaken = !resendingInvite && users.some((u) => u.id !== user?.id && norm(u.email) === norm(email.trim()));
   const errors = {
     name: name.trim().length < 5 ? "Escriba nombre y apellidos." : null,
     title: !title.trim() ? "Escriba el puesto, por ejemplo Supervisor de operaciones." : null,
@@ -97,7 +117,13 @@ export function UserDialog({
     [errors.phone, "Escriba un teléfono de al menos 10 dígitos"],
     [!isNew && !dirty, "Aún no hay cambios que guardar"],
     [needsServer && offline, NEEDS_CONNECTION],
+    [needsServer && reauth, REAUTH],
   );
+
+  // The explanation of a refusal sits at the end of a body that scrolls (bottom sheet on phones): bring it into view.
+  useEffect(() => {
+    if (serverError) errorRef.current?.scrollIntoView({ block: "nearest", behavior: "smooth" });
+  }, [serverError]);
 
   // Turning a live account off goes through the same confirmation as the users list; the change itself is stored with "Guardar".
   const willDeactivate = !!user?.active && !active;
@@ -108,7 +134,6 @@ export function UserDialog({
 
   const preview = name.trim() || "Nuevo usuario";
   const unitName = units.find((u) => u.id === unitId)?.name ?? "";
-  const clean = name.trim().replace(/\s+/g, " ");
 
   /** Demo: everything local, as before. */
   const saveLocally = () => {
@@ -137,10 +162,13 @@ export function UserDialog({
     setServerError(null);
     try {
       if (isNew) {
-        const input = { email: mail, name: clean, role, unitId, title: title.trim(), phone: phone.trim(), hue: hueFrom(clean) };
-        const invited = await inviteUser(input, opFor("invite", input));
+        const invited = await inviteUser(inviteInput, opFor("invite", inviteInput));
         if (!invited.ok) {
-          setServerError(invited.message);
+          const unknown = isUnknownOutcome(invited);
+          setUncertainInvite(unknown ? JSON.stringify(inviteInput) : null);
+          setServerError(
+            unknown && invited.code !== "timeout" ? `${invited.message} Si la invitación ya salió, al enviarla de nuevo no se repite.` : invited.message,
+          );
           return;
         }
         toast.success(`Invitación enviada a ${mail}`, {
@@ -155,7 +183,13 @@ export function UserDialog({
       if (emailChanged) {
         const changed = await changeUserEmail(target, mail, opFor("email", mail));
         if (!changed.ok) {
-          setServerError(changed.message);
+          // The login may already use the new address while the list still shows the old one: only the same "Guardar"
+          // (same operation) finishes it.
+          setServerError(
+            isUnknownOutcome(changed)
+              ? `${changed.code === "timeout" ? "El servidor no confirmó la respuesta a tiempo." : changed.message} El correo de inicio de sesión pudo haber cambiado ya: vuelva a guardar para terminar el cambio (no se repetirá).`
+              : changed.message,
+          );
           return;
         }
         invitePending = changed.invite_pending;
@@ -184,7 +218,7 @@ export function UserDialog({
 
       toast.success("Cambios guardados", {
         description: invitePending
-          ? "La persona aún no aceptaba su invitación: pídale que use «¿Olvidó su contraseña?» con el nuevo correo para definir su contraseña."
+          ? "La persona aún no ha aceptado su invitación: pídale que use «¿Olvidó su contraseña?» con el nuevo correo para definir su contraseña."
           : emailChanged
             ? `Desde ahora inicia sesión con ${mail}.`
             : willDeactivate
@@ -220,7 +254,7 @@ export function UserDialog({
         }
         submitLabel={submitLabel}
         submitDisabled={!!hint || busy}
-        footerNote={busy ? undefined : hint}
+        footerNote={busy ? undefined : (hint ?? (serverError ? "No se completó: vea el motivo abajo" : undefined))}
         dirty={dirty}
         onSubmit={() => {
           if (hint || busy) return;
@@ -362,8 +396,16 @@ export function UserDialog({
               </span>
             </div>
           )}
+          {needsServer && reauth && !offline && (
+            <div role="status" className="flex gap-3 rounded-[16px] bg-soft p-4 text-[13.5px] leading-snug text-ink-soft">
+              <KeyRound className="mt-0.5 size-4 shrink-0 text-subtle" aria-hidden />
+              <span>
+                <b className="font-semibold text-ink">{REAUTH}.</b> {REAUTH_DETAIL}
+              </span>
+            </div>
+          )}
           {serverError && (
-            <p role="alert" className="rounded-[16px] bg-red-soft p-4 text-[13.5px] font-medium leading-snug text-red-fg">
+            <p ref={errorRef} role="alert" className="rounded-[16px] bg-red-soft p-4 text-[13.5px] font-medium leading-snug text-red-fg">
               {serverError}
             </p>
           )}

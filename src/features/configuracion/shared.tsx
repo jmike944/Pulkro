@@ -484,23 +484,33 @@ export function ListHead({ className, children }: { className?: string; children
   return <div className={cn("hidden gap-4 border-b border-hairline pb-3 text-[12px] font-semibold uppercase tracking-[0.1em] text-subtle lg:grid", className)}>{children}</div>;
 }
 
-/** Inline switch with a ≥40px hit area and an accessible label. */
+/**
+ * Inline switch with a ≥40px hit area and an accessible label. `busy` (a change on its way): the same element stays, focused
+ * and in the tab order, but ignores clicks — `disabled` would drop the keyboard focus and swap in the reason tooltip.
+ */
 export function InlineSwitch({
   checked,
   onChange,
   label,
   disabled,
+  busy,
   reason,
 }: {
   checked: boolean;
   onChange: (v: boolean) => void;
   label: string;
   disabled?: boolean;
+  busy?: boolean;
   reason?: string;
 }) {
   const sw = (
-    <label className={cn("inline-flex min-h-11 min-w-11 items-center justify-center rounded-[12px] px-1.5 lg:min-h-10 lg:min-w-10", disabled ? "cursor-not-allowed" : "cursor-pointer hover:bg-muted")}>
-      <SwitchLite checked={checked} onChange={onChange} disabled={disabled} label={label} />
+    <label
+      className={cn(
+        "inline-flex min-h-11 min-w-11 items-center justify-center rounded-[12px] px-1.5 lg:min-h-10 lg:min-w-10",
+        disabled ? "cursor-not-allowed" : busy ? "cursor-progress" : "cursor-pointer hover:bg-muted",
+      )}
+    >
+      <SwitchLite checked={checked} onChange={onChange} disabled={disabled} busy={busy} label={label} />
     </label>
   );
   if (!disabled || !reason) return sw;
@@ -513,18 +523,35 @@ export function InlineSwitch({
   );
 }
 
-/** Brand switch with a springy thumb (navy when on). */
-export function SwitchLite({ checked, onChange, disabled, label }: { checked: boolean; onChange: (v: boolean) => void; disabled?: boolean; label: string }) {
+/** Brand switch with a springy thumb (navy when on). `busy`: shown dimmed and inert (aria-disabled), still focusable. */
+export function SwitchLite({
+  checked,
+  onChange,
+  disabled,
+  busy,
+  label,
+}: {
+  checked: boolean;
+  onChange: (v: boolean) => void;
+  disabled?: boolean;
+  busy?: boolean;
+  label: string;
+}) {
   return (
     <button
       type="button"
       role="switch"
       aria-checked={checked}
       aria-label={label}
+      aria-disabled={busy || undefined}
+      aria-busy={busy || undefined}
       disabled={disabled}
-      onClick={() => onChange(!checked)}
+      onClick={() => {
+        if (!busy) onChange(!checked);
+      }}
       className={cn(
         "relative inline-flex h-[24px] w-[42px] shrink-0 items-center rounded-full p-[3px] outline-none transition-colors focus-visible:ring-3 focus-visible:ring-ring/50 disabled:opacity-50",
+        busy && "opacity-50",
         checked ? "bg-brand-deep" : "bg-line",
       )}
     >
