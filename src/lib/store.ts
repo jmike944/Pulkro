@@ -27,8 +27,8 @@ import {
 } from "./domain";
 import { plural } from "./format";
 import { DONE_STATUSES, OPEN_STATUSES } from "./status";
-import { DEMO_ENABLED } from "./demo";
-import { deletePhotoFile } from "./photo-store";
+import { DEMO_ENABLED, DEMO_SIGN_IN } from "./demo";
+import { clearPhotoFiles, deletePhotoFile } from "./photo-store";
 import type {
   AuditEntity,
   CaseStatus,
@@ -51,6 +51,7 @@ import type {
   Survey,
   SurveyAnswers,
   SyncItem,
+  Unit,
   User,
   Worker,
 } from "./types";
@@ -191,6 +192,11 @@ type Session = {
   signedIn: boolean;
   userId: string;
   unitFilter: string | "all";
+  /**
+   * "demo": the role picker over the local demo dataset. "supabase": a real account (signed in with Supabase Auth, profile
+   * read from public.profiles); the demo dataset and the demo controls never apply to it.
+   */
+  mode: "demo" | "supabase";
 };
 
 type SyncSlice = {
@@ -208,8 +214,18 @@ export type AppState = DataSnapshot & {
   hydrated: boolean;
 
   /* session */
-  signIn: (userId: string) => void;
+  /** Demo role picker. Returns whether the session started (a refusal is toasted). */
+  signIn: (userId: string) => boolean;
+  /** Demo sign-out (keeps the device data). An account session signs out through useSignOut (features/auth). */
   signOut: () => void;
+  /**
+   * Starts an account session for a verified, active profile. The same account keeps its device data; anything else on the
+   * device (the demo dataset, another account's data) is replaced by an empty dataset holding only this profile and unit.
+   * The caller confirms first when another account still has unsent changes (otherAccountOnDevice, features/auth/session).
+   */
+  startSupabaseSession: (user: User, unit?: Unit) => void;
+  /** Wipes the device after an account sign-out: data, queue and photo blobs (IndexedDB), then the demo seed if offered. */
+  clearDeviceData: () => void;
   /** Demo only (NEXT_PUBLIC_DEMO ≠ "0"). */
   switchRole: (role: Role) => void;
   /** No-op for roles without view.allUnits. */
@@ -299,6 +315,9 @@ const emptyData: DataSnapshot = {
 };
 
 export const isOffline = (s: Pick<AppState, "sync">) => s.sync.forcedOffline || s.sync.browserOffline;
+
+/** Queue items that have not reached the server (pending, sending or failed). */
+export const unsentCount = (queue: SyncItem[]) => queue.filter((q) => q.state !== "sincronizado").length;
 
 /** Items that were mid-upload when the app closed go back to "pendiente" so the engine retries them. */
 const unstick = (queue: SyncItem[]) => queue.map((q) => (q.state === "sincronizando" ? { ...q, state: "pendiente" as const } : q));
@@ -430,6 +449,8 @@ export const useAppStore = create<AppState>()(
           ? true
           : denied(geo.source === "remota" ? "Explique la supervisión remota (quién está en sitio y cómo se confirmó)." : "Justifique la ubicación manual.");
 
+      const signedOutSession = (): Session => ({ signedIn: false, userId: DEMO_USER_BY_ROLE.supervisor, unitFilter: "all", mode: "demo" });
+
       const reseed = () => {
         const seed = generateSeed(new Date());
         const { seededAt, ...data } = seed;
@@ -443,22 +464,71 @@ export const useAppStore = create<AppState>()(
       return {
         ...emptyData,
         meta: { seededAt: "", seedVersion: 0 },
-        session: { signedIn: false, userId: DEMO_USER_BY_ROLE.supervisor, unitFilter: "all" },
+        session: signedOutSession(),
         sync: { forcedOffline: false, browserOffline: false, queue: [], lastSyncAt: nowIso(), processing: false },
         hydrated: false,
 
         /* ── session ── */
         signIn: (userId) => {
+          if (!DEMO_SIGN_IN) {
+            denied("Esta versión no tiene demostración: entre con su cuenta.");
+            return false;
+          }
+          // An account's data never turns into a demo session: its owner signs out first (useSignOut checks the queue).
+          if (getState().session.mode === "supabase") {
+            denied("Hay una cuenta abierta en este dispositivo: cierre su sesión antes de entrar al demo.");
+            return false;
+          }
           const user = getState().users.find((u) => u.id === userId);
           if (!user || !user.active) {
             denied("La cuenta no existe o está desactivada.");
-            return;
+            return false;
           }
-          setState((st) => ({ session: { ...st.session, signedIn: true, userId, unitFilter: "all" } }));
+          setState((st) => ({ session: { ...st.session, signedIn: true, userId, unitFilter: "all", mode: "demo" } }));
+          return true;
         },
         signOut: () => setState((st) => ({ session: { ...st.session, signedIn: false } })),
+        startSupabaseSession: (user, unit) => {
+          const s = getState();
+          if (s.session.mode === "supabase" && s.session.userId === user.id) {
+            // Same account (signed in again on this device): keep its data and unsent queue, refresh its own records.
+            setState((st) => ({
+              users: st.users.some((u) => u.id === user.id) ? st.users.map((u) => (u.id === user.id ? user : u)) : [...st.users, user],
+              units: !unit ? st.units : st.units.some((x) => x.id === unit.id) ? st.units.map((x) => (x.id === unit.id ? unit : x)) : [...st.units, unit],
+              session: { ...st.session, signedIn: true, mode: "supabase" },
+            }));
+            return;
+          }
+          // Demo data or another account's data never carries over: start from an empty dataset with this profile only,
+          // so nobody mistakes demo records for real ones.
+          setState((st) => ({
+            ...emptyData,
+            users: [user],
+            units: unit ? [unit] : [],
+            meta: { seededAt: "", seedVersion: 0 },
+            session: { signedIn: true, userId: user.id, unitFilter: "all", mode: "supabase" },
+            sync: { ...st.sync, queue: [], lastSyncAt: nowIso(), processing: false },
+          }));
+          flushWrite();
+          void clearPhotoFiles();
+          // TODO(phase 2 — pull, architecture §8): initial load of the account's catalogs and orders in scope, then the
+          // incremental cursors. Until then an account session holds only its own profile and unit.
+        },
+        clearDeviceData: () => {
+          setState((st) => ({
+            ...emptyData,
+            meta: { seededAt: "", seedVersion: 0 },
+            session: signedOutSession(),
+            sync: { forcedOffline: false, browserOffline: st.sync.browserOffline, queue: [], lastSyncAt: nowIso(), processing: false },
+          }));
+          // Write the empty state now (not after the debounce): the account's records leave IndexedDB with the sign-out.
+          flushWrite();
+          void clearPhotoFiles();
+          // The login screen's demo picker needs the demo dataset back (when the build offers it).
+          getState().ensureSeeded();
+        },
         switchRole: (role) => {
-          if (!DEMO_ENABLED) {
+          if (!DEMO_ENABLED || getState().session.mode === "supabase") {
             denied("El cambio de rol solo existe en la versión de demostración.");
             return;
           }
@@ -826,6 +896,9 @@ export const useAppStore = create<AppState>()(
 
         addPhoto: (photo) => {
           const { order, user } = must(allowOrder([photoAction(photo.kind)], photo.orderId));
+          // Sample pictures ("Simular") belong to the demo: an account's evidence is always a real capture.
+          if (photo.source.type === "scene" && getState().session.mode === "supabase")
+            must(denied("Las fotos de ejemplo solo existen en la demostración: tome la foto o elíjala de la galería."));
           if (photo.kind !== "postventa") must(isTerminal(order.status) ? denied(CLOSED_ORDER) : true);
           const s = getState();
           const id = uid("pho");
@@ -1228,6 +1301,9 @@ export const useAppStore = create<AppState>()(
           void getState().processSyncQueue();
         },
         processSyncQueue: async () => {
+          // The loop below only simulates the server for the demo. An account's changes stay "pendiente" (and count as
+          // unsent at sign-out) until the real push exists. TODO(phase 4 — push, architecture §8): send each item as its RPC.
+          if (getState().session.mode === "supabase") return;
           if (getState().sync.processing) return;
           setState((st) => ({ sync: { ...st.sync, processing: true } }));
           try {
@@ -1274,7 +1350,7 @@ export const useAppStore = create<AppState>()(
 
         /* ── demo data ── */
         resetDemo: () => {
-          if (!DEMO_ENABLED) {
+          if (!DEMO_ENABLED || getState().session.mode === "supabase") {
             denied("Restablecer datos solo existe en la versión de demostración.");
             return;
           }
@@ -1289,6 +1365,15 @@ export const useAppStore = create<AppState>()(
 
         ensureSeeded: () => {
           const s = getState();
+          // An account session never gets the demo dataset. TODO(phase 2 — pull): this is where its data will load.
+          if (s.session.mode === "supabase") return;
+          // A build without the demo sign-in keeps no demo data (nor a demo session left by an earlier demo build).
+          if (!DEMO_SIGN_IN) {
+            if (s.session.signedIn || s.users.length || s.orders.length) {
+              setState({ ...emptyData, meta: { seededAt: "", seedVersion: 0 }, session: signedOutSession(), sync: { ...s.sync, queue: [] } });
+            }
+            return;
+          }
           if (!s.meta.seededAt || s.meta.seedVersion !== SEED_VERSION || s.orders.length === 0) {
             reseed();
             return;
@@ -1325,7 +1410,9 @@ export const useAppStore = create<AppState>()(
         out.sync = { ...s.sync, queue: unstick(s.sync.queue), processing: false, browserOffline: false };
         return out as Partial<AppState>;
       },
-      migrate: () => ({}) as AppState, // version bump → reseed
+      // A seed version bump reseeds the demo. An account's data (and its unsent queue) is never thrown away for it.
+      migrate: (persisted) =>
+        ((persisted as Partial<AppState> | undefined)?.session?.mode === "supabase" ? persisted : {}) as AppState,
     },
   ),
 );
@@ -1335,7 +1422,11 @@ export async function bootstrapStore() {
   if (useAppStore.getState().hydrated) return;
   await useAppStore.persist.rehydrate();
   // A reload in the middle of an upload leaves items "sincronizando": put them back in line (retried once online below).
-  useAppStore.setState((st) => ({ sync: { ...st.sync, processing: false, queue: unstick(st.sync.queue) } }));
+  // Sessions saved before account sign-in existed have no mode: they are demo sessions.
+  useAppStore.setState((st) => ({
+    session: { ...st.session, mode: st.session.mode === "supabase" ? "supabase" : "demo" },
+    sync: { ...st.sync, processing: false, queue: unstick(st.sync.queue) },
+  }));
   useAppStore.getState().ensureSeeded();
   useAppStore.setState({ hydrated: true });
   if (typeof navigator !== "undefined") useAppStore.getState().setBrowserOffline(!navigator.onLine);

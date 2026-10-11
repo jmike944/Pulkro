@@ -4,7 +4,7 @@
  * Real photo captures live in IndexedDB as compressed JPEG blobs (localStorage is too small).
  * The zustand store only keeps a reference: { type: "idb", key }.
  */
-import { createStore, del, get, set } from "idb-keyval";
+import { clear, createStore, del, get, set } from "idb-keyval";
 import { readCaptureMeta, type CaptureMeta } from "./exif";
 import type { Photo, PhotoOrigin } from "./types";
 
@@ -91,4 +91,11 @@ export async function deletePhotoFile(key: string) {
   if (url) URL.revokeObjectURL(url);
   urlCache.delete(key);
   if (store) await del(key, store);
+}
+
+/** Every photo blob on the device (account sign-out, or another account's data being replaced). */
+export async function clearPhotoFiles() {
+  urlCache.forEach((url) => URL.revokeObjectURL(url));
+  urlCache.clear();
+  if (store) await clear(store);
 }
