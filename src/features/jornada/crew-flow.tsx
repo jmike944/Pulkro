@@ -17,10 +17,11 @@ import { CrewPicker } from "@/components/pk/crew-picker";
 import { PersonAvatar } from "@/components/pk/bits";
 import { ModalCancel, ModalShell, firstMissing } from "@/components/pk/modal-shell";
 import { ReasonField, reasonOk } from "@/components/pk/reason-field";
+import { useOpenSession } from "@/components/pk/use-open-session";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { sameSet } from "@/features/agenda/agenda-model";
-import { FOOTER_PRIMARY, useOpenSession } from "@/features/agenda/modal-bits";
+import { FOOTER_PRIMARY } from "@/features/agenda/modal-bits";
 import { jornadaTitle } from "@/features/orden/orden-format";
 import type { FieldReady } from "./use-field-state";
 
@@ -62,8 +63,9 @@ function CrewForm({ open, onOpenChange, order, jornadas, jornadaId, allowApplyAl
 
   const [initial] = useState<string[]>(() => {
     const base = target ? [target] : pending.length ? pending : live ? [live] : [];
-    const current = (jornadas.find((j) => j.status !== "cerrada") ?? jornadas.at(-1))?.workerIds.filter((id) => workers.has(id)) ?? [];
-    return base[0]?.workerIds ?? current;
+    // with no jornada yet, assignCrew keeps the crew only in the order's history (the next jornadas take the latest entry)
+    const latest = (jornadas.find((j) => j.status !== "cerrada") ?? jornadas.at(-1))?.workerIds ?? order.crewHistory.at(-1)?.workerIds ?? [];
+    return base[0]?.workerIds ?? latest.filter((id) => workers.has(id));
   });
   const [initialReason] = useState(() => (order.crewHistory.length ? "" : "Asignación inicial"));
   const [value, setValue] = useState<string[]>(initial);

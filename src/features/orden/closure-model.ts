@@ -147,9 +147,11 @@ export function useClosureDraft(d: OrderDetail) {
       ? "Marque la casilla de confirmación"
       : undefined;
 
-  /** Anything the supervisor would have to capture again (the client's signature above all). */
+  /** Anything the supervisor would have to capture again (the client's signature above all, plus the method and the confirmation). */
   const dirty =
     !!signature ||
+    method !== "firma" ||
+    confirmed ||
     exception.trim().length > 0 ||
     comment.trim().length > 0 ||
     summary.trim() !== initial.summary.trim() ||

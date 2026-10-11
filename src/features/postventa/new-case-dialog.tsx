@@ -87,19 +87,20 @@ function NewCaseFlow({ open, defaults, onOpenChange }: { open: boolean; defaults
   const [channel, setChannel] = useState<CaseChannel>(defaults?.channel ?? "telefono");
   const [description, setDescription] = useState(defaults?.description ?? "");
   const [ownerPick, setOwnerPick] = useState("");
-  const [due, setDue] = useState(() => format(addDays(now, 3), "yyyy-MM-dd"));
+  /** The commitment date the form opened with (3 days out): `dirty` compares against it. */
+  const [initialDue] = useState(() => format(addDays(now, 3), "yyyy-MM-dd"));
+  const [due, setDue] = useState(initialDue);
   const [photoIds, setPhotoIds] = useState<string[]>([]);
-  /** Phone only: the case just registered (drives the success screen). */
+  /** Phone only: the case just registered (drives the success screen, which stays even if the window later grows past `lg`). */
   const [created, setCreated] = useState<PostSaleCase | null>(null);
 
   const order = closed.find((o) => o.id === orderId) ?? orders.find((o) => o.id === orderId);
   const candidates = useMemo(() => (order ? caseOwnerCandidates(users, order.unitId, order.supervisorId) : []), [users, order]);
   // Default owner = the order's supervisor (or me), unless the user picked someone valid.
-  const ownerId = candidates.some((u) => u.id === ownerPick)
-    ? ownerPick
-    : candidates.some((u) => u.id === order?.supervisorId)
-      ? order!.supervisorId
-      : (candidates.find((u) => u.id === user.id)?.id ?? candidates[0]?.id ?? "");
+  const defaultOwnerId = candidates.some((u) => u.id === order?.supervisorId)
+    ? order!.supervisorId
+    : (candidates.find((u) => u.id === user.id)?.id ?? candidates[0]?.id ?? "");
+  const ownerId = candidates.some((u) => u.id === ownerPick) ? ownerPick : defaultOwnerId;
 
   const photos = allPhotos.filter((p) => photoIds.includes(p.id));
   const todayKey = format(now, "yyyy-MM-dd");
@@ -116,8 +117,17 @@ function NewCaseFlow({ open, defaults, onOpenChange }: { open: boolean; defaults
     [!dueOk, "Elija una fecha compromiso de hoy en adelante"],
   );
 
-  /** Something typed or photographed that closing would throw away. */
-  const dirty = !created && (photoIds.length > 0 || description.trim() !== (defaults?.description ?? "").trim());
+  /** Anything changed from how the form opened (order, category, severity, channel, description, owner, due date, photos) that closing would throw away. */
+  const dirty =
+    !created &&
+    (photoIds.length > 0 ||
+      description.trim() !== (defaults?.description ?? "").trim() ||
+      orderId !== (defaults?.orderId ?? "") ||
+      category !== (defaults?.category ?? "calidad") ||
+      severity !== "media" ||
+      channel !== (defaults?.channel ?? "telefono") ||
+      ownerId !== defaultOwnerId ||
+      due !== initialDue);
 
   const handleOpenChange = (v: boolean) => {
     if (v) return;
@@ -156,8 +166,8 @@ function NewCaseFlow({ open, defaults, onOpenChange }: { open: boolean; defaults
     onOpenChange(false);
   };
 
-  /* ── phone: success ── */
-  if (!isDesktop && created) {
+  /* ── success (registered on a phone; kept whatever the breakpoint so the form is never shown again and Registrar cannot duplicate the case) ── */
+  if (created) {
     const owner = lk.users.get(created.ownerId);
     const client = lk.clients.get(created.clientId);
     const forOrder = orders.find((o) => o.id === created.orderId) ?? order;
@@ -275,7 +285,7 @@ function NewCaseFlow({ open, defaults, onOpenChange }: { open: boolean; defaults
           aria-describedby={descShort ? "nc-desc-note" : undefined}
           className={cn(textareaCls, FIELD_WARN)}
         />
-        {descShort && <FieldNote id="nc-desc-note">Escriba al menos {DESCRIPTION_MIN} caracteres ({missingChars(DESCRIPTION_MIN - descLength)}).</FieldNote>}
+        <FieldNote id="nc-desc-note">{descShort && `Escriba al menos ${DESCRIPTION_MIN} caracteres (${missingChars(DESCRIPTION_MIN - descLength)}).`}</FieldNote>
       </div>
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-[minmax(0,1.3fr)_minmax(0,1fr)]">
@@ -308,7 +318,7 @@ function NewCaseFlow({ open, defaults, onOpenChange }: { open: boolean; defaults
             aria-describedby={dueOk ? undefined : "nc-due-note"}
             className={cn(inputCls, FIELD_WARN)}
           />
-          {!dueOk && <FieldNote id="nc-due-note">{due ? "La fecha compromiso no puede ser anterior a hoy." : "Elija una fecha compromiso."}</FieldNote>}
+          <FieldNote id="nc-due-note">{!dueOk && (due ? "La fecha compromiso no puede ser anterior a hoy." : "Elija una fecha compromiso.")}</FieldNote>
         </div>
       </div>
 

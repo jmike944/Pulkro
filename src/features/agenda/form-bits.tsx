@@ -35,10 +35,11 @@ export function DateTimeInput({ className, invalid, ...props }: React.ComponentP
   return <Input {...props} aria-invalid={invalid || undefined} className={cn("h-11 rounded-[12px] bg-surface text-[16px] tabular md:text-[16px] lg:text-[15px]", className)} />;
 }
 
-export function FieldError({ children }: { children?: React.ReactNode }) {
+/** Validation message under a field. Give it an `id` and point the invalid inputs at it with `aria-describedby`. */
+export function FieldError({ id, children }: { id?: string; children?: React.ReactNode }) {
   if (!children) return null;
   return (
-    <motion.p initial={{ opacity: 0, y: -2 }} animate={{ opacity: 1, y: 0 }} className="mt-1.5 text-[12.5px] font-medium text-red-fg">
+    <motion.p id={id} initial={{ opacity: 0, y: -2 }} animate={{ opacity: 1, y: 0 }} className="mt-1.5 text-[12.5px] font-medium text-red-fg">
       {children}
     </motion.p>
   );

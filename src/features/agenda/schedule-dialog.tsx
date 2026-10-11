@@ -14,9 +14,9 @@ import { BigButton } from "@/components/pk/mobile";
 import { MODAL_DESKTOP_QUERY, ModalCancel, ModalShell, firstMissing } from "@/components/pk/modal-shell";
 import { ReasonField, reasonOk } from "@/components/pk/reason-field";
 import { OrderStatusPill } from "@/components/pk/status";
+import { useOpenSession } from "@/components/pk/use-open-session";
 import { dayKey, dowShort, longDay, minutesOf, nextWorkingDay, sameSet, toDayPlan } from "./agenda-model";
 import { ConfirmCheck } from "./form-bits";
-import { useOpenSession } from "./modal-bits";
 import {
   ScheduleDone,
   ScheduleRows,

@@ -39,14 +39,17 @@ const DEFAULT_SPECIALTIES = [
 ];
 const OTHER = "__otra";
 
-/** Open jornadas per worker: not closed and dated today or later. Used by the editor and by the catalog's inline switch. */
+/**
+ * Open jornadas per worker: not closed, and either in progress (`en_curso` stays open until check-out, even when dated before
+ * today) or pending and dated today or later. Used by the editor and by the catalog's inline switch.
+ */
 export function useOpenJornadas() {
   const jornadas = useAppStore((s) => s.jornadas);
   const todayK = dayKey(useNow(60_000));
   return useMemo(() => {
     const open = new Map<string, number>();
     jornadas.forEach((j) => {
-      if (j.status === "cerrada" || j.date < todayK) return;
+      if (j.status === "cerrada" || (j.status === "pendiente" && j.date < todayK)) return;
       j.workerIds.forEach((id) => open.set(id, (open.get(id) ?? 0) + 1));
     });
     return open;

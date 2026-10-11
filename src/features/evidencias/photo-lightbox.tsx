@@ -30,7 +30,8 @@ const slide: Variants = {
 /**
  * Where the lightbox is opened from. It only decides which links the details repeat:
  * `global` (gallery, incidents, requests) links to the order and the jornada; `orden` is already on the order, so it
- * drops the order/client rows and the "Evidencia de la orden" button; `jornada` also drops the jornada row.
+ * drops the order/client rows and the "Evidencia de la orden" button; `jornada` keeps the order and client rows (the
+ * photo may be opened from a jornada page) and the button, but drops the jornada row since it is already there.
  */
 export type LightboxScope = "global" | "orden" | "jornada";
 
@@ -158,7 +159,7 @@ function LightboxBody({
   const kind = PHOTO_KIND[photo.kind];
   const by = lk.users.get(photo.by);
   const client = order ? lk.clients.get(order.clientId) : undefined;
-  const showOrder = scope === "global" && !!order;
+  const showOrder = scope !== "orden" && !!order;
   const showJornada = scope !== "jornada" && !!jornada;
 
   // What a screen reader hears when the dialog opens (the visible details are read as the user moves through them).

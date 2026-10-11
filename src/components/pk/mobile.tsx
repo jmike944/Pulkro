@@ -317,6 +317,8 @@ export function FlowScreen({
   const guard = useDiscardGuard(dirty, onOpenChange);
   const lifted = !desktop && keyboard > 0;
 
+  // On phones the panel floats 8px above the screen edge (`bottom-2`), so only `inset - 8px` of the home-indicator inset
+  // overlaps it: that padding puts the actions exactly on the edge of the safe area, never inside it.
   const footerCls = cn(
     "shrink-0 border-t border-transparent bg-surface px-5 pt-3 sm:px-6",
     desktop || lifted ? "pb-4" : "pb-[max(16px,calc(env(safe-area-inset-bottom)-8px))]",

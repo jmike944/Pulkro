@@ -10,10 +10,11 @@ import { fmtDay, plural } from "@/lib/format";
 import { Eyebrow } from "@/components/pk/bits";
 import { ModalCancel, ModalShell, firstMissing } from "@/components/pk/modal-shell";
 import { ReasonField, reasonOk } from "@/components/pk/reason-field";
+import { useOpenSession } from "@/components/pk/use-open-session";
 import { Button } from "@/components/ui/button";
 import { dayKey, hm, longDay, pendingDaysWithMove, sameSet, toDayPlan, validatePlan, type PlanIssue } from "./agenda-model";
 import { ConfirmCheck } from "./form-bits";
-import { FOOTER_PRIMARY, useOpenSession } from "./modal-bits";
+import { FOOTER_PRIMARY } from "./modal-bits";
 import { ScheduleRows, type PlanRow } from "./schedule-form";
 
 type Bundle = NonNullable<ReturnType<typeof useJornadaBundle>>;
@@ -107,14 +108,15 @@ function MoveEditor({ b, open, onOpenChange, onMoved }: { b: Bundle; open: boole
       days.map(({ date: d, start: s, end: e }) => ({ date: d, start: s, end: e })),
       motivo.trim(),
     );
-    // scheduleJornadas gives every fresh jornada the order's latest crew — keep each day's own crew.
+    // scheduleJornadas gives every fresh jornada the order's latest crew — keep each day's own crew (an empty one too:
+    // a jornada left unassigned on purpose must not end up with the latest crew booked on another day).
     const fresh = useAppStore
       .getState()
       .jornadas.filter((x) => x.orderId === order.id && x.status === "pendiente")
       .sort((a, c) => a.date.localeCompare(c.date) || a.plannedStart.localeCompare(c.plannedStart));
     fresh.forEach((fj, i) => {
       const want = days[i]?.crew;
-      if (want && want.length && !sameSet(want, fj.workerIds)) assignCrew(order.id, want, "Se conserva la cuadrilla de la jornada reprogramada", fj.id);
+      if (want && !sameSet(want, fj.workerIds)) assignCrew(order.id, want, "Se conserva la cuadrilla de la jornada reprogramada", fj.id);
     });
     const moved = fresh.find((x) => x.date === date && hm(x.plannedStart) === start) ?? fresh.find((x) => x.date === date);
     toast.success("Jornada reprogramada", { description: `${order.folio} · ${longDay(parseISO(date))} · ${start}–${end}` });

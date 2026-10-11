@@ -31,6 +31,12 @@ type Tab = "abiertas" | "resueltas" | "todas";
 type Filters = { type: string; sev: string; sup: string; client: string; q: string };
 const EMPTY: Filters = { type: ALL, sev: ALL, sup: ALL, client: ALL, q: "" };
 const PAGE = 20;
+/** Empty state per tab (no filters active): each says what that tab will hold, not that the whole register is empty. */
+const EMPTY_TAB: Record<Tab, { title: string; text: string }> = {
+  abiertas: { title: "Sin incidencias abiertas", text: "Todo lo registrado en campo ya está resuelto. ¡Impecable!" },
+  resueltas: { title: "Sin incidencias resueltas", text: "Aún no hay incidencias resueltas. Aparecerán aquí en cuanto se resuelva alguna." },
+  todas: { title: "Sin incidencias", text: "Aún no hay incidencias registradas. Se registran desde la jornada en campo, con fotos." },
+};
 
 /** /incidencias — incident register (doc §4.2): daños, faltantes, trabajos adicionales, retrasos, quejas… with photos. */
 export function IncidentsView() {
@@ -314,8 +320,8 @@ export function IncidentsView() {
                   Pruebe con otro tipo, severidad, supervisor o cliente.
                 </EmptyState>
               ) : (
-                <EmptyState icon={<Sparkles />} title={tab === "abiertas" ? "Sin incidencias abiertas" : "Sin incidencias"}>
-                  {tab === "abiertas" ? "Todo lo registrado en campo ya está resuelto. ¡Impecable!" : "Aún no hay incidencias registradas. Se registran desde la jornada en campo, con fotos."}
+                <EmptyState icon={<Sparkles />} title={EMPTY_TAB[tab].title}>
+                  {EMPTY_TAB[tab].text}
                 </EmptyState>
               )
             ) : (

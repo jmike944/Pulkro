@@ -125,6 +125,12 @@ export function GalleryTab({ photos, orders, now }: { photos: Photo[]; orders: O
     [sorted, f.kind, f.client, f.sup, interval, orderById],
   );
 
+  // Photos in the chosen dates alone (type, client and supervisor aside): what the date sheet's hint talks about.
+  const dateCount = useMemo(
+    () => (interval ? sorted.filter((p) => isWithinInterval(new Date(p.takenAt), interval)).length : sorted.length),
+    [sorted, interval],
+  );
+
   const visible = useMemo(() => filtered.slice(0, limit), [filtered, limit]);
   // Greedy shortest-column placement: appending a page never moves existing tiles.
   const columns = useMemo(() => {
@@ -148,7 +154,7 @@ export function GalleryTab({ photos, orders, now }: { photos: Photo[]; orders: O
         {(options.sups.length > 1 || f.sup !== ALL) && (
           <FilterPill label="Supervisor" value={f.sup} onChange={(v) => update({ sup: v })} options={options.sups} allLabel="Todos los supervisores" />
         )}
-        <DatePill filters={f} onChange={update} now={now} count={filtered.length} />
+        <DatePill filters={f} onChange={update} now={now} count={filtered.length} dateCount={dateCount} />
         {active && <ClearFilters onClick={() => update(EMPTY)} />}
         <p className="ml-auto hidden text-[13.5px] text-subtle sm:block">
           <b className="font-semibold text-ink tabular">{fmtNum(filtered.length)}</b> {filtered.length === 1 ? "foto" : "fotos"} · {plural(orderCount, "orden", "órdenes")}
@@ -273,9 +279,23 @@ function GalleryTile({
 /**
  * Date filter. Desktop keeps the popover (presets on the left, calendar on the right, 36px cells for the mouse).
  * Below lg it is a bottom sheet instead: presets as 44px chips and a calendar with 44px cells, and the button at the
- * bottom says how many photos the chosen dates give ("Ver 38 fotos"). Presets apply and close; a range applies as you mark it.
+ * bottom says how many photos the filters and dates give ("Ver 38 fotos"). Presets apply and close; a range applies as you mark it.
  */
-function DatePill({ filters, onChange, now, count }: { filters: Filters; onChange: (patch: Partial<Filters>) => void; now: Date; count: number }) {
+function DatePill({
+  filters,
+  onChange,
+  now,
+  count,
+  dateCount,
+}: {
+  filters: Filters;
+  onChange: (patch: Partial<Filters>) => void;
+  now: Date;
+  /** Photos that pass every filter (what the button's "Ver N fotos" opens). */
+  count: number;
+  /** Photos in the chosen dates alone, ignoring the type, client and supervisor filters. */
+  dateCount: number;
+}) {
   const [open, setOpen] = useState(false);
   const desktop = useMediaQuery(MODAL_DESKTOP_QUERY);
   const active = filters.preset !== "todo";
@@ -319,9 +339,11 @@ function DatePill({ filters, onChange, now, count }: { filters: Filters; onChang
           footerHint={
             filters.preset === "custom" && filters.range?.from && !filters.range.to
               ? "Hay un solo día marcado. Toque otro día para marcar un rango."
-              : count === 0
-                ? "Ninguna foto en estas fechas. Pruebe con otro rango."
-                : undefined
+              : count > 0
+                ? undefined
+                : dateCount === 0
+                  ? "Ninguna foto en estas fechas. Pruebe con otro rango."
+                  : "Ninguna foto coincide con estas fechas y los demás filtros."
           }
           footer={
             <Button onClick={() => setOpen(false)} className="h-12 rounded-[12px] px-6 text-[15px] font-semibold">

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { UserCog, UserPlus } from "lucide-react";
+import { TriangleAlert, UserCog, UserPlus } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { uid } from "@/lib/store";
@@ -209,6 +209,14 @@ export function UserDialog({ user, open, onOpenChange }: { user: User | null; op
             </span>
             <SwitchLite checked={active} onChange={toggleActive} disabled={isMe} label="Cuenta activa" />
           </label>
+
+          {/* not a footer hint: the footer slot only says what is missing, and this stays true after validation passes */}
+          {isNew && (
+            <div role="note" className="flex gap-3 rounded-[16px] bg-amber-soft p-4 text-[13.5px] leading-snug text-amber-deep">
+              <TriangleAlert className="mt-0.5 size-4 shrink-0 text-amber-fg" aria-hidden />
+              <span>La recuperación de cuentas aún está pendiente de definir.</span>
+            </div>
+          )}
         </div>
       </FormDialog>
 

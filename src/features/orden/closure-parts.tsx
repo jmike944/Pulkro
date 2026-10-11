@@ -255,7 +255,11 @@ export function SummaryField({ draft }: { draft: ClosureDraft }) {
     <Field
       label="Descripción para el reporte"
       htmlFor="closure-summary"
-      hint={<span className={short ? "font-medium text-amber-fg" : undefined}>{short ? "Escriba al menos 10 caracteres." : "Aparece en el PDF que recibe el cliente."}</span>}
+      hint={
+        <span id="closure-summary-hint" className={short ? "font-medium text-amber-fg" : undefined}>
+          {short ? "Escriba al menos 10 caracteres." : "Aparece en el PDF que recibe el cliente."}
+        </span>
+      }
     >
       <textarea
         id="closure-summary"
@@ -263,6 +267,7 @@ export function SummaryField({ draft }: { draft: ClosureDraft }) {
         onChange={(e) => draft.setSummary(e.target.value)}
         rows={4}
         aria-invalid={short || undefined}
+        aria-describedby="closure-summary-hint"
         className="block w-full resize-none rounded-[14px] border border-input bg-surface px-3.5 py-3 text-[16px] leading-relaxed text-ink outline-none transition placeholder:text-faint focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 aria-invalid:border-amber-line-strong lg:text-[15px]"
       />
     </Field>

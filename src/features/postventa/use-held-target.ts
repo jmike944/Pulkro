@@ -19,11 +19,5 @@ export function useHeldTarget<T>(target: T | null) {
   return { held: next.held, session: next.session };
 }
 
-/** Counts the openings of a dialog driven by a boolean: 0 until it first opens, then +1 on every false → true change. */
-export function useOpenSession(open: boolean) {
-  const [state, setState] = useState(() => ({ prev: open, session: open ? 1 : 0 }));
-  const changed = open !== state.prev;
-  const next = changed ? { prev: open, session: open ? state.session + 1 : state.session } : state;
-  if (changed) setState(next);
-  return next.session;
-}
+/** The one `useOpenSession` lives in `@/components/pk/use-open-session`; re-exported here so existing imports keep working. */
+export { useOpenSession } from "@/components/pk/use-open-session";

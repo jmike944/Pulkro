@@ -154,6 +154,8 @@ export function ScheduleRows({
             const dateBad = err?.field === "date";
             const timeBad = err?.field === "time";
             const id = `${uid}-${r.key}`;
+            // the message is the reason behind aria-invalid: the marked inputs are described by it
+            const errId = err ? `${id}-error` : undefined;
             return (
               <motion.li
                 key={r.key}
@@ -190,18 +192,18 @@ export function ScheduleRows({
                 <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)_minmax(0,1fr)]">
                   <div className="col-span-2 sm:col-span-1">
                     <FieldLabel htmlFor={`${id}-date`}>Fecha</FieldLabel>
-                    <DateTimeInput id={`${id}-date`} type="date" min={today} value={r.date} onChange={(e) => onUpdate(r.key, { date: e.target.value })} invalid={dateBad} />
+                    <DateTimeInput id={`${id}-date`} type="date" min={today} value={r.date} onChange={(e) => onUpdate(r.key, { date: e.target.value })} invalid={dateBad} aria-describedby={dateBad ? errId : undefined} />
                   </div>
                   <div>
                     <FieldLabel htmlFor={`${id}-start`}>Inicio</FieldLabel>
-                    <DateTimeInput id={`${id}-start`} type="time" step={900} value={r.start} onChange={(e) => onUpdate(r.key, { start: e.target.value })} invalid={timeBad} />
+                    <DateTimeInput id={`${id}-start`} type="time" step={900} value={r.start} onChange={(e) => onUpdate(r.key, { start: e.target.value })} invalid={timeBad} aria-describedby={timeBad ? errId : undefined} />
                   </div>
                   <div>
                     <FieldLabel htmlFor={`${id}-end`}>Término</FieldLabel>
-                    <DateTimeInput id={`${id}-end`} type="time" step={900} value={r.end} onChange={(e) => onUpdate(r.key, { end: e.target.value })} invalid={timeBad} />
+                    <DateTimeInput id={`${id}-end`} type="time" step={900} value={r.end} onChange={(e) => onUpdate(r.key, { end: e.target.value })} invalid={timeBad} aria-describedby={timeBad ? errId : undefined} />
                   </div>
                 </div>
-                <FieldError>{err?.message}</FieldError>
+                <FieldError id={errId}>{err?.message}</FieldError>
                 {r.note && !err && <p className="mt-2 text-[12.5px] leading-snug text-amber-fg">{r.note}</p>}
               </motion.li>
             );

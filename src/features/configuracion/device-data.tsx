@@ -192,10 +192,9 @@ export function DeviceData() {
       <DemoResetDialog
         open={confirmReset}
         onOpenChange={setConfirmReset}
-        onDone={() => {
-          setWipe((w) => w + 1);
-          setRefresh((r) => r + 1);
-        }}
+        // the wipe starts first and the dialog replaces the data under it, so the transition covers the change
+        onBeforeReset={() => setWipe((w) => w + 1)}
+        onDone={() => setRefresh((r) => r + 1)}
       />
 
       <SqueegeeWipe trigger={wipe} />

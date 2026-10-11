@@ -173,7 +173,7 @@ export const PERMISSION_ROWS: PermissionRow[] = [
     label: "Ver todas las unidades",
     status: "pendiente",
     scope: { administracion: "Su unidad", supervisor: "Sus asignaciones" },
-    note: "El documento maestro aún no define quién ve información de otras unidades; el prototipo asume que solo Dirección.",
+    note: "Pendiente de decisión: aún no está definido quién ve información de otras unidades; el prototipo asume que solo Dirección.",
   },
 ];
 

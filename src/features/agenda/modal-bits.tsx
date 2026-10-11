@@ -1,19 +1,10 @@
 "use client";
 
-import { useState } from "react";
-
 /**
- * Number of times `open` has gone from false to true.
- *
- * Key a form on it (`{session > 0 && <Form key={session} open={open} />}`) so its state starts fresh on every open
- * while the closed modal stays mounted for its exit animation. Written with the "adjust state while rendering"
- * pattern, so the first open already renders session 1 (no extra paint with stale state).
+ * The hook moved to `@/components/pk/use-open-session` (one implementation for every modal); re-exported so existing
+ * imports keep working. New code imports it from there.
  */
-export function useOpenSession(open: boolean) {
-  const [seen, setSeen] = useState({ open: false, session: 0 });
-  if (seen.open !== open) setSeen({ open, session: open ? seen.session + 1 : seen.session });
-  return seen.session;
-}
+export { useOpenSession } from "@/components/pk/use-open-session";
 
 /**
  * Footer buttons of the scheduling / crew modals. On phones (the modal is a FlowScreen) the primary action is the

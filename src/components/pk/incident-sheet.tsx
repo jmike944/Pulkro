@@ -1,11 +1,13 @@
 "use client";
 
-import { useId, useRef, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import { AnimatePresence, motion, type Variants } from "motion/react";
-import { ArrowRight, ChevronLeft, CircleHelp, Clock, Hammer, MessageSquareWarning, PackageX, PlusCircle, UserX, X, type LucideIcon } from "lucide-react";
+import { ArrowRight, Camera, ChevronLeft, CircleHelp, Clock, Hammer, ImagePlus, Loader2, MessageSquareWarning, PackageX, PlusCircle, UserX, Wand2, X, type LucideIcon } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
-import { attempt, useAppStore } from "@/lib/store";
+import { attempt, PermissionDeniedError, useAppStore } from "@/lib/store";
+import { DEMO_ENABLED } from "@/lib/demo";
+import type { CaptureInput } from "@/lib/photo-store";
 import { useMediaQuery, useOrderBundle, type OrderBundle } from "@/lib/hooks";
 import { fmtDay, plural } from "@/lib/format";
 import { INCIDENT_TYPE, SEVERITY, toneDot, toneSoftBg, toneText } from "@/lib/status";
@@ -16,7 +18,7 @@ import { ClientMark } from "./client-mark";
 import { BigButton, FlowHeading, FlowScreen, ItemCard, SuccessHero } from "./mobile";
 import { MODAL_DESKTOP_QUERY, ModalCancel, ModalShell, firstMissing } from "./modal-shell";
 import { EASE } from "./motion";
-import { PhotoCaptureButtons, type CaptureMeta } from "./photo-capture";
+import { usePhotoCapture, type CaptureMeta } from "./photo-capture";
 import { ReasonField, reasonOk } from "./reason-field";
 import { PhotoThumb } from "./scene-photo";
 import { OrderStatusPill, TonePill } from "./status";
@@ -28,6 +30,7 @@ const SEVERITIES = Object.keys(SEVERITY) as Severity[];
 /** Shorter descriptions are not registered (same rule as before the redesign). */
 const DESCRIPTION_MIN = 6;
 const DESCRIPTION_HINT = `Describa lo ocurrido (mínimo ${DESCRIPTION_MIN} caracteres)`;
+const CAPTURING_HINT = "Espere a que termine de guardarse la foto";
 
 const LABEL = "mb-2.5 block text-[13px] font-semibold text-ink";
 
@@ -93,6 +96,7 @@ export function IncidentSheet({
   const updateIncident = useAppStore((s) => s.updateIncident);
   const updatePhoto = useAppStore((s) => s.updatePhoto);
   const deletePhoto = useAppStore((s) => s.deletePhoto);
+  const { capture, simulate } = usePhotoCapture();
 
   const choosing = !orderId && !!pickOrder;
   const [picked, setPicked] = useState<string | null>(null);
@@ -110,6 +114,12 @@ export function IncidentSheet({
   const [jId, setJId] = useState<string | undefined>(jornadaId);
   const [photoIds, setPhotoIds] = useState<string[]>([]);
   const [created, setCreated] = useState<Created | null>(null);
+  /** Captures still being saved (compressing, reading the position). Their photos join the draft only when they finish. */
+  const [capturing, setCapturing] = useState(0);
+  /** Changes whenever the draft is thrown away (the flow opens or closes, another order is picked): a capture that
+   *  finishes under an older value belongs to a draft that no longer exists, so its photos are deleted.
+   *  Bumped in an effect (never in `applyPick`): `pickOrder` receives `choose` during render. */
+  const draftRef = useRef(0);
   /** Another order tapped while photos of the current one exist: confirm before they are deleted. The snapshot keeps
    *  the dialog's text intact while it animates out. */
   const [switchAsk, setSwitchAsk] = useState<{ to: string; open: boolean; folio: string; photos: Photo[] } | null>(null);
@@ -135,12 +145,21 @@ export function IncidentSheet({
     }
   }
 
+  const orderKey = order?.id;
+  useEffect(() => {
+    draftRef.current += 1;
+  }, [open, orderKey]);
+
   // The jornada defaults to the one in progress, else the last one (until the user picks another).
   const jornadaIdNow = jId ?? (jornadas.find((j) => j.status === "en_curso") ?? jornadas.at(-1))?.id;
   const jornada = jornadas.find((j) => j.id === jornadaIdNow);
   const photos = photoIds.map((id) => bundle?.photos.find((p) => p.id === id)).filter((p): p is Photo => !!p);
   const descOk = reasonOk(description, DESCRIPTION_MIN);
-  const dirty = step !== "listo" && (photoIds.length > 0 || description.trim().length > 0);
+  const capturingNow = capturing > 0;
+  const canSave = descOk && !capturingNow && !created;
+  const saveHint = firstMissing([!descOk, DESCRIPTION_HINT], [capturingNow, CAPTURING_HINT]);
+  // A photo still being saved counts as unsaved work too: leaving then asks first (and its photo is deleted when it lands).
+  const dirty = step !== "listo" && (photoIds.length > 0 || capturingNow || description.trim().length > 0);
 
   if (!order && !choosing) return null;
   // Without an order (none picked yet, or it left the role's scope) only the order step makes sense.
@@ -192,8 +211,43 @@ export function IncidentSheet({
     if (!useAppStore.getState().photos.some((p) => p.id === id)) setPhotoIds((xs) => xs.filter((x) => x !== id));
   };
 
+  const photoMeta: CaptureMeta | undefined = order && {
+    orderId: order.id,
+    jornadaId: jornadaIdNow,
+    kind: "incidencia",
+    area: INCIDENT_TYPE[type].label,
+    serviceTypeId: order.serviceTypeId,
+    selectedForReport: true,
+  };
+
+  /** Saves the picked files; Registrar waits for it, so the photos are in `photoIds` before the incident is created. */
+  const addFiles = async (files: File[], input: CaptureInput) => {
+    if (!photoMeta) return;
+    const draft = draftRef.current;
+    setCapturing((n) => n + 1);
+    try {
+      const ids = await capture(files, photoMeta, input);
+      if (draft === draftRef.current) setPhotoIds((xs) => [...xs, ...ids]);
+      else ids.forEach((id) => deletePhoto(id)); // the draft was discarded meanwhile: its photos never outlive it
+    } finally {
+      setCapturing((n) => n - 1);
+    }
+  };
+
+  const addSample = () => {
+    if (!photoMeta) return;
+    try {
+      const id = simulate(photoMeta);
+      setPhotoIds((xs) => [...xs, id]);
+      toast.success("Foto de ejemplo agregada");
+    } catch (e) {
+      if (!(e instanceof PermissionDeniedError)) throw e;
+    }
+  };
+
   const save = () => {
-    if (!order || !descOk) return;
+    // Once created (phone success screen) the form can never submit a second incident, whatever the breakpoint.
+    if (!order || !canSave) return;
     // A refusal was already toasted by the store: keep the draft.
     const inc = attempt(() =>
       addIncident({ orderId: order.id, jornadaId: jornadaIdNow, type, severity, description: description.trim(), photoIds, blocksClosure: blocks }),
@@ -233,12 +287,7 @@ export function IncidentSheet({
         placeholder="¿Qué pasó, dónde y qué se hizo al respecto?"
         hint="Se guarda con su usuario, la fecha y la hora."
       />
-      <PhotoField
-        meta={{ orderId: order.id, jornadaId: jornadaIdNow, kind: "incidencia", area: INCIDENT_TYPE[type].label, serviceTypeId: order.serviceTypeId, selectedForReport: true }}
-        photos={photos}
-        onCaptured={(ids) => setPhotoIds((xs) => [...xs, ...ids])}
-        onRemove={removePhoto}
-      />
+      <PhotoField photos={photos} busy={capturingNow} onFiles={(files, input) => void addFiles(files, input)} onSample={addSample} onRemove={removePhoto} />
       <BlocksToggle checked={blocks} onChange={setBlocks} status={order.status} />
     </>
   );
@@ -287,10 +336,40 @@ export function IncidentSheet({
     </AnimatePresence>
   );
 
+  /** Shown once the incident exists: on phones right after saving, and on desktop when the window grew past the
+   *  breakpoint with that screen open (the form must not come back: it would register the incident twice). */
+  const successBody = created && order && (
+    <>
+      <SuccessHero title="Incidencia registrada">
+        {created.blocksClosure ? (
+          <>
+            <b className="font-semibold text-ink">{order.folio}</b> queda “Con incidencia” y no se puede cerrar hasta resolverla.
+          </>
+        ) : (
+          <>
+            Queda abierta en <b className="font-semibold text-ink">{order.folio}</b> sin impedir el cierre.
+          </>
+        )}
+      </SuccessHero>
+      <ItemCard
+        className="mt-8"
+        leading={<TypeIcon type={created.type} className="size-11 rounded-[14px] [&_svg]:size-5" />}
+        title={INCIDENT_TYPE[created.type].label}
+        sub={`${created.folio} · ${created.photos ? plural(created.photos, "foto", "fotos") : "sin fotos"}`}
+        status={
+          <TonePill tone="red" live={created.blocksClosure}>
+            Abierta
+          </TonePill>
+        }
+      />
+    </>
+  );
+
   /* ───────────── desktop: centered dialog (same shape as Nuevo caso / Validar cierre) ───────────── */
 
   if (isDesktop) {
-    const form = view !== "orden" && !!bundle;
+    const done = view === "listo";
+    const form = view !== "orden" && !done && !!bundle;
     return (
       <>
         <ModalShell
@@ -301,16 +380,22 @@ export function IncidentSheet({
           size="lg"
           title="Registrar incidencia"
           description={
-            form
-              ? "Queda en la bitácora de la orden con su usuario, la fecha y las fotos."
-              : "Elija la orden donde ocurrió; después indicará el tipo, la severidad y las fotos."
+            done
+              ? undefined
+              : form
+                ? "Queda en la bitácora de la orden con su usuario, la fecha y las fotos."
+                : "Elija la orden donde ocurrió; después indicará el tipo, la severidad y las fotos."
           }
-          footerHint={form ? firstMissing([!descOk, DESCRIPTION_HINT]) : undefined}
+          footerHint={form ? saveHint : undefined}
           footer={
-            form ? (
+            done ? (
+              <Button type="button" onClick={() => close(false)} className="h-11 rounded-[12px] px-5 font-semibold">
+                {doneLabel}
+              </Button>
+            ) : form ? (
               <>
                 <ModalCancel />
-                <Button type="button" onClick={save} disabled={!descOk} className="h-11 rounded-[12px] px-5 font-semibold">
+                <Button type="button" onClick={save} disabled={!canSave} className="h-11 rounded-[12px] px-5 font-semibold">
                   Registrar incidencia
                 </Button>
               </>
@@ -319,7 +404,9 @@ export function IncidentSheet({
         >
           <div ref={topRef} />
           {/* Desktop swaps steps in place (no exit-then-enter slide, which left the dialog blank between steps). */}
-          {form ? (
+          {done ? (
+            successBody
+          ) : form ? (
             <div className="space-y-7">
               <OrderLine bundle={bundle} jornada={jornada} onChange={choosing ? () => go("orden", -1) : undefined} />
               {typeFields}
@@ -358,8 +445,8 @@ export function IncidentSheet({
         <BigButton onClick={() => go("detalle", 1)}>Continuar</BigButton>
       </FlowActions>
     ) : view === "detalle" ? (
-      <FlowActions hint={firstMissing([!descOk, DESCRIPTION_HINT])} onBack={() => go("tipo", -1)}>
-        <BigButton onClick={save} disabled={!descOk}>
+      <FlowActions hint={saveHint} onBack={() => go("tipo", -1)}>
+        <BigButton onClick={save} disabled={!canSave}>
           Registrar incidencia
         </BigButton>
       </FlowActions>
@@ -399,33 +486,7 @@ export function IncidentSheet({
               <div className="space-y-7">{detailFields}</div>
             </>
           ) : (
-            created &&
-            order && (
-              <>
-                <SuccessHero title="Incidencia registrada">
-                  {created.blocksClosure ? (
-                    <>
-                      <b className="font-semibold text-ink">{order.folio}</b> queda “Con incidencia” y no se puede cerrar hasta resolverla.
-                    </>
-                  ) : (
-                    <>
-                      Queda abierta en <b className="font-semibold text-ink">{order.folio}</b> sin impedir el cierre.
-                    </>
-                  )}
-                </SuccessHero>
-                <ItemCard
-                  className="mt-8"
-                  leading={<TypeIcon type={created.type} className="size-11 rounded-[14px] [&_svg]:size-5" />}
-                  title={INCIDENT_TYPE[created.type].label}
-                  sub={`${created.folio} · ${created.photos ? plural(created.photos, "foto", "fotos") : "sin fotos"}`}
-                  status={
-                    <TonePill tone="red" live={created.blocksClosure}>
-                      Abierta
-                    </TonePill>
-                  }
-                />
-              </>
-            )
+            successBody
           ),
         )}
       </FlowScreen>
@@ -601,14 +662,57 @@ function JornadaPicker({ jornadas, value, onChange }: { jornadas: Jornada[]; val
   );
 }
 
-/** Capture buttons (44px) + the draft's photos, each with "Quitar foto". */
-function PhotoField({ meta, photos, onCaptured, onRemove }: { meta: CaptureMeta; photos: Photo[]; onCaptured: (ids: string[]) => void; onRemove: (id: string) => void }) {
+/**
+ * Capture buttons (44px) + the draft's photos, each with "Quitar foto". Same controls as `PhotoCaptureButtons`, but the
+ * sheet runs the capture (`onFiles`) so it knows one is still being saved and can hold Registrar until it lands.
+ */
+function PhotoField({
+  photos,
+  busy,
+  onFiles,
+  onSample,
+  onRemove,
+}: {
+  photos: Photo[];
+  busy: boolean;
+  onFiles: (files: File[], input: CaptureInput) => void;
+  onSample: () => void;
+  onRemove: (id: string) => void;
+}) {
+  const camRef = useRef<HTMLInputElement>(null);
+  const galRef = useRef<HTMLInputElement>(null);
+  const onPick = (input: CaptureInput) => (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files ?? []);
+    e.target.value = ""; // the File objects stay valid; the same picture can be chosen again
+    if (files.length) onFiles(files, input);
+  };
   return (
     <div>
       <p className={LABEL}>
         Fotos <span className="font-normal text-subtle">· opcional</span>
       </p>
-      <PhotoCaptureButtons meta={meta} help={false} onCaptured={onCaptured} className="[&_button]:h-11" />
+      <div className="flex flex-wrap items-center gap-2">
+        <input ref={camRef} type="file" accept="image/*" capture="environment" hidden onChange={onPick("camera")} />
+        <input ref={galRef} type="file" accept="image/*" multiple hidden onChange={onPick("gallery")} />
+        <Button type="button" disabled={busy} onClick={() => camRef.current?.click()} className="h-11 rounded-[12px] px-4 font-semibold">
+          {busy ? <Loader2 className="animate-spin" /> : <Camera />} Tomar foto
+        </Button>
+        <Button type="button" variant="outline" disabled={busy} onClick={() => galRef.current?.click()} className="h-11 rounded-[12px] px-3.5">
+          <ImagePlus /> Galería
+        </Button>
+        {DEMO_ENABLED && (
+          <Button
+            type="button"
+            variant="ghost"
+            disabled={busy}
+            onClick={onSample}
+            className="h-11 rounded-[12px] px-3 text-subtle"
+            title="Agregar una foto de ejemplo (demo sin cámara)"
+          >
+            <Wand2 /> Simular
+          </Button>
+        )}
+      </div>
       {photos.length > 0 && (
         <ul className="mt-3 grid grid-cols-3 gap-2" aria-label="Fotos de la incidencia">
           {photos.map((p, i) => (

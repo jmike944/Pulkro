@@ -7,11 +7,24 @@ import { useOrder } from "./order-context";
 
 const KIND_ORDER: Record<PhotoKind, number> = { antes: 0, despues: 1, incidencia: 2, postventa: 3 };
 
-/** Order of the evidence tab: jornada by jornada (ANTES, then DESPUÉS), then incident and post-sale photos, each by capture time. */
+/**
+ * Order of the evidence tab: jornada by jornada (ANTES, then DESPUÉS), then all incident photos and finally post-sale
+ * photos, each by capture time. An incident photo that is linked to a jornada still goes after ALL the jornada evidence.
+ */
 function inOrderOfEvidence(photos: Photo[], jornadas: Jornada[]): Photo[] {
   const day = new Map(jornadas.map((j) => [j.id, j.dayIndex] as const));
-  const dayOf = (p: Photo) => (p.jornadaId ? (day.get(p.jornadaId) ?? Number.MAX_SAFE_INTEGER - 1) : Number.MAX_SAFE_INTEGER);
-  return [...photos].sort((a, b) => dayOf(a) - dayOf(b) || KIND_ORDER[a.kind] - KIND_ORDER[b.kind] || a.takenAt.localeCompare(b.takenAt));
+  const perJornada = (p: Photo) => p.kind === "antes" || p.kind === "despues";
+  const dayOf = (p: Photo) => {
+    if (!perJornada(p)) return 0; // incident / post-sale photos are not grouped by jornada
+    return p.jornadaId ? (day.get(p.jornadaId) ?? Number.MAX_SAFE_INTEGER - 1) : Number.MAX_SAFE_INTEGER;
+  };
+  return [...photos].sort(
+    (a, b) =>
+      Number(!perJornada(a)) - Number(!perJornada(b)) ||
+      dayOf(a) - dayOf(b) ||
+      KIND_ORDER[a.kind] - KIND_ORDER[b.kind] ||
+      a.takenAt.localeCompare(b.takenAt),
+  );
 }
 
 /**

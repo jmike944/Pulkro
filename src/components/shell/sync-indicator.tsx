@@ -247,7 +247,7 @@ function SyncPanel() {
           className={cn(
             "inline-flex size-10 shrink-0 items-center justify-center rounded-[12px]",
             status.tone === "amber" && "bg-amber-mid text-amber-fg",
-            status.tone === "red" && "bg-red-mid text-red-fg",
+            status.tone === "red" && "bg-red-tint text-red-fg",
             status.tone === "blue" && "bg-blue-mid text-azure-fg",
           )}
         >

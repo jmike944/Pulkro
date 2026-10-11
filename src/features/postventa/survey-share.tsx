@@ -78,7 +78,7 @@ function QrBody({ target, open, canManage, onOpenChange }: { target: SurveyTarge
           <b>{order.folio}</b> · {client?.shortName ?? order.title}
         </>
       }
-      size="sm"
+      size="md"
     >
       <div className="flex flex-col items-center">
         <motion.div

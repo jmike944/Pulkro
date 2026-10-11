@@ -30,7 +30,8 @@ export const REGISTER_REASON = "Solo el supervisor asignado registra incidencias
 /**
  * "Registrar incidencia" from the incidents page: the shared IncidentSheet opens on an order step (active orders in
  * scope, searchable), then continues in the same flow with type, severity, description, photos and "Impide el cierre".
- * Phones: one full-screen flow ending in a success screen ("Ver incidencia" opens the new incident). Desktop: one right sheet.
+ * Phones: one full-screen flow ending in a success screen ("Ver incidencia" opens the new incident). Desktop: a centered
+ * dialog (order step, then the whole form on one page); saving closes it and opens the new incident.
  */
 export function RegisterIncident({ orders, now, onCreated }: { orders: Order[]; now: Date; onCreated: (incidentId: string) => void }) {
   const canCapture = useCan("field.capture");
