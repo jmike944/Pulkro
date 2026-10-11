@@ -33,10 +33,15 @@ function LoginInner() {
   const params = useSearchParams();
   const hydrated = useAppStore((s) => s.hydrated);
   const accountSignedIn = useAppStore((s) => s.session.signedIn && s.session.mode === "supabase");
+  // The account's Supabase session ended while its data stays on the device: sign in again (same account, data kept).
+  const reauth = useAppStore((s) => s.session.signedIn && s.session.mode === "supabase" && !!s.session.needsReauth);
+  const accountEmail = useAppStore((s) => (s.session.mode === "supabase" ? s.users.find((u) => u.id === s.session.userId)?.email : undefined));
   const [panel, setPanel] = useState<Panel>(() =>
     !isSupabaseConfigured ? "demo" : params.get("recuperar") === "1" ? "recovery" : "account",
   );
-  const [email, setEmail] = useState("");
+  // null = not typed yet: a re-authentication offers the account's own e-mail.
+  const [typedEmail, setEmail] = useState<string | null>(null);
+  const email = typedEmail ?? (reauth ? (accountEmail ?? "") : "");
   const [leaving, setLeaving] = useState(false);
   const leavingRef = useRef(false);
   const next = safeNext(params.get("next"));
@@ -51,18 +56,32 @@ function LoginInner() {
     setTimeout(() => router.replace(next), 450);
   }, [router, next]);
 
-  // An account already signed in on this device goes straight in (it signs out from the app, which checks unsent changes).
+  // An account already signed in on this device goes straight in (it signs out from the app, which checks unsent changes),
+  // unless its session has to be renewed.
   useEffect(() => {
-    if (hydrated && accountSignedIn && !leavingRef.current) router.replace(next);
-  }, [hydrated, accountSignedIn, router, next]);
+    if (hydrated && accountSignedIn && !reauth && !leavingRef.current) router.replace(next);
+  }, [hydrated, accountSignedIn, reauth, router, next]);
 
   return (
     <AuthFrame leaving={leaving} cardKey={panel}>
       {panel === "account" && (
         <>
-          <AuthHeading title="Bienvenido">Entre con el correo y la contraseña de su cuenta.</AuthHeading>
+          {reauth ? (
+            <AuthHeading title="Entre de nuevo">
+              Su sesión venció. Sus datos y los cambios sin enviar siguen en este dispositivo: escriba su contraseña para seguir sincronizando.
+            </AuthHeading>
+          ) : (
+            <AuthHeading title="Bienvenido">Entre con el correo y la contraseña de su cuenta.</AuthHeading>
+          )}
           <AccountSignIn email={email} onEmailChange={setEmail} onForgot={() => setPanel("recovery")} onEntered={entered} />
-          {DEMO_SIGN_IN && (
+          {reauth && (
+            <div className="mt-3 flex justify-center">
+              <TextAction onClick={() => router.replace(next)}>
+                <ArrowLeft className="size-4" /> Volver sin entrar
+              </TextAction>
+            </div>
+          )}
+          {DEMO_SIGN_IN && !reauth && (
             <>
               <div className="my-6 flex items-center gap-3 text-[12px] font-semibold uppercase tracking-[0.1em] text-subtle" aria-hidden>
                 <span className="h-px flex-1 bg-hairline" />o<span className="h-px flex-1 bg-hairline" />

@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useShallow } from "zustand/react/shallow";
 import { isOffline, useAppStore } from "./store";
 import { can, canSeeAuditEntry, canSeeOrder, scopedUnitIds, type Action } from "./permissions";
+import { usePullStatus } from "./sync/status";
 import type { AuditEntry, Client, Jornada, Order, ServiceType, Site, User, Worker, Material, Unit } from "./types";
 
 export { useAppStore } from "./store";
@@ -200,15 +201,27 @@ export function useIsOffline() {
   return useAppStore((s) => isOffline(s));
 }
 
+/**
+ * Sync status for the indicators. `lastSyncAt` is the last time the device heard from the server: the demo's simulated sends,
+ * or an account's last successful pull (sync/pull.ts). Account sessions also report the pull itself: running (`pulling`,
+ * `pullInitial` = first load / orders being completed), its last error, and a session that must be renewed (`needsReauth`).
+ */
 export function useSyncSummary() {
   const queue = useAppStore((s) => s.sync.queue);
-  const lastSyncAt = useAppStore((s) => s.sync.lastSyncAt);
+  const queueSyncAt = useAppStore((s) => s.sync.lastSyncAt);
+  const account = useAppStore((s) => s.session.mode === "supabase");
+  const lastPullAt = useAppStore((s) => s.session.pull?.lastPullAt);
+  const needsReauth = useAppStore((s) => s.session.mode === "supabase" && !!s.session.needsReauth);
+  const pulling = usePullStatus((s) => s.running);
+  const pullInitial = usePullStatus((s) => s.initial);
+  const pullError = usePullStatus((s) => s.error);
   const offline = useIsOffline();
   return useMemo(() => {
     const pending = queue.filter((q) => q.state === "pendiente" || q.state === "error");
     const syncing = queue.filter((q) => q.state === "sincronizando");
-    return { offline, pending, syncing, lastSyncAt, queue };
-  }, [queue, lastSyncAt, offline]);
+    const lastSyncAt = account ? (lastPullAt ?? queueSyncAt) : queueSyncAt;
+    return { offline, pending, syncing, lastSyncAt, queue, account, lastPullAt, pulling: account && pulling, pullInitial, pullError: account ? pullError : undefined, needsReauth };
+  }, [queue, queueSyncAt, offline, account, lastPullAt, pulling, pullInitial, pullError, needsReauth]);
 }
 
 /** Re-renders every `ms` — for live timers and "hace X min" labels. */

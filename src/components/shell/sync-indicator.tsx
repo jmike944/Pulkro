@@ -2,7 +2,8 @@
 
 import { useEffect, useId, useMemo, useState } from "react";
 import { AnimatePresence, motion } from "motion/react";
-import { Check, ChevronRight, CloudOff, CloudUpload, Loader2, RefreshCw, TriangleAlert, WifiOff } from "lucide-react";
+import Link from "next/link";
+import { Check, ChevronRight, CloudDownload, CloudOff, CloudUpload, KeyRound, Loader2, RefreshCw, TriangleAlert, WifiOff } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAppStore, useNow, useSyncSummary } from "@/lib/hooks";
 import { useUi } from "@/lib/ui-store";
@@ -19,10 +20,23 @@ import { Button } from "@/components/ui/button";
  * keeps its weight. Either way it is the same button and opens the sync sheet.
  */
 export function SyncChip({ collapsed, compact, slim }: { collapsed?: boolean; compact?: boolean; slim?: boolean }) {
-  const { offline, pending, syncing, lastSyncAt } = useSyncSummary();
+  const { offline, pending, syncing, lastSyncAt, pulling, pullInitial, pullError, needsReauth } = useSyncSummary();
   const setOpen = useUi((s) => s.setSyncOpen);
   useNow(30_000);
-  const state = offline ? "offline" : syncing.length || pending.length ? "syncing" : "ok";
+  // Account sessions add the pull: first download, a failed update, a session to renew.
+  const state = offline
+    ? "offline"
+    : needsReauth
+      ? "reauth"
+      : syncing.length || pending.length
+        ? "syncing"
+        : pulling && pullInitial
+          ? "downloading"
+          : pullError
+            ? "stale"
+            : "ok";
+  const warn = state === "offline" || state === "reauth" || state === "stale";
+  const busy = state === "syncing" || state === "downloading";
   const row = !!slim && state === "ok";
   return (
     <button
@@ -43,14 +57,9 @@ export function SyncChip({ collapsed, compact, slim }: { collapsed?: boolean; co
       {/* In the slim row the dot sits in a 20px box so it lines up with the nav icons above. */}
       <span className={cn("relative inline-flex size-2.5 shrink-0", row && "m-[5px]")}>
         <span
-          className={cn(
-            "absolute inset-0 rounded-full animate-ping-soft",
-            state === "ok" && "bg-st-blue",
-            state === "syncing" && "bg-sky",
-            state === "offline" && "bg-st-amber",
-          )}
+          className={cn("absolute inset-0 rounded-full animate-ping-soft", state === "ok" && "bg-st-blue", busy && "bg-sky", warn && "bg-st-amber")}
         />
-        <span className={cn("relative size-2.5 rounded-full", state === "ok" && "bg-st-blue", state === "syncing" && "bg-sky", state === "offline" && "bg-st-amber")} />
+        <span className={cn("relative size-2.5 rounded-full", state === "ok" && "bg-st-blue", busy && "bg-sky", warn && "bg-st-amber")} />
       </span>
       {!collapsed && (
         <AnimatePresence mode="wait" initial={false}>
@@ -83,6 +92,24 @@ export function SyncChip({ collapsed, compact, slim }: { collapsed?: boolean; co
               <>
                 <span className="font-semibold text-ink">Sin conexión</span>
                 <span className="truncate text-subtle">{compact ? pending.length : plural(pending.length, "pendiente", "pendientes")}</span>
+              </>
+            )}
+            {state === "downloading" && (
+              <>
+                <span className="font-semibold text-ink">Descargando</span>
+                {!compact && <span className="truncate text-subtle">datos de su cuenta</span>}
+              </>
+            )}
+            {state === "stale" && (
+              <>
+                <span className="font-semibold text-ink">Sin actualizar</span>
+                {!compact && <span className="truncate text-subtle">{fmtAgo(lastSyncAt)}</span>}
+              </>
+            )}
+            {state === "reauth" && (
+              <>
+                <span className="font-semibold text-ink">Sesión vencida</span>
+                {!compact && <span className="truncate text-subtle">entre de nuevo</span>}
               </>
             )}
           </motion.span>
@@ -192,7 +219,8 @@ export function SyncSheet() {
 }
 
 function SyncPanel() {
-  const { offline, queue, lastSyncAt } = useSyncSummary();
+  const { offline, queue, lastSyncAt, account, lastPullAt, pulling, pullInitial, pullError, needsReauth } = useSyncSummary();
+  const pullNow = useAppStore((s) => s.pullNow);
   const forced = useAppStore((s) => s.sync.forcedOffline);
   const browserOffline = useAppStore((s) => s.sync.browserOffline);
   const setForced = useAppStore((s) => s.setForcedOffline);
@@ -202,7 +230,7 @@ function SyncPanel() {
   useNow(30_000); // keeps "hace 2 min" honest while the sheet stays open
   const switchId = useId();
 
-  const status = offline
+  const status: { tone: "amber" | "red" | "blue"; icon: React.ReactNode; title: string; detail: string } = offline
     ? {
         tone: "amber" as const,
         icon: <WifiOff className="size-5" />,
@@ -211,6 +239,13 @@ function SyncPanel() {
           ? `${plural(waiting, "registro", "registros")} ${waiting === 1 ? "espera" : "esperan"} conexión`
           : "Nada por enviar. Lo que se capture queda en el dispositivo.",
       }
+    : needsReauth
+      ? {
+          tone: "amber" as const,
+          icon: <KeyRound className="size-5" />,
+          title: "Su sesión venció",
+          detail: "Sus datos y cambios siguen en este dispositivo. Entre de nuevo para recibir y enviar cambios.",
+        }
     : failed
       ? {
           tone: "red" as const,
@@ -218,6 +253,13 @@ function SyncPanel() {
           title: "Hay registros sin enviar",
           detail: `${plural(failed, "registro", "registros")} con error. Reintente el envío o revise la conexión.`,
         }
+      : pulling && pullInitial
+        ? {
+            tone: "blue" as const,
+            icon: <Loader2 className="size-5 animate-spin" />,
+            title: "Descargando datos de su cuenta…",
+            detail: "Órdenes, jornadas, evidencias y postventa de su alcance. Puede seguir trabajando.",
+          }
       : waiting
         ? {
             tone: "blue" as const,
@@ -258,6 +300,39 @@ function SyncPanel() {
           <p className="text-subtle">{status.detail}</p>
         </div>
       </div>
+
+      {account && (
+        <div className="flex min-h-14 flex-wrap items-center justify-between gap-x-4 gap-y-2 rounded-[16px] border border-hairline px-4 py-3 text-[14px]">
+          <span className="min-w-0">
+            <span className="block font-medium text-ink">Datos del servidor</span>
+            <span className={cn("block text-[12.5px] leading-snug", pullError && !offline ? "text-amber-fg" : "text-subtle")}>
+              {pulling
+                ? "Actualizando…"
+                : pullError && !offline
+                  ? pullError
+                  : lastPullAt
+                    ? `Actualizados ${fmtAgo(lastPullAt)} · ${fmtTime(lastPullAt)}`
+                    : "Aún no se descargan."}
+            </span>
+          </span>
+          {needsReauth ? (
+            <Button asChild variant="outline" className="h-10 rounded-[12px] border-line px-4 font-semibold">
+              <Link href="/login">
+                <KeyRound /> Entrar de nuevo
+              </Link>
+            </Button>
+          ) : (
+            <Button
+              variant="outline"
+              className="h-10 rounded-[12px] border-line px-4 font-semibold"
+              disabled={offline || pulling}
+              onClick={() => void pullNow({ manual: true })}
+            >
+              {pulling ? <Loader2 className="animate-spin" /> : <CloudDownload />} Actualizar ahora
+            </Button>
+          )}
+        </div>
+      )}
 
       <label className="flex min-h-14 cursor-pointer items-center justify-between gap-4 rounded-[16px] border border-hairline px-4 py-3 text-[14px]">
         <span className="min-w-0">

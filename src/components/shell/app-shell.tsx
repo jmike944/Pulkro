@@ -14,6 +14,7 @@ import { MainScroller } from "./main-scroll";
 import { CardHeader } from "./card-header";
 import { canSeeRoute } from "./nav";
 import { RouteNotAllowed } from "./out-of-scope";
+import { ReauthBanner } from "./reauth-banner";
 
 /**
  * Authenticated chrome: canvas + sidebar (desktop) / top+bottom bars (mobile) + white work panel.
@@ -50,6 +51,7 @@ function SignedInShell({ pathname, children }: { pathname: string; children: Rea
           {/* From lg the panel is fixed in the window (rounded, clipping): a fixed card header (breadcrumbs, search, notifications) on
               top and the page scrolling inside it, underneath — see card-header.tsx and main-scroll.tsx. */}
           <div className="min-h-[calc(100dvh-108px)] rounded-[28px] bg-surface shadow-[0_1px_2px_rgb(16_24_40/0.04)] lg:flex lg:min-h-0 lg:flex-1 lg:flex-col lg:overflow-hidden lg:shadow-soft lg:ring-1 lg:ring-edge print:block print:min-h-0 print:overflow-visible print:rounded-none print:shadow-none print:ring-0">
+            <ReauthBanner />
             <CardHeader />
             <MainScroller className="px-5 py-6 sm:px-7 lg:min-h-0 lg:flex-1 lg:overflow-y-auto lg:overscroll-y-contain lg:px-10 lg:py-9 lg:outline-none lg:scrollbar-panel print:overflow-visible print:p-0">
               {allowed ? children : <RouteNotAllowed />}
