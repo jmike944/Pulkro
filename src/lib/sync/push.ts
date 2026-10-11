@@ -19,19 +19,21 @@
  */
 import { isAuthRetryableFetchError } from "@supabase/supabase-js";
 import type { AppState } from "@/lib/store";
-import { getSupabaseBrowserClient, isSupabaseConfigured, type SupabaseBrowserClient } from "@/lib/supabase/client";
+import { getSupabaseBrowserClient, getTokenClient, isSupabaseConfigured, type SupabaseBrowserClient } from "@/lib/supabase/client";
 import { deletePhotoFile, getPhotoBlob, keepCaptureAs } from "@/lib/photo-store";
 import type { DataSnapshot, OrderStatus, SyncItem, SyncProblem } from "@/lib/types";
 import { iso } from "./map";
 import { dropRows, pendingIndex, type CatalogTable } from "./merge";
 import { endInactive, flagReauth, requestPull, tryRefresh, type PullStore } from "./pull";
 import {
+  CATALOG_RPC,
   MAX_ATTEMPTS,
   MAX_RETRY_MS,
   NETWORK_MESSAGE,
   classifyRpc,
   classifyUpload,
   discardSet,
+  isRetryable,
   isUnsent,
   nextReady,
   nextWake,
@@ -49,6 +51,7 @@ const BUCKET = "evidencias";
 const IMAGE_TYPES = ["image/jpeg", "image/png", "image/webp"];
 const LEGACY_MESSAGE =
   "Este cambio se guardó con una versión anterior de la app y no se puede enviar. Descártelo y vuelva a capturarlo si hace falta.";
+const LOST_PHOTO_MESSAGE = "La foto ya no está guardada en este dispositivo: no se puede enviar. Descarte este registro y tómela de nuevo.";
 
 type Store = PullStore;
 
@@ -122,15 +125,19 @@ export function resumeAfterReconnect(store: Store): Promise<void> {
   return pushQueue(store);
 }
 
-/** "Reintentar": stopped items go back in line (same arguments) and delayed retries run now. */
+/**
+ * "Reintentar": stopped items go back in line (same arguments) and delayed retries run now. Without `ids` (the sheet's
+ * "Reintentar N envíos"): only the stopped items a resend can help (isRetryable), never the ones the server would refuse again.
+ */
 export function retryItems(store: Store, ids?: string[]) {
-  const pick = (q: SyncItem) => !ids || ids.includes(q.id);
+  const pick = (q: SyncItem) => (ids ? ids.includes(q.id) : q.state !== "error" || isRetryable(q));
   store.setState((st) => ({
     sync: {
       ...st.sync,
       queue: st.sync.queue.map((q) => {
         if (!pick(q) || !q.op) return q;
-        if (q.state === "error") return { ...q, state: "pendiente" as const, problem: undefined, attempts: 0, firstFailAt: undefined, nextAt: undefined };
+        if (q.state === "error")
+          return { ...q, state: "pendiente" as const, problem: undefined, attempts: 0, netAttempts: undefined, firstFailAt: undefined, nextAt: undefined };
         if (q.state === "pendiente" && q.nextAt) return { ...q, nextAt: undefined };
         return q;
       }),
@@ -161,16 +168,16 @@ function schedule(store: Store) {
 
 /* ───────────── one burst ───────────── */
 
-type AuthCheck = "ok" | "missing" | "other" | "offline";
+type AuthCheck = { state: "ok"; token: string } | { state: "missing" | "other" | "offline" };
 
 async function sessionCheck(client: SupabaseBrowserClient, userId: string): Promise<AuthCheck> {
   try {
     const { data, error } = await client.auth.getSession();
-    if (error) return isAuthRetryableFetchError(error) ? "offline" : "missing";
-    if (!data.session) return "missing";
-    return data.session.user.id === userId ? "ok" : "other";
+    if (error) return { state: isAuthRetryableFetchError(error) ? "offline" : "missing" };
+    if (!data.session) return { state: "missing" };
+    return data.session.user.id === userId ? { state: "ok", token: data.session.access_token } : { state: "other" };
   } catch {
-    return "offline";
+    return { state: "offline" };
   }
 }
 
@@ -178,24 +185,26 @@ async function burst(store: Store) {
   markLegacy(store);
   const userId = store.getState().session.userId;
   if (!nextReady(store.getState().sync.queue, Date.now())) return;
-  const client = getSupabaseBrowserClient();
-  // Every request carries the browser's session: it must be this account's (never another account's, never none).
-  const auth = await sessionCheck(client, userId);
-  if (auth === "offline") {
+  // The browser's session must be this account's (never another account's, never none)…
+  const auth = await sessionCheck(getSupabaseBrowserClient(), userId);
+  if (auth.state === "offline") {
     checkAgainAt = Date.now() + 30_000;
     return;
   }
-  if (auth !== "ok") {
+  if (auth.state !== "ok") {
     flagReauth(store);
     return;
   }
+  // …and every request of the burst carries that session's token, even if another account's session lands in the cookies
+  // meanwhile (an e-mail link opened in another tab during a two-minute upload).
+  const client = getTokenClient(auth.token);
   let sent = 0;
   for (let guard = 0; guard < 10_000; guard++) {
     const st = store.getState();
     if (!canPush(st) || st.session.userId !== userId) break;
     const item = nextReady(st.sync.queue, Date.now());
     if (!item) break;
-    const step = await send(store, client, item);
+    const step = await send(store, client, item, userId);
     if (step === "sent") sent++;
     else if (step === "stop") break;
   }
@@ -209,19 +218,37 @@ async function burst(store: Store) {
 
 type Step = "sent" | "next" | "stop";
 
-async function send(store: Store, client: SupabaseBrowserClient, item: SyncItem): Promise<Step> {
+async function send(store: Store, client: SupabaseBrowserClient, item: SyncItem, userId: string): Promise<Step> {
   const op = item.op!;
   patchItem(store, item.id, { state: "sincronizando" });
   try {
     // 1 · the picture (add_photo), once: a retry after the upload resumes at the RPC.
+    let noPicture = false;
     if (op.upload && !op.upload.uploaded) {
-      const outcome = await upload(client, op.upload);
-      if (outcome.kind !== "ok") return await settle(store, item, outcome);
-      patchItem(store, item.id, (q) => (q.op?.upload ? { op: { ...q.op, upload: { ...q.op.upload, uploaded: true } } } : {}));
+      const blob = await getPhotoBlob(op.upload.blobKey);
+      if (blob) {
+        const outcome = await upload(client, op.upload, blob);
+        if (outcome.kind !== "ok") return await settle(store, item, outcome);
+        patchItem(store, item.id, (q) => (q.op?.upload ? { op: { ...q.op, upload: { ...q.op.upload, uploaded: true } } } : {}));
+      } else {
+        // The device copy is gone (another tab of this account sent the photo and freed it): the RPC tells. Applied before
+        // → `duplicate`, sent; no file in Storage → `object_missing`, which no retry can fix.
+        noPicture = true;
+      }
+    }
+    // The upload can take minutes: the account may have signed out (or the device changed hands) meanwhile. What the person
+    // agreed to drop is not sent.
+    const now = store.getState();
+    if (!canPush(now) || now.session.userId !== userId || !now.sync.queue.some((q) => q.id === item.id)) {
+      patchItem(store, item.id, { state: "pendiente" });
+      return "stop";
     }
     // 2 · the RPC, with exactly the arguments stored when the action ran.
     if (!item.tried) patchItem(store, item.id, { tried: true });
-    return await settle(store, item, await call(client, op.rpc, op.args));
+    const outcome = await call(client, op.rpc, op.args);
+    if (noPicture && outcome.kind === "retry" && outcome.reupload)
+      return await settle(store, item, { kind: "error", problem: { kind: "error", message: LOST_PHOTO_MESSAGE, code: outcome.problem.code, hint: outcome.problem.hint } });
+    return await settle(store, item, outcome);
   } catch (e) {
     // Never leave an item "sincronizando" (it would hold its order until a reload): back in line, retried with backoff.
     console.warn("[push]", op.rpc, e instanceof Error ? e.message : e);
@@ -241,20 +268,14 @@ async function call(client: SupabaseBrowserClient, rpc: string, args: Record<str
     const builder = (client as unknown as LooseRpc).rpc(rpc, args);
     const signal = timeoutSignal(RPC_TIMEOUT_MS);
     const res = await (signal ? builder.abortSignal(signal) : builder);
-    return classifyRpc(res.error, res.status, res.data);
+    return classifyRpc(res.error, res.status, res.data, rpc);
   } catch {
     // An aborted request may have been applied: the retry carries the same op id and arguments (→ duplicate).
     return { kind: "network", message: NETWORK_MESSAGE };
   }
 }
 
-async function upload(client: SupabaseBrowserClient, u: NonNullable<NonNullable<SyncItem["op"]>["upload"]>): Promise<Outcome> {
-  const blob = await getPhotoBlob(u.blobKey);
-  if (!blob)
-    return {
-      kind: "error",
-      problem: { kind: "error", message: "La foto ya no está guardada en este dispositivo: no se puede enviar. Descarte este registro y tómela de nuevo." },
-    };
+async function upload(client: SupabaseBrowserClient, u: NonNullable<NonNullable<SyncItem["op"]>["upload"]>, blob: Blob): Promise<Outcome> {
   const type = IMAGE_TYPES.includes(blob.type) ? blob.type : "image/jpeg";
   const file = blob.type === type ? blob : new Blob([blob], { type });
   let timer: ReturnType<typeof setTimeout> | undefined;
@@ -277,7 +298,7 @@ async function settle(store: Store, item: SyncItem, outcome: Outcome): Promise<S
   switch (outcome.kind) {
     case "ok": {
       const at = nowIso();
-      patchItem(store, item.id, { state: "sincronizado", syncedAt: at, problem: undefined, nextAt: undefined, attempts: undefined, firstFailAt: undefined });
+      patchItem(store, item.id, { state: "sincronizado", syncedAt: at, problem: undefined, nextAt: undefined, attempts: undefined, netAttempts: undefined, firstFailAt: undefined });
       store.setState((st) => ({ sync: { ...st.sync, lastSyncAt: at } }));
       await applyResult(store, item, outcome.data);
       return "sent";
@@ -300,7 +321,11 @@ async function settle(store: Store, item: SyncItem, outcome: Outcome): Promise<S
       patchItem(store, item.id, { state: "pendiente" });
       // One refresh (shared with the pull, at most once a minute): an access token that expired offline comes back here.
       const refreshed = await tryRefresh(store);
-      if (refreshed === "ok") return "next";
+      // A new token: the next burst checks the session again and binds its requests to it.
+      if (refreshed === "ok") {
+        again = true;
+        return "stop";
+      }
       if (refreshed === "inactive") await endInactive(store);
       else if (refreshed === "offline") retryLater(store, item, { kind: "reintento", message: NETWORK_MESSAGE, code: "network" });
       else flagReauth(store);
@@ -309,14 +334,21 @@ async function settle(store: Store, item: SyncItem, outcome: Outcome): Promise<S
   }
 }
 
-/** Back in line after a delay. Server answers count toward the cap (then quarantine); the network never does. */
+/**
+ * Back in line after a delay. Server answers count toward the cap (then quarantine); the network never does: a day without
+ * reaching the server must not quarantine the item at the first busy answer once it is reachable again.
+ */
 function retryLater(store: Store, item: SyncItem, problem: SyncProblem, reupload = false) {
   patchItem(store, item.id, (q) => {
-    const attempts = (q.attempts ?? 0) + 1;
     const now = Date.now();
+    if (problem.code === "network") {
+      const netAttempts = (q.netAttempts ?? 0) + 1;
+      return { state: "pendiente", netAttempts, nextAt: new Date(now + retryDelay(netAttempts)).toISOString(), problem };
+    }
+    const attempts = (q.attempts ?? 0) + 1;
     const firstFailAt = q.firstFailAt ?? new Date(now).toISOString();
     const upload = reupload && q.op?.upload ? { op: { ...q.op, upload: { ...q.op.upload, uploaded: false } } } : {};
-    if (problem.code !== "network" && attempts >= MAX_ATTEMPTS && now - Date.parse(firstFailAt) >= MAX_RETRY_MS)
+    if (attempts >= MAX_ATTEMPTS && now - Date.parse(firstFailAt) >= MAX_RETRY_MS)
       return {
         ...upload,
         state: "error",
@@ -325,7 +357,7 @@ function retryLater(store: Store, item: SyncItem, problem: SyncProblem, reupload
         nextAt: undefined,
         problem: { ...problem, kind: "conflicto", message: `No se pudo enviar tras ${attempts} intentos en 24 horas. ${problem.message}` },
       };
-    return { ...upload, state: "pendiente", attempts, firstFailAt, nextAt: new Date(now + retryDelay(attempts)).toISOString(), problem };
+    return { ...upload, state: "pendiente", attempts, netAttempts: undefined, firstFailAt, nextAt: new Date(now + retryDelay(attempts)).toISOString(), problem };
   });
 }
 
@@ -488,15 +520,6 @@ const dataOf = (s: AppState): DataSnapshot => ({
   materials: s.materials, orders: s.orders, jornadas: s.jornadas, photos: s.photos, incidents: s.incidents, reports: s.reports,
   cases: s.cases, surveys: s.surveys, audit: s.audit,
 });
-
-const CATALOG_RPC: Record<string, { table: CatalogTable; id: string }> = {
-  upsert_client: { table: "clients", id: "p_client_id" },
-  upsert_site: { table: "sites", id: "p_site_id" },
-  upsert_worker: { table: "workers", id: "p_worker_id" },
-  upsert_service_type: { table: "service_types", id: "p_service_type_id" },
-  upsert_material: { table: "materials", id: "p_material_id" },
-  update_profile: { table: "profiles", id: "p_user_id" },
-};
 
 /**
  * "Descartar": the item and what depends on it (see discardSet) leave the queue and are never sent; the device goes back to

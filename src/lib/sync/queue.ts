@@ -9,20 +9,27 @@
  * item (failed, or waiting to be retried) holds back the later items of that order only.
  */
 import type { SyncItem, SyncProblem } from "@/lib/types";
+import type { CatalogTable } from "./merge";
 
 /** The chain an item belongs to: its order, or else the record it writes (`catalogo:<id>`, `usuario:<id>`). */
 export const chainKey = (q: Pick<SyncItem, "orderId" | "entity" | "entityId">): string => (q.orderId ? `orden:${q.orderId}` : `${q.entity}:${q.entityId}`);
 
 export const isUnsent = (q: SyncItem) => q.state !== "sincronizado";
 
-/** For every unsent item that must wait: the earlier unsent item it waits for (the first one of its chain or of a dep). */
+/**
+ * For every unsent item that must wait: the earlier unsent item it waits for (the first one of its chain or of a dep). A dep
+ * holds the item while its record is being created, or while an edit of it is still on its way (a site moved to another
+ * client lands before the order that relies on it); an edit of an existing record that the server refused does not: the
+ * record is there, and an unrelated new order must not wait for someone to fix a contact e-mail.
+ */
 export function waitsFor(queue: readonly SyncItem[]): Map<string, SyncItem> {
   const heads = new Map<string, SyncItem>();
   const out = new Map<string, SyncItem>();
   for (const q of queue) {
     if (!isUnsent(q)) continue;
     const own = chainKey(q);
-    const blocker = [own, ...(q.deps ?? [])].map((k) => heads.get(k)).find(Boolean);
+    const dep = (q.deps ?? []).map((k) => heads.get(k)).find((h) => h && (h.op?.creates || h.state !== "error"));
+    const blocker = heads.get(own) ?? dep;
     if (blocker) out.set(q.id, blocker);
     if (!heads.has(own)) heads.set(own, q);
   }
@@ -96,12 +103,20 @@ const RETRY_HINTS = new Set(["parent_missing", "object_missing"]);
 /** Transient database states. */
 const RETRY_CODES = new Set(["40001", "40P01", "57014", "53300", "55P03"]);
 
+/**
+ * Refusals that mean the requested end state already holds: the item counts as sent. delete_photo of a photo someone else
+ * already deleted (`photo_deleted`): holding the order's later items behind it would protect nothing.
+ */
+const ALREADY_DONE: Record<string, { code: string; hint: string }> = { delete_photo: { code: "PT409", hint: "photo_deleted" } };
+
 /** What a PostgREST answer to `public.<rpc>` means for the queue. */
-export function classifyRpc(error: RpcError | null, status: number, data?: unknown): Outcome {
+export function classifyRpc(error: RpcError | null, status: number, data?: unknown, rpc?: string): Outcome {
   if (!error) return { kind: "ok", data };
   const code = error.code ?? "";
   const hint = error.hint ?? "";
   if (status === 0 || (!code && NETWORK_RE.test(error.message))) return { kind: "network", message: NETWORK_MESSAGE };
+  const done = rpc ? ALREADY_DONE[rpc] : undefined;
+  if (done && done.code === code && done.hint === hint) return { kind: "ok", data: {} };
   if (code === "PT401") {
     if (hint === "inactive" || hint === "no_profile") return { kind: "inactive", message: error.message };
     return { kind: "auth", message: error.message };
@@ -146,6 +161,16 @@ export function classifyUpload(error: UploadError | null): Outcome {
   return { kind: "conflict", problem: problem("conflicto", `El servidor rechazó el archivo de la foto${msg ? `: ${msg}` : "."}`) };
 }
 
+/** Catalog and people upserts: the table each writes and the parameter naming its record (the one a creation creates). */
+export const CATALOG_RPC: Record<string, { table: CatalogTable; id: string }> = {
+  upsert_client: { table: "clients", id: "p_client_id" },
+  upsert_site: { table: "sites", id: "p_site_id" },
+  upsert_worker: { table: "workers", id: "p_worker_id" },
+  upsert_service_type: { table: "service_types", id: "p_service_type_id" },
+  upsert_material: { table: "materials", id: "p_material_id" },
+  update_profile: { table: "profiles", id: "p_user_id" },
+};
+
 /** Ids of the records an operation creates on the server (what later operations may name). */
 function createdIds(q: SyncItem): string[] {
   const a = q.op?.args ?? {};
@@ -165,29 +190,53 @@ function createdIds(q: SyncItem): string[] {
       return pick("p_report_id");
     case "create_survey":
       return pick("p_survey_id");
-    default:
-      return q.op?.creates ? pick("p_client_id", "p_site_id", "p_worker_id", "p_service_type_id", "p_material_id") : [];
+    default: {
+      // Only the record the upsert writes: a new site names its (existing) client, which it does not create.
+      const cat = q.op ? CATALOG_RPC[q.op.rpc] : undefined;
+      return q.op?.creates && cat ? pick(cat.id) : [];
+    }
   }
 }
+
+/**
+ * Arguments that do not make an operation depend on the records they name: generate_report keeps only the live photos of
+ * the order among `p_photo_ids` (a missing one is left out of the report, never refused).
+ */
+const LOOSE_ARGS: Record<string, string[]> = { generate_report: ["p_photo_ids"] };
 
 /** The operation names one of `ids` anywhere in its arguments (or belongs to one of those orders). */
 function names(q: SyncItem, ids: Set<string>): boolean {
   if (q.orderId && ids.has(q.orderId)) return true;
   const walk = (v: unknown): boolean =>
     typeof v === "string" ? ids.has(v) : Array.isArray(v) ? v.some(walk) : !!v && typeof v === "object" && Object.values(v).some(walk);
-  return walk(q.op?.args);
+  const loose = (q.op && LOOSE_ARGS[q.op.rpc]) ?? [];
+  return Object.entries(q.op?.args ?? {}).some(([k, v]) => !loose.includes(k) && walk(v));
+}
+
+/**
+ * The item's last attempt went out and got no answer (network, a gateway timeout, a device error after sending): the server
+ * may have applied it. Only a resend can tell (an applied op answers `duplicate`), so nothing that depends on it is judged
+ * by it.
+ */
+export function outcomeUnknown(q: SyncItem): boolean {
+  if (!q.tried || !q.problem || q.state === "sincronizado") return false;
+  const code = q.problem.code ?? "";
+  return code === "" || code === "network" || code === "502" || code === "504";
 }
 
 /**
  * The items "Descartar" removes with `id`: the item and every later unsent item that depends on a record it creates — the
  * photo edits of a discarded photo, the check-ins of discarded days, the order on a discarded client, every change of a
  * discarded new order… They could never be applied (the server would answer `parent_missing` until the retry cap).
+ * An item whose outcome is unknown (outcomeUnknown) goes alone: if the server applied it, what depends on it still applies;
+ * if not, those items answer `parent_missing` and can be discarded then, on a definite answer.
  */
 export function discardSet(queue: readonly SyncItem[], id: string): SyncItem[] {
   const at = queue.findIndex((q) => q.id === id);
   const item = queue[at];
   if (!item || item.state === "sincronizado" || item.state === "sincronizando") return [];
   const out = [item];
+  if (outcomeUnknown(item)) return out;
   const ids = new Set(createdIds(item));
   for (const q of queue.slice(at + 1)) {
     if (!isUnsent(q) || q.state === "sincronizando" || !ids.size || !names(q, ids)) continue;
@@ -199,3 +248,27 @@ export function discardSet(queue: readonly SyncItem[], id: string): SyncItem[] {
 
 /** Server answers after which retrying the same request cannot help (only discarding it does). */
 export const NO_RETRY_HINTS = new Set(["op_id_reused", "duplicate_check", "already_resolved", "already_provisioned"]);
+
+/**
+ * The person decides about it (the sync sheet offers Reintentar / Descartar): stopped items, and items being retried after
+ * a server answer (a parent that may never arrive, a server that keeps failing). Waiting for the network is not one of them.
+ */
+export const isStopped = (q: SyncItem) => q.state === "error" || (q.state === "pendiente" && !!q.problem && q.problem.code !== "network");
+
+/** "Reintentar" can help: a stopped item with a request to resend, refused for a reason a resend may not meet again. */
+export const isRetryable = (q: SyncItem) => q.state === "error" && !!q.op && !NO_RETRY_HINTS.has(q.problem?.hint ?? "");
+
+/** What a discard set holds, by kind (the confirmation names the field captures that leave the device). */
+export type DiscardSummary = { photos: number; checks: number; notes: number; other: number };
+
+export function discardSummary(set: readonly SyncItem[]): DiscardSummary {
+  const out: DiscardSummary = { photos: 0, checks: 0, notes: 0, other: 0 };
+  for (const q of set) {
+    const rpc = q.op?.rpc;
+    if (rpc === "add_photo") out.photos++;
+    else if (rpc === "check_in" || rpc === "check_out") out.checks++;
+    else if (rpc === "add_jornada_note") out.notes++;
+    else out.other++;
+  }
+  return out;
+}

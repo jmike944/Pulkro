@@ -410,14 +410,20 @@ One RPC per queue item keeps generated TypeScript types for every argument (a ba
   permanently, later items of the same order are held ("bloqueado por…") until resolved.
 - **Outcome classes** for the queue:
   - *retry with backoff*: network errors, 5xx, `408/429`, `PT409 object_missing` (upload still running) and
-    `PT409 parent_missing` (a parent still in the queue) — capped (e.g. 20 attempts / 24 h), then quarantine;
+    `PT409 parent_missing` (a parent still in the queue) — server answers are capped (20 attempts / 24 h), then
+    quarantine; requests that got no answer only space the retries out and never count toward the cap;
   - *re-authenticate, keep the queue*: `PT401`;
   - *conflict → quarantine* (keep the payload and blobs on the device, show "no se aplicó" with the server message, offer
     redo/hand-off/discard): `order_reassigned`, `jornada_rescheduled`, `photo_deleted`, `order_closed`, `order_cancelled`,
-    `order_frozen`, `duplicate_check`, `op_id_reused`, a permanently failed upload;
+    `order_frozen`, `duplicate_check`, `op_id_reused`, a permanently failed upload. Exception: `photo_deleted` answering
+    `delete_photo` means the photo is already deleted — the item counts as sent;
   - *permanent error* (bug or invalid input): other `PT403/PT404/PT409/PT422`; re-pull the order, let the user decide.
   Field evidence is never dropped silently: a quarantined capture can be exported (photos + times) and handed to the
-  current supervisor.
+  current supervisor. Discarding an item takes along the later items that name a record it creates (they could only
+  answer `parent_missing`) — unless its last attempt got no answer: the server may have applied it, so it goes alone.
+- **Whose session**: a push burst and a pull cycle check once that the browser's session is the account's on the device,
+  then send every request with that session's access token (`getTokenClient`): the cookies are shared by every tab, and
+  an e-mail link or a sign-in in another tab may replace them mid-run.
 - **Conflicts**: field-level patches (`update_order`, `update_photo`, `update_incident`, `update_case` send only the
   touched keys) so Administración (general data) and the supervisor (operational data) never overwrite each other; the
   same field edited twice → last server arrival wins, both edits stay in the audit log. State conflicts (check-in on an

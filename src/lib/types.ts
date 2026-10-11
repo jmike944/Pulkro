@@ -438,8 +438,10 @@ export type SyncItem = {
   op?: SyncOp;
   /** Records this item needs on the server first (`${entity}:${id}` of a client, site, worker… created on this device). */
   deps?: string[];
-  /** Failed attempts that are retried (network, server busy, a parent still on its way). */
+  /** Server answers that asked to retry (server busy, a parent still on its way): they count toward the cap (queue.ts). */
   attempts?: number;
+  /** Attempts that got no answer (offline, unreachable): they only space the retries out, never quarantine the item. */
+  netAttempts?: number;
   /** Its RPC was sent at least once (it may have been applied even without an answer). */
   tried?: boolean;
   firstFailAt?: string;
