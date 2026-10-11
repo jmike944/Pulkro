@@ -12,7 +12,7 @@ import { AuthFrame, AuthHeading } from "./auth-frame";
 import { DemoPicker } from "./demo-picker";
 import { TextAction } from "./form-bits";
 import { RecoveryRequest } from "./recovery-request";
-import { safeNext } from "./session";
+import { safeNext } from "./safe-next";
 
 type Panel = "account" | "recovery" | "demo";
 

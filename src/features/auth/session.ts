@@ -54,13 +54,6 @@ export function otherAccountOnDevice(userId: string): { name: string; unsent: nu
   return { name: s.users.find((u) => u.id === s.session.userId)?.name ?? "otra cuenta", unsent };
 }
 
-/** Where to go after signing in: only a path of this app (never "//host", "/\host" or the auth screens themselves). */
-export function safeNext(next: string | null | undefined): string {
-  if (!next || !next.startsWith("/") || next.startsWith("//") || next.startsWith("/\\")) return "/";
-  if (next.startsWith("/login") || next.startsWith("/acceso")) return "/";
-  return next;
-}
-
 /** Demo-only controls (role switch, demo reset): never for an account session, whatever the build. */
 export function useDemoControls(): boolean {
   const mode = useAppStore((s) => s.session.mode);
