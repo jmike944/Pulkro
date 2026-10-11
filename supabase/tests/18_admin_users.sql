@@ -273,6 +273,7 @@ begin
     format($q$ select public.update_profile(gen_random_uuid(), %L, '{"email": "otro@tests.invalid"}') $q$, c_sup2), 'PT422', 'field_not_editable');
 
   -- What the function relays for deactivate / reactivate (then it bans / unbans through the admin API).
+  perform pg_temp.as_owner();   -- fixtures are created as the owner (t_label is not writable by the personas)
   v_o := pg_temp.new_order(1);
   perform pg_temp.as_user(c_dir);
   perform pg_temp.err('Dirección cannot deactivate itself',
