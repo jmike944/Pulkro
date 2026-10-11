@@ -5,16 +5,12 @@ import { unsentCount, useAppStore } from "@/lib/store";
 import { DEMO_ENABLED } from "@/lib/demo";
 import { mapProfile, mapUnit } from "@/lib/sync/map";
 import type { Unit, User } from "@/lib/types";
-import { NETWORK_MESSAGE, isNetworkFailure } from "./auth-errors";
+import { NETWORK_MESSAGE, NO_PROFILE_MESSAGE, isNetworkFailure } from "./auth-errors";
 
 /**
  * Authorization lives in the database: RLS reads public.profiles. The access-token hook (pulkro_role / pulkro_unit_id) may
  * not be enabled, so the app never relies on those claims: it reads the signed-in account's own profile row.
  */
-
-/** RLS hides a missing AND an inactive profile alike (private.my_role() is null for both): one message covers the two. */
-export const NO_PROFILE_MESSAGE =
-  "Su cuenta no tiene un perfil activo en Pulkro Cuadrillas: aún no la dan de alta o está desactivada. Comuníquese con Dirección.";
 
 export type ProfileResult = { ok: true; user: User; unit?: Unit } | { ok: false; message: string };
 

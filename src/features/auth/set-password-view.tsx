@@ -70,7 +70,10 @@ function verifyOnce(tokenHash: string, type: LinkType): Promise<Outcome> {
 
 function stageOf(outcome: Outcome, type: LinkType): Stage {
   if (outcome.ok) return { kind: needsPassword(outcome.verified.type) ? "password" : "confirmed", verified: outcome.verified };
-  return outcome.failure.kind === "expired" ? { kind: "expired", type } : { kind: "failed", failure: outcome.failure };
+  const { failure } = outcome;
+  // No "pedir un enlace nuevo" nor "Reintentar" when the account itself may not enter.
+  if (failure.kind === "no-access") return { kind: "refused", message: failure.message };
+  return failure.kind === "expired" ? { kind: "expired", type } : { kind: "failed", failure };
 }
 
 function initialStage(tokenHash: string, type: string): Stage {
