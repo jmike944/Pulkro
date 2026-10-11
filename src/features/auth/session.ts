@@ -1,0 +1,78 @@
+"use client";
+
+import type { SupabaseBrowserClient } from "@/lib/supabase/client";
+import { unsentCount, useAppStore } from "@/lib/store";
+import { DEMO_ENABLED } from "@/lib/demo";
+import type { Unit, User } from "@/lib/types";
+import { NETWORK_MESSAGE, isNetworkFailure } from "./auth-errors";
+
+/**
+ * Authorization lives in the database: RLS reads public.profiles. The access-token hook (pulkro_role / pulkro_unit_id) may
+ * not be enabled, so the app never relies on those claims: it reads the signed-in account's own profile row.
+ */
+
+/** RLS hides a missing AND an inactive profile alike (private.my_role() is null for both): one message covers the two. */
+export const NO_PROFILE_MESSAGE =
+  "Su cuenta no tiene un perfil activo en Pulkro Cuadrillas: aún no la dan de alta o está desactivada. Comuníquese con Dirección.";
+
+export type ProfileResult = { ok: true; user: User; unit?: Unit } | { ok: false; message: string };
+
+/** The signed-in account's profile (`profiles where id = auth.uid()`), mapped to the app's User, plus its unit. */
+export async function loadOwnProfile(supabase: SupabaseBrowserClient, userId: string): Promise<ProfileResult> {
+  const { data, error } = await supabase
+    .from("profiles")
+    .select("id, name, initials, role, title, unit_id, email, phone, hue, active")
+    .eq("id", userId)
+    .maybeSingle();
+  if (error) return { ok: false, message: isNetworkFailure(error) ? NETWORK_MESSAGE : "No se pudo leer su perfil. Intente de nuevo en unos minutos." };
+  if (!data || !data.active) return { ok: false, message: NO_PROFILE_MESSAGE };
+  const user: User = {
+    id: data.id,
+    name: data.name,
+    initials: data.initials,
+    role: data.role,
+    title: data.title,
+    unitId: data.unit_id,
+    email: data.email,
+    phone: data.phone,
+    hue: data.hue,
+    active: data.active,
+  };
+  // The unit names the account's scope in the shell; the session works without it (RLS lets every role read its own unit).
+  const { data: unit } = await supabase.from("units").select("id, name, code, city").eq("id", data.unit_id).maybeSingle();
+  return { ok: true, user, unit: unit ?? undefined };
+}
+
+/** Resolves once the store has been read back from IndexedDB (writing before that would be overwritten by the rehydration). */
+export function whenHydrated(): Promise<void> {
+  if (useAppStore.getState().hydrated) return Promise.resolve();
+  return new Promise((resolve) => {
+    const stop = useAppStore.subscribe((s) => {
+      if (!s.hydrated) return;
+      stop();
+      resolve();
+    });
+  });
+}
+
+/** Another account's session on this device that still holds unsent changes (they would be lost by signing in). */
+export function otherAccountOnDevice(userId: string): { name: string; unsent: number } | null {
+  const s = useAppStore.getState();
+  if (s.session.mode !== "supabase" || s.session.userId === userId) return null;
+  const unsent = unsentCount(s.sync.queue);
+  if (!unsent) return null;
+  return { name: s.users.find((u) => u.id === s.session.userId)?.name ?? "otra cuenta", unsent };
+}
+
+/** Where to go after signing in: only a path of this app (never "//host", "/\host" or the auth screens themselves). */
+export function safeNext(next: string | null | undefined): string {
+  if (!next || !next.startsWith("/") || next.startsWith("//") || next.startsWith("/\\")) return "/";
+  if (next.startsWith("/login") || next.startsWith("/acceso")) return "/";
+  return next;
+}
+
+/** Demo-only controls (role switch, demo reset): never for an account session, whatever the build. */
+export function useDemoControls(): boolean {
+  const mode = useAppStore((s) => s.session.mode);
+  return DEMO_ENABLED && mode !== "supabase";
+}

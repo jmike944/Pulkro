@@ -188,6 +188,22 @@ async function navigate(request) {
   }
 }
 
+/**
+ * Invite / recovery landing (/acceso/…): its URL carries a one-time token, so neither the page nor its URL is ever stored.
+ * Network only; without signal, the cached /offline page.
+ */
+async function networkOnly(request) {
+  try {
+    return await fetch(request);
+  } catch {
+    if (request.mode === "navigate") {
+      const offline = await (await caches.open(SHELL)).match("/offline", { ignoreVary: true });
+      if (offline) return offline;
+    }
+    return new Response("Sin conexión", { status: 503, headers: { "Content-Type": "text/plain; charset=utf-8" } });
+  }
+}
+
 async function rsc(request) {
   const cache = await caches.open(SHELL);
   try {
@@ -245,6 +261,10 @@ self.addEventListener("fetch", (event) => {
 
   if (url.pathname.startsWith("/_next/static/") || url.pathname.startsWith("/icons/") || url.pathname.startsWith("/vendor/") || /\.(woff2?|png|svg|ico)$/.test(url.pathname)) {
     event.respondWith(cacheFirst(request, STATIC));
+    return;
+  }
+  if (url.pathname.startsWith("/acceso/")) {
+    event.respondWith(networkOnly(request));
     return;
   }
   if (request.mode === "navigate") {
