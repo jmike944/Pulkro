@@ -10,11 +10,21 @@ import { useAppStore, useNow, useSyncSummary } from "@/lib/hooks";
 import { useUi } from "@/lib/ui-store";
 import { fmtAgo, fmtTime, plural } from "@/lib/format";
 import type { SyncItem } from "@/lib/types";
-import { NO_RETRY_HINTS, discardSet, discardSummary, isRetryable, isStopped, outcomeUnknown, waitsFor } from "@/lib/sync/queue";
+import {
+  NO_RETRY_HINTS,
+  discardSet,
+  discardSummary,
+  discardedCaptures,
+  isRetryable,
+  isStopped,
+  outcomeUnknown,
+  waitsFor,
+} from "@/lib/sync/queue";
 import { ModalShell } from "@/components/pk/modal-shell";
 import { ConfirmDialog } from "@/features/configuracion/shared";
 import { Switch } from "@/components/ui/switch";
 import { Button } from "@/components/ui/button";
+import { SaveCapturesBox, useCaptureFiles } from "./discard-photos";
 
 /**
  * Sidebar chip — the "Detection on · 4 min ago" equivalent for offline sync.
@@ -432,21 +442,33 @@ function capturesText(set: SyncItem[]): string {
   return parts.length > 1 ? `${parts.slice(0, -1).join(", ")} y ${parts.at(-1)}` : (parts[0] ?? "");
 }
 
-/** "Descartar": the change leaves the queue for good; the device goes back to what the server has. */
+/**
+ * "Descartar": the change leaves the queue for good; the device goes back to what the server has. Photo captures it deletes
+ * can be saved on the phone first (discard-photos.tsx).
+ */
 function DiscardDialog({ item, onClose }: { item: SyncItem | null; onClose: () => void }) {
   const queue = useAppStore((s) => s.sync.queue);
+  const photos = useAppStore((s) => s.photos);
+  const orders = useAppStore((s) => s.orders);
   const discard = useAppStore((s) => s.discardSyncItem);
-  const set = item ? discardSet(queue, item.id) : [];
+  const set = useMemo(() => (item ? discardSet(queue, item.id) : []), [queue, item]);
   const more = set.length - 1;
   const captures = capturesText(set);
   const sum = discardSummary(set);
   // The answer may have been lost after the server applied it: only the item itself goes (discardSet).
   const unknown = !!item && outcomeUnknown(item);
+  // The pictures the discard deletes (only once confirmed), offered to be saved on the phone first.
+  const pictures = useMemo(() => discardedCaptures(queue, set, photos), [queue, set, photos]);
+  const folios = useMemo(() => new Map(orders.map((o) => [o.id, o.folio])), [orders]);
+  const files = useCaptureFiles(pictures, folios);
+  const [savedFor, setSavedFor] = useState<string | null>(null);
+  const saved = !!item && savedFor === item.id && files.length > 0;
   // The item is being sent again (or went through) while the dialog was open: close it for good, never reopen by itself.
   useEffect(() => {
     if (item && !set.length) onClose();
   }, [item, set.length, onClose]);
   const many = set.length > 1;
+  const lost = many ? "estos cambios no llegarán" : "este cambio no llegará";
   return (
     <ConfirmDialog
       open={!!item && set.length > 0}
@@ -458,14 +480,14 @@ function DiscardDialog({ item, onClose }: { item: SyncItem | null; onClose: () =
       rows={[
         { k: "Cambio", v: item?.label ?? "" },
         ...(more > 0 ? [{ k: "Cambios que dependen de él", v: `${more} más` }] : []),
-        ...(sum.photos ? [{ k: "Fotos que se borran del dispositivo", v: String(sum.photos) }] : []),
+        ...(sum.photos ? [{ k: "Fotos que se borran de la app", v: String(sum.photos) }] : []),
         ...(sum.checks ? [{ k: "Registros de entrada o salida", v: String(sum.checks) }] : []),
         ...(sum.notes ? [{ k: "Notas de bitácora", v: String(sum.notes) }] : []),
       ]}
       checkboxLabel={
         captures
-          ? `Entiendo que ${many ? "estos cambios no llegarán" : "este cambio no llegará"} al servidor y que se borrarán de este dispositivo: ${captures}.`
-          : `Entiendo que ${many ? "estos cambios no llegarán" : "este cambio no llegará"} al servidor.`
+          ? `Entiendo que ${lost} al servidor y que se borrarán de la app: ${captures}.${saved ? " Las fotos guardadas siguen en la galería o en Descargas del teléfono." : ""}`
+          : `Entiendo que ${lost} al servidor.`
       }
       confirmLabel={more > 0 ? `Descartar ${set.length} cambios` : "Descartar"}
       destructive
@@ -495,6 +517,7 @@ function DiscardDialog({ item, onClose }: { item: SyncItem | null; onClose: () =
           </ul>
         </>
       )}
+      {files.length > 0 && <SaveCapturesBox files={files} saved={saved} onSaved={() => item && setSavedFor(item.id)} />}
     </ConfirmDialog>
   );
 }

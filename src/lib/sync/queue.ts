@@ -8,7 +8,7 @@
  * them): `deps`. An item waits while an earlier unsent item of its chain or of one of its deps is still there — so a held
  * item (failed, or waiting to be retried) holds back the later items of that order only.
  */
-import type { SyncItem, SyncProblem } from "@/lib/types";
+import type { Photo, SyncItem, SyncProblem } from "@/lib/types";
 import type { CatalogTable } from "./merge";
 
 /** The chain an item belongs to: its order, or else the record it writes (`catalogo:<id>`, `usuario:<id>`). */
@@ -154,15 +154,17 @@ export function classifyUpload(error: UploadError | null): Outcome {
   if (code === "409" || status === 409 || /already exists|duplicate/i.test(msg)) return { kind: "ok" };
   if (status === 401 || error.code === "InvalidJWT" || /\bjwt\b|token (is )?expired|invalid (jwt|token)|"exp" claim|claim timestamp/i.test(msg))
     return { kind: "auth", message: msg };
-  const problem = (kind: SyncProblem["kind"], message: string): SyncProblem => ({ kind, message, code: `storage ${code || status}` });
+  const problem = (kind: SyncProblem["kind"], message: string, hint?: string): SyncProblem => ({ kind, message, code: `storage ${code || status}`, hint });
   if (code === "413" || status === 413 || /too large|payload/i.test(msg))
     return { kind: "conflict", problem: problem("conflicto", "La foto es demasiado grande para el servidor (máximo 10 MB).") };
   if (code === "415" || status === 415 || /mime|content type|invalid_mime_type/i.test(msg))
     return { kind: "conflict", problem: problem("conflicto", "El servidor no acepta este tipo de archivo (solo JPEG, PNG o WebP).") };
+  // The bucket's policy refused it (the order closed, or it is no longer this supervisor's): `upload_forbidden`, which a
+  // resend of the same file cannot change (NO_RETRY_HINTS).
   if (code === "403" || status === 403 || /row[- ]level security|unauthorized|not allowed/i.test(msg))
     return {
       kind: "conflict",
-      problem: problem("conflicto", "El servidor no permitió subir la foto: la orden ya no admite evidencia o ya no está a su cargo."),
+      problem: problem("conflicto", "El servidor no permitió subir la foto: la orden ya no admite evidencia o ya no está a su cargo.", "upload_forbidden"),
     };
   if (status === 408 || status === 429 || status >= 500 || /^5\d\d$/.test(code) || code === "429")
     return { kind: "retry", problem: problem("reintento", BUSY_MESSAGE) };
@@ -254,12 +256,46 @@ export function discardSet(queue: readonly SyncItem[], id: string): SyncItem[] {
   return out;
 }
 
+/** A photo capture that "Descartar" deletes from the device: its picture (IndexedDB key) and what names it. */
+export type DiscardedCapture = { key: string; orderId?: string; kind?: string; takenAt?: string };
+
+/**
+ * The device copies of photos that discarding `set` (discardSet) deletes — discardItems deletes exactly these, and only once
+ * the person confirmed, so the sync sheet can offer to save them first: the picture of every add_photo in the set, and the
+ * captures of a discarded new order, except a picture that an item left in the queue still needs (a new order whose answer
+ * was lost goes alone: if the server had it, its photos still go).
+ */
+export function discardedCaptures(
+  queue: readonly SyncItem[],
+  set: readonly SyncItem[],
+  photos: readonly Pick<Photo, "orderId" | "kind" | "takenAt" | "source">[],
+): DiscardedCapture[] {
+  const gone = new Set(set.map((q) => q.id));
+  const needed = new Set(queue.flatMap((q) => (!gone.has(q.id) && q.op?.upload && !q.op.upload.released ? [q.op.upload.blobKey] : [])));
+  const text = (v: unknown) => (typeof v === "string" ? v : undefined);
+  const out = new Map<string, DiscardedCapture>();
+  for (const q of set) {
+    const a = q.op?.args ?? {};
+    if (q.op?.upload) out.set(q.op.upload.blobKey, { key: q.op.upload.blobKey, orderId: text(a.p_order_id) ?? q.orderId, kind: text(a.p_kind), takenAt: text(a.p_taken_at) });
+    if (q.op?.rpc !== "create_order") continue;
+    for (const p of photos)
+      if (p.orderId === a.p_order_id && p.source.type === "idb" && !needed.has(p.source.key) && !out.has(p.source.key))
+        out.set(p.source.key, { key: p.source.key, orderId: p.orderId, kind: p.kind, takenAt: p.takenAt });
+  }
+  return [...out.values()];
+}
+
 /**
  * Server answers after which retrying the same request cannot help (only discarding it does): the sheet offers no
- * "Reintentar" for them — the request itself (a reused op id, a check already there, a lost photo), or a device time older
- * than the server accepts (`device_time_stale`).
+ * "Reintentar" for them. Besides the request itself (a reused op id, a check already there, a lost photo): a device time
+ * older than the server accepts (`device_time_stale`), a jornada rescheduled or an order reassigned, out of the person's
+ * scope, closed or cancelled meanwhile (field evidence of those orders stays on the device until it is discarded, and the
+ * discard offers to save its photos first), and a photo file the bucket refused (`upload_forbidden`, classifyUpload).
  */
-export const NO_RETRY_HINTS = new Set(["op_id_reused", "duplicate_check", "already_resolved", "already_provisioned", "photo_lost", "device_time_stale"]);
+export const NO_RETRY_HINTS = new Set([
+  "op_id_reused", "duplicate_check", "already_resolved", "already_provisioned", "photo_lost",
+  "device_time_stale", "jornada_rescheduled", "order_reassigned", "out_of_scope", "order_closed", "order_cancelled", "upload_forbidden",
+]);
 
 /**
  * The person decides about it (the sync sheet offers Reintentar / Descartar): stopped items, and items being retried after

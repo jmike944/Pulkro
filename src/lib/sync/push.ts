@@ -36,6 +36,7 @@ import {
   classifyRpc,
   classifyUpload,
   discardSet,
+  discardedCaptures,
   isRetryable,
   isUnsent,
   nextReady,
@@ -546,6 +547,8 @@ export function discardItems(store: Store, id: string): number {
   const opIds = new Set(chain.map((q) => str(q.op?.args.p_op_id)).filter(Boolean));
   const blobs: string[] = [];
   store.setState((s) => {
+    // The photo copies that leave the device: the very ones the confirmation offered to save (discardedCaptures).
+    blobs.push(...discardedCaptures(s.sync.queue, chain, s.photos).map((c) => c.key));
     const queue = s.sync.queue.filter((q) => !gone.has(q.id));
     let d: DataSnapshot = { ...dataOf(s), audit: s.audit.filter((x) => !x.opId || !opIds.has(x.opId)) };
     const subtrees = new Set(s.session.pull?.subtrees ?? []);
@@ -556,11 +559,9 @@ export function discardItems(store: Store, id: string): number {
     };
     for (const q of chain) {
       const a = q.op?.args ?? {};
-      if (q.op?.upload) blobs.push(q.op.upload.blobKey);
       switch (q.op?.rpc) {
         case "create_order": {
           const oid = str(a.p_order_id)!;
-          for (const p of d.photos) if (p.orderId === oid && p.source.type === "idb") blobs.push(p.source.key);
           d = dropRows(d, { orders: [oid] }, pendingIndex(queue)).data;
           subtrees.delete(oid);
           continue;
