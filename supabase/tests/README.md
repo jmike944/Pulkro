@@ -29,6 +29,7 @@ auth hook, sync guarantees). Every file:
 | `14_review_round6.sql` | **PR #9 review, Codex round 2, migration `review_pr9_codex_round2`.** Reassigning an order moves its open cases (not the closed ones) to the new supervisor with a timeline entry and audit; reopening a case without a 10+ character reason is refused, then the owner is re-checked; flagging Reprogramada or confirming dates under a blocking incident keeps `con_incidencia` and sets the status to resume; a supervisor moved to another unit stays readable for the old unit's Administración and their former orders' supervisor, not for an unrelated supervisor; `upsert_site` locks its clients `FOR SHARE` |
 | `15_review_round7.sql` | **PR #9 review, cubic round 2, migration `review_pr9_cubic_round2`.** `update_incident` refuses an empty patch, a null `jornada_id` and another order's jornada; rescheduling, check-in and check-out under a blocking incident update the status the order resumes (Reprogramada never survives the work); a supervisor from another unit cannot own the order's case; `upsert_site` locks clients before the site; while the demo dataset is loaded, `drop_demo_data` refuses (`demo_in_use`, nothing deleted) when a real order names a demo material or a real crew names a demo worker — the fixture also holds an incident and a case so no folio sequence could be reset even on a regression |
 | `16_review_round8.sql` | **PR #9 review, cubic round 3, migration `review_pr9_cubic_round3`.** Every foreign key to `profiles` (from the catalog, `audit_log` aside) must be read by `referenced_profile_ids`; a report shared by someone only that share names is readable by the order's supervisor and not by an unrelated one |
+| `17_owner_decisions.sql` | **Owner decisions (2026-10-11), migration `decision_closed_order_reassign`.** Decision 19: Administración reassigns the supervisor of a closed order (only that field; title or title+supervisor still need a reopening), the order keeps its status, the change is audited, the new supervisor can reopen it; archived orders stay frozen |
 
 ## Sources and generation
 
@@ -44,7 +45,7 @@ node scripts/build-db-tests.mjs
 
 **Today — Supabase MCP (`execute_sql`).** Paste the whole content of one generated file into a single `execute_sql`
 call against the project. The call returns `[{"result":"ok","test":"…"}]` or an error whose message starts with
-`FAIL [label]`. Run the files in order 00 → 16; each one is independent and must print `ok`.
+`FAIL [label]`. Run the files in order 00 → 17; each one is independent and must print `ok`.
 
 **Later — psql / Supabase CLI** (any of them works the same way, the files only need a Postgres connection with the
 `postgres` role):

@@ -1,7 +1,7 @@
 # Pulkro Cuadrillas — backend architecture (Supabase)
 
 Status (2026-10-11, after the PR #9 review): schema, RLS, business-rule RPCs, Storage and the auth hook function are
-**applied** to the Supabase project "Pulkro" (ref `cbdzndpdpwtxbhshidyi`, us-east-1, Postgres 17.11) — the 18 migrations
+**applied** to the Supabase project "Pulkro" (ref `cbdzndpdpwtxbhshidyi`, us-east-1, Postgres 17.11) — the 19 migrations
 below. The project holds the **demo dataset** (302 orders and their history, 11 password-less demo accounts; every row
 registered in `private.demo_rows`, removed in one call by `select private.drop_demo_data();`, see `supabase/seed/README.md`);
 no real accounts or data yet, no Storage objects. The app still runs on the on-device zustand store; wiring it to this
@@ -27,10 +27,11 @@ backend is the phased plan in §12.
 | `20261011061310_review_pr9_codex_round2` | PR #9 review (Codex, round 2): an order's open cases follow it to the new supervisor, reopening a case needs its reason, open blocking incidents stay authoritative when an order is flagged Reprogramada, people on visible orders and cases stay readable after a unit move (`private.referenced_profile_ids()`), `upsert_site` holds the client it authorized against |
 | `20261011063116_review_pr9_cubic_round2` | PR #9 review (cubic, round 2): `update_incident` refuses an empty patch and never detaches an incident from its jornada (`jornada_required`); `drop_demo_data` refuses while a surviving order names a demo material or demo worker; check-in/out and rescheduling under an open blocking incident update the status the order resumes; a supervisor owns a case only inside the order's unit; `upsert_site` locks clients before the site |
 | `20261011065308_review_pr9_cubic_round3` | PR #9 review (cubic, round 3): `referenced_profile_ids` reads every profile reference of a visible order and its records (field capture, incidents, photos, closures, reports, shares, surveys, cases) |
+| `20261011125657_decision_closed_order_reassign` | owner decision 19 (§14): Administración reassigns the supervisor of a closed order (only that field) without reopening it |
 
 Sources of truth mirrored here: `docs/requisitos.md`, `src/lib/types.ts`, `src/lib/permissions.ts`, `src/lib/hooks.ts`,
-`src/lib/store.ts`, `src/lib/domain.ts`. Tests: `supabase/tests/` (all 17 files pass, including the review regression suites
-`09` to `16`; they ignore the rows of the demo dataset). Types: `src/lib/supabase/database.types.ts` (regenerated after migration `20261011043034`).
+`src/lib/store.ts`, `src/lib/domain.ts`. Tests: `supabase/tests/` (all 18 files pass, including the review regression suites
+`09` to `16` and the owner-decision suite `17`; they ignore the rows of the demo dataset). Types: `src/lib/supabase/database.types.ts` (regenerated after migration `20261011043034`).
 
 ---
 
@@ -228,7 +229,7 @@ RPCs take the token instead of an op id.
 | RPC | Permission (scope) | Main server-side rules |
 |---|---|---|
 | `create_order` | order.create (Administración, own unit) | client in unit, site ∈ client, active supervisor of that unit, materials/activities/days validated; folio; starts `borrador` |
-| `update_order` | general fields: order.edit · operational: + order.editOperational (own) | whitelisted keys; closed/cancelled refused; supervisor reassignment within unit, audited "Reasignó la orden de A a B", recorded in `private.order_assignments`, `scope_changed_at` stamped; the order's open cases owned by the former supervisor move to the new one (timeline entry + audit) |
+| `update_order` | general fields: order.edit · operational: + order.editOperational (own) | whitelisted keys; closed/cancelled refused, except the supervisor alone on a finalizada/reporte_enviado/seguimiento order (decision 19); supervisor reassignment within unit, audited "Reasignó la orden de A a B", recorded in `private.order_assignments`, `scope_changed_at` stamped; the order's open cases owned by the former supervisor move to the new one (timeline entry + audit) |
 | `set_order_status` | order.reschedule | flag `reprogramada` (reason ≥ 5) or confirm dates: leaving `reprogramada` goes to the status the jornadas support (`derived_status`); while a blocking incident is open the order stays `con_incidencia` and the requested status becomes `previous_status` (check-in/out and `schedule_jornadas` update it the same way) (dates of an order that resumes `reprogramada` can be confirmed under the incident) — the requested target is not trusted |
 | `cancel_order` | order.edit | open orders only, reason ≥ 5 |
 | `reopen_order` | order.reopen (supervisor, own, still in the order's unit — `supervisor_other_unit`) | finalizada/reporte_enviado/seguimiento → `reabierta`, keeps `previous_status`, stamps `reopened_at` |
@@ -477,7 +478,7 @@ of the integration (phase 1 of §12); the app still runs on its local demo store
 
 - Migrations: `supabase/migrations/<applied version>_<name>.sql`, applied with the MCP `apply_migration` (name = file
   name without version) and verified byte-for-byte (`md5` of `supabase_migrations.schema_migrations.statements[1]` = file
-  `md5`; all 18 match on 2026-10-11). **Never edit an applied file**; fix forward with a new one. Dry run first: one `execute_sql` call
+  `md5`; all 19 match on 2026-10-11). **Never edit an applied file**; fix forward with a new one. Dry run first: one `execute_sql` call
   `begin; <migration>; <tests>; rollback;` (verified to be transactional). Changing an RPC signature: drop the old
   `public.<name>` wrapper, recreate `private.<name>`, call `private.expose_rpc` (which also regenerates the op-args
   digest).
@@ -496,50 +497,53 @@ of the integration (phase 1 of §12); the app still runs on its local demo store
 - Test runs advance the folio sequences and the `audit_log` identity (sequences are not transactional); on an empty
   database reset them with `setval(…, 1, false)` (README of `supabase/tests`).
 
-## 14. Decisiones pendientes (para el dueño)
+## 14. Decisiones (2026-10-11)
 
-1. **Entorno**: hoy todo vive en el proyecto que se usa como producción. Antes del piloto: proyecto de desarrollo/staging
-   o *branching*, y correr ahí las pruebas y las migraciones primero.
-2. **Folios**: empiezan en `OS-00001`, `INC-0001`, `PV-0001`, globales (sin prefijo por unidad). Las secuencias pueden
-   dejar huecos. ¿Número inicial o prefijo por unidad?
-3. **Responsable de casos postventa**: el servidor solo acepta Administración de la unidad o el supervisor de la orden
-   (el prototipo ofrecía cualquier supervisor de la unidad, que luego no vería el caso). ¿Se confirma?
-4. **Catálogos de toda la empresa** (tipos de servicio, materiales): hoy los editan Dirección y Administración (como en el
-   prototipo). ¿Solo Dirección? **Unidades**: solo Dirección (`users.admin`).
-5. **Conformidad del cliente al cerrar**: el servidor la acepta opcional (el diálogo la exige). ¿Obligatoria?
-   ¿La firma se queda como imagen dentro del cierre (≤ 512 kB) o como archivo en Storage?
-6. **Retención**: fotos eliminadas (hoy se conservan), evidencia de órdenes archivadas, bitácora, `sync_ops`, archivos
-   subidos cuyo `add_photo` nunca llegó; límite por foto (10 MB) y plan de almacenamiento. La purga de historial usa
-   `pulkro.history_purge` en un trabajo del servidor: definir plazos.
-7. **PDF del reporte**: hoy se genera en el dispositivo a partir de los datos + `snapshot`. ¿Guardar también el PDF de cada
-   versión en Storage?
-8. **Visibilidad de perfiles para supervisores**: hoy ven su perfil, quienes crearon sus órdenes y responsables de sus
-   casos (nombres de la bitácora vienen guardados en cada registro). ¿Suficiente?
-9. **Carga inicial de Dirección**: cuántos meses de historial bajan al dispositivo.
-10. **Reloj del dispositivo**: hoy se rechaza lo que llega > 5 min adelantado o > 45 días de atraso (también en notas,
-    incidencias, cierres, reportes y envíos). Alternativa: aceptar y marcar (ordenando por hora del servidor). ¿Cuál?
-11. **Correo**: SMTP propio y plantillas en español para invitación y recuperación de contraseña (en el plan gratuito
-    las plantillas no se pueden personalizar con el SMTP por defecto). Cambio de correo de un usuario: falta definir el
-    flujo (Edge Function + RPC para sincronizar `profiles.email`).
-12. **Sesiones**: duración del token, tiempo de inactividad y sesión única por usuario (algunas opciones requieren plan Pro).
-13. **Encuesta pública**: vigencia del enlace y límite de intentos (los tokens ya son de 256 bits). El personal tiene los
-    enlaces y podría contestar desde una ventana privada: ¿basta con la bitácora o se requiere algo más (p. ej. enviar el
-    enlace solo por un canal del cliente)?
-14. **Compartir una versión anterior** del reporte mientras la orden está reabierta: hoy se permite (igual que el prototipo).
-15. **Indicadores/exportaciones**: hoy se calculan en el dispositivo con los datos visibles; si se requieren totales de
-    toda la empresa sin bajar el detalle, agregar vistas/RPC de solo lectura para Dirección y Administración.
-16. **Privacidad y residencia de datos**: proyecto en us-east-1; aviso de privacidad para fotos, GPS y firmas; respaldos
-    (PITR) y política de recuperación.
-17. **Capturas de un supervisor reasignado** (revisión F04): hoy el servidor responde `order_reassigned` y la app las pone
-    en cuarentena para entregarlas a quien tiene la orden. ¿Se acepta en cambio lo capturado *antes* de la reasignación
-    (ventana de gracia, p. ej. 72 h, con hora del dispositivo — que el dispositivo podría falsear) o se guarda en el
-    servidor una bandeja de "capturas por revisar" para Administración?
-18. **Jornada reprogramada con registro sin conexión** (`jornada_rescheduled`): ¿la cuadrilla sí trabajó ese día? Hoy no se
-    revive la jornada; la app ofrece capturar en la jornada vigente. ¿Se permite reactivar la jornada original?
-19. **Órdenes cerradas cuyo supervisor cambió de unidad o rol**: el servidor bloquea el cambio solo con órdenes *abiertas*;
-    las cerradas conservan su supervisor histórico (reabrirlas sigue siendo suyo). ¿Permitir reasignar el responsable de
-    una orden cerrada (seguimiento/reapertura)?
-20. **Envío en lote** (`sync_push` con varias operaciones por llamada) para reconexiones con mucha cola: hoy una llamada por
-    operación. ¿Cuándo vale la pena?
-21. **Escala de Dirección**: la visibilidad se resuelve con la lista de ids de órdenes (rápido hasta decenas de miles).
-    Por encima de ~100 000 órdenes conviene un rol de base de datos propio para Dirección (vía el *hook*).
+El dueño delegó estas decisiones ("your call"). Quedan como valores por defecto: cualquiera se puede revisar después;
+las marcadas **[implementado]** ya están en el servidor y en la app.
+
+1. **Entorno**: por decisión del dueño, la integración de la app se construye y prueba contra el proyecto "Pulkro" con los
+   datos demo. Antes del piloto: plan Pro (respaldos diarios, sin pausa por inactividad) y un proyecto de staging o
+   *branching* para pruebas y migraciones; el demo se quita con `select private.drop_demo_data();` (lo ejecuta el dueño).
+2. **Folios**: globales `OS-00001`, `INC-0001`, `PV-0001`, sin prefijo por unidad; se aceptan huecos (las secuencias no
+   son transaccionales). Mantienen la continuidad con los folios del demo mientras esté cargado.
+3. **Responsable de casos postventa**: Administración de la unidad de la orden o el supervisor de la orden, dentro de la
+   unidad. **[implementado]**
+4. **Catálogos de toda la empresa** (tipos de servicio, materiales): Dirección y Administración (como en el prototipo).
+   Unidades: solo Dirección. **[implementado]**
+5. **Conformidad del cliente**: la app la exige al cerrar; el servidor la acepta opcional para no bloquear un cierre
+   legítimo sin cliente presente (la excepción queda en el reporte). La firma se queda como imagen dentro del cierre
+   (≤ 512 kB): viaja con el cierre y su versión.
+6. **Retención** (a programar con `pg_cron` en la fase 6, usando `pulkro.history_purge`): fotos eliminadas → sus archivos
+   se borran a los 90 días; evidencia de órdenes archivadas → 2 años; bitácora → sin purga; `private.sync_ops` → 90 días;
+   archivos subidos sin `add_photo` → 7 días. Límite por foto: 10 MB (la app comprime a ~1600 px antes de subir).
+7. **PDF del reporte**: se genera en el dispositivo a partir del `snapshot`; no se guarda en Storage (el snapshot congelado
+   es la fuente). Se reconsidera si un cliente pide el PDF archivado.
+8. **Visibilidad de perfiles**: toda persona que aparece en un registro visible (supervisores actuales y anteriores,
+   autores de capturas, cierres, reportes, envíos, encuestas, casos). **[implementado]**
+9. **Carga inicial**: 6 meses de historial para Dirección y Administración; el supervisor baja todas sus órdenes abiertas
+   y 6 meses de cerradas. Lo anterior se consulta en línea.
+10. **Reloj del dispositivo**: se mantiene el rechazo (> 5 min adelantado o > 45 días de atraso), con mensaje para revisar
+    la hora del teléfono. **[implementado]**
+11. **Correo**: por decisión del dueño, el remitente por defecto de Supabase por ahora (solo entrega a miembros del equipo,
+    ~2 correos por hora); plantillas en español en `supabase/templates/`. SMTP propio antes del piloto. Cambio de correo
+    de un usuario: acción `change_email` de la Edge Function `admin-users` (fase 5).
+12. **Sesiones**: token de acceso de 1 h y rotación de *refresh tokens* (valores por defecto). Inactividad y sesión única
+    requieren Pro: se revisan al pasar a Pro.
+13. **Encuesta pública**: un solo envío por enlace, sin vencimiento por ahora; la bitácora registra quién generó y envió
+    cada enlace. Si hace falta, vencimiento a 30 días.
+14. **Compartir una versión anterior** del reporte con la orden reabierta: se permite (como el prototipo). **[implementado]**
+15. **Indicadores/exportaciones**: se calculan en el dispositivo con los datos visibles; vistas/RPC de totales solo si la
+    carga inicial (punto 9) lo exige.
+16. **Privacidad y residencia**: se acepta us-east-1. Antes del piloto: aviso de privacidad (fotos, GPS, firmas) redactado
+    por el dueño/asesor legal y respaldos con Pro.
+17. **Capturas de un supervisor reasignado**: se quedan en cuarentena en el dispositivo y se entregan a quien tiene la
+    orden (sin ventana de gracia, porque la hora del dispositivo se puede falsear). **[implementado]**
+18. **Jornada reprogramada con registro sin conexión**: no se revive la jornada original; la app ofrece capturar en la
+    jornada vigente. **[implementado]**
+19. **Orden cerrada cuyo supervisor cambió de unidad o rol**: Administración puede reasignar el supervisor de una orden
+    finalizada, con reporte enviado o en seguimiento (solo ese campo) sin reabrirla; así el nuevo supervisor puede darle
+    seguimiento o reabrirla. **[implementado: migración `decision_closed_order_reassign`, prueba 17]**
+20. **Envío en lote**: una llamada por operación; se agrega `sync_push` en lote si las colas al reconectar pasan de ~50
+    operaciones.
+21. **Escala de Dirección**: la lista de ids de órdenes basta hasta ~100 000 órdenes; después, rol de base de datos propio.

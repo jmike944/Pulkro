@@ -596,7 +596,11 @@ export const useAppStore = create<AppState>()(
           const ok = allowOrder(general ? ["order.edit"] : ["order.edit", "order.editOperational"], orderId);
           if (!ok) return;
           const { order } = ok;
-          if (isTerminal(order.status)) {
+          // Decision 19: the supervisor alone can still be reassigned on a closed order (finalizada, reporte_enviado,
+          // seguimiento) so follow-up and a reopening are not stranded (server: update_order).
+          const supervisorOnly = keys.length === 1 && keys[0] === "supervisorId";
+          const reassignable: OrderStatus[] = ["finalizada", "reporte_enviado", "seguimiento"];
+          if (isTerminal(order.status) && !(supervisorOnly && reassignable.includes(order.status))) {
             denied(order.status === "cancelada" ? "La orden está cancelada." : CLOSED_ORDER);
             return;
           }
