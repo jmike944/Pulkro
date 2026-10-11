@@ -26,7 +26,7 @@ import { endSessionOnDevice, getSupabaseBrowserClient, getTokenClient, isSupabas
 import { OPEN_STATUSES } from "@/lib/status";
 import type { DataSnapshot, Role } from "@/lib/types";
 import { mapProfile } from "./map";
-import { dropRows, mergeRows, missingRefs, pendingIndex, type CatalogTable, type Drops } from "./merge";
+import { catalogKey, dropRows, mergeRows, missingRefs, pendingIndex, type CatalogTable, type Drops } from "./merge";
 import { usePullStatus } from "./status";
 import {
   CATALOG_TABLES,
@@ -206,7 +206,22 @@ type CommitOptions = {
   subtreeAll?: boolean;
   /** Subtrees fetched in full by this batch. */
   subtreesDone?: string[];
+  /**
+   * When the batch was read: an order (or record) whose queue items reached the server after that is treated as still
+   * unsent — its rows are held and its subtree read again — so a stale read never wipes what was just sent.
+   */
+  readAt?: string;
 };
+
+const nowIso = () => new Date().toISOString();
+
+/** Adds held catalog / people ids to `pull.refetch` (read again by id once their edits are no longer unsent). */
+function withRefetch(refetch: PullState["refetch"], held: Partial<Record<CatalogTable, Set<string>>> | undefined): PullState["refetch"] {
+  if (!held || !Object.values(held).some((ids) => ids?.size)) return refetch;
+  const out: NonNullable<PullState["refetch"]> = { ...(refetch ?? {}) };
+  for (const [t, ids] of Object.entries(held) as [CatalogTable, Set<string>][]) out[t] = [...new Set([...(out[t] ?? []), ...ids])];
+  return out;
+}
 
 /** Fetches what the batch references and the device lacks, then merges batch + references and moves the cursor, atomically. */
 async function commit(ctx: Ctx, batch: RowsByTable, opts: CommitOptions = {}) {
@@ -223,7 +238,7 @@ async function commit(ctx: Ctx, batch: RowsByTable, opts: CommitOptions = {}) {
       return st;
     }
     const pull = st.session.pull!;
-    const pending = pendingIndex(st.sync.queue);
+    const pending = pendingIndex(st.sync.queue, opts.readAt);
     // A subtree read in full is the server's whole truth for that order (merge.ts: `whole`).
     const merged = mergeRows(dataOf(st), combined, pending, { whole: opts.subtreesDone });
     const subtrees = new Set(pull.subtrees);
@@ -253,7 +268,8 @@ async function commit(ctx: Ctx, batch: RowsByTable, opts: CommitOptions = {}) {
     }
     return {
       ...(merged.changed ? merged.data : {}),
-      session: { ...st.session, pull: { ...pull, cursors, subtrees: [...subtrees] } },
+      // A catalog / people row held for its unsent edit is read again by id later: the cursor moves past it now.
+      session: { ...st.session, pull: { ...pull, cursors, subtrees: [...subtrees], refetch: withRefetch(pull.refetch, merged.heldCatalog) } },
     };
   });
   if (aborted) throw new PullError("aborted", "La sesión cambió durante la descarga.");
@@ -311,6 +327,7 @@ async function pullTable(ctx: Ctx, table: SyncTable, opts: { from?: string; subt
   const scopeSince = table === "orders" && startCursor ? ms(startCursor.at) - OVERLAP_MS : undefined;
   let after: { at: string; id: string } | undefined;
   for (let guard = 0; guard < 10_000; guard++) {
+    const readAt = nowIso();
     const rows = await run<RowOf<SyncTable>[]>(page(ctx, table, lower, after));
     if (!rows.length) break;
     const cursor = ctx.store.getState().session.pull?.cursors[table];
@@ -318,7 +335,7 @@ async function pullTable(ctx: Ctx, table: SyncTable, opts: { from?: string; subt
     const fresh = rows.filter((r) => seen[pkValue(table, r)] !== (r as { updated_at: string }).updated_at);
     // Only the overlap came back (already applied, cursor unchanged): nothing to write.
     const unchanged = !fresh.length && !!cursor && rows.every((r) => ms((r as { updated_at: string }).updated_at) <= ms(cursor.at));
-    if (!unchanged) await commit(ctx, { [table]: fresh }, { page: { table, rows }, scopeSince, subtreeAll: opts.subtreeAll });
+    if (!unchanged) await commit(ctx, { [table]: fresh }, { page: { table, rows }, scopeSince, subtreeAll: opts.subtreeAll, readAt });
     if (rows.length < PAGE) break;
     const last = rows[rows.length - 1] as { updated_at: string };
     after = { at: last.updated_at, id: pkValue(table, rows[rows.length - 1]) };
@@ -350,13 +367,14 @@ async function pullSubtrees(ctx: Ctx) {
     if (!due.length) return;
     usePullStatus.setState({ initial: true });
     const chunk = due.slice(0, SUBTREE_CHUNK);
+    const readAt = nowIso();
     const batch: RowsByTable = {};
     batch.orders = await readAll<Row<"orders">>(ctx, "orders", (q) => q.in("id", chunk));
     for (const t of ORDER_TABLES) {
       (batch as Record<string, unknown[]>)[t] = await readAll(ctx, t, (q) => q.in("order_id", chunk));
     }
     // Orders that did not come back are no longer visible: nothing to fetch (reconcile removes local copies).
-    await commit(ctx, batch, { subtreesDone: chunk });
+    await commit(ctx, batch, { subtreesDone: chunk, readAt });
   }
 }
 
@@ -383,11 +401,13 @@ async function firstLoad(ctx: Ctx, me: Row<"profiles">) {
   for (const t of CATALOG_TABLES) await pullTable(ctx, t);
   // Orders changed in the window (this read sets the orders cursor), then the open ones that are older.
   await pullTable(ctx, "orders", { from: since, subtreeAll: true });
+  const openAt = nowIso();
   const open = await readAll<Row<"orders">>(ctx, "orders", (q) => q.in("status", OPEN_STATUSES).lt("updated_at", since));
-  for (let i = 0; i < open.length; i += PAGE) await commit(ctx, { orders: open.slice(i, i + PAGE) }, { subtreeAll: true });
+  for (let i = 0; i < open.length; i += PAGE) await commit(ctx, { orders: open.slice(i, i + PAGE) }, { subtreeAll: true, readAt: openAt });
   // Bitácora lines without an order (catalog and account changes) from the window; order lines come with each subtree.
+  const looseAt = nowIso();
   const loose = await readAll<Row<"audit_log">>(ctx, "audit_log", (q) => q.is("order_id", null).gte("updated_at", since));
-  for (let i = 0; i < loose.length; i += PAGE) await commit(ctx, { audit_log: loose.slice(i, i + PAGE) });
+  for (let i = 0; i < loose.length; i += PAGE) await commit(ctx, { audit_log: loose.slice(i, i + PAGE) }, { readAt: looseAt });
 
   ctx.store.setState((st) => {
     if (!sameSession(st, ctx.userId)) return st;
@@ -401,6 +421,8 @@ async function firstLoad(ctx: Ctx, me: Row<"profiles">) {
 /* ───────────── scope loss ───────────── */
 
 async function reconcile(ctx: Ctx, tables: readonly (typeof RECONCILED_TABLES)[number][]) {
+  // An order created (or a record written) by an item that reached the server after this moment may not be in the answers.
+  const readAt = nowIso();
   const st = ctx.store.getState();
   const local: Record<(typeof RECONCILED_TABLES)[number], string[]> = {
     orders: st.orders.map((o) => o.id),
@@ -431,7 +453,7 @@ async function reconcile(ctx: Ctx, tables: readonly (typeof RECONCILED_TABLES)[n
     if (!sameSession(s, ctx.userId)) return s;
     const me = s.users.find((u) => u.id === ctx.userId);
     const keep = new Set([ctx.userId, me?.unitId ?? ""]);
-    const res = dropRows(dataOf(s), drops, pendingIndex(s.sync.queue), keep);
+    const res = dropRows(dataOf(s), drops, pendingIndex(s.sync.queue, readAt), keep);
     const pull = s.session.pull!;
     // Subtrees of orders that are gone are no longer due.
     const goneOrders = new Set(drops.orders ?? []);
@@ -468,14 +490,26 @@ async function checkSession(ctx: Ctx): Promise<Row<"profiles">> {
   return me;
 }
 
-/** Catalog / people records queued for a fresh read (`pull.refetch`): replaced by the server's row, or removed. */
+/**
+ * Catalog / people records queued for a fresh read (`pull.refetch`): replaced by the server's row, or removed. A record whose
+ * edit is still unsent waits in the list (its row would be held anyway) and is read once the edit went or was discarded.
+ */
 async function refetchRecords(ctx: Ctx) {
-  const want = ctx.store.getState().session.pull?.refetch;
-  if (!want || !Object.values(want).some((ids) => ids?.length)) return;
+  const st0 = ctx.store.getState();
+  const stored = st0.session.pull?.refetch;
+  if (!stored || !Object.values(stored).some((ids) => ids?.length)) return;
+  const pending0 = pendingIndex(st0.sync.queue);
+  const want: NonNullable<PullState["refetch"]> = {};
+  for (const t of CATALOG_TABLES) {
+    const ids = (stored[t] ?? []).filter((id) => isUuid(id) && !pending0.entities.has(catalogKey(t, id)));
+    if (ids.length) want[t] = ids;
+  }
+  if (!Object.keys(want).length) return;
+  const readAt = nowIso();
   const batch: RowsByTable = {};
   const gone: Drops = {};
   for (const t of CATALOG_TABLES) {
-    const ids = (want[t] ?? []).filter(isUuid);
+    const ids = want[t] ?? [];
     if (!ids.length) continue;
     const rows: RowOf<SyncTable>[] = [];
     for (let i = 0; i < ids.length; i += ID_CHUNK) {
@@ -488,14 +522,16 @@ async function refetchRecords(ctx: Ctx) {
   }
   ctx.store.setState((st) => {
     if (!sameSession(st, ctx.userId)) return st;
-    const pending = pendingIndex(st.sync.queue);
+    const pending = pendingIndex(st.sync.queue, readAt);
     const merged = mergeRows(dataOf(st), batch, pending);
     const me = st.users.find((u) => u.id === ctx.userId);
     const dropped = dropRows(merged.data, gone, pending, new Set([ctx.userId, me?.unitId ?? ""]));
     const pull = st.session.pull!;
     const rest: PullState["refetch"] = {};
     for (const t of CATALOG_TABLES) {
-      const left = (pull.refetch?.[t] ?? []).filter((id) => !(want[t] ?? []).includes(id));
+      // Read now: done — unless its row was held (an edit queued meanwhile) or it is missing while an edit is unsent.
+      const keepIt = (id: string) => merged.heldCatalog?.[t]?.has(id) || (gone[t]?.includes(id) && pending.entities.has(catalogKey(t, id)));
+      const left = (pull.refetch?.[t] ?? []).filter((id) => !(want[t] ?? []).includes(id) || keepIt(id));
       if (left.length) rest[t] = left;
     }
     return {
@@ -524,8 +560,13 @@ async function cycle(store: PullStore, opts: { full?: boolean }) {
       aborted = true;
       return st;
     }
-    const user = mapProfile(me);
-    const prev = st.users.find((u) => u.id === user.id);
+    const server = mapProfile(me);
+    const prev = st.users.find((u) => u.id === server.id);
+    // An unsent edit of one's own profile (phone, name…) stays on screen: only what decides access comes from the server.
+    const user =
+      prev && pendingIndex(st.sync.queue).entities.has(`usuario:${server.id}`)
+        ? { ...prev, role: server.role, unitId: server.unitId, active: server.active, email: server.email }
+        : server;
     const sameUser = !!prev && (Object.keys(user) as (keyof typeof user)[]).every((k) => prev[k] === user[k]);
     // A role without view.allUnits never keeps a unit filter (setUnitFilter's rule).
     const unitFilter = me.role === "direccion" ? st.session.unitFilter : "all";

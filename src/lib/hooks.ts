@@ -162,6 +162,17 @@ export function useScopedAudit(): AuditEntry[] {
   }, [raw, user, unitFilter, orderIds]);
 }
 
+/**
+ * Stand-ins for catalog records an order on the device names but the device does not hold (an order kept for its unsent or
+ * refused captures after it moved out of scope): the screens still render, and say so.
+ */
+const missingClient = (o: Order): Client => ({
+  id: o.clientId, name: "Cliente no disponible", shortName: "Cliente no disponible", segment: "Comercial", unitId: o.unitId,
+  contactName: "", contactPhone: "", contactEmail: "", since: o.createdAt, hue: 220, siteIds: [o.siteId],
+});
+const missingSite = (o: Order): Site => ({ id: o.siteId, clientId: o.clientId, name: "Sitio no disponible", address: "", municipality: "", lat: 0, lng: 0 });
+const missingServiceType = (o: Order): ServiceType => ({ id: o.serviceTypeId, name: "Servicio no disponible", short: "Servicio", hue: 220, defaultHoursPerDay: 8 });
+
 /** Everything about one order, by folio ("OS-24817") or id. `null` = not found OR outside the current role's scope (doc §2). */
 export function useOrderBundle(folioOrId: string) {
   const lk = useLookups();
@@ -180,9 +191,9 @@ export function useOrderBundle(folioOrId: string) {
     const jornadas = s.jornadas.filter((j) => j.orderId === order.id).sort((a, b) => a.dayIndex - b.dayIndex);
     return {
       order,
-      client: lk.clients.get(order.clientId)!,
-      site: lk.sites.get(order.siteId)!,
-      serviceType: lk.serviceTypes.get(order.serviceTypeId)!,
+      client: lk.clients.get(order.clientId) ?? missingClient(order),
+      site: lk.sites.get(order.siteId) ?? missingSite(order),
+      serviceType: lk.serviceTypes.get(order.serviceTypeId) ?? missingServiceType(order),
       supervisor: lk.users.get(order.supervisorId)!,
       unit: lk.units.get(order.unitId)!,
       jornadas,

@@ -49,11 +49,16 @@ import { CATALOG_TABLES, SYNC_TABLES, isUuid, type RowOf, type RowsByTable, type
 /** What the device has not sent yet: orders with queue items, and `${entity}:${id}` of every unsent record. */
 export type PendingIndex = { orders: Set<string>; entities: Set<string> };
 
-export function pendingIndex(queue: SyncItem[]): PendingIndex {
+/**
+ * `readAt`: when the rows about to be merged were read. Items that reached the server after that count as unsent too: the
+ * read is older than what they wrote (a check-in sent while a whole subtree was being read must not be wiped by it).
+ */
+export function pendingIndex(queue: SyncItem[], readAt?: string): PendingIndex {
   const orders = new Set<string>();
   const entities = new Set<string>();
+  const since = readAt ? Date.parse(readAt) : NaN;
   for (const q of queue) {
-    if (q.state === "sincronizado") continue;
+    if (q.state === "sincronizado" && !(q.syncedAt && Date.parse(q.syncedAt) >= since)) continue;
     if (q.orderId) orders.add(q.orderId);
     if (q.entity === "orden") orders.add(q.entityId);
     entities.add(`${q.entity}:${q.entityId}`);
@@ -73,6 +78,8 @@ export type MergeResult = {
   held: Set<string>;
   /** Orders some of whose child rows arrived without their parent. */
   orphans: Set<string>;
+  /** Catalog / people rows held back (unsent edits): read again by id once the edit is no longer unsent (`pull.refetch`). */
+  heldCatalog?: Partial<Record<CatalogTable, Set<string>>>;
 };
 
 type Keyed = { id: string };
@@ -152,6 +159,9 @@ const upsertById = <T extends { id?: string; at: string }>(list: T[], item: T): 
   return next.sort(byTime);
 };
 
+/** The queue entity key of a catalog / people record (`catalogo:<id>`, `usuario:<id>`). */
+export const catalogKey = (table: SyncTable, id: string) => `${CATALOG_ENTITY[table]}:${id}`;
+
 const CATALOG_ENTITY: Partial<Record<SyncTable, string>> = {
   profiles: "usuario",
   workers: "catalogo",
@@ -188,7 +198,12 @@ export function mergeRows(data: DataSnapshot, batch: RowsByTable, pending: Pendi
     orphans.add(orderId);
     return false;
   };
-  const catalogHeld = (table: SyncTable, id: string) => pending.entities.has(`${CATALOG_ENTITY[table]}:${id}`);
+  const heldCatalog: Partial<Record<CatalogTable, Set<string>>> = {};
+  const catalogHeld = (table: SyncTable, id: string) => {
+    if (!pending.entities.has(catalogKey(table, id))) return false;
+    (heldCatalog[table as CatalogTable] ??= new Set()).add(id);
+    return true;
+  };
   const patchOrder = (id: string, patch: (o: Order) => Order) => {
     const o = w.get("orders", id);
     if (o) w.put("orders", patch(o));
@@ -343,7 +358,7 @@ export function mergeRows(data: DataSnapshot, batch: RowsByTable, pending: Pendi
   const whole = [...(opts.whole ?? [])].filter((id) => !pending.orders.has(id));
   if (whole.length) replaceSubtrees(w, batch, whole);
 
-  return finish(data, w, pending, { added, held, orphans });
+  return { ...finish(data, w, pending, { added, held, orphans }), heldCatalog };
 }
 
 /** Removes an order and every record that hangs from it (Bitácora lines included). */
@@ -467,12 +482,22 @@ export type Drops = Partial<Record<"orders" | "units" | "profiles" | "workers" |
 
 /**
  * Removes what the account no longer sees (sync_reconcile): orders with everything that hangs from them, and catalog / people
- * records. Orders with unsent work stay (the push decides about them), and so do records with unsent edits and `keep`
- * (the signed-in account and its unit).
+ * records. Orders with unsent work stay (the push decides about them), and so do records with unsent edits, `keep` (the
+ * signed-in account and its unit) and every record an order that stays names: an order kept for its unsent or refused
+ * captures after it moved out of scope still shows its client, site, service type, people and crew (RLS hides them now).
  */
-export function dropRows(data: DataSnapshot, drops: Drops, pending: PendingIndex = NO_PENDING, keep: Set<string> = new Set()): MergeResult {
+export function dropRows(data: DataSnapshot, drops: Drops, pending: PendingIndex = NO_PENDING, keepIds: Set<string> = new Set()): MergeResult {
   const none = { added: new Set<string>(), held: new Set<string>(), orphans: new Set<string>() };
-  const orderIds = new Set((drops.orders ?? []).filter((id) => !pending.orders.has(id) && !keep.has(id)));
+  const orderIds = new Set((drops.orders ?? []).filter((id) => !pending.orders.has(id) && !keepIds.has(id)));
+  const keep = new Set(keepIds);
+  if (drops.units?.length || drops.profiles?.length || drops.workers?.length || drops.clients?.length || drops.sites?.length || drops.service_types?.length || drops.materials?.length) {
+    for (const o of data.orders) {
+      if (orderIds.has(o.id)) continue;
+      for (const id of [o.clientId, o.siteId, o.serviceTypeId, o.unitId, o.supervisorId, o.createdBy, ...o.materials.map((m) => m.materialId)]) keep.add(id);
+      for (const c of o.crewHistory) c.workerIds.forEach((w) => keep.add(w));
+    }
+    for (const j of data.jornadas) if (!orderIds.has(j.orderId)) j.workerIds.forEach((w) => keep.add(w));
+  }
   const ids = (table: keyof Drops, entity: string) =>
     new Set((drops[table] ?? []).filter((id) => !keep.has(id) && !pending.entities.has(`${entity}:${id}`)));
   const units = ids("units", "catalogo");
