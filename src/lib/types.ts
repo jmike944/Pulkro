@@ -388,9 +388,42 @@ export type AuditEntry = {
   orderId?: string;
   action: string; // "Cambió estado a Programada"
   reason?: string;
+  /**
+   * Account sessions, lines written on this device: the queue operation (`p_op_id`) that recorded them. The server's own
+   * lines carry the same op id (audit_log.op_id) and replace these when they are pulled.
+   */
+  opId?: string;
 };
 
+/**
+ * pendiente: waiting to be sent (or to be retried after `nextAt`) · sincronizando: being sent · sincronizado: on the server ·
+ * error: the server did not apply it (`problem` says why); it stays on the device until the person retries or discards it.
+ */
 export type SyncState = "pendiente" | "sincronizando" | "sincronizado" | "error";
+
+/** Account sessions: the RPC a queue item sends (architecture §8). */
+export type SyncOp = {
+  /** `public.<rpc>`. */
+  rpc: string;
+  /** Its exact named arguments, `p_op_id` included: every retry sends this same object (the server binds the op id to them). */
+  args: Record<string, unknown>;
+  /** The item created its record on this device (a new client, site…): discarding it removes the record here. */
+  creates?: boolean;
+  /**
+   * add_photo: the picture goes to Storage first (bucket `evidencias`, never upserted). `uploaded` once Storage has it, so a
+   * retry resumes at the RPC; `released` once the device copy (IndexedDB `blobKey`) was freed after a pull confirmed it.
+   */
+  upload?: { path: string; blobKey: string; uploaded?: boolean; released?: boolean };
+};
+
+/** Why an item is waiting or stopped. `message` is what the person reads (usted); code / hint are the server's. */
+export type SyncProblem = {
+  /** reintento: tried again later · conflicto: the server's state refused it (quarantine) · error: invalid or not allowed. */
+  kind: "reintento" | "conflicto" | "error";
+  message: string;
+  code?: string;
+  hint?: string;
+};
 
 export type SyncItem = {
   id: string;
@@ -401,6 +434,17 @@ export type SyncItem = {
   orderId?: string;
   state: SyncState;
   bytes?: number;
+  /** Account sessions: what is sent. Demo items have none (the demo simulates the server). */
+  op?: SyncOp;
+  /** Records this item needs on the server first (`${entity}:${id}` of a client, site, worker… created on this device). */
+  deps?: string[];
+  /** Failed attempts that are retried (network, server busy, a parent still on its way). */
+  attempts?: number;
+  firstFailAt?: string;
+  /** Earliest next attempt after a failure. */
+  nextAt?: string;
+  problem?: SyncProblem;
+  syncedAt?: string;
 };
 
 export type DataSnapshot = {
