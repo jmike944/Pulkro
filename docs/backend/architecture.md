@@ -504,7 +504,8 @@ One RPC per queue item keeps generated TypeScript types for every argument (a ba
   discards that did not stick, pull cursors moved past rows a tab never applied, re-read lists erased — so it was dropped.
   Now one tab holds the data:
   - **Writer epoch**: `writer-epoch` is stored next to `device-owner`. A tab becomes the writer by incrementing it in one
-    transaction and remembering its value. Every save checks the epoch and the owner in the same readwrite transaction as
+    transaction and remembering its value; it never acts as the writer before that write is stored (a full device: the
+    blocker asks to free space and the claim is retried). Every save checks the epoch and the owner in the same readwrite transaction as
     the save, and is refused unless both are still what this tab expects. A refused tab stops writing for good, drops its
     data from memory and shows the blocker, so a tab that was frozen while another took over is harmless when it wakes up.
     The push and pull engines check the epoch too, before every RPC and every pull cycle (`sync/writer.ts`): a tab that lost
@@ -519,8 +520,11 @@ One RPC per queue item keeps generated TypeScript types for every argument (a ba
   - Without Web Locks (older browsers, insecure origins): the epoch alone, plus a "writer?" question and a "writer"
     announcement on the channel. A writer that hears a newer epoch has lost; a waiting tab asks again when the writer's page
     goes away or when it becomes visible.
-  - Only once it holds the epoch does a tab read IndexedDB and hydrate the store. The other tabs never read, persist, push
-    or pull.
+  - Only once it holds the epoch does a tab read IndexedDB and hydrate the store; a read that keeps failing is never
+    hydrated over (the blocker offers to retry). The other tabs never read, persist, push or pull. A writer that steps
+    aside shows the blocker at once and saves until nothing is pending, so a capture landing meanwhile goes with it.
+    With one writer there is no cross-tab push lock: during a takeover the old tab stops at its next epoch check, and a
+    request already in flight is deduplicated by its op id.
   - A sign-out, or another account's sign-in, counts this tab's unsent items plus the queue saved on the device (and, when
     this tab holds no account, the account saved there — a save that failed may have left it). The previous account's photo
     blobs are deleted only once the save that hands the device to the new account has committed.

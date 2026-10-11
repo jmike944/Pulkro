@@ -110,7 +110,7 @@ export function pushQueue(store: Store): Promise<void> {
     try {
       do {
         again = false;
-        await exclusive(store, () => burst(store));
+        await burst(store);
       } while (again && canPush(store.getState()));
     } catch (e) {
       console.warn("[push]", e instanceof Error ? e.message : e);
@@ -152,16 +152,6 @@ export function retryItems(store: Store, ids?: string[]) {
     },
   }));
   return pushQueue(store);
-}
-
-/**
- * Bursts run one after the other (Web Locks where available). One tab per device sends (lib/device-storage); during a
- * takeover the old writer's last burst may still be under way while the new one starts: the lock keeps them apart.
- */
-async function exclusive(store: Store, run: () => Promise<void>) {
-  const locks = typeof navigator !== "undefined" ? (navigator as Navigator & { locks?: LockManager }).locks : undefined;
-  if (!locks?.request) return run();
-  await locks.request(`pulkro-push:${store.getState().session.userId}`, run);
 }
 
 function schedule(store: Store) {

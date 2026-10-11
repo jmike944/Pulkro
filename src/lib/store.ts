@@ -35,7 +35,7 @@ import { plural } from "./format";
 import { DONE_STATUSES, OPEN_STATUSES } from "./status";
 import { DEMO_ENABLED, DEMO_SIGN_IN } from "./demo";
 import { clearPhotoFiles, deletePhotoFile, evictKeptPhotos } from "./photo-store";
-import { becomeWriter, createDeviceStorage, flushWrite, isQuotaError, registerTab } from "./device-storage";
+import { becomeWriter, createDeviceStorage, flushWrite, isQuotaError, registerTab, writerState } from "./device-storage";
 import { requestPull, verifyAccount, type PullRequest, type PullState } from "./sync/pull";
 import { breakdownArg, daysArg, diffPatch, localDay, materialsArg, orderPatch, rpcOp, type MutationRpc, type RpcArgs } from "./sync/ops";
 import { discardItems, pushQueue, releaseBlobs, resumeAfterReconnect, retryItems } from "./sync/push";
@@ -686,9 +686,11 @@ export const useAppStore = create<AppState>()(
             session: signedOutSession(),
             sync: { forcedOffline: false, browserOffline: st.sync.browserOffline, queue: [], lastSyncAt: nowIso(), processing: false, clock: st.sync.clock },
           }));
-          // Write the empty state now (not after the debounce): the account's records leave IndexedDB with the sign-out.
-          void flushWrite();
-          void clearPhotoFiles();
+          // Write the empty state now (not after the debounce): the account's records leave IndexedDB with the sign-out. Its
+          // photo blobs go once that is on the device: a tab that lost the device meanwhile deletes nothing of the writer's.
+          void flushWrite().then((saved) => {
+            if (saved === "committed") void clearPhotoFiles();
+          });
           // The login screen's demo picker needs the demo dataset back (when the build offers it).
           getState().ensureSeeded();
         },
@@ -1929,6 +1931,8 @@ async function boot() {
   // blocker shows («Pulkro está abierta en otra ventana»), and nothing here reads, writes, sends or pulls.
   await becomeWriter();
   await useAppStore.persist.rehydrate();
+  // The device could not be read: never start from nothing over the data that is there (the blocker offers to retry).
+  if (writerState() !== "writer") return;
   // A reload in the middle of an upload leaves items "sincronizando": put them back in line (retried once online below).
   // Sessions saved before account sign-in existed have no mode: they are demo sessions.
   useAppStore.setState((st) => ({

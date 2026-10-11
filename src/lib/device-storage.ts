@@ -101,15 +101,21 @@ const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 /* ───────────── the writer ───────────── */
 
 /**
- * "starting": finding out (a few milliseconds). "writer": this tab holds the device. "blocked": another tab does (the
- * blocker shows). "taking": «Usar aquí» was pressed, the writer is saving and stepping aside. "kept": the writer could not
- * save what it holds and stays. "lost": this tab was the writer and another took over (it starts over behind the blocker).
+ * "starting": finding out, or claiming the epoch (a few milliseconds). "writer": this tab holds the device. "blocked":
+ * another tab does (the blocker shows). "taking": «Usar aquí» was pressed, the writer is saving and stepping aside. "kept":
+ * the writer could not save what it holds and stays. "handing": this tab is saving and stepping aside for another.
+ * "lost": another tab took over (this one starts over behind the blocker). "full": the device refuses even the epoch's
+ * write (storage full): this tab waits, without the data, until it can. "unreadable": the device could not be read.
  */
-export type WriterState = "starting" | "writer" | "blocked" | "taking" | "kept" | "lost";
+export type WriterState = "starting" | "writer" | "blocked" | "taking" | "kept" | "handing" | "lost" | "full" | "unreadable";
 
 let writer: WriterState = browser ? "starting" : "writer";
-/** This tab's writer epoch; undefined until claimed (or when the claim could not be stored: the first write claims it). */
+/** This tab's writer epoch, once claimed: a tab is never the writer without one stored. */
 let epoch: number | undefined;
+/** This tab holds the lock (or, without Web Locks, decided to claim): it is claiming, or it is the writer. */
+let held = false;
+/** Another tab takes the device: this one stops claiming. */
+let gaveUp = false;
 const watchers = new Set<() => void>();
 
 function setWriter(next: WriterState) {
@@ -124,6 +130,9 @@ export function subscribeWriter(fn: () => void): () => void {
   return () => watchers.delete(fn);
 }
 
+/** This tab writes the device: the writer, or the writer saving what it holds before it steps aside. */
+const writing = () => !left && (writer === "writer" || writer === "handing");
+
 type Locks = {
   request(name: string, options: { ifAvailable?: boolean; steal?: boolean; signal?: AbortSignal }, run: (lock: unknown) => Promise<void>): Promise<void>;
 };
@@ -132,14 +141,17 @@ const locks = (): Locks | undefined => {
   return typeof l?.request === "function" ? l : undefined;
 };
 
+/** A message id (crypto.randomUUID exists only on secure origins). */
+const messageId = () => Array.from(crypto.getRandomValues(new Uint8Array(16)), (b) => b.toString(16).padStart(2, "0")).join("");
+
 let becoming: Promise<void> | undefined;
 let becameWriter = () => {};
 /** The queued request of a tab waiting for the lock (aborted when it takes over instead). */
 let waiting: AbortController | undefined;
 
 /**
- * Resolves once this tab holds the device (its writer epoch): only then may it read IndexedDB and hydrate the store. While
- * another tab holds it, this tab stays behind the blocker (WriterGate) and the promise waits.
+ * Resolves once this tab holds the device (its writer epoch stored): only then may it read IndexedDB and hydrate the
+ * store. While another tab holds it, this tab stays behind the blocker (WriterGate) and the promise waits.
  */
 export function becomeWriter(): Promise<void> {
   if (!becoming) {
@@ -172,18 +184,22 @@ function requestLock(how: "first" | "wait" | "steal") {
       return;
     }
     waiting = undefined;
+    held = true;
+    // Claiming: «Usar aquí» is not offered any more (it would take the lock from this very tab).
+    if (writer === "blocked" || writer === "kept") setWriter("starting");
     await claim();
     // Held while this tab lives: a takeover reloads this tab (or steals the lock from it).
     await new Promise<void>(() => {});
   }).catch(() => {
-    // The queued request was aborted (this tab takes over instead), or the lock was stolen from this tab: it lost the device.
-    if (writer === "writer") loseWriter();
+    // The queued request was aborted (this tab takes over instead): nothing. The lock was stolen from this tab (it held
+    // it): another tab took the device.
+    if (held) loseWriter();
   });
 }
 
-/** The epoch, incremented in one transaction (retried a little: a full device can refuse even this small write). */
+/** One attempt at incrementing the epoch in one transaction (a full device first frees the copies of server photos). */
 async function claimEpoch(): Promise<number | undefined> {
-  for (let attempt = 0; attempt < 3; attempt++) {
+  for (let evicted = false; ; evicted = true) {
     try {
       let next = 0;
       await idb!("readwrite", (store) => {
@@ -195,19 +211,46 @@ async function claimEpoch(): Promise<number | undefined> {
         return promisifyRequest(store.transaction);
       });
       return next;
-    } catch {
-      await sleep(300 * (attempt + 1));
+    } catch (error) {
+      if (evicted || !isQuotaError(error) || !hooks) return undefined;
+      await hooks.evict().catch(() => undefined);
     }
   }
-  // Still refused: this tab works from memory and its first write that the device accepts claims the epoch.
-  return undefined;
 }
 
+let retryClaimNow: (() => void) | undefined;
+/** «Reintentar ahora» while the device is full ("full"). */
+export function retryClaim() {
+  retryClaimNow?.();
+}
+
+/**
+ * Claims the epoch, then this tab is the writer. A tab never becomes the writer without its epoch stored: it could not
+ * fence off a late write of the tab it replaced. When the device refuses even this small write, the tab waits without the
+ * data ("full": the blocker asks to free space) and tries again.
+ */
 async function claim() {
-  epoch = await claimEpoch();
-  setWriter("writer");
-  post({ t: "writer", epoch });
-  becameWriter();
+  held = true;
+  for (let attempt = 0; !gaveUp; attempt++) {
+    const claimed = await claimEpoch();
+    if (gaveUp) return;
+    if (claimed !== undefined) {
+      epoch = claimed;
+      setWriter("writer");
+      post({ t: "writer", epoch });
+      becameWriter();
+      return;
+    }
+    setWriter("full");
+    await new Promise<void>((resolve) => {
+      const t = setTimeout(resolve, Math.min(30_000, 2000 * 2 ** Math.min(attempt, 4)));
+      retryClaimNow = () => {
+        clearTimeout(t);
+        resolve();
+      };
+    });
+    retryClaimNow = undefined;
+  }
 }
 
 /** Without Web Locks: is a writer there? None answers → this tab becomes it. */
@@ -226,7 +269,7 @@ async function probe() {
       resolve(false);
     }, PROBE_MS);
   });
-  if (writer === "writer" || writer === "taking") return;
+  if (held || writer === "taking" || writer === "lost") return;
   if (answered) setWriter("blocked");
   else await claim();
 }
@@ -236,11 +279,11 @@ async function probe() {
  * answer (frozen, discarded) loses it anyway; one that cannot save what it holds keeps it ("kept").
  */
 export function takeOver() {
-  if (writer !== "blocked" && writer !== "kept") return;
+  if (held || (writer !== "blocked" && writer !== "kept")) return;
   setWriter("taking");
   waiting?.abort();
   waiting = undefined;
-  const id = crypto.randomUUID();
+  const id = messageId();
   let done = false;
   let timer: ReturnType<typeof setTimeout> | undefined;
   const finish = (how: "take" | "kept") => {
@@ -248,6 +291,7 @@ export function takeOver() {
     done = true;
     clearTimeout(timer);
     channel?.removeEventListener("message", onMessage);
+    if (held || writer === "lost") return;
     if (how === "kept") {
       setWriter("kept");
       if (locks()) requestLock("wait");
@@ -268,42 +312,69 @@ export function takeOver() {
   timer = setTimeout(() => finish("take"), channel ? ACK_MS : 0);
 }
 
-/** The writer's side of «Usar aquí»: stop, save what is pending, step aside (or say it cannot). */
-let handingOver = false;
+/** The writer's side of «Usar aquí»: stop, save what is pending, step aside (or say it cannot). Every requester is answered. */
+const requesters = new Set<string>();
 async function handOver(id: string) {
-  if (handingOver) return;
-  handingOver = true;
+  requesters.add(id);
   post({ t: "releasing", id });
+  if (writer === "handing") return;
+  // The blocker shows at once: nothing new is captured here while it saves.
+  setWriter("handing");
   hooks?.halt(true);
-  const saved = await flushWrite();
+  let saved: SaveResult;
+  // What lands while a write is under way (a photo still being compressed…) goes with the next one.
+  do saved = await flushWrite();
+  while (saved === "committed" && pending);
   if (saved === "failed") {
     // What this tab holds is not on the device: stepping aside would lose it.
-    handingOver = false;
+    setWriter("writer");
     hooks?.halt(false);
-    post({ t: "kept", id });
+    for (const r of requesters) post({ t: "kept", id: r });
+    requesters.clear();
     return;
   }
+  // From here nothing more is written: everything this tab holds is on the device (same task as the last check).
+  stopWriting();
+  for (const r of requesters) post({ t: "released", id: r });
+  requesters.clear();
+  startOver();
+}
+
+/** A tab that holds the lock but not the data (claiming, a full device, an unreadable one) lets another tab take it. */
+function giveUp(id: string) {
+  post({ t: "releasing", id });
+  stopWriting();
   post({ t: "released", id });
-  loseWriter();
+  startOver();
+}
+
+function stopWriting() {
+  left = true;
+  gaveUp = true;
+  pending = null;
+  clearTimeout(timer);
+  hooks?.halt(true);
+}
+
+/** Drops the data from memory and starts over: a fresh page waits behind the blocker (and takes the device when it is free). */
+function startOver() {
+  if (writer === "lost" || !browser) return;
+  hooks?.drop();
+  setWriter("lost");
+  window.location.reload();
 }
 
 /** Another tab holds the device now: stop writing for good, drop the data from memory, start over behind the blocker. */
 function loseWriter() {
   if (writer === "lost" || !browser) return;
-  left = true;
-  pending = null;
-  clearTimeout(timer);
-  hooks?.halt(true);
-  hooks?.drop();
-  setWriter("lost");
-  // A fresh page waits for the device behind the blocker (and takes it when the other tab closes).
-  window.location.reload();
+  stopWriting();
+  startOver();
 }
 
 /** The stored epoch is still this tab's (the push and pull engines ask before every request: sync/writer.ts). */
 async function stillWriter(): Promise<boolean> {
   if (left || writer !== "writer") return false;
-  if (!idb || epoch === undefined) return true;
+  if (!idb) return true;
   let stored: unknown;
   try {
     stored = await get(EPOCH_KEY, idb);
@@ -334,26 +405,22 @@ export const isQuotaError = (e: unknown) =>
   !!e && typeof e === "object" && ((e as { name?: string }).name === "QuotaExceededError" || /quota/i.test(String((e as { message?: string }).message ?? "")));
 
 async function commitNow(w: Write, evicted: boolean): Promise<SaveResult> {
-  if (!idb || left || writer !== "writer") return "refused";
+  if (!idb || !writing() || ownerSeen === undefined) return "refused";
   const expected = ownerSeen;
   // Optimistic: transactions on the store run in the order they are created, so the next write already expects this owner.
   ownerSeen = w.owner;
   let refused: "epoch" | "owner" | undefined;
-  let claimed: number | undefined;
   try {
     await idb("readwrite", (store) => {
       const owner = store.get(OWNER_KEY);
       const current = store.get(EPOCH_KEY);
       // Requests complete in order: the owner is read by now.
       current.onsuccess = () => {
-        const stored = typeof current.result === "number" ? current.result : undefined;
-        if (epoch === undefined) claimed = (stored ?? 0) + 1;
-        else if (stored !== epoch) return void (refused = "epoch");
+        if (current.result !== epoch) return void (refused = "epoch");
         const storedOwner = owner.result as DeviceOwner | undefined;
         if (storedOwner !== undefined && storedOwner !== expected) return void (refused = "owner");
         store.put(JSON.stringify(w.value), w.name);
         store.put(w.owner, OWNER_KEY);
-        if (claimed !== undefined) store.put(claimed, EPOCH_KEY);
       };
       return promisifyRequest(store.transaction);
     });
@@ -384,7 +451,6 @@ async function commitNow(w: Write, evicted: boolean): Promise<SaveResult> {
     if (expected !== undefined) leaveDevice();
     return "refused";
   }
-  if (claimed !== undefined) epoch = claimed;
   base = w.value;
   if (failing) {
     failing = false;
@@ -400,7 +466,8 @@ async function commitNow(w: Write, evicted: boolean): Promise<SaveResult> {
  */
 export function flushWrite(): Promise<SaveResult> {
   clearTimeout(timer);
-  if (!pending) return serial(async () => (left || writer !== "writer" ? "refused" : failing ? "failed" : "committed"));
+  // Nothing waiting: whatever this tab holds is on the device — unless it does not write it (or never read it).
+  if (!pending) return serial(async () => (!writing() || ownerSeen === undefined ? "refused" : failing ? "failed" : "committed"));
   const w = pending;
   pending = null;
   return serial(() => commitNow(w, false));
@@ -430,7 +497,20 @@ export function createDeviceStorage<S extends { session?: SessionLike }>(): Pers
       // Only the writer reads the device (bootstrapStore waits for becomeWriter first).
       if (!idb || writer !== "writer") return null;
       dataKey = name;
-      const [raw, owner] = await getMany<unknown>([name, OWNER_KEY], idb);
+      let got: unknown[] | undefined;
+      for (let attempt = 0; attempt < 3 && !got; attempt++) {
+        try {
+          got = await getMany<unknown>([name, OWNER_KEY], idb);
+        } catch {
+          await sleep(300 * (attempt + 1));
+        }
+      }
+      // Never start from nothing over data that is there: this tab does not hydrate (the blocker offers to try again).
+      if (!got) {
+        setWriter("unreadable");
+        throw new Error("No se pudieron leer los datos del dispositivo.");
+      }
+      const [raw, owner] = got;
       const value = parse(raw) ?? null;
       // Devices saved before the owner was stored: the saved session says whose data it is.
       ownerSeen = (owner as DeviceOwner | undefined) ?? ownerOf((value?.state as { session?: SessionLike } | undefined)?.session);
@@ -439,7 +519,7 @@ export function createDeviceStorage<S extends { session?: SessionLike }>(): Pers
     },
     setItem: (name, value) => {
       // Not the writer, or the device not read yet (a write would clobber data this tab never saw): nothing is written.
-      if (!idb || left || writer !== "writer" || ownerSeen === undefined) return;
+      if (!idb || !writing() || ownerSeen === undefined) return;
       const v = value as unknown as Value;
       // A store update that changed nothing persisted (a no-op setState): nothing to write.
       const last = pending?.value ?? base;
@@ -453,7 +533,7 @@ export function createDeviceStorage<S extends { session?: SessionLike }>(): Pers
       timer = setTimeout(() => void flushWrite(), Date.now() - pendingSince >= 1000 ? 0 : 350);
     },
     removeItem: async (name) => {
-      if (idb && writer === "writer" && !left) await del(name, idb);
+      if (idb && writing()) await del(name, idb);
     },
   };
 }
@@ -519,7 +599,7 @@ export function leaveDevice() {
 /* ───────────── between tabs ───────────── */
 
 type Message =
-  /** The writer, once it holds the device (and to answer "writer?"): `epoch` undefined while its claim is not stored. */
+  /** The writer, once it holds the device (and to answer "writer?"). */
   | { t: "writer"; epoch?: number }
   /** Without Web Locks: is a writer there? */
   | { t: "writer?" }
@@ -544,11 +624,14 @@ function post(message: Message) {
 
 channel?.addEventListener("message", (event: MessageEvent<Message>) => {
   const m = event.data;
-  if (writer === "writer" && !left) {
+  if ((writer === "writer" || writer === "handing") && !left) {
     if (m.t === "writer?") post({ t: "writer", epoch });
     // Another tab claimed a newer epoch (it stole the lock, or took over without Web Locks): this one lost.
-    else if (m.t === "writer" && m.epoch !== undefined && (epoch === undefined || m.epoch > epoch)) loseWriter();
+    else if (m.t === "writer" && m.epoch !== undefined && epoch !== undefined && m.epoch > epoch) loseWriter();
     else if (m.t === "release?") void handOver(m.id);
+  } else if (held && !left && m.t === "release?") {
+    // Claiming, or waiting on a full or unreadable device: this tab holds no data, so it lets the other take over.
+    giveUp(m.id);
   } else if (writer === "blocked" && m.t === "bye" && !locks()) {
     void probe();
   }
