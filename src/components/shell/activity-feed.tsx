@@ -16,7 +16,7 @@ import {
   XCircle,
   type LucideIcon,
 } from "lucide-react";
-import type { AuditEntry, Incident, Order, PostSaleCase, Role, User } from "@/lib/types";
+import type { AuditEntry, Incident, Order, PostSaleCase, Role, Survey, User } from "@/lib/types";
 import { useCurrentUser, useLookups, useNow, useScopedData } from "@/lib/hooks";
 import { cn } from "@/lib/utils";
 import { fmtAgo } from "@/lib/format";
@@ -50,6 +50,10 @@ type Ctx = {
   cases: Map<string, PostSaleCase>;
   /** Orders that already have a survey link (no "send the survey" nudge then). */
   surveyed: Set<string>;
+  surveys: Map<string, Survey>;
+  /** Orders / cases reassigned at some point: their creation entry no longer says who it was assigned to. */
+  reassignedOrders: Set<string>;
+  reassignedCases: Set<string>;
 };
 
 const WINDOW_DAYS = 30;
@@ -69,7 +73,7 @@ function toNotice(a: AuditEntry, c: Ctx): Omit<Notice, "unread" | "id" | "at" | 
   const mine = order?.supervisorId === c.me.id;
 
   if (a.entity === "orden") {
-    if (t === "Alta manual de orden de servicio" && role === "supervisor" && mine)
+    if (t === "Alta manual de orden de servicio" && role === "supervisor" && mine && !c.reassignedOrders.has(order.id))
       return {
         icon: ClipboardPlus,
         tone: "navy",
@@ -83,20 +87,16 @@ function toNotice(a: AuditEntry, c: Ctx): Omit<Notice, "unread" | "id" | "at" | 
       return { icon: CalendarClock, tone: "amber", title: "Cambiaron las fechas", body: `${actor} reprogramó ${ref}.`, href: `${orderHref}?tab=jornadas` };
     if (t === "Cambió estado a Cancelada")
       return { icon: XCircle, tone: "red", title: "Orden cancelada", body: `${actor} canceló ${ref}.`, href: orderHref };
-    if (t === "Cambió estado a Reabierta")
-      return {
-        icon: RotateCcw,
-        tone: "amber",
-        title: "Orden reabierta",
-        body: role === "supervisor" && mine ? `${actor} reabrió ${ref}. Valida el cierre de nuevo.` : `${actor} reabrió ${ref}.`,
-        href: orderHref,
-      };
+    // Only the assigned supervisor can act on a reopened order (re-validate the closure).
+    if (t === "Cambió estado a Reabierta" && role === "supervisor" && mine)
+      return { icon: RotateCcw, tone: "amber", title: "Orden reabierta", body: `${actor} reabrió ${ref}. Valida el cierre de nuevo.`, href: orderHref };
     return null;
   }
 
   if (a.entity === "incidencia" && t.startsWith("Registró incidencia") && role !== "supervisor") {
     const inc = c.incidents.get(a.entityId);
-    if (!inc || !(inc.blocksClosure || inc.severity === "alta")) return null;
+    // Blocking incidents for both management roles; non-blocking high severity only for Administración.
+    if (!inc || !(inc.blocksClosure || (inc.severity === "alta" && role === "administracion"))) return null;
     const what = INCIDENT_TYPE[inc.type]?.label.toLowerCase() ?? "incidencia";
     return {
       icon: TriangleAlert,
@@ -107,7 +107,8 @@ function toNotice(a: AuditEntry, c: Ctx): Omit<Notice, "unread" | "id" | "at" | 
     };
   }
 
-  if (a.entity === "reporte" && t.startsWith("Inició envío") && role === "administracion" && !(order && c.surveyed.has(order.id)))
+  // A PDF download ("Inició envío por descarga") is not a delivery to the client.
+  if (a.entity === "reporte" && /^Inició envío por (WhatsApp|correo)$/.test(t) && role === "administracion" && !(order && c.surveyed.has(order.id)))
     return {
       icon: FileCheck2,
       tone: "teal",
@@ -120,16 +121,26 @@ function toNotice(a: AuditEntry, c: Ctx): Omit<Notice, "unread" | "id" | "at" | 
     const cs = c.cases.get(a.entityId);
     const folio = cs?.folio ?? t.replace("Abrió caso postventa ", "");
     const href = cs ? `/postventa/${cs.folio}` : "/postventa";
-    if (cs?.ownerId === c.me.id)
+    if (cs?.ownerId === c.me.id && !c.reassignedCases.has(cs.id))
       return { icon: MessageSquareWarning, tone: "violet", title: "Te asignaron un caso", body: `${actor} abrió ${folio} en ${ref} y te lo asignó.`, href };
     if (role === "supervisor" && !mine) return null;
     return { icon: MessageSquareWarning, tone: "violet", title: "Nuevo caso postventa", body: `${actor} abrió ${folio} en ${ref}.`, href };
   }
 
+  if (a.entity === "caso") {
+    const to = t.match(/^Reasignó el caso a (.+?)\.?$/)?.[1];
+    const cs = c.cases.get(a.entityId);
+    if (to && to === c.me.name && cs)
+      return { icon: MessageSquareWarning, tone: "violet", title: "Te asignaron un caso", body: `${actor} te pasó ${cs.folio} de ${ref}.`, href: `/postventa/${cs.folio}` };
+    return null;
+  }
+
   if (a.entity === "encuesta") {
-    const m = t.match(/^Cliente respondió encuesta \((\d)\/5\)$/);
-    if (!m) return null;
-    const score = Number(m[1]);
+    // Client answers by link and answers captured manually by staff both notify; the score comes from the survey record.
+    const byLink = t.match(/^Cliente respondió encuesta \((\d)\/5\)$/);
+    if (!byLink && t !== "Registró respuesta de encuesta manualmente") return null;
+    const score = c.surveys.get(a.entityId)?.answers?.overall ?? (byLink ? Number(byLink[1]) : NaN);
+    if (!Number.isFinite(score)) return null;
     if (role === "direccion" && score > 3) return null;
     if (role === "supervisor" && !mine) return null;
     const low = score <= 3;
@@ -189,6 +200,9 @@ function useNotifications() {
     const incById = new Map(incidents.map((i) => [i.id, i]));
     const caseById = new Map(cases.map((x) => [x.id, x]));
     const surveyed = new Set(surveys.map((x) => x.orderId));
+    const surveyById = new Map(surveys.map((x) => [x.id, x]));
+    const reassignedOrders = new Set(audit.filter((x) => x.entity === "orden" && x.action.startsWith("Reasignó la orden")).map((x) => x.entityId));
+    const reassignedCases = new Set(audit.filter((x) => x.entity === "caso" && x.action.startsWith("Reasignó el caso")).map((x) => x.entityId));
     const seenKeys = new Set<string>();
     const out: Notice[] = [];
     for (const a of [...audit].sort((x, y) => (x.at < y.at ? 1 : -1))) {
@@ -205,6 +219,9 @@ function useNotifications() {
         incidents: incById,
         cases: caseById,
         surveyed,
+        surveys: surveyById,
+        reassignedOrders,
+        reassignedCases,
       });
       if (!n) continue;
       // One notice per kind per order (a report sent by WhatsApp and by email is one "Reporte enviado").
@@ -388,8 +405,13 @@ function bellLabel(unread: number) {
 export function ActivityBell({ compact = false, className }: { compact?: boolean; className?: string }) {
   const { unread, markSeen } = useNotifications();
   const swing = useBellSwing(unread);
+  const [open, setOpen] = useState(false);
+  const onOpenChange = (v: boolean) => {
+    setOpen(v);
+    if (!v) markSeen();
+  };
   return (
-    <Popover onOpenChange={(open) => !open && markSeen()}>
+    <Popover open={open} onOpenChange={onOpenChange}>
       <PopoverTrigger
         aria-label={bellLabel(unread)}
         className={cn(
@@ -408,7 +430,7 @@ export function ActivityBell({ compact = false, className }: { compact?: boolean
         sideOffset={10}
         className="flex max-h-[min(620px,calc(100dvh-96px))] w-[min(400px,calc(100vw-24px))] flex-col overflow-hidden rounded-[22px] p-0"
       >
-        <NotificationPanel />
+        <NotificationPanel onNavigate={() => onOpenChange(false)} />
       </PopoverContent>
     </Popover>
   );

@@ -512,8 +512,10 @@ function Preview({ hit, onRun }: { hit: Hit; onRun: (h: Hit) => void }) {
 
   if (hit.kind === "cliente") {
     const c = hit.client;
-    const theirs = orders.filter((o) => o.clientId === c.id).sort((a, b) => b.scheduledStart.localeCompare(a.scheduledStart));
-    const last = theirs[0];
+    // A service counts once its closure is validated (same criterion as the client metrics).
+    const last = orders
+      .filter((o) => o.clientId === c.id && o.closure?.validatedAt)
+      .sort((a, b) => (b.closure?.validatedAt ?? "").localeCompare(a.closure?.validatedAt ?? ""))[0];
     return (
       <PreviewFrame
         top={
@@ -526,7 +528,7 @@ function Preview({ hit, onRun }: { hit: Hit; onRun: (h: Hit) => void }) {
         rows={[
           ["Contacto", c.contactName],
           ["Órdenes", `${hit.orders} en tu alcance`],
-          last && ["Último servicio", `${last.folio}, ${fmtDay(last.scheduledStart)}`],
+          last?.closure && ["Último servicio", `${last.folio}, ${fmtDay(last.closure.validatedAt)}`],
         ]}
         actions={<PrimaryAction onClick={() => onRun(hit)}>Abrir cliente</PrimaryAction>}
       />

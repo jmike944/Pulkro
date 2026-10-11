@@ -27,11 +27,11 @@ export function BitacoraView() {
   const description =
     user.role === "supervisor" ? (
       <>
-        <b>{plural(audit.length, "movimiento", "movimientos")}</b> en sus órdenes asignadas y los que usted registró. Cada cambio guarda usuario, hora y motivo.
+        <b>{plural(audit.length, "movimiento", "movimientos")}</b> en sus órdenes asignadas y los que usted registró. Cada cambio guarda usuario y hora, y el motivo cuando se indica.
       </>
     ) : (
       <>
-        {scope}: <b>{plural(audit.length, "movimiento", "movimientos")}</b> en la bitácora. Cada cambio guarda usuario, hora y motivo.
+        {scope}: <b>{plural(audit.length, "movimiento", "movimientos")}</b> en la bitácora. Cada cambio guarda usuario y hora, y el motivo cuando se indica.
       </>
     );
 
