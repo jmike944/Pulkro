@@ -5,6 +5,8 @@ import { AnimatePresence, motion } from "motion/react";
 import { Camera, Check, CircleCheck, EyeOff, ImagePlus, LoaderCircle, Lock, Sparkles, Wand2 } from "lucide-react";
 import { toast } from "sonner";
 import { SCENE_AREAS } from "@/lib/seed";
+import { useDemoSession } from "@/lib/hooks";
+import { PermissionDeniedError } from "@/lib/store";
 import type { Photo, SceneKind } from "@/lib/types";
 import { useEdgeFade } from "@/components/pk/edge-fade";
 import { CAPTURE_HELP, areaSuggestions, usePhotoCapture, type CaptureMeta } from "@/components/pk/photo-capture";
@@ -107,6 +109,7 @@ function FieldCaptureButtons({
   const camRef = useRef<HTMLInputElement>(null);
   const galRef = useRef<HTMLInputElement>(null);
   const { capture, simulate, busy } = usePhotoCapture();
+  const demo = useDemoSession();
   const meta: CaptureMeta = {
     orderId: f.order.id,
     jornadaId: f.jornada.id,
@@ -125,12 +128,17 @@ function FieldCaptureButtons({
     input.value = "";
   };
 
-  const demo = () => {
+  const addSample = () => {
     const twin = kind === "despues" ? f.antes.find((p) => p.area === meta.area && p.source.type === "scene") : undefined;
     const opts = twin?.source.type === "scene" ? { scene: twin.source.scene, seed: twin.source.seed } : { scene: sceneForArea(meta.area) };
-    const id = simulate(meta, opts);
-    onCaptured?.([id]);
-    toast.success(`Foto ${kind === "antes" ? "ANTES" : "DESPUÉS"} de ejemplo`, { description: meta.area || "Sin área" });
+    try {
+      const id = simulate(meta, opts);
+      onCaptured?.([id]);
+      toast.success(`Foto ${kind === "antes" ? "ANTES" : "DESPUÉS"} de ejemplo`, { description: meta.area || "Sin área" });
+    } catch (e) {
+      // The store already told the user why it refused.
+      if (!(e instanceof PermissionDeniedError)) throw e;
+    }
   };
 
   return (
@@ -144,17 +152,19 @@ function FieldCaptureButtons({
         <Button type="button" variant="outline" disabled={busy} onClick={() => galRef.current?.click()} aria-label="Elegir de la galería" className="h-12 rounded-[14px] bg-surface px-3.5">
           <ImagePlus /> <span className="hidden min-[420px]:inline">Galería</span>
         </Button>
-        <Button
-          type="button"
-          variant="ghost"
-          disabled={busy}
-          onClick={demo}
-          aria-label="Agregar una foto de ejemplo (demo sin cámara)"
-          title="Agregar una foto de ejemplo (demo sin cámara)"
-          className="h-12 rounded-[14px] px-3.5 text-subtle"
-        >
-          <Wand2 /> <span className="hidden min-[420px]:inline">Simular</span>
-        </Button>
+        {demo && (
+          <Button
+            type="button"
+            variant="ghost"
+            disabled={busy}
+            onClick={addSample}
+            aria-label="Agregar una foto de ejemplo (demo sin cámara)"
+            title="Agregar una foto de ejemplo (demo sin cámara)"
+            className="h-12 rounded-[14px] px-3.5 text-subtle"
+          >
+            <Wand2 /> <span className="hidden min-[420px]:inline">Simular</span>
+          </Button>
+        )}
       </div>
       <p className="mt-2.5 text-[12.5px] leading-snug text-subtle">{CAPTURE_HELP}</p>
     </div>

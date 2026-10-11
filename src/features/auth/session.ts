@@ -2,7 +2,6 @@
 
 import type { SupabaseBrowserClient } from "@/lib/supabase/client";
 import { unsentCount, useAppStore } from "@/lib/store";
-import { DEMO_ENABLED } from "@/lib/demo";
 import { mapProfile, mapUnit } from "@/lib/sync/map";
 import type { Unit, User } from "@/lib/types";
 import { NETWORK_MESSAGE, NO_PROFILE_MESSAGE, isNetworkFailure } from "./auth-errors";
@@ -51,7 +50,4 @@ export function otherAccountOnDevice(userId: string): { name: string; unsent: nu
 }
 
 /** Demo-only controls (role switch, demo reset): never for an account session, whatever the build. */
-export function useDemoControls(): boolean {
-  const mode = useAppStore((s) => s.session.mode);
-  return DEMO_ENABLED && mode !== "supabase";
-}
+export { useDemoSession as useDemoControls } from "@/lib/hooks";

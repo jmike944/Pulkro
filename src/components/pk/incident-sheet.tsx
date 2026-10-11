@@ -6,7 +6,7 @@ import { ArrowRight, Camera, ChevronLeft, CircleHelp, Clock, Hammer, ImagePlus, 
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { attempt, PermissionDeniedError, useAppStore } from "@/lib/store";
-import { DEMO_ENABLED } from "@/lib/demo";
+import { useDemoSession } from "@/lib/hooks";
 import type { CaptureInput } from "@/lib/photo-store";
 import { useMediaQuery, useOrderBundle, type OrderBundle } from "@/lib/hooks";
 import { fmtDay, plural } from "@/lib/format";
@@ -97,6 +97,7 @@ export function IncidentSheet({
   const updatePhoto = useAppStore((s) => s.updatePhoto);
   const deletePhoto = useAppStore((s) => s.deletePhoto);
   const { capture, simulate } = usePhotoCapture();
+  const demo = useDemoSession();
 
   const choosing = !orderId && !!pickOrder;
   const [picked, setPicked] = useState<string | null>(null);
@@ -287,7 +288,7 @@ export function IncidentSheet({
         placeholder="¿Qué pasó, dónde y qué se hizo al respecto?"
         hint="Se guarda con su usuario, la fecha y la hora."
       />
-      <PhotoField photos={photos} busy={capturingNow} onFiles={(files, input) => void addFiles(files, input)} onSample={addSample} onRemove={removePhoto} />
+      <PhotoField photos={photos} busy={capturingNow} onFiles={(files, input) => void addFiles(files, input)} onSample={demo ? addSample : undefined} onRemove={removePhoto} />
       <BlocksToggle checked={blocks} onChange={setBlocks} status={order.status} />
     </>
   );
@@ -676,7 +677,8 @@ function PhotoField({
   photos: Photo[];
   busy: boolean;
   onFiles: (files: File[], input: CaptureInput) => void;
-  onSample: () => void;
+  /** "Simular": demo sessions only. */
+  onSample?: () => void;
   onRemove: (id: string) => void;
 }) {
   const camRef = useRef<HTMLInputElement>(null);
@@ -700,7 +702,7 @@ function PhotoField({
         <Button type="button" variant="outline" disabled={busy} onClick={() => galRef.current?.click()} className="h-11 rounded-[12px] px-3.5">
           <ImagePlus /> Galería
         </Button>
-        {DEMO_ENABLED && (
+        {onSample && (
           <Button
             type="button"
             variant="ghost"

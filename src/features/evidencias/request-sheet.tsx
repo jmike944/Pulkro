@@ -6,7 +6,8 @@ import { AnimatePresence, motion } from "motion/react";
 import { ArrowUpRight, Camera, ImagePlus, Loader2, Wand2 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
-import { useMediaQuery } from "@/lib/hooks";
+import { useDemoSession, useMediaQuery } from "@/lib/hooks";
+import { PermissionDeniedError } from "@/lib/store";
 import { plural } from "@/lib/format";
 import { Sheet, SheetContent, SheetDescription, SheetFooter, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
@@ -203,6 +204,7 @@ function PhoneRequest({
 }) {
   const { model: m, remind, afterCapture, canCapture, canClose } = useRequestModel(request);
   const { capture, simulate, busy } = usePhotoCapture();
+  const demo = useDemoSession();
   const camRef = useRef<HTMLInputElement>(null);
   const galRef = useRef<HTMLInputElement>(null);
   const [area, setArea] = useState(() => request.reference[0]?.area ?? "");
@@ -289,22 +291,29 @@ function PhoneRequest({
           <BigButton onClick={() => camRef.current?.click()} disabled={busy}>
             {busy ? <Loader2 className="animate-spin" /> : <Camera />} Tomar foto {m.kindLabel}
           </BigButton>
-          <div className="grid grid-cols-2 gap-2.5">
+          <div className={cn("grid gap-2.5", demo && "grid-cols-2")}>
             <Button variant="outline" disabled={busy} onClick={() => galRef.current?.click()} className="h-12 rounded-[14px] border-line-strong text-[15px] font-semibold">
               <ImagePlus /> Galería
             </Button>
-            <Button
-              variant="outline"
-              disabled={busy}
-              onClick={() => {
-                const id = simulate(meta);
-                toast.success("Foto de ejemplo agregada");
-                afterCapture([id], { toast: false });
-              }}
-              className="h-12 rounded-[14px] border-line-strong text-[15px] font-semibold"
-            >
-              <Wand2 /> Simular
-            </Button>
+            {demo && (
+              <Button
+                variant="outline"
+                disabled={busy}
+                onClick={() => {
+                  try {
+                    const id = simulate(meta);
+                    toast.success("Foto de ejemplo agregada");
+                    afterCapture([id], { toast: false });
+                  } catch (e) {
+                    // The store already told the user why it refused.
+                    if (!(e instanceof PermissionDeniedError)) throw e;
+                  }
+                }}
+                className="h-12 rounded-[14px] border-line-strong text-[15px] font-semibold"
+              >
+                <Wand2 /> Simular
+              </Button>
+            )}
           </div>
           <p className="text-center text-[12px] leading-snug text-subtle">{CAPTURE_HELP}</p>
         </>
