@@ -10,8 +10,9 @@
  *   { action: "deactivate",   opId, userId }   update_profile {active:false} (caller's JWT; revokes sessions, returns
  *   { action: "reactivate",   opId, userId }   open_orders), then ban / unban through the admin API.
  *   { action: "change_email", opId, userId, email }
- *       admin updateUserById {email, email_confirm:true}, then sync_profile_email (caller's JWT); if the sync is refused,
- *       the auth e-mail goes back to the previous one (an unknown outcome leaves it: the same request again completes it).
+ *       admin updateUserById {email, email_confirm:true}, then sync_profile_email (caller's JWT); if the database refuses the
+ *       sync (any 4xx), the auth e-mail goes back to the previous one; an unknown outcome (no answer, 5xx) leaves it, and the
+ *       same request again completes it; email_changed (another change of the same account won the race) leaves it too.
  *
  * 200 → { ok: true, action, duplicate, user_id, profile, open_orders?, invite_pending? }   (`profile` = the public.profiles
  *       row as the caller reads it after the change, or null if that read failed: the next pull brings it)
@@ -103,7 +104,11 @@ const MSG = {
   emailTaken: "Ese correo ya pertenece a otra cuenta de Pulkro Cuadrillas: use uno distinto.",
   emailInvalid: "Escriba un correo completo, como nombre@empresa.com.",
   outOfScope: "No encontrado o fuera de su alcance.",
+  emailChanged: "Otra persona de Dirección cambió el correo de esta cuenta al mismo tiempo. Actualice la pantalla y revise el correo actual.",
 } as const;
+
+/** change_email: the login holds another request's address now (two changes of the same account at once). */
+const emailChanged = () => new Failure(409, "email_changed", MSG.emailChanged);
 
 const NETWORK_RE = /failed to fetch|fetch failed|networkerror|load failed|network request failed|connection|timed? ?out/i;
 
@@ -352,7 +357,7 @@ async function invite(ctx: Ctx, req: InviteRequest) {
         fail(
           409,
           "email_taken",
-          "Ese correo ya pertenece a una cuenta de Pulkro Cuadrillas. Si es la misma persona, búsquela en la lista y, si está desactivada, reactívela.",
+          "Ese correo ya pertenece a una cuenta de Pulkro Cuadrillas. Si es la misma persona, búsquela en la lista y, si está desactivada, reactívela. Si aún no ha aceptado su invitación, no se puede reenviar: pídale que use «¿Olvidó su contraseña?» con ese correo para definir su contraseña.",
         );
       }
       throw dbFailure(replay.error, replay.status);
@@ -430,10 +435,13 @@ async function changeEmail(ctx: Ctx, req: EmailRequest) {
 
   const found = await ctx.admin.auth.admin.getUserById(req.userId);
   if (found.error || !found.data?.user) throw authFailure(found.error, "lookup");
-  const previous = found.data.user.email ?? "";
+  const authUser = found.data.user;
+  const previous = authUser.email ?? "";
   // Never accepted the invitation: the old link went to the old address, so the person sets a password through
-  // "¿Olvidó su contraseña?" with the new one (the account is confirmed below).
-  const invitePending = !!found.data.user.invited_at && !found.data.user.email_confirmed_at;
+  // "¿Olvidó su contraseña?" with the new one. Read from what this change leaves alone: accepting an invitation always signs
+  // the person in (last_sign_in_at), while the e-mail update below confirms the account — so a retry after a lost answer
+  // still reports it (email_confirmed_at would already be set by the first attempt).
+  const invitePending = !!authUser.invited_at && !authUser.last_sign_in_at;
 
   let changedAuth = false;
   if (previous.toLowerCase() !== req.email) {
@@ -457,22 +465,33 @@ async function changeEmail(ctx: Ctx, req: EmailRequest) {
     profile,
   });
 
-  const synced = await ctx.db.rpc("sync_profile_email", { p_op_id: req.opId, p_user_id: req.userId });
+  // p_email: the database syncs only if the login still holds THIS request's address (another Dirección may have changed
+  // it in between) and refuses with email_changed otherwise.
+  const synced = await ctx.db.rpc("sync_profile_email", { p_op_id: req.opId, p_user_id: req.userId, p_email: req.email });
   if (synced.error) {
     const failure = dbFailure(synced.error, synced.status);
-    if (failure.status >= 500) {
-      // Unknown outcome (network, timeout, 5xx): the sync may have committed, so the login is never undone on a guess.
+    if (synced.status === 0 || synced.status >= 500) {
+      // Unknown outcome (no answer, timeout, 5xx): the sync may have committed, so the login is never undone on a guess.
       // Sending the same request again completes it without repeating anything.
       const now = await readProfile(ctx, req.userId);
       if (now?.email === req.email) return done(now, false);
       throw failure;
     }
-    // A definite refusal: nothing changed in the profile, so the login goes back too.
+    // The login now holds another request's address: it is that request's to keep, nothing to undo here.
+    if (synced.error.hint === "email_changed") throw emailChanged();
+    // Any other answer of the database (PTnnn, 401, a PostgREST 4xx such as an RPC missing from its schema cache) is a
+    // definite refusal: the transaction did not commit, nothing changed in the profile, so the login goes back too.
     await restoreLogin("sync refused");
     throw failure;
   }
-  const result = synced.data as RpcResult;
+  const result = synced.data as (RpcResult & { email?: unknown }) | null;
   const now = await readProfile(ctx, req.userId);
+  const syncedEmail = typeof result?.email === "string" ? result.email : now?.email;
+  if (!result?.duplicate && syncedEmail !== undefined && syncedEmail !== req.email) {
+    // The profile copied another address than this request's (a database without the p_email check): the login is the
+    // other request's now, so it stays, and this request is not reported as done.
+    throw emailChanged();
+  }
   if (result?.duplicate && changedAuth && now?.email !== req.email) {
     // This op was applied before and the address changed again since (the stored result does not re-sync the profile):
     // the login goes back to what it was instead of differing from the profile. (When the profile already holds this
