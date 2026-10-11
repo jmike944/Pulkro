@@ -9,6 +9,7 @@ import { ArrowRight, ChevronLeft, CircleAlert, ClipboardList, Lock, Sparkles } f
 import { cn } from "@/lib/utils";
 import { useAppStore, useCan, useCurrentUser, useIsOffline, useLookups, useMediaQuery, useScopedData, useShallow } from "@/lib/hooks";
 import { useUi } from "@/lib/ui-store";
+import { attempt } from "@/lib/store";
 import { fmtDay, fmtHours, plural } from "@/lib/format";
 import { ORDER_STATUS } from "@/lib/status";
 import { canSeeOrder } from "@/lib/permissions";
@@ -79,7 +80,9 @@ function NoPermission({ role }: { role: Role }) {
           </Button>
         }
       >
-        Las órdenes las dan de alta Administración y los supervisores. Desde Dirección puede consultar órdenes, indicadores y exportaciones.
+        {role === "direccion"
+          ? "Solo Administración da de alta órdenes. Desde Dirección puede consultar órdenes, indicadores y exportaciones."
+          : "Solo Administración da de alta órdenes. Usted recibe las que le asignan y programa su cuadrilla."}
       </EmptyState>
     </div>
   );
@@ -97,7 +100,7 @@ function NewOrderWizard() {
   const { clients, users, serviceTypes, materials, allOrders } = useAppStore(
     useShallow((s) => ({ clients: s.clients, users: s.users, serviceTypes: s.serviceTypes, materials: s.materials, allOrders: s.orders })),
   );
-  const { orders: scopedOrders } = useScopedData();
+  const { orders: scopedOrders, unitFilter } = useScopedData();
 
   /* Clients the creator may open orders for: their own unit. */
   const allowedClients = useMemo(() => clients.filter((c) => c.unitId === user.unitId), [clients, user.unitId]);
@@ -124,11 +127,13 @@ function NewOrderWizard() {
   const title = draft.titleEdited ? draft.title : suggestedTitle(service, site?.name);
   const folio = created?.folio ?? provisionalFolio(allOrders);
 
-  const duplicateRefFolio = useMemo(() => {
+  // The reference must be unique company-wide, so the match is global; its folio is only named when the creator may open it.
+  const duplicateRef = useMemo(() => {
     const ref = normalizeRef(draft.commercialRef);
     if (!ref) return undefined;
-    return allOrders.find((o) => o.status !== "cancelada" && o.commercialRef.toUpperCase() === ref)?.folio;
-  }, [allOrders, draft.commercialRef]);
+    const match = allOrders.find((o) => o.status !== "cancelada" && o.commercialRef.toUpperCase() === ref);
+    return match ? { folio: canSeeOrder(user, match, unitFilter) ? match.folio : undefined } : undefined;
+  }, [allOrders, draft.commercialRef, user, unitFilter]);
 
   const supervisors = useMemo(
     () =>
@@ -139,8 +144,8 @@ function NewOrderWizard() {
   );
 
   const issuesByStep = useMemo(
-    () => STEPS.map((_, i) => validateStep(i, draft, { today, title, duplicateRefFolio })),
-    [draft, today, title, duplicateRefFolio],
+    () => STEPS.map((_, i) => validateStep(i, draft, { today, title, duplicateRef })),
+    [draft, today, title, duplicateRef],
   );
   const done = issuesByStep.map((x) => !x.first);
   /** valid AND already visited — what the stepper and summary show as complete */
@@ -186,7 +191,9 @@ function NewOrderWizard() {
       } else reveal();
       return;
     }
-    const order = createOrder(toInput(draft, title, canAssign));
+    // A refusal the form didn't anticipate was already toasted by the store: stay on the review step.
+    const order = attempt(() => createOrder(toInput(draft, title, canAssign)));
+    if (!order) return;
     setCreated(order);
     useUi.getState().fireCelebrate();
     const handedOff = !canSeeOrder(user, order, "all");
@@ -211,7 +218,7 @@ function NewOrderWizard() {
     step === 0 ? (
       <StepClient {...common} clients={allowedClients} orders={scopedOrders} />
     ) : step === 1 ? (
-      <StepService {...common} serviceTypes={serviceTypes} materials={materials} orders={allOrders} title={title} />
+      <StepService {...common} serviceTypes={serviceTypes} materials={materials} orders={scopedOrders} title={title} />
     ) : step === 2 ? (
       <StepSchedule {...common} user={user} canAssign={canAssign} supervisors={supervisors} orders={scopedOrders} today={today} />
     ) : (

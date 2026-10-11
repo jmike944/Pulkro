@@ -11,7 +11,7 @@ import { PulkroMark } from "@/components/pk/brand";
 import { Button } from "@/components/ui/button";
 import { Dialog } from "@/components/ui/dialog";
 import { contactFor, surveyMessage, surveyUrl } from "./lib";
-import { DialogPanel, outlineBtnCls } from "./ui";
+import { DialogPanel, REASON_POSTVENTA, outlineBtnCls } from "./ui";
 
 export type SurveyTarget = { s: Survey; order: Order; client?: Client };
 
@@ -50,15 +50,15 @@ export function shareSurveyEmail({ s, order, client }: SurveyTarget) {
 }
 
 /** QR to show on the supervisor's phone so the client answers on site. */
-export function SurveyQrDialog({ target, onOpenChange }: { target: SurveyTarget | null; onOpenChange: (open: boolean) => void }) {
+export function SurveyQrDialog({ target, canManage, onOpenChange }: { target: SurveyTarget | null; canManage: boolean; onOpenChange: (open: boolean) => void }) {
   return (
     <Dialog open={!!target} onOpenChange={onOpenChange}>
-      {target && <QrBody key={target.s.id} target={target} />}
+      {target && <QrBody key={target.s.id} target={target} canManage={canManage} />}
     </Dialog>
   );
 }
 
-function QrBody({ target }: { target: SurveyTarget }) {
+function QrBody({ target, canManage }: { target: SurveyTarget; canManage: boolean }) {
   const { s, order, client } = target;
   const url = surveyUrl(s.token);
   const [copied, setCopied] = useState(false);
@@ -87,19 +87,21 @@ function QrBody({ target }: { target: SurveyTarget }) {
           <Button
             variant="outline"
             className={outlineBtnCls}
+            disabled={!canManage}
             onClick={() => {
               void copySurveyLink(s.token).then(() => setCopied(true));
             }}
           >
             {copied ? <Check className="text-teal-fg" /> : <Copy />} {copied ? "Copiado" : "Copiar enlace"}
           </Button>
-          <Button variant="outline" className={outlineBtnCls} onClick={() => shareSurveyWhatsapp(target)}>
+          <Button variant="outline" className={outlineBtnCls} disabled={!canManage} onClick={() => shareSurveyWhatsapp(target)}>
             <MessageCircle /> WhatsApp
           </Button>
-          <Button variant="outline" className={outlineBtnCls} onClick={() => shareSurveyEmail(target)}>
+          <Button variant="outline" className={outlineBtnCls} disabled={!canManage} onClick={() => shareSurveyEmail(target)}>
             <Mail /> Correo
           </Button>
         </div>
+        {!canManage && <p className="mt-3 text-center text-[12.5px] leading-snug text-subtle">{REASON_POSTVENTA}</p>}
       </div>
     </DialogPanel>
   );

@@ -5,12 +5,14 @@ import { motion } from "motion/react";
 import { Check, Search, TriangleAlert } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAppStore } from "@/lib/store";
+import { useScopedData } from "@/lib/hooks";
 import { Input } from "@/components/ui/input";
 import { PersonAvatar } from "./bits";
 
 /**
  * Variable crew selection (doc §4.1: "cuadrillas variables por servicio").
- * Flags workers already booked on the same dates in another open jornada.
+ * Flags workers already booked on the same dates in another open jornada. The conflict is always flagged, but the folio is
+ * only named when the order is in the current role's scope (doc §2); otherwise it reads "Otra cuadrilla · dd/MM".
  */
 export function CrewPicker({
   unitId,
@@ -31,6 +33,7 @@ export function CrewPicker({
   const workers = useAppStore((s) => s.workers);
   const jornadas = useAppStore((s) => s.jornadas);
   const orders = useAppStore((s) => s.orders);
+  const { orderIds: visibleOrderIds } = useScopedData();
   const [q, setQ] = useState("");
 
   const busy = useMemo(() => {
@@ -39,9 +42,12 @@ export function CrewPicker({
     const m = new Map<string, string>();
     jornadas
       .filter((j) => j.orderId !== excludeOrderId && j.status !== "cerrada" && dateSet.has(j.date))
-      .forEach((j) => j.workerIds.forEach((w) => m.set(w, `${folios.get(j.orderId)} · ${j.date.slice(8)}/${j.date.slice(5, 7)}`)));
+      .forEach((j) => {
+        const where = visibleOrderIds.has(j.orderId) ? (folios.get(j.orderId) ?? "Otra cuadrilla") : "Otra cuadrilla";
+        j.workerIds.forEach((w) => m.set(w, `${where} · ${j.date.slice(8)}/${j.date.slice(5, 7)}`));
+      });
     return m;
-  }, [jornadas, orders, dates, excludeOrderId]);
+  }, [jornadas, orders, visibleOrderIds, dates, excludeOrderId]);
 
   const list = useMemo(
     () =>

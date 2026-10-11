@@ -3,7 +3,7 @@
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { useAppStore, useCan, useCurrentUser, useJornadaBundle, useLookups, useNow } from "@/lib/hooks";
-import { closureBlockers, jornadaMinutes, orderEvidence, orderMinutes, whatsappLink } from "@/lib/domain";
+import { GEO_SOURCE_LABEL, closureBlockers, jornadaMinutes, orderEvidence, orderMinutes, whatsappLink } from "@/lib/domain";
 import { firstName, fmtDuration, plural } from "@/lib/format";
 import type { Tone } from "@/lib/status";
 import { useUi } from "@/lib/ui-store";
@@ -46,7 +46,7 @@ function buildModel(request: EvidenceRequest, bundle: Bundle, user: User, now: D
   if (jornada.checkIn)
     history.push({
       id: "in", at: jornada.checkIn.deviceAt, title: "Entrada registrada", tone: "blue",
-      detail: `GPS ±${Math.round(jornada.checkIn.accuracy)} m${jornada.checkIn.offline ? " · sin conexión" : ""}`,
+      detail: `${jornada.checkIn.source === "gps" ? `GPS ±${Math.round(jornada.checkIn.accuracy)} m` : GEO_SOURCE_LABEL[jornada.checkIn.source]}${jornada.checkIn.offline ? " · sin conexión" : ""}`,
     });
   if (antesOfJornada[0])
     history.push({

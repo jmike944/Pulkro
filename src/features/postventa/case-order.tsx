@@ -12,6 +12,7 @@ import { fmtDate, fmtDay, fmtHours, plural } from "@/lib/format";
 import { INCIDENT_TYPE, SEVERITY, toneSoftBg, toneText } from "@/lib/status";
 import { AvatarStack, PersonAvatar, SectionHeader } from "@/components/pk/bits";
 import { INCIDENT_ICONS } from "@/components/pk/incident-sheet";
+import { useCanSeeRoute } from "@/components/shell/use-can-see-route";
 import { BeforeAfter, PhotoThumb } from "@/components/pk/scene-photo";
 import { OrderStatusPill, SoftBadge, TonePill } from "@/components/pk/status";
 import { rowVariants, staggerContainer } from "@/components/pk/motion";
@@ -106,7 +107,10 @@ export function CaseOrderCard({ bundle }: { bundle: OrderBundle }) {
 
 /** Incidents recorded during the original execution (context for the complaint). */
 export function CaseOrderIncidents({ bundle }: { bundle: OrderBundle }) {
-  const { incidents } = bundle;
+  const { incidents, order } = bundle;
+  const canSee = useCanSeeRoute();
+  // /incidencias is the supervisor's screen; Dirección and Administración read the same incident inside the order.
+  const incidentHref = (id: string) => (canSee("/incidencias") ? `/incidencias?i=${id}` : `/ordenes/${order.folio}?tab=incidencias`);
   return (
     <section>
       <SectionHeader title="Incidencias durante el servicio" subtitle={incidents.length ? plural(incidents.length, "incidencia registrada", "incidencias registradas") : undefined} />
@@ -119,7 +123,7 @@ export function CaseOrderIncidents({ bundle }: { bundle: OrderBundle }) {
             const Icon = INCIDENT_ICONS[i.type];
             return (
               <motion.li key={i.id} variants={rowVariants} className="border-b border-hairline last:border-0">
-                <Link href={`/incidencias?i=${i.id}`} className="group flex items-start gap-3.5 py-4">
+                <Link href={incidentHref(i.id)} className="group flex items-start gap-3.5 py-4">
                   <span className={cn("inline-flex size-9 shrink-0 items-center justify-center rounded-[11px]", toneSoftBg[meta.tone], toneText[meta.tone])}>
                     <Icon className="size-[17px]" />
                   </span>

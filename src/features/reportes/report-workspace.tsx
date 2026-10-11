@@ -61,8 +61,9 @@ export function ReportWorkspace({ bundle }: { bundle: OrderBundle }) {
   const reportPhotos = useMemo(() => photos.filter(isReportPhoto).sort((a, b) => a.takenAt.localeCompare(b.takenAt)), [photos]);
   const selectedIds = useMemo(() => reportPhotos.filter((p) => p.selectedForReport).map((p) => p.id), [reportPhotos]);
   const pendingPhotoIds = useMemo(() => new Set(pendingSync.filter((q) => q.entity === "foto").map((q) => q.entityId)), [pendingSync]);
-  // Reopened after closure (doc §8): any later edit must ship as a new version, even with the same photos/text.
-  const reopened = order.status === "reabierta";
+  // Reopened after closure (doc §8): once the closure is validated again, the next report must be a new version even with the same
+  // photos/text (while the closure is pending, the builder shows ClosureGate instead of this workspace).
+  const reopened = !!order.reopenedAt && (!latest || latest.generatedAt < order.reopenedAt);
   const dirty = reopened || isDirty(latest, selectedIds, summary);
   const nextVersion = (latest?.version ?? 0) + 1;
   const task = outputs.task?.orderId === order.id ? outputs.task : null;

@@ -3,7 +3,7 @@
 import { useMemo, useState } from "react";
 import Link from "next/link";
 import { motion } from "motion/react";
-import { CalendarDays, Mail, Phone, Scale, Star } from "lucide-react";
+import { CalendarDays, ClipboardList, Mail, Phone, Scale, Star } from "lucide-react";
 import { parseISO, startOfYear, subDays } from "date-fns";
 import { cn } from "@/lib/utils";
 import { useNow, useScopedData } from "@/lib/hooks";
@@ -116,8 +116,9 @@ export function SupervisorsTab({ data }: { data: TeamData }) {
                     <a href={`mailto:${u.email}`} aria-label={`Escribir a ${u.name}`} className="inline-flex size-10 items-center justify-center rounded-[12px] border border-hairline text-ink transition hover:bg-muted">
                       <Mail className="size-4" />
                     </a>
-                    <Link href="/agenda" aria-label="Abrir agenda" className="inline-flex size-10 items-center justify-center rounded-[12px] border border-hairline text-ink transition hover:bg-muted">
-                      <CalendarDays className="size-4" />
+                    {/* the agenda is the supervisor's own screen: here, their orders */}
+                    <Link href={`/ordenes?sup=${u.id}`} aria-label={`Ver órdenes de ${u.name}`} className="inline-flex size-10 items-center justify-center rounded-[12px] border border-hairline text-ink transition hover:bg-muted">
+                      <ClipboardList className="size-4" />
                     </Link>
                   </div>
                 </div>

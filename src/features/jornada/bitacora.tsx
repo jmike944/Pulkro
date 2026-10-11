@@ -14,7 +14,7 @@ import { EASE } from "@/components/pk/motion";
 import { BigButton, FieldCaption, FlowHeading, FlowScreen } from "@/components/pk/mobile";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { Chip, FieldSectionTitle, Gate } from "./field-bits";
+import { Chip, FieldSectionTitle, Gate, stampHow } from "./field-bits";
 import { FlowEyebrow } from "./flow-bits";
 import type { FieldReady } from "./use-field-state";
 
@@ -142,7 +142,7 @@ export function Bitacora({ f }: { f: FieldReady }) {
         at: jornada.checkIn.deviceAt,
         by: jornada.checkIn.by,
         kind: "entrada",
-        text: `Registro de entrada · ${jornada.checkIn.source === "manual" ? "ubicación manual justificada" : `GPS ±${Math.round(jornada.checkIn.accuracy)} m`}`,
+        text: `Registro de entrada · ${stampHow(jornada.checkIn)}`,
       });
     if (jornada.checkOut)
       out.push({
@@ -150,7 +150,7 @@ export function Bitacora({ f }: { f: FieldReady }) {
         at: jornada.checkOut.deviceAt,
         by: jornada.checkOut.by,
         kind: "salida",
-        text: `Registro de salida · ${jornada.checkOut.source === "manual" ? "ubicación manual justificada" : `GPS ±${Math.round(jornada.checkOut.accuracy)} m`}`,
+        text: `Registro de salida · ${stampHow(jornada.checkOut)}`,
       });
     f.jIncidents.forEach((i) =>
       out.push({ id: i.id, at: i.createdAt, by: i.createdBy, kind: "incidencia", text: `${i.folio} · ${INCIDENT_TYPE[i.type].label}: ${i.description}` }),

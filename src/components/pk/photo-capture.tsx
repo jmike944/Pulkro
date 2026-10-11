@@ -1,7 +1,7 @@
 "use client";
 
 import { useRef, useState } from "react";
-import { Camera, ImagePlus, Images, Loader2, TriangleAlert, Wand2 } from "lucide-react";
+import { Camera, ImagePlus, Loader2, Wand2 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { PermissionDeniedError, useAppStore } from "@/lib/store";
@@ -11,7 +11,7 @@ import { fmtDateTime } from "@/lib/format";
 import { currentPosition } from "@/lib/geo";
 import { deletePhotoFile, describeCapture, savePhotoFile, type CaptureInput } from "@/lib/photo-store";
 import { SCENE_AREAS, SCENES_BY_SERVICE } from "@/lib/seed";
-import type { Jornada, Photo, PhotoKind, SceneKind } from "@/lib/types";
+import type { Photo, PhotoKind, SceneKind } from "@/lib/types";
 import { Button } from "@/components/ui/button";
 
 
@@ -38,7 +38,7 @@ export type CaptureMeta = {
 
 /** One-line help shown next to capture buttons: exactly what a real capture stores (see `usePhotoCapture`). */
 export const CAPTURE_HELP =
-  "Cada foto guarda la hora real de la toma, si es de cámara o de galería y, si el teléfono la entrega, su ubicación.";
+  "Cada foto guarda la hora real de la toma, si es de cámara o de galería y su ubicación: la de la foto si la trae o, si no, la del teléfono al adjuntarla.";
 
 /**
  * Photo capture helpers. Real captures are compressed and stored in IndexedDB; `simulate` adds a
@@ -91,8 +91,11 @@ export function usePhotoCapture() {
         if (photo) {
           const jornada = meta.jornadaId ? st.jornadas.find((j) => j.id === meta.jornadaId) : undefined;
           photoTimingIssues(photo, jornada).forEach((x) => warnings.push(x.label));
-          if (photo.origin === "gallery")
-            galleryNote = photo.takenAtSource === "device" ? "Desde la galería · sin fecha de la toma" : `Desde la galería · tomada ${fmtDateTime(photo.takenAt)}`;
+          if (photo.origin === "gallery") {
+            const when = photo.takenAtSource === "device" ? "sin fecha de la toma" : `tomada ${fmtDateTime(photo.takenAt)}`;
+            // A gallery pick without GPS gets the phone's position at attach time: say so, it may not be where the picture was taken.
+            galleryNote = `Desde la galería · ${when}${photo.geoSource === "device" ? " · ubicación del teléfono, no de la toma" : ""}`;
+          }
         }
       }
       if (ids.length)
@@ -134,12 +137,15 @@ export function PhotoCaptureButtons({
   className,
   compact,
   disabled,
+  help = !compact,
 }: {
   meta: CaptureMeta;
   onCaptured?: (ids: string[]) => void;
   className?: string;
   compact?: boolean;
   disabled?: boolean;
+  /** Show `CAPTURE_HELP` under the buttons (default: yes, except in the compact variant). */
+  help?: boolean;
 }) {
   const camRef = useRef<HTMLInputElement>(null);
   const galRef = useRef<HTMLInputElement>(null);
@@ -179,46 +185,11 @@ export function PhotoCaptureButtons({
           <Wand2 /> {!compact && "Simular"}
         </Button>
       )}
+      {help && <p className="basis-full text-[12.5px] leading-snug text-subtle">{CAPTURE_HELP}</p>}
     </div>
   );
 }
 
-/**
- * Evidence flags drawn over a thumbnail (put it inside `PhotoThumb`): "Galería" when the picture was picked from the device
- * instead of taken in the app, and "Revisar hora" when its real capture time falls outside the jornada (an ANTES taken after
- * the check-out, a DESPUÉS taken before the check-in). `compact` = icons only, for the small 3-column strips without a kind badge.
- */
-export function PhotoFlags({
-  photo,
-  jornada,
-  compact,
-  className,
-}: {
-  photo: Photo;
-  jornada?: Pick<Jornada, "checkIn" | "checkOut">;
-  compact?: boolean;
-  className?: string;
-}) {
-  const gallery = photo.origin === "gallery";
-  const issues = photoTimingIssues(photo, jornada);
-  if (!gallery && issues.length === 0) return null;
-  const chip = "inline-flex h-[22px] items-center gap-1 rounded-full px-2 text-[10.5px] font-semibold shadow-sm";
-  return (
-    <span className={cn("pointer-events-none absolute left-2.5 flex flex-col items-start gap-1", compact ? "top-1.5" : "top-[34px]", className)}>
-      {gallery && (
-        <span className={cn(chip, "bg-surface/95 text-ink ring-1 ring-edge", compact && "px-1.5")} title="Elegida de la galería: la hora es la de la toma, no la de la captura en la app">
-          <Images className="size-3" aria-hidden />
-          {compact ? <span className="sr-only">Galería</span> : "Galería"}
-        </span>
-      )}
-      {issues.length > 0 && (
-        <span className={cn(chip, "bg-amber-soft text-amber-fg ring-1 ring-amber-line", compact && "px-1.5")} title={issues.map((x) => x.label).join(" · ")}>
-          <TriangleAlert className="size-3" aria-hidden />
-          {compact ? <span className="sr-only">{issues[0].label}</span> : "Revisar hora"}
-        </span>
-      )}
-    </span>
-  );
-}
+export { PhotoFlags } from "./photo-flags";
 
 export type { Photo };

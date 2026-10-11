@@ -212,21 +212,24 @@ export function CaseSidePanel({
             </div>
           </div>
           <div className="mt-4 grid grid-cols-2 gap-2.5">
-            <Button
-              variant="outline"
-              className={cn(outlineBtnCls, "px-3")}
-              disabled={!contactPhone}
-              onClick={() => {
-                window.open(
-                  whatsappLink(contactPhone, `Hola ${firstName(contactName.replace(/^(Lic|Ing|Dra?|Mtra?|Adm|Cap)\.\s*/i, ""))}, le saluda Pulkro respecto a su reporte ${c.folio}${order ? ` del servicio ${order.folio}` : ""}.`),
-                  "_blank",
-                  "noopener,noreferrer",
-                );
-                toast("Se abrió WhatsApp", { description: "El envío es manual: no se confirma la entrega." });
-              }}
-            >
-              <MessageCircle /> WhatsApp
-            </Button>
+            {/* messaging the client is part of managing the case; Dirección only consults (calling stays open) */}
+            <Gate allowed={canManage} reason={REASON_POSTVENTA} className="w-full">
+              <Button
+                variant="outline"
+                className={cn(outlineBtnCls, "w-full px-3")}
+                disabled={!contactPhone || !canManage}
+                onClick={() => {
+                  window.open(
+                    whatsappLink(contactPhone, `Hola ${firstName(contactName.replace(/^(Lic|Ing|Dra?|Mtra?|Adm|Cap)\.\s*/i, ""))}, le saluda Pulkro respecto a su reporte ${c.folio}${order ? ` del servicio ${order.folio}` : ""}.`),
+                    "_blank",
+                    "noopener,noreferrer",
+                  );
+                  toast("Se abrió WhatsApp", { description: "El envío es manual: no se confirma la entrega." });
+                }}
+              >
+                <MessageCircle /> WhatsApp
+              </Button>
+            </Gate>
             <Button asChild variant="outline" className={cn(outlineBtnCls, "px-3")}>
               <a href={`tel:${contactPhone.replace(/\s/g, "")}`}>
                 <Phone /> Llamar

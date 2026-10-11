@@ -72,9 +72,11 @@ export type AttentionItem = {
  * Orders waiting on someone, ranked by PRIORITY then start date. `top` is the desktop list (first 6);
  * `all` lets a smaller screen drop what it already shows elsewhere before cutting.
  */
-export function useAttention({ orders, jornadas, photos, incidents, reports, surveys, cases }: Scoped, now: Date) {
+export function useAttention({ user, orders, jornadas, photos, incidents, reports, surveys, cases }: Scoped, now: Date) {
+  const role = user.role;
   return useMemo(() => {
-    const ctx = { jornadas, photos, incidents, reports, surveys, cases };
+    // with the role, a step the role can't take becomes "Ver" into the matching tab of the order (never a supervisor-only screen)
+    const ctx = { jornadas, photos, incidents, reports, surveys, cases, role };
     const minutesBy = new Map<string, number>();
     for (const j of jornadas) minutesBy.set(j.orderId, (minutesBy.get(j.orderId) ?? 0) + jornadaMinutes(j, now));
     const all: AttentionItem[] = orders
@@ -83,7 +85,7 @@ export function useAttention({ orders, jornadas, photos, incidents, reports, sur
       .map((o) => ({ o, a: nextAction(o, ctx, now), minutes: minutesBy.get(o.id) ?? 0 }))
       .sort((x, y) => (PRIORITY[x.o.status]! - PRIORITY[y.o.status]!) || x.o.scheduledStart.localeCompare(y.o.scheduledStart));
     return { all, top: all.slice(0, 6) };
-  }, [orders, jornadas, photos, incidents, reports, surveys, cases, now]);
+  }, [orders, jornadas, photos, incidents, reports, surveys, cases, role, now]);
 }
 
 /** This year's incidents and their top types ("Qué detiene los cierres"). */

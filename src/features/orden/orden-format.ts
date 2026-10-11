@@ -1,5 +1,6 @@
 import { differenceInMinutes, format } from "date-fns";
 import { es } from "date-fns/locale";
+import { GEO_SOURCE_LABEL } from "@/lib/domain";
 import { d, fmtTime } from "@/lib/format";
 import type { Conformity, GeoStamp, Jornada } from "@/lib/types";
 
@@ -33,8 +34,8 @@ export const JORNADA_STATUS: Record<Jornada["status"], { label: string; tone: "s
   cerrada: { label: "Cerrada", tone: "teal" },
 };
 
-/** Short GPS description: "GPS ±8 m" or "Manual". */
-export const stampSource = (s: GeoStamp) => (s.source === "manual" ? "Ubicación manual" : `GPS ±${Math.round(s.accuracy)} m`);
+/** Short description of how a stamp's location was obtained: "GPS ±8 m", "Ubicación manual justificada" or "Supervisión remota" (the shared source labels). */
+export const stampSource = (s: GeoStamp) => (s.source === "gps" ? `GPS ±${Math.round(s.accuracy)} m` : GEO_SOURCE_LABEL[s.source]);
 
 /** Hours with one decimal as a number (for animated counters). */
 export const toHours = (minutes: number) => Math.round((minutes / 60) * 10) / 10;

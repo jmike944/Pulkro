@@ -6,7 +6,7 @@
  */
 import { eachDayOfInterval, endOfDay, format, parseISO, startOfDay } from "date-fns";
 import { es } from "date-fns/locale";
-import { exportToExcel, type SheetSpec } from "@/lib/export";
+import { exportToExcel, fmtBusinessDateTime, type SheetSpec } from "@/lib/export";
 import { orderEvidence, orderMinutes, plannedMinutes } from "@/lib/domain";
 import { INCIDENT_TYPE, ORDER_STATUS, SEVERITY, SHARE_CHANNEL } from "@/lib/status";
 import type { Client, Incident, Jornada, Order, Photo, PostSaleCase, Report, ServiceType, Site, Survey, Unit, User } from "@/lib/types";
@@ -66,7 +66,7 @@ function resumen(ind: Indicators, win: PeriodWindow, scopeLabel: string, generat
   const f = ind.funnel;
   const rows: { indicador: string; valor: string | number; detalle: string }[] = [
     { indicador: "Periodo", valor: win.label, detalle: `${format(win.start, "dd/MM/yyyy")} – ${format(win.until, "dd/MM/yyyy")}${win.isCurrent ? " (en curso)" : ""}` },
-    { indicador: "Alcance", valor: scopeLabel, detalle: `Generado por ${generatedBy} el ${format(new Date(), "dd/MM/yyyy HH:mm")}` },
+    { indicador: "Alcance", valor: scopeLabel, detalle: `Generado por ${generatedBy} el ${fmtBusinessDateTime(new Date())} (hora de Monterrey)` },
     ...f.map((s) => ({ indicador: `Embudo · ${s.label}`, valor: s.count, detalle: f[0].count ? `${Math.round((s.count / f[0].count) * 100)}% de programadas` : "" })),
     ...ind.split.map((s) => ({ indicador: `Estado · ${s.label}`, valor: s.orders.length, detalle: s.sub })),
     { indicador: "Servicios terminados (cierre validado)", valor: ind.closed.length, detalle: `${ind.prevClosed} en ${win.prev.short} al mismo punto` },

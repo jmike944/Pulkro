@@ -14,6 +14,7 @@ import { EmptyState } from "@/components/pk/feedback";
 import { AuroraStat, BigButton, MobileGreeting, MobileRow, NextStepCard } from "@/components/pk/mobile";
 import { staggerContainer } from "@/components/pk/motion";
 import { MobileToolbar, useUnitScope } from "@/components/shell/header-tools";
+import { useCanSeeRoute } from "@/components/shell/use-can-see-route";
 import { usePendingItems, type PendingItem } from "@/features/pendientes/use-pending-items";
 import { AttentionRow, ClosureBlockers, JornadaRow, MoreLink, PipelineTiles, SectionTitle, ServicesHero } from "./today-parts";
 import { useAttention, useHoyStats, useIncidentYear } from "./use-hoy-stats";
@@ -36,6 +37,9 @@ export function TodayMobile() {
   const { pending } = useSyncSummary();
   const { items } = usePendingItems();
   const canCapture = useCan("field.capture");
+  const canSee = useCanSeeRoute();
+  // Agenda is the supervisor's; the other roles follow the day on the map
+  const dayLink = canSee("/agenda") ? { href: "/agenda", label: "Abrir agenda", more: "en la agenda" } : { href: "/mapa", label: "Ver mapa", more: "en el mapa" };
   const { allUnits, selected } = useUnitScope();
   const manager = user.role !== "supervisor";
   const [month, setMonth] = useState(() => now.getMonth());
@@ -71,7 +75,8 @@ export function TodayMobile() {
     const actionable = items.filter((i) => i.actionable);
     const blocking = actionable.find((i) => i.kind === "incidencia" && i.rank === 0);
     if (live && canCapture && !blocking) return { type: "live" as const, j: live };
-    const it = blocking ?? actionable[0] ?? items[0];
+    // Roles that do not capture in the field only get a next step they can take themselves (never a supervisor's task)
+    const it = blocking ?? actionable[0] ?? (canCapture ? items[0] : undefined);
     return it ? { type: "item" as const, it } : null;
   }, [items, live, canCapture]);
 
@@ -113,7 +118,7 @@ export function TodayMobile() {
       {card?.type === "item" && <ItemCard it={card.it} lk={lk} data={{ orders, jornadas, incidents, reports }} />}
 
       <section className="mt-8">
-        <SectionTitle title="Jornadas de hoy" count={today.length} href="/agenda" linkLabel="Abrir agenda" />
+        <SectionTitle title="Jornadas de hoy" count={today.length} href={dayLink.href} linkLabel={dayLink.label} />
         {today.length === 0 ? (
           <EmptyState icon={<Clock />} title="Sin jornadas hoy" className="mt-3 py-9">
             No hay cuadrillas programadas para hoy.
@@ -127,7 +132,11 @@ export function TodayMobile() {
                 return <JornadaRow key={j.id} j={j} o={o} lk={lk} now={now} photos={photoCount.get(j.id) ?? { antes: 0, despues: 0 }} />;
               })}
             </motion.div>
-            {today.length > JORNADAS_MAX && <MoreLink href="/agenda">Ver {today.length - JORNADAS_MAX} más en la agenda</MoreLink>}
+            {today.length > JORNADAS_MAX && (
+              <MoreLink href={dayLink.href}>
+                Ver {today.length - JORNADAS_MAX} más {dayLink.more}
+              </MoreLink>
+            )}
           </>
         )}
       </section>

@@ -26,8 +26,8 @@ const nextConfig: NextConfig = {
         headers: [
           { key: "Content-Type", value: "application/javascript; charset=utf-8" },
           { key: "Cache-Control", value: "no-cache, no-store, must-revalidate" },
-          // The worker itself fetches (and caches) the CARTO map tiles: without connect-src they were blocked by default-src.
-          { key: "Content-Security-Policy", value: "default-src 'self'; script-src 'self'; connect-src 'self' https://*.basemaps.cartocdn.com" },
+          // The worker itself fetches (and caches) the OpenFreeMap tiles/styles: without connect-src they were blocked by default-src.
+          { key: "Content-Security-Policy", value: "default-src 'self'; script-src 'self'; connect-src 'self' https://tiles.openfreemap.org" },
         ],
       },
     ];

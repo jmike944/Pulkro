@@ -40,7 +40,8 @@ export function EvidenceTab() {
             <b className="font-semibold text-ink">{selected}</b> seleccionadas para el reporte
           </p>
         </div>
-        <UnderlineLink href={`/evidencias?orden=${order.folio}`}>Ver en Evidencias</UnderlineLink>
+        {/* /evidencias and /jornada are the supervisor's screens: Dirección and Administración read the evidence right here */}
+        {d.perms.capture && <UnderlineLink href={`/evidencias?orden=${order.folio}`}>Ver en Evidencias</UnderlineLink>}
       </div>
 
       {jornadas.length === 0 ? (
@@ -115,9 +116,11 @@ function JornadaEvidence({ j, index }: { j: Jornada; index: number }) {
         <p className="mt-4 flex items-center gap-2 rounded-[16px] bg-soft px-4 py-3.5 text-[13.5px] text-subtle">
           <ImageOff className="size-4 shrink-0" />
           La jornada aún no inicia. Las fotos se capturan al registrar la entrada.
-          <Link href={`/jornada/${j.id}`} className="ml-auto inline-flex shrink-0 items-center gap-1 font-semibold text-link">
-            Abrir <ArrowRight className="size-3.5" />
-          </Link>
+          {d.perms.capture && (
+            <Link href={`/jornada/${j.id}`} className="ml-auto inline-flex shrink-0 items-center gap-1 font-semibold text-link">
+              Abrir <ArrowRight className="size-3.5" />
+            </Link>
+          )}
         </p>
       ) : (
         <>
@@ -184,30 +187,45 @@ function PhotoGrid({ photos, missing, emptyText }: { photos: Photo[]; missing?: 
           </Gated>
         </div>
       ))}
-      {missing && (
-        <Link
-          href={`/jornada/${missing.jornada.id}`}
-          className={cn(
-            "group flex aspect-[4/3] flex-col items-center justify-center gap-1.5 rounded-[16px] border-2 border-dashed p-3 text-center transition",
-            missing.soft ? "border-blue-line bg-blue-wash hover:bg-blue-soft" : "border-amber-line-strong bg-amber-wash hover:bg-amber-tint",
-          )}
-        >
-          <motion.span
-            className={cn("inline-flex size-10 items-center justify-center rounded-full", missing.soft ? "bg-blue-tint text-azure-fg" : "bg-amber-mid text-amber-fg")}
-            animate={missing.soft ? undefined : { scale: [1, 1.08, 1] }}
-            transition={{ duration: 2.4, repeat: Infinity, ease: "easeInOut" }}
-          >
-            <Camera className="size-[18px]" />
-          </motion.span>
-          <span className={cn("text-[13px] font-semibold", missing.soft ? "text-ink" : "text-amber-ink")}>
-            {missing.soft ? "DESPUÉS al terminar" : `Falta foto ${missing.kind === "antes" ? "ANTES" : "DESPUÉS"}`}
-          </span>
-          <span className={cn("inline-flex items-center gap-1 text-[12px]", missing.soft ? "text-link" : "text-amber-fg")}>
-            {missing.soft ? "Se captura antes de la salida" : `Capturar en Jornada ${missing.jornada.dayIndex}`}
-            <ArrowRight className="size-3 transition-transform group-hover:translate-x-0.5" />
-          </span>
-        </Link>
-      )}
+      {missing && <MissingTile missing={missing} canOpen={d.perms.capture} />}
     </motion.div>
+  );
+}
+
+/**
+ * Placeholder for a required photo that is not there yet. The supervisor gets a link to capture it in the jornada (the field
+ * screen is theirs); Dirección and Administración see the same gap without a link into a screen their role can't open.
+ */
+function MissingTile({ missing, canOpen }: { missing: Missing; canOpen: boolean }) {
+  const cls = cn(
+    "flex aspect-[4/3] flex-col items-center justify-center gap-1.5 rounded-[16px] border-2 border-dashed p-3 text-center transition",
+    missing.soft ? "border-blue-line bg-blue-wash" : "border-amber-line-strong bg-amber-wash",
+    canOpen && (missing.soft ? "group hover:bg-blue-soft" : "group hover:bg-amber-tint"),
+  );
+  const what = missing.kind === "antes" ? "ANTES" : "DESPUÉS";
+  const body = (
+    <>
+      <motion.span
+        className={cn("inline-flex size-10 items-center justify-center rounded-full", missing.soft ? "bg-blue-tint text-azure-fg" : "bg-amber-mid text-amber-fg")}
+        animate={missing.soft ? undefined : { scale: [1, 1.08, 1] }}
+        transition={{ duration: 2.4, repeat: Infinity, ease: "easeInOut" }}
+      >
+        <Camera className="size-[18px]" />
+      </motion.span>
+      <span className={cn("text-[13px] font-semibold", missing.soft ? "text-ink" : "text-amber-ink")}>
+        {missing.soft ? "DESPUÉS al terminar" : `Falta foto ${what}`}
+      </span>
+      <span className={cn("inline-flex items-center gap-1 text-[12px]", missing.soft ? "text-link" : "text-amber-fg")}>
+        {missing.soft ? "Se captura antes de la salida" : canOpen ? `Capturar en Jornada ${missing.jornada.dayIndex}` : `La captura el supervisor · Jornada ${missing.jornada.dayIndex}`}
+        {canOpen && <ArrowRight className="size-3 transition-transform group-hover:translate-x-0.5" />}
+      </span>
+    </>
+  );
+  return canOpen ? (
+    <Link href={`/jornada/${missing.jornada.id}`} className={cls}>
+      {body}
+    </Link>
+  ) : (
+    <div className={cls}>{body}</div>
   );
 }

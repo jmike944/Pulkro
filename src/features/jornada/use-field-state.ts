@@ -153,10 +153,8 @@ function buildState(b: FieldBundle, role: ReturnType<typeof useCurrentUser>["rol
   };
 }
 
-export type FieldResult =
-  | { status: "missing" }
-  | { status: "hidden"; reason: "unit" | "scope" }
-  | { status: "ok"; f: FieldReady };
+/** `missing` = not found OR outside the role's scope (doc §2): the screen never tells the two apart. */
+export type FieldResult = { status: "missing" } | { status: "ok"; f: FieldReady };
 
 /** Everything the field screen needs for one jornada, scoped to what the current role may see. */
 export function useFieldState(jornadaId: string): FieldResult {
@@ -167,11 +165,8 @@ export function useFieldState(jornadaId: string): FieldResult {
   const offline = useIsOffline();
 
   return useMemo<FieldResult>(() => {
-    if (!bundle) return { status: "missing" };
-    if (!canSeeOrder(user, bundle.order, unitFilter)) {
-      const unitOnly = user.role === "direccion" && unitFilter !== "all";
-      return { status: "hidden", reason: unitOnly ? "unit" : "scope" };
-    }
+    // useJornadaBundle is already scoped; the check stays as a second guard, with the same answer as "not found".
+    if (!bundle || !canSeeOrder(user, bundle.order, unitFilter)) return { status: "missing" };
     return { status: "ok", f: buildState(bundle, user.role, workers, offline) };
   }, [bundle, user, unitFilter, workers, offline]);
 }

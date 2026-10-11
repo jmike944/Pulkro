@@ -17,18 +17,10 @@ const subscribe = (l: () => void) => {
   return () => listeners.delete(l);
 };
 
-/** A key of the running build: the hashed script URLs of this page (they change on every deploy). */
-function buildKey() {
-  const srcs = Array.from(document.scripts, (s) => s.src).filter((src) => src.includes("/_next/static/")).sort().join("|");
-  let h = 0;
-  for (let i = 0; i < srcs.length; i++) h = (Math.imul(31, h) + srcs.charCodeAt(i)) | 0;
-  return srcs ? String(h >>> 0) : "";
-}
-
 /**
  * Registers /sw.js in production and captures the install prompt. Mount once (Providers).
- * Once the worker controls the page and there is signal, it asks the worker to re-precache the field screens (jornada,
- * order, report templates and their scripts) when the build changed, so they open offline even if never visited.
+ * Once the worker controls the page and there is signal, it asks the worker for a build check: the worker re-precaches the
+ * field screens (jornada, order, report templates and their scripts) once per deploy, so they open offline even if never visited.
  */
 export function PwaRegistrar() {
   useEffect(() => {
@@ -49,9 +41,9 @@ export function PwaRegistrar() {
       navigator.serviceWorker
         .register("/sw.js", { scope: "/", updateViaCache: "none" })
         .then((reg) => {
+          // The worker fingerprints the build itself (scripts of "/") and throttles the check: the page only says "a load happened".
           const warm = () => {
-            const build = buildKey();
-            if (build && navigator.onLine) (navigator.serviceWorker.controller ?? reg.active)?.postMessage({ type: "WARM", build });
+            if (navigator.onLine) (navigator.serviceWorker.controller ?? reg.active)?.postMessage({ type: "WARM" });
           };
           if (navigator.serviceWorker.controller) warm();
           else navigator.serviceWorker.addEventListener("controllerchange", warm, { once: true });

@@ -18,6 +18,7 @@ import { rowVariants } from "@/components/pk/motion";
 import { AuroraPanel, GlassCard } from "@/components/pk/aurora";
 import { PillBars } from "@/components/pk/pill-bars";
 import { BottomSheet } from "@/components/shell/bottom-sheet";
+import { useCanSeeRoute } from "@/components/shell/use-can-see-route";
 import { MONTHS_ES, type AttentionItem, type useHoyStats, type useIncidentYear } from "./use-hoy-stats";
 
 /** Building blocks of the phone "Hoy" below the next-step card (kept out of today-mobile.tsx to keep that file readable). */
@@ -101,6 +102,9 @@ function PhotoChip({ label, count, missing }: { label: string; count: number; mi
  * crew (tap for names) and ANTES / DESPUÉS photo counts, so the office sees who is where and what evidence is missing.
  */
 export function JornadaRow({ j, o, lk, now, photos }: { j: Jornada; o: Order; lk: Lookups; now: Date; photos: { antes: number; despues: number } }) {
+  const canSee = useCanSeeRoute();
+  // the jornada screen is the supervisor's; other roles read the same jornada in the order detail
+  const href = canSee(`/jornada/${j.id}`) ? `/jornada/${j.id}` : `/ordenes/${o.folio}?tab=jornadas`;
   const c = lk.clients.get(o.clientId);
   const site = lk.sites.get(o.siteId);
   const crew = j.workerIds.map((id) => lk.workers.get(id)).filter((w): w is Worker => !!w);
@@ -114,7 +118,7 @@ export function JornadaRow({ j, o, lk, now, photos }: { j: Jornada; o: Order; lk
     <motion.div variants={rowVariants} className="border-b border-hairline last:border-0">
       <MobileRow
         className="border-0 pb-2"
-        href={`/jornada/${j.id}`}
+        href={href}
         leading={<TimeTile date={j.plannedStart} tone={live ? "live" : undefined} />}
         title={o.title.split(" · ")[0]}
         meta={
@@ -348,10 +352,12 @@ function MonthSheet({
 
 /** Pendientes / En proceso / Incidencias abiertas as three tappable tiles (the desktop MiniStat strip). */
 export function PipelineTiles({ stats, className }: { stats: HoyStats; className?: string }) {
+  const canSee = useCanSeeRoute();
   const tiles = [
     { tone: "blue", label: "Pendientes", value: stats.buckets.pendientes.length, sub: "órdenes", href: "/ordenes" },
     { tone: "amber", label: "En proceso", value: stats.buckets.enProceso.length, sub: "órdenes", href: "/ordenes" },
-    { tone: "red", label: "Incidencias", value: stats.incidentsOpen, sub: "abiertas", href: "/incidencias" },
+    // Incidencias is the supervisor's screen; other roles get the orders with an open incident
+    { tone: "red", label: "Incidencias", value: stats.incidentsOpen, sub: "abiertas", href: canSee("/incidencias") ? "/incidencias" : "/ordenes?tab=incidencia" },
   ] as const;
   return (
     <div className={cn("grid grid-cols-3 gap-2", className)}>
@@ -366,7 +372,7 @@ export function PipelineTiles({ stats, className }: { stats: HoyStats; className
 
 /* ───────────── qué detiene los cierres ───────────── */
 
-/** The year's incidents by type plus the photo-compliance insight, linking out to Incidencias and Evidencias. */
+/** The year's incidents by type plus the photo-compliance insight, linking out to Incidencias and Evidencias (or what the role may open). */
 export function ClosureBlockers({
   year,
   incidentYear,
@@ -380,10 +386,14 @@ export function ClosureBlockers({
   compliance: HoyStats["compliance"];
   className?: string;
 }) {
+  const canSee = useCanSeeRoute();
   const shown = bars.filter((b) => b.count > 0);
+  // Incidencias / Evidencias are supervisor screens: other roles go to the orders with incidents and to Indicadores › Calidad
+  const incidents = canSee("/incidencias") ? { href: "/incidencias", label: "Ver incidencias" } : { href: "/ordenes?tab=incidencia", label: "Ver órdenes" };
+  const complianceHref = canSee("/evidencias") ? "/evidencias" : canSee("/indicadores") ? "/indicadores?tab=calidad" : null;
   return (
     <section className={className}>
-      <SectionTitle title="Qué detiene los cierres" subtitle={`${plural(incidentYear.length, "incidencia", "incidencias")} · ${year}`} href="/incidencias" linkLabel="Ver incidencias" />
+      <SectionTitle title="Qué detiene los cierres" subtitle={`${plural(incidentYear.length, "incidencia", "incidencias")} · ${year}`} href={incidents.href} linkLabel={incidents.label} />
       {shown.length > 0 ? (
         <BarList className="mt-4" items={shown.map((b) => ({ label: b.label, value: b.count, pct: b.pct }))} />
       ) : (
@@ -399,10 +409,12 @@ export function ClosureBlockers({
           </>
         )}
         {/* the Insight's own link is a 20px target: this one pulls its 44px hit area back with negative margins */}
-        <Link href="/evidencias" className="-mb-2.5 mt-0.5 flex min-h-11 w-fit items-center gap-1.5 font-semibold text-link">
-          Ver cumplimiento fotográfico
-          <ArrowRight className="size-4" />
-        </Link>
+        {complianceHref && (
+          <Link href={complianceHref} className="-mb-2.5 mt-0.5 flex min-h-11 w-fit items-center gap-1.5 font-semibold text-link">
+            Ver cumplimiento fotográfico
+            <ArrowRight className="size-4" />
+          </Link>
+        )}
       </Insight>
     </section>
   );

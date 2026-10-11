@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useCallback, useMemo, useState } from "react";
 import { addDays, format } from "date-fns";
-import { BellOff, CalendarDays, Sparkles } from "lucide-react";
+import { BellOff, CalendarDays, MapIcon, Sparkles } from "lucide-react";
 import { useLookups, useMediaQuery, useNow } from "@/lib/hooks";
 import { plural } from "@/lib/format";
 import { Button } from "@/components/ui/button";
@@ -11,6 +11,7 @@ import { PageHeader, Segmented } from "@/components/pk/page";
 import { AuroraPanel, GlassCard } from "@/components/pk/aurora";
 import { Insight, Panel, SectionHeader } from "@/components/pk/bits";
 import { EmptyState } from "@/components/pk/feedback";
+import { useCanSeeRoute } from "@/components/shell/use-can-see-route";
 import { FollowList, GroupSection, LeadCard, LeadNextStep, QueueSummary, TypeRail, useScrollSpy, type Group } from "./pending-parts";
 import { queueSentence } from "./pending-meta";
 import { PENDING_GROUPS, usePendingItems, type PendingItem, type PendingKind } from "./use-pending-items";
@@ -29,6 +30,7 @@ export function PendientesView() {
   const lk = useLookups();
   const now = useNow(60_000);
   const desktop = useMediaQuery("(min-width: 1024px)");
+  const canSee = useCanSeeRoute();
 
   // "A mi cargo" only means something when it splits the queue; otherwise show everything.
   const others = items.length - actionable;
@@ -102,10 +104,17 @@ export function PendientesView() {
           className="mt-2"
           action={
             <div className="flex flex-wrap justify-center gap-2.5">
+              {/* Agenda is the supervisor's; the other roles see tomorrow on the map */}
               <Button asChild className="h-11 rounded-[12px] px-4 font-semibold">
-                <Link href={`/agenda?fecha=${tomorrow}`}>
-                  <CalendarDays /> Ver agenda de mañana
-                </Link>
+                {canSee("/agenda") ? (
+                  <Link href={`/agenda?fecha=${tomorrow}`}>
+                    <CalendarDays /> Ver agenda de mañana
+                  </Link>
+                ) : (
+                  <Link href={`/mapa?dia=${tomorrow}`}>
+                    <MapIcon /> Ver mapa de mañana
+                  </Link>
+                )}
               </Button>
               <Button asChild variant="outline" className="h-11 rounded-[12px] border-line px-4 font-semibold">
                 <Link href="/ordenes">Ver órdenes abiertas</Link>

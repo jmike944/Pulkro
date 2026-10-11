@@ -3,12 +3,13 @@
 import Link from "next/link";
 import { useCallback, useDeferredValue, useEffect, useMemo, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { format } from "date-fns";
 import { motion } from "motion/react";
 import { toast } from "sonner";
 import { CalendarDays, ClipboardCheck, ClipboardList, Download, Inbox, Loader2, Plus, Search, ShieldCheck, Sparkles } from "lucide-react";
 import { useCan, useLookups, useNow } from "@/lib/hooks";
+import { useCanSeeRoute } from "@/components/shell/use-can-see-route";
 import { plural } from "@/lib/format";
+import { businessDateStamp } from "@/lib/export";
 import { OPEN_STATUSES } from "@/lib/status";
 import { PageHeader, UnderlineTabs } from "@/components/pk/page";
 import { AnimatedNumber } from "@/components/pk/bits";
@@ -55,6 +56,8 @@ export function OrdersView() {
   const { rows, user, unitFilter } = useOrderRows(now);
   const canExport = useCan("export.excel");
   const canCreate = useCan("order.create");
+  // The agenda is the supervisor's screen: Dirección and Administración get no link to it.
+  const canSeeAgenda = useCanSeeRoute()("/agenda");
   const canAllUnits = useCan("view.allUnits");
   const isSupervisor = user.role === "supervisor";
 
@@ -183,7 +186,7 @@ export function OrdersView() {
     }
     setExporting(true);
     try {
-      await exportOrders(list, `ordenes-${tab}-${format(new Date(), "yyyy-MM-dd")}`);
+      await exportOrders(list, `ordenes-${tab}-${businessDateStamp()}`);
       toast.success("Excel generado", { description: `${plural(list.length, "orden exportada", "órdenes exportadas")} con los filtros actuales.` });
     } catch {
       toast.error("No se pudo generar el Excel", { description: "Intente de nuevo en unos segundos." });
@@ -239,7 +242,7 @@ export function OrdersView() {
       title={copy.title}
       className="mt-4"
       action={
-        tab === "hoy" ? (
+        tab === "hoy" && canSeeAgenda ? (
           <Button asChild variant="outline" className="h-10 rounded-[12px] px-4 font-semibold">
             <Link href="/agenda">Abrir agenda</Link>
           </Button>

@@ -27,6 +27,8 @@ const STAGE: Record<HubRow["stage"], { label: string; tone: Tone }> = {
 
 function cta(row: HubRow, canShare: boolean) {
   const href = `/ordenes/${row.order.folio}/reporte`;
+  // A reopened order cannot generate yet: the report page explains it and links to the closure validation.
+  if (row.revalidate) return { label: "Validar cierre", href, primary: false };
   if (canShare && row.stage === "por_generar") return { label: row.latest ? `Generar v${row.latest.version + 1}` : "Generar", href, primary: true };
   if (canShare && row.stage === "por_compartir") return { label: "Compartir", href, primary: true };
   return { label: "Ver", href, primary: false };
@@ -73,7 +75,7 @@ export function HubList({
         {rows.map((r) => {
           const client = clients.get(r.order.clientId);
           const st = STAGE[r.stage];
-          const reopened = r.stage === "por_generar" && r.order.status === "reabierta";
+          const reopened = r.revalidate;
           const reason = !canExport ? REASON.export : blockedOrderIds.has(r.order.id) ? REASON.sync : null;
           const busy = busyId === r.order.id;
           // The row link and the download button are siblings: a button inside an anchor is invalid and its tap would navigate.
@@ -94,11 +96,13 @@ export function HubList({
                   </>
                 }
                 status={{
-                  tone: st.tone,
+                  tone: reopened ? "violet" : st.tone,
                   label:
                     r.lastShare && r.stage === "enviados"
                       ? `${CHANNEL_TO_LABEL[r.lastShare.channel]} · ${fmtRelativeDay(r.lastShare.at)} ${fmtTime(r.lastShare.at)} · sin confirmación${r.shareCount > 1 ? ` · ${r.shareCount} intentos` : ""}`
-                      : st.label,
+                      : reopened
+                        ? "Validar cierre otra vez"
+                        : st.label,
                 }}
                 trailing={r.latest ? <></> : undefined /* the download button takes the chevron's place */}
               />
@@ -151,7 +155,7 @@ export function HubList({
                 <p className="truncate text-[15px] font-semibold text-ink group-hover:text-link">{r.order.title}</p>
                 <p className="mt-0.5 truncate text-[13px] text-subtle">
                   {r.order.folio} · {client?.shortName}
-                  {r.stage === "por_generar" && r.order.status === "reabierta" && <span className="ml-1.5 font-medium text-violet-fg">· reabierta</span>}
+                  {r.revalidate && <span className="ml-1.5 font-medium text-violet-fg">· reabierta</span>}
                 </p>
               </Link>
               <span>
@@ -175,7 +179,9 @@ export function HubList({
                     </span>
                   </>
                 ) : (
-                  <span className={cn("text-[14px]", r.stage === "por_compartir" ? "font-medium text-link" : "text-subtle")}>{STAGE[r.stage].label}</span>
+                  <span className={cn("text-[14px]", r.revalidate ? "font-medium text-violet-fg" : r.stage === "por_compartir" ? "font-medium text-link" : "text-subtle")}>
+                    {r.revalidate ? "Validar cierre otra vez" : STAGE[r.stage].label}
+                  </span>
                 )}
               </span>
               <span className="flex items-center justify-end gap-2">

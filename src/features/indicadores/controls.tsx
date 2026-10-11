@@ -32,8 +32,7 @@ export function Controls({
   scope,
   onExport,
   exporting,
-  canExcel,
-  canPdf,
+  canExport,
   onPrint,
 }: {
   granularity: Granularity;
@@ -45,8 +44,8 @@ export function Controls({
   scope: { label: string; canPick: boolean; units: Unit[]; selected: string | "all"; onPick: (id: string | "all") => void; hint: string };
   onExport: () => void;
   exporting: boolean;
-  canExcel: boolean;
-  canPdf: boolean;
+  /** export.kpis: the Excel and the print-PDF of the dashboard are one permission. */
+  canExport: boolean;
   onPrint: () => void;
 }) {
   const idx = options.findIndex((p) => samePeriod(p, period));
@@ -104,30 +103,36 @@ export function Controls({
       <ScopePicker scope={scope} />
 
       <div className="grid grid-cols-2 gap-2.5 lg:ml-auto lg:flex">
-        {canExcel ? (
-          <Button variant="outline" onClick={onExport} disabled={exporting} className="h-11 rounded-[12px] border-line px-4 text-[14px] font-semibold shadow-[0_1px_2px_rgb(16_24_40/0.05)] lg:h-10">
+        <GatedExport allowed={canExport}>
+          <Button variant="outline" onClick={onExport} disabled={exporting || !canExport} className="h-11 w-full rounded-[12px] border-line px-4 text-[14px] font-semibold shadow-[0_1px_2px_rgb(16_24_40/0.05)] lg:h-10">
             {exporting ? <Spinner /> : <Download className="size-4" />}
             {exporting ? "Generando…" : "Exportar"}
           </Button>
-        ) : (
-          <ReasonTip side="bottom" reason="El Excel de indicadores lo exportan Dirección y Administración (doc §2). Puede usar Imprimir / PDF." contentClassName="max-w-[260px] text-[12.5px] leading-snug">
-            <span tabIndex={0} className="inline-flex rounded-[12px] outline-none focus-visible:ring-2 focus-visible:ring-sky">
-              <Button variant="outline" disabled className="h-11 w-full rounded-[12px] border-line px-4 text-[14px] font-semibold lg:h-10">
-                <Download className="size-4" /> Exportar
-              </Button>
-            </span>
-          </ReasonTip>
-        )}
-        <Button
-          variant="outline"
-          onClick={onPrint}
-          disabled={!canPdf}
-          className="h-11 rounded-[12px] border-line px-4 text-[14px] font-semibold shadow-[0_1px_2px_rgb(16_24_40/0.05)] lg:h-10"
-        >
-          <Printer className="size-4" /> Imprimir / PDF
-        </Button>
+        </GatedExport>
+        <GatedExport allowed={canExport}>
+          <Button
+            variant="outline"
+            onClick={onPrint}
+            disabled={!canExport}
+            className="h-11 w-full rounded-[12px] border-line px-4 text-[14px] font-semibold shadow-[0_1px_2px_rgb(16_24_40/0.05)] lg:h-10"
+          >
+            <Printer className="size-4" /> Imprimir / PDF
+          </Button>
+        </GatedExport>
       </div>
     </div>
+  );
+}
+
+/** Disabled export controls explain who can use them (tooltip on hover, tap bubble on touch). */
+function GatedExport({ allowed, children }: { allowed: boolean; children: React.ReactElement }) {
+  if (allowed) return children;
+  return (
+    <ReasonTip side="bottom" reason="Los indicadores se exportan desde las cuentas de Dirección y Administración (doc §2)." contentClassName="max-w-[260px] text-[12.5px] leading-snug">
+      <span tabIndex={0} className="inline-flex rounded-[12px] outline-none focus-visible:ring-2 focus-visible:ring-sky">
+        {children}
+      </span>
+    </ReasonTip>
   );
 }
 

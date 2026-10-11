@@ -1,18 +1,16 @@
 "use client";
 
 import { use, useState } from "react";
-import Link from "next/link";
 import { differenceInMinutes, isSameDay, parseISO } from "date-fns";
-import { CalendarSearch, ChevronLeft, Layers } from "lucide-react";
 import { toast } from "sonner";
 import { useAppStore } from "@/lib/hooks";
 import { useUi } from "@/lib/ui-store";
 import type { GeoInput } from "@/lib/store";
 import { jornadaMinutes } from "@/lib/domain";
 import { fmtDuration, fmtTime } from "@/lib/format";
-import { EmptyState, Shimmer } from "@/components/pk/feedback";
+import { Shimmer } from "@/components/pk/feedback";
+import { NotFoundOrOutOfScope } from "@/components/shell/out-of-scope";
 import { IncidentSheet } from "@/components/pk/incident-sheet";
-import { Button } from "@/components/ui/button";
 import { useFieldState, type FieldReady, type FieldWarning } from "./use-field-state";
 import { FieldHeader } from "./field-header";
 import { StepRail, scrollToSection } from "./step-rail";
@@ -27,15 +25,15 @@ import { GpsFlow, type GpsMode, type GpsNext, type GpsResult } from "./gps-captu
 import { CrewFlow } from "./crew-flow";
 import { BreakdownFlow } from "./breakdown-flow";
 import { useFlowState } from "./flow-bits";
-import { fmtShortDay } from "./field-bits";
+import { fmtShortDay, stampHow } from "./field-bits";
 import { useMinWidth } from "./use-min-width";
 
 /** /jornada/[id] — the supervisor's field screen (doc §3 pasos 5–11, §4.2, §6, §8). */
 export function JornadaView({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
   const res = useFieldState(id);
-  if (res.status === "missing") return <JornadaNotFound />;
-  if (res.status === "hidden") return <JornadaNotFound reason={res.reason} />;
+  // One state for "doesn't exist" and "outside your scope" (doc §2): never which of the two, never the record's name.
+  if (res.status !== "ok") return <NotFoundOrOutOfScope subject="Esta jornada" backHref="/agenda" backLabel="Ir a la agenda" />;
   return <FieldScreen f={res.f} />;
 }
 
@@ -68,7 +66,7 @@ function FieldScreen({ f }: { f: FieldReady }) {
     const read = () => useAppStore.getState().jornadas.find((j) => j.id === f.jornada.id);
     const before = read();
     if (!before) return { ok: false, error: "La jornada ya no existe en este dispositivo." };
-    const how = geo.source === "manual" ? "ubicación manual justificada" : `GPS ±${Math.round(geo.accuracy)} m`;
+    const how = stampHow(geo);
 
     if (mode === "entrada") {
       if (before.checkIn) return { ok: false, error: "Esta jornada ya tiene registro de entrada." };
@@ -182,45 +180,6 @@ function gpsWarnings(f: FieldReady, mode: GpsMode, now: Date): FieldWarning[] {
       w.push({ tone: "info", text: `${f.openIncidents.length === 1 ? "Hay 1 incidencia abierta" : `Hay ${f.openIncidents.length} incidencias abiertas`}: puedes registrar la salida y resolverla después.` });
   }
   return w;
-}
-
-/* ───────────── 404 / out of scope ───────────── */
-
-function JornadaNotFound({ reason }: { reason?: "unit" | "scope" }) {
-  const setUnitFilter = useAppStore((s) => s.setUnitFilter);
-  return (
-    <div className="mx-auto max-w-xl py-6 sm:py-12">
-      <Link href="/agenda" className="-ml-2 mb-6 inline-flex h-11 items-center gap-1.5 rounded-[12px] pl-1.5 pr-3 text-[14px] font-medium text-subtle hover:bg-muted hover:text-ink">
-        <ChevronLeft className="size-[18px]" /> Agenda
-      </Link>
-      <EmptyState
-        icon={reason === "unit" ? <Layers /> : <CalendarSearch />}
-        title={reason === "unit" ? "Jornada de otra unidad" : "Jornada no encontrada"}
-        action={
-          reason === "unit" ? (
-            <Button onClick={() => setUnitFilter("all")} className="h-11 rounded-[12px] px-5 font-semibold">
-              Ver todas las unidades
-            </Button>
-          ) : (
-            <div className="flex flex-wrap justify-center gap-2">
-              <Button asChild className="h-11 rounded-[12px] px-5 font-semibold">
-                <Link href="/agenda">Ir a la agenda</Link>
-              </Button>
-              <Button asChild variant="outline" className="h-11 rounded-[12px] px-5">
-                <Link href="/ordenes">Ver órdenes</Link>
-              </Button>
-            </div>
-          )
-        }
-      >
-        {reason === "unit"
-          ? "Pertenece a una unidad distinta a la seleccionada en el filtro."
-          : reason === "scope"
-            ? "Esta jornada no está dentro de tu alcance: solo ves las órdenes que tienes asignadas o las de tu unidad."
-            : "No existe una jornada con ese identificador en este dispositivo. Puede haberse reprogramado."}
-      </EmptyState>
-    </div>
-  );
 }
 
 /* ───────────── loading ───────────── */

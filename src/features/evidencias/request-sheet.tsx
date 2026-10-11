@@ -13,7 +13,7 @@ import { Button } from "@/components/ui/button";
 import { AnimatedNumber } from "@/components/pk/bits";
 import { OrderStatusPill, TonePill } from "@/components/pk/status";
 import { BeforeAfter, PhotoThumb } from "@/components/pk/scene-photo";
-import { PhotoCaptureButtons, usePhotoCapture } from "@/components/pk/photo-capture";
+import { CAPTURE_HELP, PhotoCaptureButtons, usePhotoCapture } from "@/components/pk/photo-capture";
 import { ClientMark } from "@/components/pk/client-mark";
 import { AuroraStat, BigButton, FlowHeading, FlowScreen, ItemCard, SuccessHero } from "@/components/pk/mobile";
 import { EASE } from "@/components/pk/motion";
@@ -300,6 +300,7 @@ function PhoneRequest({
               <Wand2 /> Simular
             </Button>
           </div>
+          <p className="text-center text-[12px] leading-snug text-subtle">{CAPTURE_HELP}</p>
         </>
       ) : (
         <p className="rounded-[14px] bg-soft px-4 py-3 text-[13.5px] leading-snug text-subtle">{CAPTURE_REASON}</p>

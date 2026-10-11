@@ -1,12 +1,9 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { FileDown, Loader2 } from "lucide-react";
-import { Button } from "@/components/ui/button";
 import { useReportOutputs } from "@/features/reportes/use-report-outputs";
 import type { ReportContext } from "@/features/reportes/report-model";
 import { useOrder } from "./order-context";
-import { Gated } from "./ui";
 
 /**
  * The order's PDF for roles that only consult (Dirección, Administración): doc §10 "exportar PDF de orden".
@@ -54,17 +51,4 @@ export function useOrderPdf() {
       : null;
 
   return { report, busy, download, reason, ready: !reason };
-}
-
-/** "Descargar PDF · v2" button; disabled with the reason when there is no report yet. */
-export function OrderPdfButton({ variant = "outline", className }: { variant?: "outline" | "ghost" | "default"; className?: string }) {
-  const pdf = useOrderPdf();
-  const button = (
-    <Button variant={variant} disabled={!pdf.ready || pdf.busy} onClick={() => void pdf.download()} className={className}>
-      {pdf.busy ? <Loader2 className="size-4 animate-spin" /> : <FileDown className="size-4" />}
-      Descargar PDF{pdf.report ? ` · v${pdf.report.version}` : ""}
-    </Button>
-  );
-  if (pdf.ready) return button;
-  return <Gated gate={{ ok: false, reason: pdf.reason ?? undefined }}>{button}</Gated>;
 }

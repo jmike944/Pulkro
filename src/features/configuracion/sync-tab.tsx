@@ -4,7 +4,7 @@ import { useMemo, useState } from "react";
 import { AnimatePresence, motion } from "motion/react";
 import { Check, CloudOff, CloudUpload, Database, Globe, Image as ImageIcon, Loader2, MapPinned, MessageCircle, RefreshCw, Shuffle, WifiOff } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { useAppStore, useNow, useSyncSummary } from "@/lib/hooks";
+import { useAppStore, useNow, useScopedAudit, useScopedData, useSyncSummary } from "@/lib/hooks";
 import { fmtAgo, fmtNum, fmtRelativeDay, fmtTime, plural } from "@/lib/format";
 import type { SyncItem } from "@/lib/types";
 import { AuroraPanel, GlassCard } from "@/components/pk/aurora";
@@ -71,9 +71,12 @@ export function SyncTab() {
   const browserOffline = useAppStore((s) => s.sync.browserOffline);
   const setForced = useAppStore((s) => s.setForcedOffline);
   const retry = useAppStore((s) => s.retrySync);
-  const stored = useAppStore(
-    (s) => s.orders.length + s.jornadas.length + s.photos.length + s.incidents.length + s.reports.length + s.cases.length + s.surveys.length + s.audit.length,
-  );
+  // Records the role may see on this device (doc §2), not the whole dataset the device keeps.
+  const scoped = useScopedData();
+  const audit = useScopedAudit();
+  const stored =
+    scoped.orders.length + scoped.jornadas.length + scoped.photos.length + scoped.incidents.length + scoped.reports.length +
+    scoped.cases.length + scoped.surveys.length + audit.length;
   useNow(15_000);
 
   const errors = queue.filter((q) => q.state === "error").length;

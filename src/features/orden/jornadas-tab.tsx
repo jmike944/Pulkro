@@ -3,9 +3,9 @@
 import Link from "next/link";
 import { isSameDay, parseISO } from "date-fns";
 import { motion } from "motion/react";
-import { CalendarClock, CalendarDays, CalendarPlus, CloudOff, MapPinned, NotebookPen, Satellite, Server, Smartphone, TriangleAlert, UserRoundPen, WifiOff } from "lucide-react";
+import { CalendarClock, CalendarDays, CalendarPlus, CloudOff, MapPinned, MonitorSmartphone, NotebookPen, Satellite, Server, Smartphone, TriangleAlert, UserRoundPen, WifiOff } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { jornadaMinutes } from "@/lib/domain";
+import { GEO_SOURCE_LABEL, jornadaMinutes } from "@/lib/domain";
 import { fmtDuration, fmtHours, fmtTime, minutesBetween, plural } from "@/lib/format";
 import type { GeoStamp, Jornada, Site } from "@/lib/types";
 import { AvatarStack, DateBadge } from "@/components/pk/bits";
@@ -25,7 +25,8 @@ export function JornadasTab() {
   const closed = jornadas.filter((j) => j.status === "cerrada").length;
   const reprogrammed = order.status === "reprogramada";
   const lastReprogram = audit.find((a) => /reprogram/i.test(a.action));
-  const confirmGate: Gate = d.gates.reschedule;
+  // "Confirmar fechas" only needs the order to be Reprogramada (gates.confirm); "Reprogramar" also needs pending jornadas.
+  const confirmGate: Gate = d.gates.confirm;
 
   return (
     <div>
@@ -119,8 +120,10 @@ function JornadaCard({ j, today }: { j: Jornada; today: boolean }) {
   const incs = incidents.filter((i) => i.jornadaId === j.id).length;
   const crewGate: Gate = !d.perms.crew ? { ok: false, reason: DENY.crew } : j.status === "cerrada" || d.isTerminal ? { ok: false, reason: "La jornada ya está cerrada." } : { ok: true };
 
-  const openLabel = live ? (d.perms.capture ? "Continuar jornada" : "Ver jornada") : j.status === "pendiente" && today && d.perms.capture ? "Registrar entrada" : "Abrir jornada";
-  const primary = live || (j.status === "pendiente" && today && d.perms.capture);
+  // The field screen (/jornada) is the supervisor's; Dirección and Administración read the jornada right here.
+  const canOpen = d.perms.capture;
+  const openLabel = live ? "Continuar jornada" : j.status === "pendiente" && today ? "Registrar entrada" : "Abrir jornada";
+  const primary = live || (j.status === "pendiente" && today);
 
   return (
     <motion.li
@@ -203,13 +206,15 @@ function JornadaCard({ j, today }: { j: Jornada; today: boolean }) {
             <TriangleAlert className="size-4" /> Registrar incidencia
           </Button>
         </Gated>
-        <Button
-          asChild
-          variant={primary ? "default" : "outline"}
-          className={cn("h-10 rounded-[12px] px-4 text-[14px] font-semibold", !primary && "border-line shadow-[0_1px_2px_rgb(16_24_40/0.05)]")}
-        >
-          <Link href={`/jornada/${j.id}`}>{openLabel}</Link>
-        </Button>
+        {canOpen && (
+          <Button
+            asChild
+            variant={primary ? "default" : "outline"}
+            className={cn("h-10 rounded-[12px] px-4 text-[14px] font-semibold", !primary && "border-line shadow-[0_1px_2px_rgb(16_24_40/0.05)]")}
+          >
+            <Link href={`/jornada/${j.id}`}>{openLabel}</Link>
+          </Button>
+        )}
       </div>
     </motion.li>
   );
@@ -241,15 +246,24 @@ function StampCard({
   const dist = Math.round(distanceMeters(site, stamp));
   const delta = minutesBetween(planned, stamp.deviceAt);
   const by = lk.users.get(stamp.by);
+  const remote = stamp.source === "remota";
+  const justified = stamp.source !== "gps"; // manual and remote stamps always carry a justification
   return (
     <div className="rounded-[18px] bg-soft p-4 ring-1 ring-edge">
       <div className="flex items-center justify-between gap-2">
         <p className="text-[12px] font-semibold uppercase tracking-[0.1em] text-subtle">{label}</p>
-        {stamp.offline && (
-          <SoftBadge tone="amber">
-            <WifiOff className="size-3" /> Sin conexión
-          </SoftBadge>
-        )}
+        <span className="flex flex-wrap items-center justify-end gap-1.5">
+          {remote && (
+            <SoftBadge tone="violet">
+              <MonitorSmartphone className="size-3" /> Remota
+            </SoftBadge>
+          )}
+          {stamp.offline && (
+            <SoftBadge tone="amber">
+              <WifiOff className="size-3" /> Sin conexión
+            </SoftBadge>
+          )}
+        </span>
       </div>
       <p className="mt-1 flex items-baseline gap-2">
         <span className="text-[26px] font-medium tracking-[-0.02em] text-ink tabular">{fmtTime(stamp.deviceAt)}</span>
@@ -274,16 +288,17 @@ function StampCard({
             )
           }
         />
-        {stamp.source === "manual" ? (
-          <StampRow icon={<MapPinned />} k="Ubicación" v="Manual (GPS no disponible)" />
-        ) : (
+        {stamp.source === "gps" ? (
           <StampRow icon={<Satellite />} k="GPS" v={`±${Math.round(stamp.accuracy)} m · a ${dist} m del sitio`} />
+        ) : (
+          // Manual pin or remote supervision: never described as GPS at the site (a remote stamp's position is the supervisor's phone).
+          <StampRow icon={remote ? <MonitorSmartphone /> : <MapPinned />} k="Ubicación" v={GEO_SOURCE_LABEL[stamp.source]} />
         )}
         <StampRow icon={<NotebookPen />} k="Capturó" v={by?.name ?? "Usuario"} />
       </dl>
       {stamp.note && (
-        <p className={cn("mt-2.5 rounded-[10px] px-3 py-2 text-[12.5px] leading-snug", stamp.source === "manual" ? "bg-amber-soft text-amber-ink" : "bg-surface text-subtle")}>
-          {stamp.source === "manual" ? "Justificación: " : "Nota: "}
+        <p className={cn("mt-2.5 rounded-[10px] px-3 py-2 text-[12.5px] leading-snug", justified ? "bg-amber-soft text-amber-ink" : "bg-surface text-subtle")}>
+          {justified ? "Justificación: " : "Nota: "}
           {stamp.note}
         </p>
       )}

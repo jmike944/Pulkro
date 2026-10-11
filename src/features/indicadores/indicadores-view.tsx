@@ -8,6 +8,7 @@ import { Lock } from "lucide-react";
 import { useAppStore, useCan, useLookups, useNow } from "@/lib/hooks";
 import { fmtDateTime, fmtNum } from "@/lib/format";
 import { ROLE_LABEL } from "@/lib/status";
+import { PulkroEmblem, PulkroLetters } from "@/components/pk/brand";
 import { PageHeader, UnderlineTabs } from "@/components/pk/page";
 import { EASE } from "@/components/pk/motion";
 import { EmptyState } from "@/components/pk/feedback";
@@ -43,8 +44,8 @@ export function IndicadoresView() {
   const sp = useSearchParams();
   const now = useNow(5 * 60_000);
   const lk = useLookups();
-  const canExcel = useCan("export.excel");
-  const canPdf = useCan("export.pdf");
+  // Both the Excel and the print-PDF of the dashboard are the same permission (Dirección and Administración).
+  const canExport = useCan("export.kpis");
   const canPickUnit = useCan("view.allUnits");
   const canView = useCan("view.kpis");
   const setUnitFilter = useAppStore((s) => s.setUnitFilter);
@@ -80,7 +81,7 @@ export function IndicadoresView() {
   const clientName = useCallback((id: string) => lk.clients.get(id)?.shortName ?? "—", [lk.clients]);
 
   const onExport = async () => {
-    if (!canExcel || exporting) return;
+    if (!canExport || exporting) return;
     setExporting(true);
     try {
       const rows = await exportIndicadores({
@@ -135,7 +136,10 @@ export function IndicadoresView() {
     <div className="print:[-webkit-print-color-adjust:exact] print:[print-color-adjust:exact]">
       {/* print-only letterhead (the shell hides itself on print) */}
       <div className="hidden print:mb-6 print:block">
-        <p className="font-brand text-[12px] font-extrabold tracking-[0.18em] text-brand-ink">PULKRO</p>
+        <span className="inline-flex items-center gap-2.5 text-brand-ink">
+          <PulkroEmblem className="size-7" />
+          <PulkroLetters className="h-[11px]" />
+        </span>
         <h1 className="mt-1 font-serif text-[28px] font-medium text-ink">
           Indicadores · {win.label} · {TAB_LABEL[tab]}
         </h1>
@@ -186,8 +190,7 @@ export function IndicadoresView() {
         }}
         onExport={onExport}
         exporting={exporting}
-        canExcel={canExcel}
-        canPdf={canPdf}
+        canExport={canExport}
         onPrint={() => window.print()}
       />
 

@@ -18,7 +18,7 @@ const POLICIES: { title: string; status: DocStatus; ref: string; proposal: strin
   { title: "Conservación de la bitácora de auditoría", status: "pendiente", ref: "§6", proposal: "Mismo plazo que la orden, para conservar la trazabilidad de cada cambio." },
   { title: "Eliminación a solicitud del titular", status: "pendiente", ref: "§6", proposal: "Atender por el medio del aviso; la eliminación queda registrada sin conservar el dato." },
   { title: "Acceso a información de otras unidades", status: "pendiente", ref: "§2", proposal: "Dirección ve todas; Administración solo su unidad; Supervisor solo sus asignaciones." },
-  { title: "Política cuando el GPS no está disponible", status: "pendiente", ref: "§4.2", proposal: "Registro con justificación escrita y marca de captura manual." },
+  { title: "Política cuando el GPS no está disponible", status: "pendiente", ref: "§4.2", proposal: "Registro con justificación escrita y marca de captura manual; la supervisión remota es una opción aparte, también justificada." },
   { title: "Cifrado en tránsito y en reposo", status: "propuesto", ref: "§6", proposal: "TLS en todas las conexiones y cifrado de la base de datos y de las fotos almacenadas." },
   { title: "Respaldos y recuperación", status: "pendiente", ref: "§6", proposal: "Copias automáticas diarias con prueba periódica de restauración." },
   { title: "Recuperación de cuentas", status: "pendiente", ref: "§11", proposal: "Dirección restablece el acceso; cada restablecimiento queda en bitácora." },
@@ -27,7 +27,7 @@ const POLICIES: { title: string; status: DocStatus; ref: string; proposal: strin
 const CONSENT = [
   "Al iniciar la jornada, el supervisor informa al contacto en sitio que se tomarán fotografías de las áreas de trabajo.",
   "Las fotos se enfocan en instalaciones: evitar rostros, documentos, pantallas y placas de vehículos.",
-  "La ubicación se registra solo al marcar entrada y salida; la app no rastrea de forma continua.",
+  "La ubicación se registra al marcar entrada y salida y al adjuntar cada foto; la app no rastrea de forma continua.",
   "Antes de firmar la conformidad, la persona en sitio ve el resumen del servicio y su nombre queda en el reporte.",
   "La encuesta por enlace muestra un aviso breve con vínculo a este aviso completo.",
 ];
@@ -51,8 +51,8 @@ export function PrivacyTab() {
   }, [orders, jornadas, photos, surveys, clients, workers, user.role, user.unitId]);
 
   const DATA = [
-    { icon: <Camera />, title: "Fotografías", value: counts.photos, sub: "Antes, después, incidencias y postventa, con hora y coordenadas." },
-    { icon: <MapPin />, title: "Ubicación GPS", value: counts.gps, sub: "Registros de entrada y salida con precisión y hora de dispositivo y servidor." },
+    { icon: <Camera />, title: "Fotografías", value: counts.photos, sub: "Antes, después, incidencias y postventa, con hora real de la toma, origen (cámara o galería) y ubicación." },
+    { icon: <MapPin />, title: "Ubicación GPS", value: counts.gps, sub: "Registros de entrada y salida (GPS, manual o supervisión remota) con precisión y hora de dispositivo y servidor." },
     { icon: <PenLine />, title: "Firmas y conformidad", value: counts.conformities, sub: `${fmtNum(counts.signatures)} con firma en pantalla; el resto verbal o por correo.` },
     { icon: <Building2 />, title: "Contactos de clientes", value: counts.clients, sub: `Nombre, teléfono y correo · ${fmtNum(counts.surveys)} encuestas respondidas.` },
     { icon: <HardHat />, title: "Personal de cuadrilla", value: counts.workers, sub: "Nombre, teléfono y especialidad; no usan la app." },

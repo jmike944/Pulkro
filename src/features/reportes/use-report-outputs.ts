@@ -3,6 +3,7 @@
 import { useCallback, useState } from "react";
 import { toast } from "sonner";
 import { useAppStore, useCan } from "@/lib/hooks";
+import { PermissionDeniedError } from "@/lib/store";
 import { useUi } from "@/lib/ui-store";
 import { mailtoLink, whatsappLink } from "@/lib/domain";
 import type { Report, ShareChannel } from "@/lib/types";
@@ -92,7 +93,15 @@ export function useReportOutputs() {
   const generate = useCallback(
     async (ctx: ReportContext, photoIds: string[], summary: string, opts: Opts = {}) => {
       if (!canShare) return null;
-      const rep = generateReport(ctx.order.id, photoIds, summary.trim());
+      let rep: Report;
+      try {
+        rep = generateReport(ctx.order.id, photoIds, summary.trim());
+      } catch (e) {
+        // The store refuses a reopened order whose closure was not validated again (or a role without the permission) and has
+        // already told the user why with a toast; never let the rejection escape the click handler.
+        if (e instanceof PermissionDeniedError) return null;
+        throw e;
+      }
       const blob = await compose(ctx, rep, "generate", opts.root);
       if (blob && !opts.quiet)
         toast.success(`Reporte v${rep.version} generado`, {

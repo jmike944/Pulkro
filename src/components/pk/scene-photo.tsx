@@ -7,7 +7,8 @@ import { cn } from "@/lib/utils";
 import { getPhotoUrl } from "@/lib/photo-store";
 import { fmtTime } from "@/lib/format";
 import { PHOTO_KIND, toneDot } from "@/lib/status";
-import type { Photo, SceneKind } from "@/lib/types";
+import type { Jornada, Photo, SceneKind } from "@/lib/types";
+import { PhotoFlags } from "./photo-flags";
 
 /* ───────────── procedural scenes (stand-ins for seed photos) ───────────── */
 
@@ -288,13 +289,18 @@ export function PhotoImage({ photo, className }: { photo: Pick<Photo, "source" |
   return <img src={url} alt={photo.area} className={cn("h-full w-full object-cover", className)} />;
 }
 
-/** Thumbnail card with kind badge, area and time. Shows a cloud-off chip when not yet synced. */
+/**
+ * Thumbnail card with kind badge, area and time. Shows a cloud-off chip when not yet synced and the evidence flags (picked from
+ * the gallery · time outside the jornada) so a photo's provenance is visible wherever it is listed; `flags={false}` hides them.
+ */
 export function PhotoThumb({
   photo,
   className,
   meta = true,
   pending,
   selected,
+  flags = true,
+  jornada,
   onClick,
   children,
 }: {
@@ -303,6 +309,9 @@ export function PhotoThumb({
   meta?: boolean;
   pending?: boolean;
   selected?: boolean;
+  flags?: boolean;
+  /** Jornada to check the capture time against; defaults to the photo's own jornada from the store. */
+  jornada?: Pick<Jornada, "checkIn" | "checkOut">;
   onClick?: () => void;
   children?: React.ReactNode;
 }) {
@@ -336,8 +345,9 @@ export function PhotoThumb({
           </span>
         </>
       )}
+      {flags && <PhotoFlags photo={photo} jornada={jornada} compact={!meta} />}
       {pending && (
-        <span className="absolute right-2.5 top-2.5 inline-flex items-center gap-1 rounded-full bg-[#fff6e6] px-2 py-0.5 text-[10.5px] font-semibold text-[#b86e00]">
+        <span className="absolute right-2.5 top-2.5 inline-flex items-center gap-1 rounded-full bg-amber-soft px-2 py-0.5 text-[10.5px] font-semibold text-amber-fg">
           <CloudOff className="size-3" /> Pendiente
         </span>
       )}
@@ -364,6 +374,9 @@ export function BeforeAfter({ before, after, className }: { before: Photo; after
     return () => controls.stop();
   }, [pos]);
 
+  // Screen readers get the live position without re-rendering on every animation frame.
+  useEffect(() => pos.on("change", (v) => ref.current?.setAttribute("aria-valuenow", String(Math.round(v)))), [pos]);
+
   const setFromClient = (clientX: number) => {
     const rect = ref.current?.getBoundingClientRect();
     if (!rect) return;
@@ -385,6 +398,7 @@ export function BeforeAfter({ before, after, className }: { before: Photo; after
       aria-label="Comparar antes y después"
       aria-valuemin={0}
       aria-valuemax={100}
+      aria-valuenow={100}
       tabIndex={0}
       onKeyDown={(e) => {
         if (e.key === "ArrowLeft") pos.set(Math.max(0, pos.get() - 5));
@@ -397,6 +411,9 @@ export function BeforeAfter({ before, after, className }: { before: Photo; after
       <motion.div className="absolute inset-0" style={{ clipPath: clip }}>
         <PhotoImage photo={after} />
       </motion.div>
+      {/* provenance of each side, mirroring the ANTES / DESPUÉS pills: left = ANTES, right = DESPUÉS */}
+      <PhotoFlags photo={before} compact className="left-3 top-auto bottom-3" />
+      <PhotoFlags photo={after} compact className="left-auto right-3 top-auto bottom-3" />
       <span className="absolute left-3 top-3 rounded-full bg-black/45 px-2.5 py-1 text-[11px] font-bold tracking-[0.1em] text-white backdrop-blur">ANTES</span>
       <span className="absolute right-3 top-3 rounded-full bg-white/85 px-2.5 py-1 text-[11px] font-bold tracking-[0.1em] text-ink backdrop-blur dark:text-on-light">DESPUÉS</span>
       {/* touch-none: dragging the handle never turns into a page scroll; 44px grab zone on touch screens */}

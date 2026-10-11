@@ -1,11 +1,10 @@
 "use client";
 
 import { useLayoutEffect, useState } from "react";
-import Link from "next/link";
-import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { usePathname, useSearchParams } from "next/navigation";
 import { AnimatePresence, motion } from "motion/react";
-import { CalendarDays, Users } from "lucide-react";
-import { useCan, useMediaQuery } from "@/lib/hooks";
+import { Users } from "lucide-react";
+import { useCan } from "@/lib/hooks";
 import { fmtLongDay, plural } from "@/lib/format";
 import { PageHeader, UnderlineTabs } from "@/components/pk/page";
 import { AuroraPanel, GlassCard } from "@/components/pk/aurora";
@@ -28,11 +27,9 @@ type Tab = "personal" | "supervisores";
 export function EquipoView() {
   const searchParams = useSearchParams();
   const pathname = usePathname();
-  const router = useRouter();
   const data = useTeamData();
   const canCatalog = useCan("catalogs.admin");
-  const isDesktop = useMediaQuery("(min-width: 1024px)");
-  // Below lg a tap on a day shows its count (tap used to navigate away before it could be read).
+  // Tapping a day shows its count (the agenda is the supervisor's screen: there is nowhere to navigate to from here).
   const [pickedDay, setPickedDay] = useState<number | null>(null);
 
   const w = searchParams.get("w");
@@ -72,11 +69,10 @@ export function EquipoView() {
   const bars = data.weekBars.map((b) => ({ key: b.key, label: `${dowShort(b.date)} ${b.date.getDate()}`, value: b.value }));
   const todayBar = data.weekBars[data.todayIndex];
   const peak = data.weekBars.reduce((m, b) => Math.max(m, b.value), 0);
-  const pickedIdx = !isDesktop && pickedDay !== null && data.weekBars[pickedDay] ? pickedDay : null;
+  const pickedIdx = pickedDay !== null && data.weekBars[pickedDay] ? pickedDay : null;
   const picked = pickedIdx !== null ? data.weekBars[pickedIdx] : undefined;
   const shownBar = picked ?? todayBar;
   const highlightIdx = pickedIdx ?? (data.todayIndex >= 0 ? data.todayIndex : bars.length - 1);
-  const agendaBar = shownBar ?? data.weekBars[data.weekBars.length - 1];
   const exists = !!w && data.stats.some((s) => s.worker.id === w);
 
   return (
@@ -119,8 +115,7 @@ export function EquipoView() {
             <p className="text-[14px] font-medium text-ink/70">Personas asignadas{data.weekBars[0] ? ` · semana ${weekNumber(data.weekBars[0].date)}` : ""}</p>
             <AnimatedNumber value={shownBar?.value ?? peak} className="mt-1 block text-[38px] font-medium leading-none tracking-[-0.03em] text-ink" />
             <p className="mt-2 text-[14px] text-ink/70">
-              {picked && picked !== todayBar ? fmtLongDay(picked.date) : todayBar ? "hoy" : "máximo de la semana"} · de {counts.active} disponibles ·{" "}
-              {isDesktop ? "toca un día para abrir la agenda" : "toca un día para ver su carga"}
+              {picked && picked !== todayBar ? fmtLongDay(picked.date) : todayBar ? "hoy" : "máximo de la semana"} · de {counts.active} disponibles · toca un día para ver su carga
             </p>
             <PillBars
               data={bars}
@@ -128,16 +123,8 @@ export function EquipoView() {
               className="mt-6 flex-1"
               height={190}
               format={(v) => plural(v, "persona", "personas")}
-              onSelect={(i) => (isDesktop ? router.push(`/agenda?fecha=${data.weekBars[i].key}`) : setPickedDay(i))}
+              onSelect={(i) => setPickedDay(i)}
             />
-            {agendaBar && (
-              <Link
-                href={`/agenda?fecha=${agendaBar.key}`}
-                className="mt-4 inline-flex h-11 items-center justify-center gap-2 self-start rounded-[14px] bg-surface px-4 text-[14px] font-semibold text-ink shadow-[0_1px_2px_rgb(16_24_40/0.08)] transition active:scale-[0.98] lg:hidden"
-              >
-                <CalendarDays className="size-4" /> Abrir agenda · {agendaBar === todayBar ? "hoy" : `${dowShort(agendaBar.date)} ${agendaBar.date.getDate()}`}
-              </Link>
-            )}
           </div>
         </div>
       </AuroraPanel>

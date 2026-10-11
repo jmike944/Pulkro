@@ -8,8 +8,8 @@ import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { useCan, useLookups, useNow, useScopedData } from "@/lib/hooks";
 import { incidentsByType } from "@/lib/metrics";
-import { exportToExcel } from "@/lib/export";
-import { fmtDateTime, fmtNum, plural } from "@/lib/format";
+import { businessDateStamp, exportToExcel, fmtBusinessDateTime } from "@/lib/export";
+import { fmtNum, plural } from "@/lib/format";
 import { INCIDENT_TYPE, SEVERITY, toneSoftBg, toneText } from "@/lib/status";
 import type { IncidentType, Photo, Severity } from "@/lib/types";
 import { Button } from "@/components/ui/button";
@@ -162,7 +162,7 @@ export function IncidentsView() {
   const doExport = async () => {
     setExporting(true);
     try {
-      await exportToExcel(`incidencias-${now.toISOString().slice(0, 10)}`, [
+      await exportToExcel(`incidencias-${businessDateStamp(now)}`, [
         {
           name: "Incidencias",
           columns: [
@@ -191,8 +191,8 @@ export function IncidentsView() {
             supervisor: r.order ? lk.users.get(r.order.supervisorId)?.name : undefined,
             descripcion: r.inc.description,
             fotos: r.photos.length,
-            creada: fmtDateTime(r.inc.createdAt),
-            resuelta: r.inc.resolvedAt ? fmtDateTime(r.inc.resolvedAt) : "",
+            creada: fmtBusinessDateTime(r.inc.createdAt),
+            resuelta: r.inc.resolvedAt ? fmtBusinessDateTime(r.inc.resolvedAt) : "",
             resolucion: r.inc.resolution ?? "",
           })),
         },

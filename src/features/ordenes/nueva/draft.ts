@@ -169,7 +169,11 @@ export type Issues = { errors: Record<string, string>; warnings: Record<string, 
 const REF_PATTERN = /^[A-Z]{2,5}-\d{4}-\d{2,6}$/;
 export const normalizeRef = (s: string) => s.trim().toUpperCase().replace(/\s+/g, "");
 
-type Ctx = { today: string; title: string; duplicateRefFolio?: string };
+/**
+ * `duplicateRef`: another (non-cancelled) order already uses this commercial reference. `folio` is only present when that
+ * order is inside the creator's scope (doc §2); otherwise the warning never names it.
+ */
+type Ctx = { today: string; title: string; duplicateRef?: { folio?: string } };
 
 export function validateStep(step: number, d: Draft, ctx: Ctx): Issues {
   const errors: Record<string, string> = {};
@@ -186,7 +190,10 @@ export function validateStep(step: number, d: Draft, ctx: Ctx): Issues {
     if (!ref) errors.commercialRef = "La referencia del sistema comercial es obligatoria";
     else if (ref.length < 5) errors.commercialRef = "Referencia demasiado corta";
     else if (!REF_PATTERN.test(ref)) warnings.commercialRef = "Formato habitual: COT-2026-1187";
-    if (ref && ctx.duplicateRefFolio) warnings.commercialRefDup = `Ya existe la orden ${ctx.duplicateRefFolio} con esta referencia`;
+    if (ref && ctx.duplicateRef)
+      warnings.commercialRefDup = ctx.duplicateRef.folio
+        ? `Ya existe la orden ${ctx.duplicateRef.folio} con esta referencia`
+        : "Ya existe una orden con esta referencia (fuera de su alcance)";
   }
 
   if (step === 1) {

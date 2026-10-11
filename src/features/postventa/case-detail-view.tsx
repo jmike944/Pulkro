@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { use, useMemo, useState } from "react";
-import { BadgeCheck, CircleCheck, Inbox, MessageSquareText, RotateCcw, SearchX, ShieldCheck, StickyNote, UserCog } from "lucide-react";
+import { BadgeCheck, CircleCheck, Inbox, MessageSquareText, RotateCcw, ShieldCheck, StickyNote, UserCog } from "lucide-react";
 import { toast } from "sonner";
 import { useAppStore } from "@/lib/store";
 import { useCan, useLookups, useOrderBundle, useScopedData } from "@/lib/hooks";
@@ -10,8 +10,8 @@ import { firstName, fmtDateTime, plural } from "@/lib/format";
 import { CASE_CATEGORY, CASE_CHANNEL, CASE_STATUS, ROLE_LABEL } from "@/lib/status";
 import type { PostSaleCase } from "@/lib/types";
 import { PageHeader } from "@/components/pk/page";
+import { NotFoundOrOutOfScope } from "@/components/shell/out-of-scope";
 import { ClientMark } from "@/components/pk/client-mark";
-import { EmptyState } from "@/components/pk/feedback";
 import { SectionHeader } from "@/components/pk/bits";
 import { TonePill } from "@/components/pk/status";
 import { Timeline, type TimelineStep } from "@/components/pk/timeline";
@@ -28,24 +28,14 @@ import { Gate, REASON_POSTVENTA, textareaCls } from "./ui";
 export function CaseDetailView({ params }: { params: Promise<{ folio: string }> }) {
   const { folio } = use(params);
   const scoped = useScopedData();
-  const exists = useAppStore((s) => s.cases.some((c) => c.folio === folio));
   const c = scoped.cases.find((x) => x.folio === folio);
 
   if (!c) {
+    // One state for "doesn't exist" and "outside your scope" (doc §2): it never says which.
     return (
       <div>
-        <PageHeader title="Caso postventa" breadcrumb={[{ label: "Postventa", href: "/postventa" }, { label: folio }]} />
-        <EmptyState
-          icon={<SearchX />}
-          title={exists ? "Caso fuera de su alcance" : "No encontramos el caso"}
-          action={
-            <Button asChild variant="outline" className="h-10 rounded-[12px] px-4 font-semibold">
-              <Link href="/postventa">Ir a Postventa</Link>
-            </Button>
-          }
-        >
-          {exists ? "El caso pertenece a una orden que su rol no puede consultar." : `No existe un caso con folio ${folio} en este dispositivo.`}
-        </EmptyState>
+        <PageHeader title="Caso postventa" breadcrumb={[{ label: "Postventa", href: "/postventa" }, { label: "Caso" }]} />
+        <NotFoundOrOutOfScope subject="Este caso" backHref="/postventa" backLabel="Ir a Postventa" />
       </div>
     );
   }

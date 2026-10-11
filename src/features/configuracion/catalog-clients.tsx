@@ -203,6 +203,8 @@ function ClientDetail({
   onEditClient: () => void;
   onEditSite: (s: Site | null) => void;
 }) {
+  // Orders are created by Administración only: Dirección (catalogs.admin, order.create=false) gets no link into the wizard.
+  const canCreateOrder = useCan("order.create");
   return (
     <div className="mb-5 grid gap-5 rounded-[20px] bg-soft p-4 sm:p-5 xl:grid-cols-[minmax(0,1.1fr)_minmax(0,1fr)]">
       <div className="min-w-0">
@@ -289,11 +291,13 @@ function ClientDetail({
               <Building2 className="size-4" /> Ver ficha
             </Link>
           </Button>
-          <Button asChild variant="outline" className="h-10 rounded-[12px] border-line bg-surface px-4 font-semibold">
-            <Link href={`/ordenes/nueva?cliente=${client.id}`}>
-              <ClipboardList className="size-4" /> Nueva orden
-            </Link>
-          </Button>
+          {canCreateOrder && (
+            <Button asChild variant="outline" className="h-10 rounded-[12px] border-line bg-surface px-4 font-semibold">
+              <Link href={`/ordenes/nueva?cliente=${client.id}`}>
+                <ClipboardList className="size-4" /> Nueva orden
+              </Link>
+            </Button>
+          )}
         </div>
       </div>
       <div className={cn("min-w-0", sites.length === 0 && "hidden xl:block")}>

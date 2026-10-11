@@ -5,14 +5,14 @@ import { useMemo } from "react";
 import { Download, MessageSquareWarning, Plus } from "lucide-react";
 import { toast } from "sonner";
 import { useCan } from "@/lib/hooks";
-import { fmtDate, fmtNum, fmtPct, plural } from "@/lib/format";
-import { exportToExcel } from "@/lib/export";
+import { fmtNum, fmtPct, plural } from "@/lib/format";
+import { businessDateStamp, exportToExcel, fmtBusinessDate } from "@/lib/export";
 import { PageHeader } from "@/components/pk/page";
 import { BarList, CornerLink, Insight } from "@/components/pk/bits";
 import { useUnitScope } from "@/components/shell/header-tools";
 import { Button } from "@/components/ui/button";
 import { casesByCategory } from "@/features/postventa/lib";
-import { Gate, REASON_EXPORT, REASON_ORDER_CREATE, outlineBtnCls } from "@/features/postventa/ui";
+import { Gate, REASON_EXPORT, outlineBtnCls } from "@/features/postventa/ui";
 import { ClientsTable } from "./clients-table";
 import { TopClients } from "./top-clients";
 import { useClientDirectory } from "./use-clients";
@@ -46,7 +46,7 @@ export function ClientsView() {
   }, [cases, reasons, rows, summary.services]);
 
   const exportClients = async () => {
-    await exportToExcel(`clientes-${now.toISOString().slice(0, 10)}`, [
+    await exportToExcel(`clientes-${businessDateStamp(now)}`, [
       {
         name: "Clientes",
         columns: [
@@ -77,7 +77,7 @@ export function ClientsView() {
           csat: r.csatCount ? Math.round(r.csat * 10) / 10 : null,
           quejas: r.cases.length,
           abiertos: r.openCases,
-          ultimo: r.lastService ? fmtDate(r.lastService) : "",
+          ultimo: r.lastService ? fmtBusinessDate(r.lastService) : "",
         })),
       },
     ]);
@@ -119,19 +119,14 @@ export function ClientsView() {
                 <Download /> Exportar
               </Button>
             </Gate>
-            <Gate allowed={canCreate} reason={REASON_ORDER_CREATE}>
-              {canCreate ? (
-                <Button asChild className="h-10 rounded-[12px] px-4 text-[14px] font-semibold">
-                  <Link href="/ordenes/nueva">
-                    <Plus /> Nueva orden
-                  </Link>
-                </Button>
-              ) : (
-                <Button disabled className="h-10 rounded-[12px] px-4 text-[14px] font-semibold">
+            {/* only Administración creates orders: no disabled ghost button for the other roles */}
+            {canCreate && (
+              <Button asChild className="h-10 rounded-[12px] px-4 text-[14px] font-semibold">
+                <Link href="/ordenes/nueva">
                   <Plus /> Nueva orden
-                </Button>
-              )}
-            </Gate>
+                </Link>
+              </Button>
+            )}
           </>
         }
       />

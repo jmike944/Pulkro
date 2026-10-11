@@ -11,6 +11,7 @@ import {
   House,
   Inbox,
   LayoutGrid,
+  MapIcon,
   MessageSquareHeart,
   Settings,
   TriangleAlert,
@@ -24,6 +25,7 @@ export type NavKey =
   | "inicio"
   | "pendientes"
   | "ordenes"
+  | "mapa"
   | "agenda"
   | "evidencias"
   | "incidencias"
@@ -48,7 +50,7 @@ export type NavItem = {
 
 /** Field screens are the supervisor's: Dirección and Administración see jornadas, evidence and incidents inside the order. */
 const FIELD: Role[] = ["supervisor"];
-/** Indicadores (and their exports) are for Dirección and Administración; supervisors see their own figures on Hoy. */
+/** Indicadores (and their exports) and the Equipo directory are for Dirección and Administración; supervisors see their own figures on Hoy. */
 const MANAGEMENT: Role[] = ["direccion", "administracion"];
 
 export type NavBadgeKey = NonNullable<NavItem["badge"]>;
@@ -70,6 +72,8 @@ export const NAV_GROUPS: NavGroup[] = [
     icon: HardHat,
     items: [
       { key: "ordenes", href: "/ordenes", label: "Órdenes", icon: ClipboardList, badge: "ordenes" },
+      // PROPUESTO (beyond the doc): where the day's services are, for presencial and remote supervision (§4.2). Every role, own scope.
+      { key: "mapa", href: "/mapa", label: "Mapa", icon: MapIcon },
       { key: "agenda", href: "/agenda", label: "Agenda", icon: CalendarDays, roles: FIELD },
       { key: "evidencias", href: "/evidencias", label: "Evidencias", icon: Camera, badge: "evidencias", roles: FIELD },
       { key: "incidencias", href: "/incidencias", label: "Incidencias", icon: TriangleAlert, badge: "incidencias", roles: FIELD },
@@ -91,7 +95,8 @@ export const NAV_GROUPS: NavGroup[] = [
     icon: ChartColumn,
     items: [
       { key: "indicadores", href: "/indicadores", label: "Indicadores", icon: ChartColumn, roles: MANAGEMENT },
-      { key: "equipo", href: "/equipo", label: "Equipo", icon: Users },
+      // The staff directory (phones, WhatsApp, workload of every supervisor) is for Dirección and Administración; supervisors plan with the crew picker.
+      { key: "equipo", href: "/equipo", label: "Equipo", icon: Users, roles: MANAGEMENT },
     ],
   },
 ];

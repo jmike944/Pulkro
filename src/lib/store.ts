@@ -94,6 +94,19 @@ export class PermissionDeniedError extends Error {
   }
 }
 
+/**
+ * Runs a value-returning action (createOrder, addIncident, createCase…). When the store refuses it the user has already been
+ * told why (toast), so this resolves to `undefined` instead of an uncaught exception in the event handler.
+ */
+export function attempt<T>(run: () => T): T | undefined {
+  try {
+    return run();
+  } catch (e) {
+    if (e instanceof PermissionDeniedError) return undefined;
+    throw e;
+  }
+}
+
 const OUT_OF_SCOPE = "No encontrado o fuera de su alcance.";
 const CLOSED_ORDER = "Orden cerrada: reábrala para hacer cambios (se generará una nueva versión del reporte).";
 
@@ -218,6 +231,7 @@ export type AppState = DataSnapshot & {
   updateCase: (caseId: string, patch: Partial<PostSaleCase>, note?: string) => void;
   addCaseNote: (caseId: string, text: string) => void;
   createSurvey: (orderId: string, channel: ShareChannel) => Survey;
+  /** Public: the client answers. Refused (false) while a staff session is signed in on the device, or when already answered. */
   submitSurvey: (token: string, answers: SurveyAnswers, respondentName?: string) => boolean;
   recordManualSurvey: (orderId: string, answers: SurveyAnswers, respondentName: string) => Survey;
 
@@ -225,10 +239,10 @@ export type AppState = DataSnapshot & {
   upsertClient: (client: Client) => void;
   upsertSite: (site: Site) => void;
   upsertWorker: (worker: Worker) => void;
-  /** users.admin, or self-service on one's own record limited to phone/email (role, unit and active never change here). */
+  /** users.admin, or self-service on one's own record limited to the phone (role, unit, e-mail and active never change here). */
   upsertUser: (user: User) => void;
-  /** Self-service "Mis datos": phone / email of the signed-in user. */
-  updateMyContact: (contact: { phone?: string; email?: string }) => void;
+  /** Self-service "Mis datos": the phone of the signed-in user (the e-mail is the account's identity: Dirección manages it). */
+  updateMyContact: (contact: { phone?: string }) => void;
   upsertServiceType: (st: ServiceType) => void;
   upsertMaterial: (m: Material) => void;
 
@@ -239,7 +253,7 @@ export type AppState = DataSnapshot & {
   retrySync: () => void;
 
   /* demo */
-  /** Demo only (NEXT_PUBLIC_DEMO ≠ "0"); the UI must confirm first (DemoResetDialog). */
+  /** Demo only (NEXT_PUBLIC_DEMO ≠ "0"); the UI must confirm first (DemoResetDialog). Refused while records are unsynced. */
   resetDemo: () => void;
   ensureSeeded: () => void;
 };
@@ -688,7 +702,7 @@ export const useAppStore = create<AppState>()(
         },
 
         logReminder: (orderId, jornadaId, note) => {
-          const ok = allowOrder(null, orderId);
+          const ok = allowOrder(["field.capture"], orderId);
           if (!ok) return;
           const j = jornadaId ? getState().jornadas.find((x) => x.id === jornadaId && x.orderId === orderId) : undefined;
           record(j ? "jornada" : "orden", j?.id ?? orderId, `Envió recordatorio de evidencia${j ? ` · Jornada ${j.dayIndex}` : ""}`, {
@@ -700,6 +714,10 @@ export const useAppStore = create<AppState>()(
           const ok = allowJornada(["field.capture"], jornadaId);
           if (!ok) return;
           const { jornada: j } = ok;
+          if (isTerminal(ok.order.status)) {
+            denied(CLOSED_ORDER);
+            return;
+          }
           const total = breakdown.reduce((sum, b) => sum + b.hours, 0);
           patchJornada(jornadaId, { breakdown, breakdownNote: note?.trim() || undefined });
           record("jornada", jornadaId, `Registró desglose de horas · Jornada ${j.dayIndex} (${total.toFixed(1)} h)`, {
@@ -941,6 +959,11 @@ export const useAppStore = create<AppState>()(
 
         // Public (/encuesta/[token]): the client answers without a session; the token is the only key.
         submitSurvey: (token, answers, respondentName) => {
+          // The answer is recorded as the client's: never from a staff session (the survey screen asks to sign out first).
+          if (getState().session.signedIn) {
+            denied("Hay una sesión de Pulkro abierta en este dispositivo: ciérrela para responder la encuesta como cliente.");
+            return false;
+          }
           const sv = getState().surveys.find((x) => x.token === token);
           if (!sv || sv.respondedAt) return false;
           setState((st) => ({
@@ -971,12 +994,23 @@ export const useAppStore = create<AppState>()(
           record("catalogo", client.id, `Guardó cliente ${client.shortName}`);
         },
         upsertSite: (site) => {
-          const client = getState().clients.find((c) => c.id === site.clientId);
+          const s = getState();
+          const client = s.clients.find((c) => c.id === site.clientId);
           if (!client) {
             denied(OUT_OF_SCOPE);
             return;
           }
           if (!allowCatalog(client.unitId)) return;
+          // An existing site is also guarded by the unit of the client it belongs to today (a payload must not move it across units).
+          const prevSite = s.sites.find((x) => x.id === site.id);
+          if (prevSite) {
+            const prevClient = s.clients.find((c) => c.id === prevSite.clientId);
+            if (!prevClient) {
+              denied(OUT_OF_SCOPE);
+              return;
+            }
+            if (!allowCatalog(prevClient.unitId)) return;
+          }
           setState((st) => ({ sites: st.sites.some((c) => c.id === site.id) ? st.sites.map((c) => (c.id === site.id ? site : c)) : [...st.sites, site] }));
           record("catalogo", site.id, `Guardó sitio ${site.name}`);
         },
@@ -991,9 +1025,9 @@ export const useAppStore = create<AppState>()(
           if (!me) return;
           const prev = getState().users.find((u) => u.id === next.id);
           if (!can(me.role, "users.admin")) {
-            // Self-service: only one's own phone / email.
+            // Self-service: only one's own phone.
             const sameIdentity =
-              !!prev && prev.id === me.id && (Object.keys(next) as (keyof User)[]).every((k) => k === "phone" || k === "email" || next[k] === prev[k]);
+              !!prev && prev.id === me.id && (Object.keys(next) as (keyof User)[]).every((k) => k === "phone" || next[k] === prev[k]);
             if (!sameIdentity) {
               denied(DENIED_REASON["users.admin"]!);
               return;
@@ -1010,7 +1044,6 @@ export const useAppStore = create<AppState>()(
           if (!me) return;
           const patch: Partial<User> = {};
           if (contact.phone !== undefined) patch.phone = contact.phone.trim();
-          if (contact.email !== undefined) patch.email = contact.email.trim();
           if (!Object.keys(patch).length) return;
           setState((st) => ({ users: st.users.map((u) => (u.id === me.id ? { ...u, ...patch } : u)) }));
           record("usuario", me.id, "Actualizó sus datos de contacto");
@@ -1094,6 +1127,12 @@ export const useAppStore = create<AppState>()(
         resetDemo: () => {
           if (!DEMO_ENABLED) {
             denied("Restablecer datos solo existe en la versión de demostración.");
+            return;
+          }
+          // A reset would silently throw away captures that never reached the server.
+          const unsynced = getState().sync.queue.filter((q) => q.state !== "sincronizado").length;
+          if (unsynced > 0) {
+            denied(`Hay ${unsynced} registro(s) sin sincronizar. Espere a que lleguen al servidor (o desactive «Simular sin conexión») antes de restablecer.`);
             return;
           }
           reseed();

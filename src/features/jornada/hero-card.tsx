@@ -2,7 +2,7 @@
 
 import { AnimatePresence, motion } from "motion/react";
 import { differenceInMinutes, isSameDay, parseISO } from "date-fns";
-import { Camera, ChevronRight, CircleCheck, CloudOff, Lock, LocateFixed, LogOut, MapPin, NotebookPen, Sparkles, Timer, TriangleAlert, UsersRound } from "lucide-react";
+import { Camera, ChevronRight, CircleCheck, CloudOff, Headset, Lock, LocateFixed, LogOut, MapPin, NotebookPen, Sparkles, Timer, TriangleAlert, UsersRound } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useNow } from "@/lib/hooks";
 import { jornadaMinutes } from "@/lib/domain";
@@ -257,12 +257,15 @@ function ClosedState({ f, actions }: { f: FieldReady; actions: HeroActions }) {
 
 function StampTile({ label, stamp }: { label: string; stamp: GeoStamp }) {
   const manual = stamp.source === "manual";
+  // Supervisión remota is not a site fix: no accuracy chip, its note is the justification.
+  const remote = stamp.source === "remota";
+  const justified = manual || remote;
   return (
     <div className="rounded-[20px] bg-white/[0.07] p-4 ring-1 ring-white/10">
       <div className="flex items-center justify-between gap-2">
         <p className="text-[12px] font-semibold uppercase tracking-[0.12em] text-white/50">{label}</p>
-        <span className={cn("inline-flex h-6 items-center gap-1 rounded-full px-2 text-[11.5px] font-semibold", manual ? "bg-[#ffd18a]/15 text-[#ffd18a]" : "bg-sky/15 text-sky")}>
-          <MapPin className="size-3" /> {manual ? "Manual" : `±${Math.round(stamp.accuracy)} m`}
+        <span className={cn("inline-flex h-6 items-center gap-1 rounded-full px-2 text-[11.5px] font-semibold", justified ? "bg-[#ffd18a]/15 text-[#ffd18a]" : "bg-sky/15 text-sky")}>
+          {remote ? <Headset className="size-3" /> : <MapPin className="size-3" />} {remote ? "Remota" : manual ? "Manual" : `±${Math.round(stamp.accuracy)} m`}
         </span>
       </div>
       <p className="mt-2 text-[30px] font-medium leading-none tracking-[-0.03em] tabular">{fmtTime(stamp.deviceAt)}</p>
@@ -278,14 +281,18 @@ function StampTile({ label, stamp }: { label: string; stamp: GeoStamp }) {
           </dd>
         </div>
       </dl>
-      {(stamp.offline || manual) && (
+      {(stamp.offline || justified) && (
         <div className="mt-3 flex flex-wrap gap-1.5">
           {stamp.offline && (
             <span className="inline-flex h-6 items-center gap-1 rounded-full bg-white/10 px-2 text-[11.5px] font-medium text-white/80">
               <CloudOff className="size-3" /> Capturada sin conexión
             </span>
           )}
-          {manual && stamp.note && <span className="w-full text-[12px] leading-snug text-white/60">“{stamp.note}”</span>}
+          {justified && stamp.note && (
+            <span className="w-full text-[12px] leading-snug text-white/60">
+              <span className="font-semibold text-white/70">Justificación:</span> “{stamp.note}”
+            </span>
+          )}
         </div>
       )}
     </div>

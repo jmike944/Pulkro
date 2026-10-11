@@ -11,6 +11,7 @@ import { fmtCoords, fmtDateTime } from "@/lib/format";
 import { PHOTO_KIND, toneDot } from "@/lib/status";
 import type { Photo } from "@/lib/types";
 import { PhotoImage } from "@/components/pk/scene-photo";
+import { photoGeoLabel, photoOriginLabel, photoTimeLabel } from "@/components/pk/photo-flags";
 import { KeyValues } from "@/components/pk/bits";
 import { EASE } from "@/components/pk/motion";
 import { Button } from "@/components/ui/button";
@@ -145,14 +146,26 @@ function LightboxBody({
 
         <KeyValues
           rows={[
-            { k: "Tomada", v: <span className="tabular">{fmtDateTime(photo.takenAt)}</span> },
+            {
+              k: "Tomada",
+              v: (
+                <span className="block">
+                  <span className="tabular">{fmtDateTime(photo.takenAt)}</span>
+                  {photoTimeLabel(photo) && <span className="block text-[12px] leading-snug text-subtle">{photoTimeLabel(photo)}</span>}
+                </span>
+              ),
+            },
+            ...(photoOriginLabel(photo) ? [{ k: "Origen", v: photoOriginLabel(photo) }] : []),
             { k: "Capturó", v: users.get(photo.by)?.name ?? "—" },
             {
               k: "Ubicación",
               v:
                 photo.lat !== undefined && photo.lng !== undefined ? (
-                  <span className="inline-flex items-center gap-1 tabular">
-                    <MapPin className="size-3.5 text-subtle" /> {fmtCoords(photo.lat, photo.lng)}
+                  <span className="block">
+                    <span className="inline-flex items-center gap-1 tabular">
+                      <MapPin className="size-3.5 text-subtle" /> {fmtCoords(photo.lat, photo.lng)}
+                    </span>
+                    {photoGeoLabel(photo) && <span className="block text-[12px] leading-snug text-subtle">{photoGeoLabel(photo)}</span>}
                   </span>
                 ) : (
                   "Sin coordenadas"

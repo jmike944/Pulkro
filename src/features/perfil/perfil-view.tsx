@@ -8,6 +8,7 @@ import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { useAppStore, useCurrentUser, useLookups, useSyncSummary } from "@/lib/hooks";
 import { useUi } from "@/lib/ui-store";
+import { DEMO_ENABLED } from "@/lib/demo";
 import { ROLE_LABEL } from "@/lib/status";
 import { fmtAgo } from "@/lib/format";
 import type { Role } from "@/lib/types";
@@ -20,6 +21,7 @@ import { MobileToolbar } from "@/components/shell/header-tools";
 import { ThemeSegmented, useThemeChoice } from "@/components/shell/theme-switcher";
 import { UnitPickerSheet, useUnitScope } from "@/components/shell/unit-picker";
 import { useInstallPrompt } from "@/components/shell/pwa";
+import { DemoResetDialog } from "@/components/shell/demo-reset-dialog";
 
 function Card({ children, className }: { children: React.ReactNode; className?: string }) {
   return (
@@ -36,7 +38,6 @@ export function PerfilView() {
   const router = useRouter();
   const switchRole = useAppStore((s) => s.switchRole);
   const signOut = useAppStore((s) => s.signOut);
-  const resetDemo = useAppStore((s) => s.resetDemo);
   const forced = useAppStore((s) => s.sync.forcedOffline);
   const setForced = useAppStore((s) => s.setForcedOffline);
   const { offline, pending, lastSyncAt } = useSyncSummary();
@@ -45,6 +46,7 @@ export function PerfilView() {
   const unit = lk.units.get(user.unitId);
   const { allUnits, selected } = useUnitScope();
   const [unitOpen, setUnitOpen] = useState(false);
+  const [resetOpen, setResetOpen] = useState(false);
   const theme = useThemeChoice();
   const themeHint =
     theme.value === "system"
@@ -141,19 +143,21 @@ export function PerfilView() {
           </Card>
         )}
 
-        <Card>
-          <p className="mb-3 text-[12px] font-semibold uppercase tracking-[0.1em] text-subtle">Ver la app como (demo)</p>
-          <Segmented
-            id="perfil-role"
-            className="w-full justify-between [&>button]:flex-1"
-            items={(["supervisor", "administracion", "direccion"] as Role[]).map((r) => ({ value: r, label: r === "administracion" ? "Admin." : ROLE_LABEL[r] }))}
-            value={user.role}
-            onChange={(r) => {
-              switchRole(r);
-              toast.success(`Ahora ves Pulkro como ${ROLE_LABEL[r]}`);
-            }}
-          />
-        </Card>
+        {DEMO_ENABLED && (
+          <Card>
+            <p className="mb-3 text-[12px] font-semibold uppercase tracking-[0.1em] text-subtle">Ver la app como (demo)</p>
+            <Segmented
+              id="perfil-role"
+              className="w-full justify-between [&>button]:flex-1"
+              items={(["supervisor", "administracion", "direccion"] as Role[]).map((r) => ({ value: r, label: r === "administracion" ? "Admin." : ROLE_LABEL[r] }))}
+              value={user.role}
+              onChange={(r) => {
+                switchRole(r);
+                toast.success(`Ahora ves Pulkro como ${ROLE_LABEL[r]}`);
+              }}
+            />
+          </Card>
+        )}
 
         <Card>
           <p className="mb-1 text-[12px] font-semibold uppercase tracking-[0.1em] text-subtle">Apariencia</p>
@@ -164,18 +168,17 @@ export function PerfilView() {
         </Card>
 
         <Card className="p-2">
-          <button
-            onClick={() => {
-              resetDemo();
-              toast("Datos de demostración restablecidos");
-            }}
-            className="flex h-[52px] w-full items-center gap-3.5 rounded-[14px] px-3 text-left text-[15.5px] text-ink active:bg-sand"
-          >
-            <span className="inline-flex size-9 items-center justify-center rounded-[11px] bg-sand">
-              <RotateCcw className="size-[18px]" />
-            </span>
-            Restablecer datos demo
-          </button>
+          {DEMO_ENABLED && (
+            <button
+              onClick={() => setResetOpen(true)}
+              className="flex h-[52px] w-full items-center gap-3.5 rounded-[14px] px-3 text-left text-[15.5px] text-ink active:bg-sand"
+            >
+              <span className="inline-flex size-9 items-center justify-center rounded-[11px] bg-sand">
+                <RotateCcw className="size-[18px]" />
+              </span>
+              Restablecer datos demo
+            </button>
+          )}
           <button
             onClick={() => {
               signOut();
@@ -191,6 +194,7 @@ export function PerfilView() {
         </Card>
         <p className="pb-2 text-center text-[12px] text-subtle">Pulkro Cuadrillas · prototipo v1.0 · datos guardados en este dispositivo</p>
       </motion.div>
+      <DemoResetDialog open={resetOpen} onOpenChange={setResetOpen} />
     </div>
   );
 }

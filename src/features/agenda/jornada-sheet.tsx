@@ -301,9 +301,8 @@ function Detail({
                   <li key={w.id} className="flex items-center gap-3 border-b border-hairline py-2.5 last:border-0">
                     <PersonAvatar name={w.name} initials={w.initials} hue={w.hue} size={34} />
                     <div className="min-w-0 flex-1">
-                      <Link href={`/equipo?w=${w.id}`} onClick={onClose} className="block truncate text-[14px] font-medium text-ink hover:text-link">
-                        {w.name}
-                      </Link>
+                      {/* the staff directory (/equipo) is for Dirección and Administración: supervisors just see the name */}
+                      <span className="block truncate text-[14px] font-medium text-ink">{w.name}</span>
                       <p className="truncate text-[12.5px] text-subtle">{w.specialty}</p>
                     </div>
                     {c && (

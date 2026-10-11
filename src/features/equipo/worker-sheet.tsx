@@ -182,7 +182,7 @@ function WorkerBody({
                 const sameDay = view.upcoming.filter((x) => x.date === j.date && x.id !== j.id).length > 0;
                 return (
                   <li key={j.id}>
-                    <Link href={`/jornada/${j.id}`} onClick={onClose} className="group flex items-center gap-3 border-b border-hairline py-3 last:border-0">
+                    <Link href={`/ordenes/${o.folio}?tab=jornadas`} onClick={onClose} className="group flex items-center gap-3 border-b border-hairline py-3 last:border-0">
                       <DateBadge date={j.date} tone={j.date === dayKey(now) ? "today" : undefined} />
                       <span className="min-w-0 flex-1">
                         <span className="block truncate text-[14.5px] font-semibold text-ink group-hover:text-link">{client?.shortName ?? o.title}</span>

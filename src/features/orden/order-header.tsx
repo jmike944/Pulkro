@@ -3,7 +3,7 @@
 import { useRef } from "react";
 import Link from "next/link";
 import { isSameDay, parseISO } from "date-fns";
-import { Archive, Ban, CalendarClock, Ellipsis, FileText, Flame, MapPin, Navigation, Pencil, RotateCcw, type LucideIcon } from "lucide-react";
+import { Archive, Ban, CalendarClock, Ellipsis, FileDown, FileText, Flame, Loader2, MapPin, Navigation, Pencil, RotateCcw, type LucideIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { fmtHours, fmtTime, plural } from "@/lib/format";
 import { useMediaQuery } from "@/lib/hooks";
@@ -13,7 +13,7 @@ import { PersonAvatar } from "@/components/pk/bits";
 import { OrderStatusPill, SoftBadge } from "@/components/pk/status";
 import { Button } from "@/components/ui/button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { OrderPdfButton } from "./order-pdf";
+import { useOrderPdf } from "./order-pdf";
 import { REOPENABLE, useOrder, type Gate, type OrderDetail } from "./order-context";
 
 const Dot = () => <span className="hidden text-ghost sm:inline" aria-hidden>·</span>;
@@ -54,7 +54,9 @@ export function OrderHeader() {
   const { order, client, site, serviceType, supervisor, active, now } = d;
   // sm+: actions sit at the top right. Phones: "⋯" shares a row with "Abrir jornada", or with the status pill when there is none.
   const wide = useMediaQuery("(min-width: 640px)");
-  const showJornada = !!active && (active.status === "en_curso" || (active.status === "pendiente" && isSameDay(parseISO(active.plannedStart), now)));
+  // "Abrir jornada" goes to the field screen, which is the supervisor's: Dirección and Administración read the jornadas in their tab.
+  const showJornada =
+    d.perms.capture && !!active && (active.status === "en_curso" || (active.status === "pendiente" && isSameDay(parseISO(active.plannedStart), now)));
 
   const meta = (
     <>
@@ -148,13 +150,15 @@ function OrderMoreMenu() {
         <MenuAction icon={Pencil} label="Editar datos" hint={perms.edit ? "Todos los campos" : "Datos operativos"} gate={gates.edit} onSelect={pick(ui.openEdit)} />
         <MenuAction icon={CalendarClock} label="Reprogramar" hint="Mover jornadas pendientes" gate={gates.reschedule} onSelect={pick(() => ui.openSchedule("reprogramar"))} />
         {REOPENABLE.includes(order.status) && (
-          <MenuAction icon={RotateCcw} label="Reabrir" hint="Genera una nueva versión del reporte" gate={gates.reopen} onSelect={pick(ui.openReopen)} />
+          <MenuAction icon={RotateCcw} label="Reabrir" hint="Exige validar el cierre otra vez y genera una nueva versión del reporte" gate={gates.reopen} onSelect={pick(ui.openReopen)} />
         )}
         {perms.share ? (
           <DropdownMenuItem asChild className="min-h-11 gap-3 rounded-[10px] px-2.5">
             <Link href={`/ordenes/${order.folio}/reporte`}><FileText className="size-4 text-subtle" />Ver reporte</Link>
           </DropdownMenuItem>
-        ) : <OrderPdfButton />}
+        ) : (
+          <PdfMenuAction />
+        )}
         {order.status !== "cancelada" && (
           <>
             <DropdownMenuSeparator />
@@ -163,6 +167,39 @@ function OrderMoreMenu() {
         )}
       </DropdownMenuContent>
     </DropdownMenu>
+  );
+}
+
+/**
+ * "Descargar PDF · vN" as a real menu item (roving focus, closes the menu): the order PDF is how Dirección and Administración
+ * get the report, since the share workspace is the supervisor's. Blocked with its reason until a report has been generated.
+ */
+function PdfMenuAction() {
+  const pdf = useOrderPdf();
+  const gate: Gate = pdf.ready ? { ok: true } : { ok: false, reason: pdf.reason ?? undefined };
+  const label = `Descargar PDF${pdf.report ? ` · v${pdf.report.version}` : ""}`;
+  return (
+    <DropdownMenuItem
+      aria-disabled={!gate.ok || pdf.busy || undefined}
+      onSelect={(e) => {
+        if (!gate.ok || pdf.busy) {
+          e.preventDefault();
+          return;
+        }
+        void pdf.download();
+      }}
+      className={cn("min-h-11 items-start gap-3 rounded-[10px] px-2.5 py-2", !gate.ok && "cursor-not-allowed focus:bg-muted")}
+    >
+      {pdf.busy ? (
+        <Loader2 className="mt-0.5 size-4 animate-spin text-subtle" />
+      ) : (
+        <FileDown className={cn("mt-0.5 size-4", gate.ok ? "text-subtle" : "text-ghost")} />
+      )}
+      <span className="min-w-0">
+        <span className={cn("block text-[14px] font-medium", gate.ok ? "text-ink" : "text-subtle")}>{label}</span>
+        {!gate.ok && gate.reason && <span className="block text-[12px] leading-snug text-subtle">{gate.reason}</span>}
+      </span>
+    </DropdownMenuItem>
   );
 }
 
