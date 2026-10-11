@@ -243,7 +243,7 @@ export function ActivityPanel({ onNavigate, header = true, className }: { onNavi
         </div>
       )}
 
-      <div role="tablist" aria-label="Filtrar bitácora" className="flex gap-1 overflow-x-auto px-5 pb-3 [scrollbar-width:none]">
+      <div role="tablist" aria-label="Filtrar bitácora" className="flex gap-1 px-5 pb-3">
         {FILTERS.map((f) => {
           const active = filter === f.value;
           const n = counts[f.value] ?? 0;
@@ -256,12 +256,12 @@ export function ActivityPanel({ onNavigate, header = true, className }: { onNavi
               onClick={() => setFilter(f.value)}
               disabled={f.value !== "todo" && n === 0}
               className={cn(
-                "inline-flex h-8 shrink-0 items-center gap-1 rounded-full px-2.5 text-[13px] font-medium outline-none transition-colors focus-visible:ring-2 focus-visible:ring-azure/60 disabled:opacity-40",
+                "inline-flex h-8 min-w-0 flex-auto items-center justify-center gap-1 rounded-full px-2 text-[12.5px] font-medium outline-none transition-colors focus-visible:ring-2 focus-visible:ring-azure/60 disabled:opacity-40",
                 active ? "bg-brand-deep text-white" : "bg-tile text-ink-soft hover:bg-well",
               )}
             >
-              {f.label}
-              <span className={cn("tabular-nums", active ? "text-white/70" : "text-faint")}>{n}</span>
+              <span className="truncate">{f.label}</span>
+              <span className={cn("shrink-0 tabular-nums", active ? "text-white/70" : "text-faint")}>{n}</span>
             </button>
           );
         })}
