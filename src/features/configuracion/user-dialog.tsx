@@ -1,7 +1,7 @@
 "use client";
 
-import { useState } from "react";
-import { Info, TriangleAlert, UserCog, UserPlus, WifiOff } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { Info, KeyRound, Loader2, Send, TriangleAlert, UserCog, UserPlus, WifiOff } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { uid } from "@/lib/store";
@@ -12,9 +12,22 @@ import { PersonAvatar } from "@/components/pk/bits";
 import { firstMissing } from "@/components/pk/modal-shell";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { ChipSelect, Field, FormDialog, ROLES, SwitchLite, hueFrom, initialsOf, inputCls, isEmail, norm, phoneDigits, selectTriggerCls } from "./shared";
+import { ChipSelect, Field, FormDialog, GatedButton, ROLES, SwitchLite, hueFrom, initialsOf, inputCls, isEmail, norm, phoneDigits, selectTriggerCls } from "./shared";
 import { DeactivateUserDialog } from "./deactivate-user";
-import { NEEDS_CONNECTION, NEEDS_CONNECTION_DETAIL, changeUserEmail, inviteUser, setUserActive, useAccountAdmin, useOpIds } from "./account-admin";
+import {
+  ALREADY_ACTIVE,
+  NEEDS_CONNECTION,
+  NEEDS_CONNECTION_DETAIL,
+  REAUTH,
+  REAUTH_DETAIL,
+  changeUserEmail,
+  inviteUser,
+  isUnknownOutcome,
+  resendInvitation,
+  setUserActive,
+  useAccountAdmin,
+  useOpIds,
+} from "./account-admin";
 
 const DEFAULT_TITLE: Record<Role, string> = {
   direccion: "Dirección",
@@ -30,6 +43,8 @@ type FieldKey = "name" | "title" | "email" | "phone";
  * Demo: the store applies everything locally. Account session: a new user is an INVITATION (admin-users sends the e-mail and
  * creates the profile), and the e-mail and the active switch of an existing user change on the server when saving — all
  * three need a connection. Name, title, role, unit and phone keep going through the store (queued for the server).
+ * "Reenviar invitación" (an existing, active account; account sessions online only) sends the invitation e-mail again
+ * right away, apart from "Guardar".
  */
 export function UserDialog({
   user,
@@ -47,7 +62,7 @@ export function UserDialog({
   const users = useAppStore((s) => s.users);
   const units = useAppStore((s) => s.units);
   const upsertUser = useAppStore((s) => s.upsertUser);
-  const { account, offline } = useAccountAdmin();
+  const { account, offline, reauth } = useAccountAdmin();
   const opFor = useOpIds();
   const isNew = !user;
   const isMe = user?.id === me.id;
@@ -63,13 +78,25 @@ export function UserDialog({
   const [confirmOff, setConfirmOff] = useState(false);
   const [busy, setBusy] = useState(false);
   const [serverError, setServerError] = useState<string | null>(null);
+  const errorRef = useRef<HTMLParagraphElement>(null);
+  // An invitation whose answer never came (timeout, no answer, 5xx) may have gone out: the profile the pull then brings is
+  // this same invitation, not another person's. While the form stays as it was sent, the address is not "taken" and
+  // "Enviar invitación" resends the same operation (same op id: the server answers its stored result, nothing is e-mailed
+  // twice). Holds the payload of that attempt.
+  const [uncertainInvite, setUncertainInvite] = useState<string | null>(null);
   // bumped when the server answered another status than asked (a stale retry): the next "Guardar" is a new operation
   const [activeAttempt, setActiveAttempt] = useState(0);
   // what the form opened with: drives "¿Descartar cambios?" and "Aún no hay cambios que guardar"
   const [start] = useState({ name, title, role, unitId, email, phone, active });
+  const [resending, setResending] = useState(false);
+  // the answer of "Reenviar invitación" when it did not go out: "info" = no pending invitation (the message says the way in)
+  const [resendNote, setResendNote] = useState<{ tone: "info" | "error"; message: string } | null>(null);
 
   const mail = email.trim().toLowerCase();
-  const emailTaken = users.some((u) => u.id !== user?.id && norm(u.email) === norm(email.trim()));
+  const clean = name.trim().replace(/\s+/g, " ");
+  const inviteInput = { email: mail, name: clean, role, unitId, title: title.trim(), phone: phone.trim(), hue: hueFrom(clean) };
+  const resendingInvite = isNew && uncertainInvite === JSON.stringify(inviteInput);
+  const emailTaken = !resendingInvite && users.some((u) => u.id !== user?.id && norm(u.email) === norm(email.trim()));
   const errors = {
     name: name.trim().length < 5 ? "Escriba nombre y apellidos." : null,
     title: !title.trim() ? "Escriba el puesto, por ejemplo Supervisor de operaciones." : null,
@@ -97,7 +124,13 @@ export function UserDialog({
     [errors.phone, "Escriba un teléfono de al menos 10 dígitos"],
     [!isNew && !dirty, "Aún no hay cambios que guardar"],
     [needsServer && offline, NEEDS_CONNECTION],
+    [needsServer && reauth, REAUTH],
   );
+
+  // The explanation of a refusal sits at the end of a body that scrolls (bottom sheet on phones): bring it into view.
+  useEffect(() => {
+    if (serverError) errorRef.current?.scrollIntoView({ block: "nearest", behavior: "smooth" });
+  }, [serverError]);
 
   // Turning a live account off goes through the same confirmation as the users list; the change itself is stored with "Guardar".
   const willDeactivate = !!user?.active && !active;
@@ -106,9 +139,38 @@ export function UserDialog({
     else setActive(next);
   };
 
+  // "Reenviar invitación": an existing, active account other than one's own. It goes to the login address the account has
+  // now, so an e-mail change still in the form is saved (or undone) first.
+  const showResend = !isNew && !isMe && !!user?.active;
+  const resendBlocked = !account
+    ? "En la demostración no se envían correos."
+    : offline
+      ? `${NEEDS_CONNECTION}: las invitaciones se envían desde el servidor.`
+      : reauth
+        ? "Vuelva a entrar con su cuenta: las invitaciones se envían a su nombre."
+        : emailChanged
+          ? "Guarde o descarte primero el cambio de correo: la invitación va al correo actual."
+          : null;
+  const resend = async () => {
+    if (!user || resending || resendBlocked) return;
+    setResending(true);
+    setResendNote(null);
+    try {
+      const result = await resendInvitation(user);
+      if (result.ok) {
+        toast.success(`Invitación reenviada a ${user.email}`, {
+          description: "Pídale que abra el enlace del correo más reciente: el de una invitación anterior puede ya no funcionar.",
+        });
+        return;
+      }
+      setResendNote({ tone: result.code === ALREADY_ACTIVE ? "info" : "error", message: result.message });
+    } finally {
+      setResending(false);
+    }
+  };
+
   const preview = name.trim() || "Nuevo usuario";
   const unitName = units.find((u) => u.id === unitId)?.name ?? "";
-  const clean = name.trim().replace(/\s+/g, " ");
 
   /** Demo: everything local, as before. */
   const saveLocally = () => {
@@ -137,10 +199,13 @@ export function UserDialog({
     setServerError(null);
     try {
       if (isNew) {
-        const input = { email: mail, name: clean, role, unitId, title: title.trim(), phone: phone.trim(), hue: hueFrom(clean) };
-        const invited = await inviteUser(input, opFor("invite", input));
+        const invited = await inviteUser(inviteInput, opFor("invite", inviteInput));
         if (!invited.ok) {
-          setServerError(invited.message);
+          const unknown = isUnknownOutcome(invited);
+          setUncertainInvite(unknown ? JSON.stringify(inviteInput) : null);
+          setServerError(
+            unknown && invited.code !== "timeout" ? `${invited.message} Si la invitación ya salió, al enviarla de nuevo no se repite.` : invited.message,
+          );
           return;
         }
         toast.success(`Invitación enviada a ${mail}`, {
@@ -155,7 +220,13 @@ export function UserDialog({
       if (emailChanged) {
         const changed = await changeUserEmail(target, mail, opFor("email", mail));
         if (!changed.ok) {
-          setServerError(changed.message);
+          // The login may already use the new address while the list still shows the old one: only the same "Guardar"
+          // (same operation) finishes it.
+          setServerError(
+            isUnknownOutcome(changed)
+              ? `${changed.code === "timeout" ? "El servidor no confirmó la respuesta a tiempo." : changed.message} El correo de inicio de sesión pudo haber cambiado ya: vuelva a guardar para terminar el cambio (no se repetirá).`
+              : changed.message,
+          );
           return;
         }
         invitePending = changed.invite_pending;
@@ -184,13 +255,15 @@ export function UserDialog({
 
       toast.success("Cambios guardados", {
         description: invitePending
-          ? "La persona aún no aceptaba su invitación: pídale que use «¿Olvidó su contraseña?» con el nuevo correo para definir su contraseña."
+          ? "La persona aún no ha aceptado su invitación: pídale que use «¿Olvidó su contraseña?» con el nuevo correo para definir su contraseña."
           : emailChanged
-            ? `Desde ahora inicia sesión con ${mail}.`
+            ? isMe
+              ? `Sus sesiones se cerraron: vuelva a entrar con ${mail} cuando la app se lo pida.`
+              : `Sus sesiones abiertas se cerraron: debe volver a iniciar sesión con ${mail}. Avísele del cambio.`
             : willDeactivate
               ? "Cuenta desactivada: ya no puede iniciar sesión."
               : `${ROLE_LABEL[role]} · ${unitName}`,
-        duration: invitePending ? 12_000 : undefined,
+        duration: invitePending || emailChanged ? 12_000 : undefined,
       });
       onOpenChange(false);
       if (willDeactivate) setTimeout(() => onDeactivated?.(target, openOrders), 0);
@@ -220,7 +293,7 @@ export function UserDialog({
         }
         submitLabel={submitLabel}
         submitDisabled={!!hint || busy}
-        footerNote={busy ? undefined : hint}
+        footerNote={busy ? undefined : (hint ?? (serverError ? "No se completó: vea el motivo abajo" : undefined))}
         dirty={dirty}
         onSubmit={() => {
           if (hint || busy) return;
@@ -293,7 +366,7 @@ export function UserDialog({
               hint={
                 account && !isNew
                   ? emailChanged
-                    ? "Al guardar, la persona inicia sesión con este correo: avísele del cambio."
+                    ? "Al guardar, se cierran sus sesiones y vuelve a entrar con este correo: avísele del cambio."
                     : "Es el correo con el que inicia sesión. Cambiarlo necesita conexión."
                   : account
                     ? "La invitación llega a este correo; con él iniciará sesión."
@@ -341,6 +414,43 @@ export function UserDialog({
             </label>
           )}
 
+          {showResend && (
+            <div className="rounded-[16px] border border-hairline px-4 py-3">
+              <div className="flex min-h-11 flex-wrap items-center justify-between gap-x-4 gap-y-2">
+                <span className="min-w-0">
+                  <span className="block text-[14px] font-semibold text-ink">Invitación</span>
+                  <span className="block text-[12.5px] text-subtle">Si la persona aún no la acepta, se le envía de nuevo a su correo actual.</span>
+                </span>
+                <GatedButton
+                  type="button"
+                  variant="outline"
+                  allowed={!resendBlocked}
+                  reason={resendBlocked ?? ""}
+                  lockIcon={account && offline ? <WifiOff className="size-3.5" /> : account && reauth ? <KeyRound className="size-3.5" /> : undefined}
+                  disabled={resending}
+                  aria-busy={resending || undefined}
+                  onClick={() => void resend()}
+                  className="border-line"
+                >
+                  {resending ? <Loader2 className="animate-spin" aria-hidden /> : <Send className="size-4" aria-hidden />}
+                  {resending ? "Enviando…" : "Reenviar invitación"}
+                </GatedButton>
+              </div>
+              {resendNote && (
+                <p
+                  role={resendNote.tone === "error" ? "alert" : "status"}
+                  className={cn(
+                    "mt-3 flex gap-2.5 rounded-[12px] px-3.5 py-2.5 text-[13px] leading-snug",
+                    resendNote.tone === "error" ? "bg-red-soft font-medium text-red-fg" : "bg-blue-soft text-ink-soft",
+                  )}
+                >
+                  {resendNote.tone === "info" && <Info className="mt-0.5 size-4 shrink-0 text-azure-fg" aria-hidden />}
+                  <span>{resendNote.message}</span>
+                </p>
+              )}
+            </div>
+          )}
+
           {/* not a footer hint: the footer slot only says what is missing, and this stays true after validation passes */}
           {isNew && !account && (
             <div role="note" className="flex gap-3 rounded-[16px] bg-amber-soft p-4 text-[13.5px] leading-snug text-amber-deep">
@@ -362,8 +472,16 @@ export function UserDialog({
               </span>
             </div>
           )}
+          {needsServer && reauth && !offline && (
+            <div role="status" className="flex gap-3 rounded-[16px] bg-soft p-4 text-[13.5px] leading-snug text-ink-soft">
+              <KeyRound className="mt-0.5 size-4 shrink-0 text-subtle" aria-hidden />
+              <span>
+                <b className="font-semibold text-ink">{REAUTH}.</b> {REAUTH_DETAIL}
+              </span>
+            </div>
+          )}
           {serverError && (
-            <p role="alert" className="rounded-[16px] bg-red-soft p-4 text-[13.5px] font-medium leading-snug text-red-fg">
+            <p ref={errorRef} role="alert" className="rounded-[16px] bg-red-soft p-4 text-[13.5px] font-medium leading-snug text-red-fg">
               {serverError}
             </p>
           )}

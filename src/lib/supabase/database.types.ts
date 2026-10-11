@@ -1755,7 +1755,7 @@ export type Database = {
         Returns: Json
       }
       sync_profile_email: {
-        Args: { p_op_id: string; p_user_id: string }
+        Args: { p_email?: string; p_op_id: string; p_user_id: string }
         Returns: Json
       }
       sync_reconcile: {

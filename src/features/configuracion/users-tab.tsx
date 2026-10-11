@@ -2,7 +2,7 @@
 
 import { useMemo, useRef, useState } from "react";
 import { AnimatePresence, motion } from "motion/react";
-import { Pencil, UserPlus, Users, WifiOff } from "lucide-react";
+import { KeyRound, Pencil, UserPlus, Users, WifiOff } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { useAppStore, useCan, useCurrentUser, useLookups } from "@/lib/hooks";
@@ -15,7 +15,7 @@ import { EASE } from "@/components/pk/motion";
 import { Button } from "@/components/ui/button";
 import { GatedButton, useDialogTarget, InlineSwitch, ListHead, NO_USERS, ROLES, RoleBadge, SearchField, norm } from "./shared";
 import { DeactivateUserDialog, OpenOrdersNotice, useOpenOrdersBy } from "./deactivate-user";
-import { NEEDS_CONNECTION_DETAIL, newOpId, setUserActive, useAccountAdmin } from "./account-admin";
+import { NEEDS_CONNECTION_DETAIL, REAUTH_DETAIL, isUnknownOutcome, newOpId, setUserActive, useAccountAdmin } from "./account-admin";
 import { UserDialog } from "./user-dialog";
 import { PermissionMatrix } from "./permission-matrix";
 
@@ -43,10 +43,15 @@ export function UsersTab() {
   const [deactivating, setDeactivating] = useState<User | null>(null);
   const [confirmOpen, setConfirmOpen] = useState(false);
   // Account sessions: invitations and (de)activations go through the server (admin-users), online only.
-  const { account, offline } = useAccountAdmin();
+  const { account, offline, reauth } = useAccountAdmin();
+  const blocked = offline || reauth;
   const [busyIds, setBusyIds] = useState<ReadonlySet<string>>(() => new Set());
   // One op id per reactivation until it succeeds: "Reintentar" after a failure or a lost answer is a retry, not a new change.
+  // Dropped when the account is switched off again, so a later reactivation never replays an old one's stored answer.
   const reactivationOps = useRef(new Map<string, string>());
+  // Reactivations that may have stopped after the profile change (unban_failed, or no answer): the switch reads "active"
+  // while Auth may still block the sign-in, so the row offers the retry until it succeeds.
+  const [unbanPending, setUnbanPending] = useState<ReadonlySet<string>>(() => new Set());
   const reassign = useDialogTarget<{ user: User; folios: string[] }>();
 
   const openOrdersBy = useOpenOrdersBy();
@@ -59,13 +64,21 @@ export function UsersTab() {
       .sort((a, b) => Number(b.active) - Number(a.active) || ROLE_ORDER[a.role] - ROLE_ORDER[b.role] || a.name.localeCompare(b.name, "es"));
   }, [users, role, q, lk.units]);
 
-  const markBusy = (id: string, busy: boolean) =>
-    setBusyIds((prev) => {
-      const next = new Set(prev);
-      if (busy) next.add(id);
-      else next.delete(id);
-      return next;
-    });
+  const toggleIn = (set: ReadonlySet<string>, id: string, on: boolean) => {
+    if (set.has(id) === on) return set;
+    const next = new Set(set);
+    if (on) next.add(id);
+    else next.delete(id);
+    return next;
+  };
+  const markBusy = (id: string, busy: boolean) => setBusyIds((prev) => toggleIn(prev, id, busy));
+  const markUnbanPending = (id: string, pending: boolean) => setUnbanPending((prev) => toggleIn(prev, id, pending));
+
+  /** The account was switched off: its old reactivation (if any) is over. */
+  const forgetReactivation = (id: string) => {
+    reactivationOps.current.delete(id);
+    markUnbanPending(id, false);
+  };
 
   /** Account sessions: the server lifts the ban and the profile is active again (the person signs in with their password). */
   const reactivateOnServer = async (u: User) => {
@@ -76,15 +89,19 @@ export function UsersTab() {
     const result = await setUserActive(u, true, opId);
     markBusy(u.id, false);
     if (!result.ok) {
-      // The profile may already be active (the switch shows it after the pull) while the access block was not lifted:
-      // the toast's action sends the same operation again, which finishes it.
-      toast.error("No se pudo reactivar la cuenta", {
+      // The profile may already be active (the switch shows it after the pull) while the access block was not lifted: the
+      // toast stays until it is closed, and the row keeps a "Reintentar" too. Both send the same operation again.
+      const maybeHalfway = result.code === "unban_failed" || isUnknownOutcome(result);
+      if (maybeHalfway) markUnbanPending(u.id, true);
+      toast.error(result.code === "unban_failed" ? "La cuenta sigue con el acceso bloqueado" : "No se pudo reactivar la cuenta", {
         description: result.message,
+        duration: Infinity,
         action: { label: "Reintentar", onClick: () => void reactivateOnServer(u) },
       });
       return;
     }
     ops.delete(u.id);
+    markUnbanPending(u.id, false);
     if (!result.active) {
       toast.error("La cuenta sigue desactivada", { description: "Otra persona de Dirección la desactivó mientras tanto. Revise y vuelva a intentarlo." });
       return;
@@ -108,11 +125,12 @@ export function UsersTab() {
 
   /** Account sessions: the server deactivated the account; it lists the open orders the person still supervises. */
   const deactivatedOnServer = (u: User, folios: string[]) => {
+    forgetReactivation(u.id);
     if (folios.length > 0) {
       reassign.show({ user: u, folios });
       return;
     }
-    toast(`${u.name} quedó desactivado`, {
+    toast(`La cuenta de ${u.name} quedó desactivada`, {
       description: "Ya no puede iniciar sesión. Registrado en la bitácora.",
       action: { label: "Deshacer", onClick: () => void reactivateOnServer(u) },
     });
@@ -132,9 +150,15 @@ export function UsersTab() {
           subtitle="Cada persona inicia sesión con su cuenta individual. Los trabajadores de cuadrilla no usan la app."
           action={
             <GatedButton
-              allowed={canAdmin && !offline}
-              reason={canAdmin ? "Necesita conexión: las invitaciones se envían desde el servidor." : NO_USERS}
-              lockIcon={canAdmin && offline ? <WifiOff className="size-3.5" /> : undefined}
+              allowed={canAdmin && !blocked}
+              reason={
+                !canAdmin
+                  ? NO_USERS
+                  : offline
+                    ? "Necesita conexión: las invitaciones se envían desde el servidor."
+                    : "Vuelva a entrar con su cuenta: las invitaciones se envían a su nombre."
+              }
+              lockIcon={canAdmin && offline ? <WifiOff className="size-3.5" /> : canAdmin && reauth ? <KeyRound className="size-3.5" /> : undefined}
               onClick={() => dlg.show("new")}
             >
               <UserPlus className="size-4" /> Nuevo usuario
@@ -147,6 +171,14 @@ export function UsersTab() {
             <WifiOff className="mt-0.5 size-4 shrink-0 text-ink/60" aria-hidden />
             <p>
               <b className="font-semibold text-ink">Necesita conexión.</b> {NEEDS_CONNECTION_DETAIL}
+            </p>
+          </div>
+        )}
+        {canAdmin && reauth && !offline && (
+          <div role="status" className="mb-5 flex items-start gap-3 rounded-[16px] bg-soft px-4 py-3 text-[13.5px] text-subtle">
+            <KeyRound className="mt-0.5 size-4 shrink-0 text-ink/60" aria-hidden />
+            <p>
+              <b className="font-semibold text-ink">Vuelva a entrar con su cuenta.</b> {REAUTH_DETAIL}
             </p>
           </div>
         )}
@@ -210,6 +242,19 @@ export function UsersTab() {
                             {u.title}
                             {u.role === "supervisor" && open > 0 && <span className="text-ink/70"> · {open} abiertas</span>}
                           </p>
+                          {account && u.active && unbanPending.has(u.id) && (
+                            <button
+                              type="button"
+                              disabled={blocked}
+                              aria-disabled={switchBusy || undefined}
+                              onClick={() => {
+                                if (!switchBusy) void reactivateOnServer(u);
+                              }}
+                              className="mt-1 text-left text-[12.5px] font-semibold text-amber-fg underline-offset-2 hover:underline disabled:opacity-50"
+                            >
+                              Acceso aún bloqueado · Reintentar
+                            </button>
+                          )}
                         </div>
                       </div>
                       <div className="col-start-1 row-start-2 flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1 pl-[52px] xl:col-start-auto xl:row-start-auto xl:block xl:pl-0">
@@ -229,7 +274,8 @@ export function UsersTab() {
                           checked={u.active}
                           onChange={(v) => toggleActive(u, v)}
                           label={`${u.active ? "Desactivar" : "Activar"} a ${u.name}`}
-                          disabled={!canAdmin || isMe || offline || switchBusy}
+                          disabled={!canAdmin || isMe || blocked}
+                          busy={switchBusy}
                           reason={
                             !canAdmin
                               ? NO_USERS
@@ -237,7 +283,7 @@ export function UsersTab() {
                                 ? "No puede desactivar su propia cuenta."
                                 : offline
                                   ? "Necesita conexión para activar o desactivar cuentas."
-                                  : "Aplicando el cambio en el servidor…"
+                                  : "Vuelva a entrar con su cuenta para activar o desactivar cuentas."
                           }
                         />
                         <Button
@@ -273,7 +319,10 @@ export function UsersTab() {
           user={dlg.target === "new" ? null : dlg.target}
           open={dlg.open}
           onOpenChange={dlg.onOpenChange}
-          onDeactivated={(u, folios) => folios.length > 0 && reassign.show({ user: u, folios })}
+          onDeactivated={(u, folios) => {
+            forgetReactivation(u.id);
+            if (folios.length > 0) reassign.show({ user: u, folios });
+          }}
         />
       )}
 
@@ -286,7 +335,7 @@ export function UsersTab() {
         onDeactivated={deactivatedOnServer}
         onConfirm={(u) => {
           upsertUser({ ...u, active: false });
-          toast(`${u.name} quedó desactivado`, {
+          toast(`La cuenta de ${u.name} quedó desactivada`, {
             description: "Registrado en la bitácora.",
             action: { label: "Deshacer", onClick: () => upsertUser({ ...u, active: true }) },
           });

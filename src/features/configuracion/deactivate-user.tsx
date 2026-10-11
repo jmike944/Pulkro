@@ -2,14 +2,14 @@
 
 import { useMemo, useRef, useState } from "react";
 import Link from "next/link";
-import { ChevronRight, ClipboardList, UserMinus, WifiOff } from "lucide-react";
-import { useAppStore, useLookups } from "@/lib/hooks";
+import { ChevronRight, ClipboardList, KeyRound, UserMinus, WifiOff } from "lucide-react";
+import { useAppStore, useCan, useLookups } from "@/lib/hooks";
 import { plural } from "@/lib/format";
 import { OPEN_STATUSES, ROLE_LABEL } from "@/lib/status";
 import type { User } from "@/lib/types";
 import { IconTile } from "@/components/pk/bits";
 import { ModalCancel, ModalShell } from "@/components/pk/modal-shell";
-import { NEEDS_CONNECTION, NEEDS_CONNECTION_DETAIL, newOpId, setUserActive, useAccountAdmin } from "./account-admin";
+import { NEEDS_CONNECTION, NEEDS_CONNECTION_DETAIL, REAUTH, REAUTH_DETAIL, newOpId, setUserActive, useAccountAdmin } from "./account-admin";
 import { ConfirmDialog } from "./shared";
 
 /** Open orders per supervisor (a deactivated supervisor leaves these without an owner until they are reassigned). */
@@ -50,15 +50,17 @@ export function DeactivateUserDialog({
 }) {
   const lk = useLookups();
   const openOrdersBy = useOpenOrdersBy();
-  const { account, offline } = useAccountAdmin();
+  const { account, offline, reauth } = useAccountAdmin();
   const server = account && !deferred;
+  // Dirección (users.admin) cannot edit orders: Administración reassigns them.
+  const reassignHere = useCan("order.edit");
   const [error, setError] = useState<string | null>(null);
   // One op id per opening: a second click after a lost answer is a retry the server answers, not a new deactivation.
   const op = useRef<{ userId: string; id: string } | null>(null);
 
   const openOrders = user ? (openOrdersBy.get(user.id) ?? 0) : 0;
   const notes =
-    openOrders > 0 || deferred || (server && (offline || error)) ? (
+    openOrders > 0 || deferred || (server && (offline || reauth || error)) ? (
       <div className="space-y-3">
         {server && offline && (
           <p className="flex gap-2.5 rounded-[14px] bg-soft px-4 py-3 text-[13.5px] leading-snug text-ink-soft">
@@ -66,9 +68,17 @@ export function DeactivateUserDialog({
             <span>{NEEDS_CONNECTION_DETAIL}</span>
           </p>
         )}
+        {server && reauth && !offline && (
+          <p className="flex gap-2.5 rounded-[14px] bg-soft px-4 py-3 text-[13.5px] leading-snug text-ink-soft">
+            <KeyRound className="mt-0.5 size-4 shrink-0 text-subtle" aria-hidden />
+            <span>{REAUTH_DETAIL}</span>
+          </p>
+        )}
         {openOrders > 0 && (
           <p className="rounded-[14px] bg-amber-soft px-4 py-3 text-[13.5px] leading-snug text-amber-ink">
-            Tiene órdenes abiertas. Reasígnelas desde el detalle de cada orden para que no queden sin supervisor.
+            {reassignHere
+              ? "Tiene órdenes abiertas. Reasígnelas desde el detalle de cada orden para que no queden sin supervisor."
+              : "Tiene órdenes abiertas. Pida a Administración de la unidad que las reasigne para que no queden sin supervisor."}
           </p>
         )}
         {deferred && <p className="text-[13px] leading-snug text-subtle">La cuenta se desactiva al guardar los cambios del usuario.</p>}
@@ -127,8 +137,8 @@ export function DeactivateUserDialog({
       checkboxLabel={`Entiendo que ${user?.name.split(" ")[0] ?? "la persona"} ya no podrá iniciar sesión.`}
       confirmLabel="Desactivar usuario"
       busyLabel="Desactivando…"
-      confirmDisabled={server && offline}
-      disabledHint={NEEDS_CONNECTION}
+      confirmDisabled={server && (offline || reauth)}
+      disabledHint={offline ? NEEDS_CONNECTION : REAUTH}
       destructive
       onConfirm={() => {
         if (!user) return;
@@ -143,7 +153,7 @@ export function DeactivateUserDialog({
 
 /**
  * After an account deactivation: the open orders the server says the person still supervises (also in the audit reason),
- * each a link to the order, where Administración reassigns it.
+ * each a link to the order, where Administración reassigns it (Dirección, who deactivates, cannot edit orders).
  */
 export function OpenOrdersNotice({
   target,
@@ -171,9 +181,9 @@ export function OpenOrdersNotice({
       title="Órdenes por reasignar"
       description={
         <>
-          <b className="font-semibold text-ink">{user.name}</b> quedó desactivado y aún supervisa{" "}
-          {plural(folios.length, "orden abierta", "órdenes abiertas")}. Reasígnelas desde el detalle de cada orden para que no
-          queden sin supervisor.
+          <b className="font-semibold text-ink">{user.name}</b> ya no tiene acceso y aún supervisa{" "}
+          {plural(folios.length, "orden abierta", "órdenes abiertas")}. Pida a Administración de la unidad que las reasigne para
+          que no queden sin supervisor.
         </>
       }
       footer={<ModalCancel>Cerrar</ModalCancel>}
