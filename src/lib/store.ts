@@ -9,8 +9,7 @@
  *    (`useAppStore(s => s.orders)`) and derive with useMemo, or wrap with `useShallow`.
  */
 import { create } from "zustand";
-import { createJSONStorage, persist, type StateStorage } from "zustand/middleware";
-import { createStore as createIdbStore, del, get, set } from "idb-keyval";
+import { persist } from "zustand/middleware";
 import { differenceInCalendarDays, format, parseISO, startOfDay } from "date-fns";
 import { toast } from "sonner";
 import { DEMO_USER_BY_ROLE, SEED_VERSION, generateSeed, shiftSnapshotDates } from "./seed";
@@ -29,6 +28,7 @@ import { plural } from "./format";
 import { DONE_STATUSES, OPEN_STATUSES } from "./status";
 import { DEMO_ENABLED, DEMO_SIGN_IN } from "./demo";
 import { clearPhotoFiles, deletePhotoFile } from "./photo-store";
+import { createDeviceStorage, flushWrite, ownerOf, registerTab } from "./device-storage";
 import { requestPull, type PullRequest, type PullState } from "./sync/pull";
 import type {
   AuditEntity,
@@ -56,42 +56,6 @@ import type {
   User,
   Worker,
 } from "./types";
-
-/* ───────────── persistence (IndexedDB, debounced writes) ───────────── */
-const idb = typeof indexedDB !== "undefined" ? createIdbStore("pulkro-cuadrillas", "state") : undefined;
-let writeTimer: ReturnType<typeof setTimeout> | undefined;
-let pendingWrite: { name: string; value: string } | null = null;
-let pendingSince = 0;
-const flushWrite = () => {
-  clearTimeout(writeTimer);
-  if (!idb || !pendingWrite) return;
-  const { name, value } = pendingWrite;
-  pendingWrite = null;
-  void set(name, value, idb);
-};
-// A reload / app switch right after a capture must not lose the debounced write (the service worker may hard-navigate offline).
-if (typeof window !== "undefined") {
-  window.addEventListener("pagehide", flushWrite);
-  document.addEventListener("visibilitychange", () => {
-    if (document.visibilityState === "hidden") flushWrite();
-  });
-}
-const idbStorage: StateStorage = {
-  getItem: async (name) => (idb ? ((await get<string>(name, idb)) ?? null) : null),
-  setItem: (name, value) => {
-    if (!idb) return;
-    const waiting = pendingWrite !== null;
-    pendingWrite = { name, value };
-    // Debounce 350 ms, but never let a stream of updates postpone the write by more than ~1 s (a sign-in or a capture
-    // followed by constant store activity used to stay unsaved until the stream stopped).
-    if (!waiting) pendingSince = Date.now();
-    clearTimeout(writeTimer);
-    writeTimer = setTimeout(flushWrite, Date.now() - pendingSince >= 1000 ? 0 : 350);
-  },
-  removeItem: async (name) => {
-    if (idb) await del(name, idb);
-  },
-};
 
 /* ───────────── helpers ───────────── */
 const nowIso = () => new Date().toISOString();
@@ -331,6 +295,9 @@ export const isOffline = (s: Pick<AppState, "sync">) => s.sync.forcedOffline || 
 
 /** Queue items that have not reached the server (pending, sending or failed). */
 export const unsentCount = (queue: SyncItem[]) => queue.filter((q) => q.state !== "sincronizado").length;
+export const unsentIds = (queue: SyncItem[]) => queue.filter((q) => q.state !== "sincronizado").map((q) => q.id);
+
+const signedOutSession = (): Session => ({ signedIn: false, userId: DEMO_USER_BY_ROLE.supervisor, unitFilter: "all", mode: "demo" });
 
 /** Items that were mid-upload when the app closed go back to "pendiente" so the engine retries them. */
 const unstick = (queue: SyncItem[]) => queue.map((q) => (q.state === "sincronizando" ? { ...q, state: "pendiente" as const } : q));
@@ -462,8 +429,6 @@ export const useAppStore = create<AppState>()(
           ? true
           : denied(geo.source === "remota" ? "Explique la supervisión remota (quién está en sitio y cómo se confirmó)." : "Justifique la ubicación manual.");
 
-      const signedOutSession = (): Session => ({ signedIn: false, userId: DEMO_USER_BY_ROLE.supervisor, unitFilter: "all", mode: "demo" });
-
       const reseed = () => {
         const seed = generateSeed(new Date());
         const { seededAt, ...data } = seed;
@@ -524,7 +489,8 @@ export const useAppStore = create<AppState>()(
             session: { signedIn: true, userId: user.id, unitFilter: "all", mode: "supabase" },
             sync: { ...st.sync, queue: [], lastSyncAt: nowIso(), processing: false },
           }));
-          flushWrite();
+          // Written now; once committed, the other open tabs are told the device changed hands (lib/device-storage).
+          void flushWrite();
           void clearPhotoFiles();
           // First load of the account's catalogs and orders in scope, then the incremental cursors (sync/pull.ts).
           setTimeout(() => void getState().pullNow({ manual: true }), 0);
@@ -537,8 +503,9 @@ export const useAppStore = create<AppState>()(
             session: signedOutSession(),
             sync: { forcedOffline: false, browserOffline: st.sync.browserOffline, queue: [], lastSyncAt: nowIso(), processing: false },
           }));
-          // Write the empty state now (not after the debounce): the account's records leave IndexedDB with the sign-out.
-          flushWrite();
+          // Write the empty state now (not after the debounce): the account's records leave IndexedDB with the sign-out, and
+          // once that is committed the other open tabs of the account drop theirs and start over at /login.
+          void flushWrite();
           void clearPhotoFiles();
           // The login screen's demo picker needs the demo dataset back (when the build offers it).
           getState().ensureSeeded();
@@ -1426,7 +1393,7 @@ export const useAppStore = create<AppState>()(
     {
       name: "pulkro-cuadrillas",
       version: SEED_VERSION,
-      storage: createJSONStorage(() => idbStorage),
+      storage: createDeviceStorage<Partial<AppState>>(),
       skipHydration: true,
       partialize: (s) => {
         const out: Record<string, unknown> = {};
@@ -1440,6 +1407,19 @@ export const useAppStore = create<AppState>()(
     },
   ),
 );
+
+registerTab({
+  owner: () => ownerOf(useAppStore.getState().session),
+  unsent: () => unsentIds(useAppStore.getState().sync.queue),
+  // Another tab signed this account out or replaced it: nothing of it stays in this tab's memory (writes are already off).
+  drop: () =>
+    useAppStore.setState((st) => ({
+      ...emptyData,
+      meta: { seededAt: "", seedVersion: 0 },
+      session: signedOutSession(),
+      sync: { ...st.sync, queue: [], processing: false },
+    })),
+});
 
 /** Called once on the client: rehydrate from IndexedDB, then seed / re-anchor. */
 export async function bootstrapStore() {
