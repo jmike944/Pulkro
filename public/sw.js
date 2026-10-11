@@ -28,6 +28,8 @@ const TEMPLATES = [
   { re: /^\/clientes\/([^/]+)\/?$/, url: `/clientes/${TPL}` },
 ];
 const SAFE_ID = /^[A-Za-z0-9_.-]{1,80}$/;
+/** Query keys of Supabase Auth's e-mail links and their redirects (src/features/auth/auth-link-forward.ts). */
+const AUTH_LINK_KEYS = ["code", "token_hash", "access_token", "refresh_token", "error", "error_code", "error_description", "sb_flow_id"];
 
 const PAGES = [
   "/", "/offline", "/login", "/pendientes", "/perfil", "/ordenes", "/ordenes/nueva", "/agenda", "/evidencias", "/incidencias",
@@ -189,8 +191,8 @@ async function navigate(request) {
 }
 
 /**
- * Invite / recovery landing (/acceso/…): its URL carries a one-time token, so neither the page nor its URL is ever stored.
- * Network only; without signal, the cached /offline page.
+ * Invite / recovery landing (/acceso/…, or any page reached with an e-mail link's query): its URL carries a one-time token,
+ * so neither the page nor its URL is ever stored. Network only; without signal, the cached /offline page.
  */
 async function networkOnly(request) {
   try {
@@ -263,7 +265,9 @@ self.addEventListener("fetch", (event) => {
     event.respondWith(cacheFirst(request, STATIC));
     return;
   }
-  if (url.pathname.startsWith("/acceso/")) {
+  // An e-mail link that landed on another page (the Site URL fallback: `/?code=…`, an error redirect…) carries the same
+  // one-time credential in its query until the inline script forwards it: never stored under that URL either.
+  if (url.pathname.startsWith("/acceso/") || (request.mode === "navigate" && AUTH_LINK_KEYS.some((k) => url.searchParams.has(k)))) {
     event.respondWith(networkOnly(request));
     return;
   }

@@ -5,7 +5,9 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { ArrowRight, KeyRound, Link2Off, Loader2, LockKeyhole, Mail, MailCheck, RotateCw, UserRoundX, WifiOff } from "lucide-react";
 import type { EmailOtpType, Session, User } from "@supabase/supabase-js";
 import { cn } from "@/lib/utils";
+import { useAppStore } from "@/lib/store";
 import { getSupabaseBrowserClient, isSupabaseConfigured } from "@/lib/supabase/client";
+import { flagReauth } from "@/lib/sync/pull";
 import { BigButton } from "@/components/pk/mobile";
 import { Button } from "@/components/ui/button";
 import { NETWORK_MESSAGE, linkErrorOf, linkRedirectErrorOf, setPasswordErrorMessage, type LinkFailure } from "./auth-errors";
@@ -28,7 +30,9 @@ import { useEnterAccount } from "./use-enter-account";
  * This page is the only place that turns a link into a session. The browser client never reads the address bar
  * (detectSessionInUrl: false, lib/supabase/client.ts), so it cannot spend the one-time code or swallow the fragment first.
  * Verifying the link replaces the browser's Supabase session with the link's account. While an account is open on this
- * device, the page asks first ("other-account"), so a link opened on a shared tablet never silently takes over its session.
+ * device, the page asks first ("other-account"), so a link opened on a shared tablet never silently takes over its session;
+ * once verified, a link of another account flags the open one for re-authentication (its sync stops writing at once) and
+ * the next step names both accounts.
  * The link is a credential until it is used: the query and the fragment leave the address bar (and the history) as soon as
  * the page has read them, whatever happens next; "Reintentar" works from the copy in memory. It is verified once per page
  * (React may run effects twice).
@@ -43,7 +47,9 @@ type Stage =
   | { kind: "unconfigured" }
   | { kind: "incomplete" }
   // type null: Auth refused the link before it reached the page, and its error does not say which kind it was.
-  | { kind: "expired"; type: LinkType | null; otherBrowser: boolean }
+  // reason: used or expired at Auth · a PKCE code opened without this browser's verifier · a PKCE exchange that failed here
+  // after spending the verifier.
+  | { kind: "expired"; type: LinkType | null; reason: "used" | "other-browser" | "unfinished" }
   // retry false: the link carried Auth's error, so trying it again reads the same error.
   | { kind: "failed"; failure: LinkFailure; retry: boolean }
   | { kind: "password"; verified: Verified }
@@ -101,16 +107,25 @@ async function verify(link: LinkCredential): Promise<Outcome> {
       return error ? fail(linkErrorOf(error)) : sessionOutcome(data, link.type);
     }
     case "code": {
-      // auth-js drops this browser's verifier after any exchange, even one that never reached Auth. Offline it is kept,
-      // and "Reintentar" can still work.
+      // auth-js drops this browser's verifier after any exchange, even one that never reached Auth (a timeout, a 5xx…).
+      // Offline nothing is tried, the verifier is kept and "Reintentar" can still work; after an attempt nothing can.
       if (typeof navigator !== "undefined" && navigator.onLine === false) return fail({ kind: "network", message: NETWORK_MESSAGE });
       const retried = triedCodes.has(link.code);
       triedCodes.add(link.code);
-      const { data, error } = await auth.exchangeCodeForSession(link.code, link.flowId ? { flowId: link.flowId } : undefined);
+      const spent = fail({ kind: "unfinished", message: "No se pudo completar con este enlace y ya no puede reintentarse aquí." });
+      let exchanged: Awaited<ReturnType<typeof auth.exchangeCodeForSession>>;
+      try {
+        exchanged = await auth.exchangeCodeForSession(link.code, link.flowId ? { flowId: link.flowId } : undefined);
+      } catch {
+        return spent;
+      }
+      const { data, error } = exchanged;
       if (!error) return sessionOutcome(data, "recovery");
       const failure = linkErrorOf(error);
-      // No verifier after an attempt of this page's own: the link is spent here, not opened in the wrong browser.
-      return fail(failure.kind === "other-browser" && retried ? { kind: "expired", message: "Este enlace ya se usó o venció." } : failure);
+      // Used or expired at Auth, opened in another browser (no verifier before this page tried), an account that may not
+      // enter: as they are. Anything else failed after auth-js dropped the verifier.
+      if (failure.kind === "expired" || failure.kind === "no-access" || (failure.kind === "other-browser" && !retried)) return fail(failure);
+      return spent;
     }
   }
 }
@@ -132,7 +147,8 @@ function stageOf(outcome: Outcome, type: LinkType | null, retry: boolean): Stage
   const { failure } = outcome;
   // No "pedir un enlace nuevo" nor "Reintentar" when the account itself may not enter.
   if (failure.kind === "no-access") return { kind: "refused", message: failure.message };
-  if (failure.kind === "expired" || failure.kind === "other-browser") return { kind: "expired", type, otherBrowser: failure.kind === "other-browser" };
+  if (failure.kind === "expired") return { kind: "expired", type, reason: "used" };
+  if (failure.kind === "other-browser" || failure.kind === "unfinished") return { kind: "expired", type, reason: failure.kind };
   return { kind: "failed", failure, retry };
 }
 
@@ -164,6 +180,10 @@ function SetPasswordInner() {
   const [leaving, setLeaving] = useState(false);
   // The person chose to go on with the link although an account is open on this device.
   const takeOver = useRef(false);
+  // The account open on this device: when the link opens another one, the next step names both.
+  const deviceUserId = useAppStore((s) => (s.session.mode === "supabase" && s.session.signedIn ? s.session.userId : null));
+  const deviceName = useAppStore((s) => s.users.find((u) => u.id === s.session.userId)?.name ?? "otra cuenta");
+  const replaces = (verified: Verified) => (deviceUserId && deviceUserId !== verified.userId ? deviceName : null);
 
   // Right away, on every outcome (also a failed, expired or abandoned check): the token stays out of the history, the
   // address bar and anything that stores URLs (sync of open tabs, screenshots, a link shared by mistake).
@@ -184,6 +204,10 @@ function SetPasswordInner() {
         }
       }
       const outcome = await verifyOnce(link);
+      // The browser's Supabase session is the link's account now. If another account is open on this device, its sync must
+      // stop writing right away (a pull under way would carry this session's JWT): "Vuelva a entrar" until it signs in again.
+      const open = accountOnDevice();
+      if (outcome.ok && open && open.userId !== outcome.verified.userId) flagReauth(useAppStore);
       if (!alive) return;
       if (outcome.ok) lastVerified = outcome.verified;
       // Used or refused for good: a later visit to this page starts from its own link.
@@ -204,6 +228,12 @@ function SetPasswordInner() {
   const continueWithLink = () => {
     takeOver.current = true;
     setStage({ kind: "checking" });
+  };
+
+  /** Not this person's link (or not now): nothing of it stays, back to the sign-in. */
+  const leave = () => {
+    forgetLink();
+    router.replace("/login");
   };
 
   const entered = useCallback(() => {
@@ -247,6 +277,9 @@ function SetPasswordInner() {
             <AuthHeading title="Hay una cuenta abierta en este dispositivo">
               Está abierta la cuenta de <b className="font-semibold text-ink">{stage.name}</b>. Si este enlace es de otra persona, al continuar se
               cerrará esa sesión aquí; sus cambios sin enviar no se borran sin preguntar antes.
+              {/* Default e-mails: Auth's /verify already spent the e-mail link, and only this page holds what it handed over. */}
+              {(link.form === "session" || link.form === "code") &&
+                " Este enlace solo funciona ahora y en este dispositivo: si vuelve a la app, después tendrá que pedir uno nuevo con «¿Olvidó su contraseña?»."}
             </AuthHeading>
             <div className="mt-7 space-y-3">
               <BigButton onClick={continueWithLink}>
@@ -280,24 +313,34 @@ function SetPasswordInner() {
         {stage.kind === "expired" && (
           <Notice
             icon={<Link2Off />}
-            title={stage.otherBrowser ? "Abra el enlace donde lo pidió" : "El enlace ya no funciona"}
+            title={
+              stage.reason === "other-browser"
+                ? "Abra el enlace donde lo pidió"
+                : stage.reason === "unfinished"
+                  ? "No se pudo completar"
+                  : "El enlace ya no funciona"
+            }
             primary={
-              // Asked for again from this browser, the new link works here.
-              stage.type === "recovery" || stage.type === null ? (
+              // A password link (or one whose kind is unknown) is replaced through «¿Olvidó su contraseña?», asked for from this
+              // browser so the new one works here; it also completes an invitation never accepted (Dirección cannot re-invite).
+              stage.type === null || needsPassword(stage.type) ? (
                 <BigButton href="/login?recuperar=1">
                   Pedir un enlace nuevo <ArrowRight />
                 </BigButton>
               ) : undefined
             }
           >
-            {stage.otherBrowser ? (
+            {stage.reason === "other-browser" ? (
               "Por seguridad, este enlace funciona una sola vez y solo en el navegador donde pidió el cambio de contraseña. Ábralo ahí, o pida uno nuevo desde este dispositivo."
-            ) : (
+            ) : stage.reason === "unfinished" ? (
+              "No se pudo completar el cambio de contraseña con este enlace y, por seguridad, ya no puede reintentarse. Cuando tenga conexión, pida uno nuevo desde este dispositivo."
+            ) : stage.type === null || needsPassword(stage.type) ? (
               <>
-                Este enlace ya se usó o venció. Pida a Dirección un nuevo enlace
-                {stage.type === "recovery" || stage.type === null ? ", o solicite otro con «¿Olvidó su contraseña?»." : "."}{" "}
+                Este enlace ya se usó o venció. Pida uno nuevo con «¿Olvidó su contraseña?»; si no le llega, comuníquese con Dirección.{" "}
                 {(stage.type === "invite" || stage.type === null) && "Si ya definió su contraseña, entre con su correo."}
               </>
+            ) : (
+              "Este enlace ya se usó o venció. Pida a Dirección un nuevo enlace."
             )}
           </Notice>
         )}
@@ -324,9 +367,13 @@ function SetPasswordInner() {
           </Notice>
         )}
 
-        {stage.kind === "password" && <PasswordStep verified={stage.verified} onSaved={() => continueIn(stage.verified)} />}
+        {stage.kind === "password" && (
+          <PasswordStep verified={stage.verified} replaces={replaces(stage.verified)} onLeave={leave} onSaved={() => continueIn(stage.verified)} />
+        )}
 
-        {stage.kind === "confirmed" && <ConfirmedStep verified={stage.verified} onContinue={() => continueIn(stage.verified)} />}
+        {stage.kind === "confirmed" && (
+          <ConfirmedStep verified={stage.verified} replaces={replaces(stage.verified)} onLeave={leave} onContinue={() => continueIn(stage.verified)} />
+        )}
       </AuthFrame>
       {replaceDialog}
     </>
@@ -349,7 +396,27 @@ function Notice({ icon, title, children, primary }: { icon: React.ReactNode; tit
   );
 }
 
-function PasswordStep({ verified, onSaved }: { verified: Verified; onSaved: () => Promise<unknown> }) {
+/**
+ * The link opens another account than the one open on this device: both are named before anything else, with a way out. (A
+ * link can carry any session, not only one Auth issued for this person.)
+ */
+function OtherAccountNote({ email, replaces, onLeave }: { email: string; replaces: string; onLeave: () => void }) {
+  return (
+    <div role="note" className="mt-5 rounded-[14px] bg-amber-soft px-4 py-3 text-[13.5px] leading-snug text-amber-ink">
+      <p>
+        Este enlace es de <b className="font-semibold">{email || "otra cuenta"}</b>, no de <b className="font-semibold">{replaces}</b>, la
+        cuenta abierta en este dispositivo. Si no es su enlace, no continúe.
+      </p>
+      <button type="button" onClick={onLeave} className="mt-1.5 font-semibold underline underline-offset-2">
+        No es mi enlace: volver a la entrada
+      </button>
+    </div>
+  );
+}
+
+type StepProps = { verified: Verified; replaces: string | null; onLeave: () => void };
+
+function PasswordStep({ verified, replaces, onLeave, onSaved }: StepProps & { onSaved: () => Promise<unknown> }) {
   const [password, setPassword] = useState("");
   const [confirmation, setConfirmation] = useState("");
   const [busy, setBusy] = useState(false);
@@ -389,6 +456,7 @@ function PasswordStep({ verified, onSaved }: { verified: Verified; onSaved: () =
           ? "Es su primera entrada a Pulkro Cuadrillas: elija la contraseña con la que entrará desde ahora."
           : "Elija una contraseña nueva para su cuenta."}
       </AuthHeading>
+      {replaces && <OtherAccountNote email={verified.email} replaces={replaces} onLeave={onLeave} />}
       <form onSubmit={submit} noValidate className="mt-7 space-y-4">
         {/* The account it applies to, also read by password managers as the user name. */}
         <AuthField id="set-email" label="Cuenta" icon={<Mail />} type="email" autoComplete="username" value={verified.email} readOnly />
@@ -439,7 +507,7 @@ function PasswordStep({ verified, onSaved }: { verified: Verified; onSaved: () =
   );
 }
 
-function ConfirmedStep({ verified, onContinue }: { verified: Verified; onContinue: () => Promise<unknown> }) {
+function ConfirmedStep({ verified, replaces, onLeave, onContinue }: StepProps & { onContinue: () => Promise<unknown> }) {
   const [busy, setBusy] = useState(false);
   return (
     <>
@@ -455,6 +523,7 @@ function ConfirmedStep({ verified, onContinue }: { verified: Verified; onContinu
           "Su correo quedó confirmado."
         )}
       </AuthHeading>
+      {replaces && <OtherAccountNote email={verified.email} replaces={replaces} onLeave={onLeave} />}
       <div className="mt-7">
         <BigButton
           disabled={busy}

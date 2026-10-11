@@ -68,8 +68,10 @@ export function recoveryErrorMessage(error: unknown): string {
  * "no-access": the link is fine but the account may not enter (banned, or no active profile): a new link would not help.
  * "other-browser": a PKCE recovery link (`?code=`) opened without this browser's code verifier: it was asked for in another
  * browser or app, or this browser already spent it.
+ * "unfinished" (set by the link page, never by the mappers below): a PKCE exchange that failed after reaching auth-js, which
+ * drops the code verifier on any outcome, so the code can no longer be exchanged in this browser.
  */
-export type LinkFailure = { kind: "expired" | "other-browser" | "network" | "no-access" | "other"; message: string };
+export type LinkFailure = { kind: "expired" | "other-browser" | "unfinished" | "network" | "no-access" | "other"; message: string };
 
 /**
  * Used, expired or altered: otp_expired / flow_state_* (verifyOtp, the code exchange, Auth's /verify redirect); a spent or

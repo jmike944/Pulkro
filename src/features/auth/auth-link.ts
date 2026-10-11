@@ -5,10 +5,13 @@
  * Supabase Auth sends one of these, depending on the e-mail template and on who asked for the link:
  *  - `?token_hash=…&type=…` (form "otp"): the Spanish templates in supabase/templates, which Supabase only uses with a custom
  *    SMTP server. The page verifies the token (verifyOtp).
- *  - `#access_token=…&refresh_token=…&type=invite|recovery|…` (form "session"): the default templates link to Auth's
+ *  - `#access_token=…&refresh_token=…&type=invite|recovery` (form "session"): the default templates link to Auth's
  *    /verify ({{ .ConfirmationURL }}). For a link asked for without PKCE (an invite from the admin-users function or from the
- *    dashboard), Auth verifies it there and hands the session over in the fragment (implicit flow). The type comes from the
- *    fragment.
+ *    dashboard, a recovery sent from the dashboard), Auth verifies it there and hands the session over in the fragment
+ *    (implicit flow). The type comes from the fragment and is plain text nobody checks: any session pasted there would carry
+ *    it (a cookie copied from another browser, say). So only the password links are taken in this form (this project never
+ *    issues another type as an implicit link: sign-ups are off and admin e-mail changes are confirmed at once), and the page
+ *    always shows the account the link opens before entering it.
  *  - `?code=…` (form "code"): the default template for a recovery asked for in this app. The browser client uses PKCE, so
  *    the session comes back as a one-time code that only the browser that asked for it (it holds the code verifier) can
  *    exchange. Only recovery uses PKCE here, so a code is always a password link.
@@ -20,15 +23,17 @@
 
 export const PASSWORD_LINKS = ["invite", "recovery"] as const;
 export const CONFIRM_LINKS = ["email_change", "email", "signup"] as const;
-export type LinkType = (typeof PASSWORD_LINKS)[number] | (typeof CONFIRM_LINKS)[number];
+export type PasswordLinkType = (typeof PASSWORD_LINKS)[number];
+export type LinkType = PasswordLinkType | (typeof CONFIRM_LINKS)[number];
 
 export const isLinkType = (t: string | null | undefined): t is LinkType =>
   !!t && ((PASSWORD_LINKS as readonly string[]).includes(t) || (CONFIRM_LINKS as readonly string[]).includes(t));
-export const needsPassword = (t: LinkType) => (PASSWORD_LINKS as readonly string[]).includes(t);
+export const isPasswordLink = (t: string | null | undefined): t is PasswordLinkType => !!t && (PASSWORD_LINKS as readonly string[]).includes(t);
+export const needsPassword = (t: LinkType) => isPasswordLink(t);
 
 export type AuthLink =
   | { form: "otp"; type: LinkType; tokenHash: string }
-  | { form: "session"; type: LinkType; accessToken: string; refreshToken: string }
+  | { form: "session"; type: PasswordLinkType; accessToken: string; refreshToken: string }
   | { form: "code"; type: "recovery"; code: string; flowId: string | null }
   | { form: "error"; type: LinkType | null; error: string; errorCode: string }
   | { form: "invalid" }
@@ -90,7 +95,8 @@ export function parseAuthLink(search: string, hash: string): AuthLink {
     const accessToken = fragment.get("access_token");
     const refreshToken = fragment.get("refresh_token");
     const type = fragment.get("type");
-    return isJwt(accessToken) && isToken(refreshToken) && isLinkType(type) ? { form: "session", type, accessToken, refreshToken } : INVALID;
+    // invite / recovery only: with a confirmation type a session from anywhere would skip the password step (see above)
+    return isJwt(accessToken) && isToken(refreshToken) && isPasswordLink(type) ? { form: "session", type, accessToken, refreshToken } : INVALID;
   }
 
   if (query.has("code")) {
