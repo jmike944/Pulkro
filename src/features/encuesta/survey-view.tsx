@@ -4,6 +4,7 @@ import { use, useState } from "react";
 import { motion } from "motion/react";
 import { CalendarDays, Sparkles, UserRound } from "lucide-react";
 import { useAppStore } from "@/lib/store";
+import { useSignOut } from "@/features/auth/use-sign-out";
 import { firstName, fmtDate, fmtLongDay } from "@/lib/format";
 import type { SurveyAnswers } from "@/lib/types";
 import { ClientMark } from "@/components/pk/client-mark";
@@ -34,11 +35,18 @@ function SurveyContent({ token }: { token: string }) {
   const serviceType = useAppStore((s) => (order ? s.serviceTypes.find((t) => t.id === order.serviceTypeId) : undefined));
   const supervisor = useAppStore((s) => (order ? s.users.find((u) => u.id === order.supervisorId) : undefined));
   const staffSession = useAppStore((s) => s.session.signedIn);
-  const signOut = useAppStore((s) => s.signOut);
+  // Stays on the survey: once signed out, the page opens as the client sees it (an account's data leaves the device).
+  const { requestSignOut, signOutDialog } = useSignOut({ redirectTo: null });
   const [submitted, setSubmitted] = useState<{ answers: SurveyAnswers; name?: string } | null>(null);
 
   // Never answer (or read answers) as the client from a staff session: close it first (see store.submitSurvey).
-  if (staffSession && !submitted) return <SurveyStaffSession onSignOut={signOut} />;
+  if (staffSession && !submitted)
+    return (
+      <>
+        <SurveyStaffSession onSignOut={requestSignOut} />
+        {signOutDialog}
+      </>
+    );
   if (!survey || !order) return <SurveyMissing token={token} />;
 
   const serviceDate = order.closure?.validatedAt ?? order.scheduledEnd;

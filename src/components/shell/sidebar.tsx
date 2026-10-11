@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { AnimatePresence, LayoutGroup, motion } from "motion/react";
 import { Check, ChevronDown, ChevronRight, EllipsisVertical, LogOut, PanelLeftClose, PanelLeftOpen, Plus, RotateCcw, UserRound } from "lucide-react";
@@ -9,7 +9,6 @@ import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { useAppStore, useCan, useCurrentUser } from "@/lib/hooks";
 import { ROLE_LABEL } from "@/lib/status";
-import { DEMO_ENABLED } from "@/lib/demo";
 import type { Role } from "@/lib/types";
 import { PulkroEmblem, PulkroLetters } from "@/components/pk/brand";
 import { PersonAvatar } from "@/components/pk/bits";
@@ -29,6 +28,8 @@ import { useOpenGroups } from "./use-open-groups";
 import { SyncChip } from "./sync-indicator";
 import { ThemeMenuGroup } from "./theme-switcher";
 import { DemoResetDialog } from "./demo-reset-dialog";
+import { useSignOut } from "@/features/auth/use-sign-out";
+import { useDemoControls } from "@/features/auth/session";
 
 const COLLAPSE_KEY = "pk.sidebar.collapsed";
 
@@ -489,8 +490,8 @@ export function NewOrderButton({ collapsed }: { collapsed?: boolean }) {
 export function UserCard({ collapsed }: { collapsed?: boolean }) {
   const user = useCurrentUser();
   const switchRole = useAppStore((s) => s.switchRole);
-  const signOut = useAppStore((s) => s.signOut);
-  const router = useRouter();
+  const demo = useDemoControls();
+  const { requestSignOut, signOutDialog } = useSignOut();
   const [resetOpen, setResetOpen] = useState(false);
   return (
     <div className={cn("mt-0.5 flex items-center gap-3 rounded-[14px] px-2 py-1", collapsed && "justify-center")}>
@@ -510,7 +511,7 @@ export function UserCard({ collapsed }: { collapsed?: boolean }) {
           <EllipsisVertical className="size-4" />
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end" side="top" className="w-60">
-          {DEMO_ENABLED && (
+          {demo && (
             <>
               <DropdownMenuLabel>Ver la app como (demo)</DropdownMenuLabel>
               {(["direccion", "administracion", "supervisor"] as Role[]).map((r) => (
@@ -531,22 +532,18 @@ export function UserCard({ collapsed }: { collapsed?: boolean }) {
           )}
           <ThemeMenuGroup />
           <DropdownMenuSeparator />
-          {DEMO_ENABLED && (
+          {demo && (
             <DropdownMenuItem onClick={() => setResetOpen(true)}>
               <RotateCcw className="size-4" /> Restablecer datos de demostración…
             </DropdownMenuItem>
           )}
-          <DropdownMenuItem
-            onClick={() => {
-              signOut();
-              router.push("/login");
-            }}
-          >
+          <DropdownMenuItem onClick={requestSignOut}>
             <LogOut className="size-4" /> Cerrar sesión
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
       <DemoResetDialog open={resetOpen} onOpenChange={setResetOpen} />
+      {signOutDialog}
     </div>
   );
 }

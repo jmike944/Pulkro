@@ -6,12 +6,12 @@ import { Download, HardDrive, RotateCcw, ShieldCheck } from "lucide-react";
 import { toast } from "sonner";
 import { useAppStore, useCurrentUser, useLookups, useScopedAudit, useScopedData, useShallow } from "@/lib/hooks";
 import { can } from "@/lib/permissions";
-import { DEMO_ENABLED } from "@/lib/demo";
 import { downloadBlob } from "@/lib/export";
 import { fmtNum } from "@/lib/format";
 import { ROLE_LABEL } from "@/lib/status";
 import { KeyValues, ProgressLine } from "@/components/pk/bits";
 import { DemoResetDialog } from "@/components/shell/demo-reset-dialog";
+import { useDemoControls } from "@/features/auth/session";
 import { Button } from "@/components/ui/button";
 import { ReadOnlyNote, fmtBytes } from "./shared";
 import { SqueegeeWipe } from "./squeegee-wipe";
@@ -42,6 +42,7 @@ function useStorageInfo(refresh: number) {
 /** Right column of the Sincronización tab: storage, record counts, backup and demo reset. */
 export function DeviceData() {
   const user = useCurrentUser();
+  const demo = useDemoControls();
   const lk = useLookups();
   // Raw slices only feed the backup's catalogs (which are filtered by unit below); every count on screen is scoped.
   const data = useAppStore(
@@ -181,7 +182,7 @@ export function DeviceData() {
         ) : (
           <ReadOnlyNote>Solo Dirección y Administración exportan respaldos de los datos.</ReadOnlyNote>
         )}
-        {DEMO_ENABLED && (
+        {demo && (
           <Button variant="outline" onClick={() => setConfirmReset(true)} className="h-11 w-full rounded-[12px] border-line text-[14.5px] font-semibold text-red-fg hover:text-red-fg">
             <RotateCcw className="size-4" /> Restablecer datos de demostración
           </Button>
