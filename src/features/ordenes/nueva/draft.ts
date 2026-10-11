@@ -249,8 +249,12 @@ export function toInput(d: Draft, title: string, canAssign: boolean): NewOrderIn
 /** Same rule the store applies in createOrder(): jornadas + crew → Programada, else Borrador. */
 export const willBeScheduled = (d: Draft, canAssign: boolean) => d.days.length > 0 && canAssign && d.workerIds.length > 0;
 
-/** Predicts the folio the store will assign (max + 1). Shown as provisional. */
-export function provisionalFolio(orders: Order[]) {
+/**
+ * Predicts the folio the store will assign (max + 1). Shown as provisional. An account session cannot predict it: the server
+ * assigns it when the order reaches it (until then the order shows "OS-PEND-…").
+ */
+export function provisionalFolio(orders: Order[], account = false) {
+  if (account) return "OS-PEND";
   const max = orders.reduce((m, o) => Math.max(m, parseInt(o.folio.split("-")[1] ?? "0", 10) || 0), 0);
   return `OS-${String(max + 1).padStart(5, "0")}`;
 }

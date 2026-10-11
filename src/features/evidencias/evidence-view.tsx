@@ -14,6 +14,7 @@ import { despuesResponse, evidenceRequests } from "./evidence-data";
 import { PendingTab } from "./pending-tab";
 import { GalleryTab } from "./gallery-tab";
 import { ComplianceTab } from "./compliance-tab";
+import { findByRef } from "@/lib/folio";
 
 type TabKey = "pendientes" | "galeria" | "cumplimiento";
 const TABS: TabKey[] = ["pendientes", "galeria", "cumplimiento"];
@@ -28,7 +29,7 @@ export function EvidenceView() {
   const lk = useLookups();
   const now = useNow(60_000);
 
-  const filterOrder = useMemo(() => (folio ? data.orders.find((o) => o.folio === folio) : undefined), [folio, data.orders]);
+  const filterOrder = useMemo(() => (folio ? findByRef(data.orders, folio) : undefined), [folio, data.orders]);
 
   const allRequests = useMemo(() => evidenceRequests(data.orders, data.jornadas, data.photos, now), [data.orders, data.jornadas, data.photos, now]);
   const requests = useMemo(

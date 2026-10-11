@@ -125,7 +125,8 @@ function NewOrderWizard() {
   const service = lk.serviceTypes.get(draft.serviceTypeId);
   const client = lk.clients.get(draft.clientId);
   const title = draft.titleEdited ? draft.title : suggestedTitle(service, site?.name);
-  const folio = created?.folio ?? provisionalFolio(allOrders);
+  const account = useAppStore((s) => s.session.mode === "supabase");
+  const folio = created?.folio ?? provisionalFolio(allOrders, account);
 
   // The reference must be unique company-wide, so the match is global; its folio is only named when the creator may open it.
   const duplicateRef = useMemo(() => {

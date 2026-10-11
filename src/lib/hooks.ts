@@ -6,6 +6,7 @@ import { isOffline, useAppStore } from "./store";
 import { can, canSeeAuditEntry, canSeeOrder, scopedUnitIds, type Action } from "./permissions";
 import { usePullStatus } from "./sync/status";
 import { DEMO_ENABLED } from "./demo";
+import { findByRef } from "./folio";
 import type { AuditEntry, Client, Jornada, Order, ServiceType, Site, User, Worker, Material, Unit } from "./types";
 
 export { useAppStore } from "./store";
@@ -173,7 +174,8 @@ export function useOrderBundle(folioOrId: string) {
     })),
   );
   return useMemo(() => {
-    const order = s.orders.find((o) => o.folio === folioOrId || o.id === folioOrId);
+    // A folio, an id, or the provisional folio an account's new order had before the server assigned its own (lib/folio.ts).
+    const order = findByRef(s.orders, folioOrId);
     if (!order || !canSeeOrder(user, order, unitFilter)) return null;
     const jornadas = s.jornadas.filter((j) => j.orderId === order.id).sort((a, b) => a.dayIndex - b.dayIndex);
     return {
@@ -232,6 +234,20 @@ export function useSyncSummary() {
     const lastSyncAt = account ? (lastPullAt ?? queueSyncAt) : queueSyncAt;
     return { offline, pending, syncing, lastSyncAt, queue, account, lastPullAt, pulling: account && pulling, pullInitial, pullError: account ? pullError : undefined, needsReauth };
   }, [queue, queueSyncAt, offline, account, lastPullAt, pulling, pullInitial, pullError, needsReauth]);
+}
+
+/**
+ * Keeps the address on the record's current folio: a page opened by id, or by the provisional folio of a record created on
+ * this device ("OS-PEND-…"), moves to the real folio once the server assigned it — so a link, a bookmark or the back button
+ * keeps working across the change. Native history (no navigation: works offline; Next keeps usePathname in step).
+ */
+export function useCanonicalFolio(segment: string, folio: string | undefined, base: string, suffix = "") {
+  useEffect(() => {
+    if (!folio || folio === segment) return;
+    const target = `${base}${encodeURIComponent(folio)}${suffix}`;
+    if (window.location.pathname === target) return;
+    window.history.replaceState(null, "", `${target}${window.location.search}${window.location.hash}`);
+  }, [segment, folio, base, suffix]);
 }
 
 /** Re-renders every `ms` — for live timers and "hace X min" labels. */

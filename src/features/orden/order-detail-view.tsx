@@ -5,6 +5,7 @@ import { usePathname, useSearchParams } from "next/navigation";
 import { AnimatePresence, motion } from "motion/react";
 import { toast } from "sonner";
 import { useAppStore } from "@/lib/store";
+import { useCanonicalFolio } from "@/lib/hooks";
 import { ORDER_STATUS } from "@/lib/status";
 import type { OrderStatus } from "@/lib/types";
 import type { TabItem } from "@/components/pk/page";
@@ -35,6 +36,7 @@ export function OrderDetailView({ params }: { params: Promise<{ folio: string }>
   const { folio: raw } = use(params);
   const folio = decodeURIComponent(raw);
   const d = useOrderDetailData(folio);
+  useCanonicalFolio(folio, d?.order.folio, "/ordenes/");
   // One state for "doesn't exist" and "outside your scope" (doc §2): never the folio, never which of the two it is.
   if (!d) return <NotFoundOrOutOfScope subject="Esta orden" backHref="/ordenes" backLabel="Volver a órdenes" />;
   return <OrderDetailScreen d={d} />;
