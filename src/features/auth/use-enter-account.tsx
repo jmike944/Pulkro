@@ -2,6 +2,7 @@
 
 import { useCallback, useRef, useState } from "react";
 import { UserRoundX } from "lucide-react";
+import { toast } from "sonner";
 import { endSessionOnDevice, type SupabaseBrowserClient } from "@/lib/supabase/client";
 import { useAppStore } from "@/lib/store";
 import { flagReauth } from "@/lib/sync/pull";
@@ -26,7 +27,7 @@ async function leaveSession(inactiveUserId?: string) {
 
 export type EnterResult = { status: "entered" } | { status: "confirm" } | { status: "refused"; message: string };
 
-type Pending = { user: User; unit?: Unit; other: { name: string; unsent: number } };
+type Pending = { user: User; unit?: Unit; other: { name: string; ids: ReadonlySet<string> } };
 
 /**
  * After Supabase Auth has a session (password sign-in, or an invite / recovery link): read the account's own profile, refuse
@@ -51,7 +52,8 @@ export function useEnterAccount({ onEntered, onCancelled }: { onEntered: () => v
         return { status: "refused", message: profile.message };
       }
       await whenHydrated();
-      const other = otherAccountOnDevice(profile.user.id);
+      // Every tab and the device itself: a tab that never saw the other account's latest captures must not wipe them unasked.
+      const other = await otherAccountOnDevice(profile.user.id);
       if (other) {
         confirmed.current = false;
         setPending({ user: profile.user, unit: profile.unit, other });
@@ -87,17 +89,24 @@ export function useEnterAccount({ onEntered, onCancelled }: { onEntered: () => v
       description={
         pending && (
           <>
-            Hay <b>{plural(pending.other.unsent, "cambio sin enviar", "cambios sin enviar")}</b> de {pending.other.name}. Si entra con su cuenta,
-            se borrarán de este dispositivo.
+            Hay <b>{plural(pending.other.ids.size, "cambio sin enviar", "cambios sin enviar")}</b> de {pending.other.name}. Si entra con su
+            cuenta, se borrarán de este dispositivo.
           </>
         )
       }
-      rows={pending ? [{ k: "Cuenta anterior", v: pending.other.name }, { k: "Cambios sin enviar", v: fmtNum(pending.other.unsent) }] : []}
+      rows={pending ? [{ k: "Cuenta anterior", v: pending.other.name }, { k: "Cambios sin enviar", v: fmtNum(pending.other.ids.size) }] : []}
       checkboxLabel="Entiendo que esos cambios se borrarán."
       confirmLabel="Borrar y entrar"
       destructive
-      onConfirm={() => {
+      onConfirm={async () => {
         if (!pending) return;
+        // Changes made since the dialog opened (here or in another tab) are not part of what the person agreed to lose.
+        const now = await otherAccountOnDevice(pending.user.id);
+        if (now && [...now.ids].some((id) => !pending.other.ids.has(id))) {
+          setPending({ ...pending, other: now });
+          toast.warning("Hay cambios nuevos sin enviar", { description: `Revise cuántos cambios de ${now.name} se borrarían antes de entrar.` });
+          return false;
+        }
         confirmed.current = true;
         useAppStore.getState().startSupabaseSession(pending.user, pending.unit);
         onEntered();

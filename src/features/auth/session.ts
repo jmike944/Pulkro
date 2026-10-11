@@ -1,7 +1,8 @@
 "use client";
 
 import type { SupabaseBrowserClient } from "@/lib/supabase/client";
-import { unsentCount, useAppStore } from "@/lib/store";
+import { unsentIds, useAppStore } from "@/lib/store";
+import { askOtherTabsUnsent, ownerOf, persistedUnsent, type DeviceOwner } from "@/lib/device-storage";
 import { mapProfile, mapUnit } from "@/lib/sync/map";
 import type { Unit, User } from "@/lib/types";
 import { NETWORK_MESSAGE, NO_PROFILE_MESSAGE, isNetworkFailure } from "./auth-errors";
@@ -47,13 +48,25 @@ export function accountOnDevice(): { userId: string; name: string } | null {
   return { userId: s.session.userId, name: s.users.find((u) => u.id === s.session.userId)?.name ?? "otra cuenta" };
 }
 
+/**
+ * The unsent changes of `owner` on this device: this tab's queue, the queues of its other open tabs (their memory may be
+ * ahead of the device) and the queue saved on the device (tabs that are closed, frozen in the background or discarded).
+ */
+export async function deviceUnsent(owner: DeviceOwner): Promise<ReadonlySet<string>> {
+  const s = useAppStore.getState();
+  const ids = new Set(ownerOf(s.session) === owner ? unsentIds(s.sync.queue) : []);
+  const [others, saved] = await Promise.all([askOtherTabsUnsent(owner), persistedUnsent(owner)]);
+  for (const id of [...others, ...saved]) ids.add(id);
+  return ids;
+}
+
 /** Another account's session on this device that still holds unsent changes (they would be lost by signing in). */
-export function otherAccountOnDevice(userId: string): { name: string; unsent: number } | null {
+export async function otherAccountOnDevice(userId: string): Promise<{ name: string; ids: ReadonlySet<string> } | null> {
   const s = useAppStore.getState();
   if (s.session.mode !== "supabase" || s.session.userId === userId) return null;
-  const unsent = unsentCount(s.sync.queue);
-  if (!unsent) return null;
-  return { name: s.users.find((u) => u.id === s.session.userId)?.name ?? "otra cuenta", unsent };
+  const ids = await deviceUnsent(ownerOf(s.session));
+  if (!ids.size) return null;
+  return { name: s.users.find((u) => u.id === s.session.userId)?.name ?? "otra cuenta", ids };
 }
 
 /** Demo-only controls (role switch, demo reset): never for an account session, whatever the build. */

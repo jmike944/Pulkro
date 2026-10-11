@@ -5,20 +5,16 @@ import { useRouter } from "next/navigation";
 import { CloudOff } from "lucide-react";
 import { toast } from "sonner";
 import { endSessionOnDevice } from "@/lib/supabase/client";
-import { unsentIds, useAppStore } from "@/lib/store";
-import { askOtherTabsUnsent, ownerOf } from "@/lib/device-storage";
+import { useAppStore } from "@/lib/store";
+import { ownerOf } from "@/lib/device-storage";
 import { flagReauth } from "@/lib/sync/pull";
 import { fmtNum, plural } from "@/lib/format";
 import { ConfirmDialog } from "@/features/configuracion/shared";
 import { BusyDialog } from "./busy-dialog";
+import { deviceUnsent } from "./session";
 
-/** The account's unsent changes on this device: this tab's queue plus what its other open tabs hold in memory. */
-async function collectUnsent(): Promise<ReadonlySet<string>> {
-  const s = useAppStore.getState();
-  const ids = new Set(unsentIds(s.sync.queue));
-  for (const id of await askOtherTabsUnsent(ownerOf(s.session))) ids.add(id);
-  return ids;
-}
+/** The account's unsent changes on this device: this tab's, its other open tabs' and what is saved on the device. */
+const collectUnsent = (): Promise<ReadonlySet<string>> => deviceUnsent(ownerOf(useAppStore.getState().session));
 
 /** Changes that were not in the set the person agreed to lose. */
 const newSince = (now: ReadonlySet<string>, accepted: ReadonlySet<string>) => [...now].some((id) => !accepted.has(id));
