@@ -4,7 +4,7 @@
  * Pure functions — safe in useMemo and tests.
  */
 import { addDays, differenceInCalendarDays, differenceInMinutes, endOfDay, parseISO, subDays } from "date-fns";
-import type { Jornada, Order, Photo } from "@/lib/types";
+import type { AuditEntry, Jornada, Order, Photo } from "@/lib/types";
 
 export type EvidenceKind = "antes" | "despues";
 
@@ -33,6 +33,16 @@ export type EvidenceRequest = {
 };
 
 export const requestKey = (jornadaId: string, kind: EvidenceKind) => `${jornadaId}:${kind}`;
+
+/** Audit action the store's `logReminder` writes for a jornada ("Envió recordatorio de evidencia · Jornada 2"). */
+export const REMINDER_ACTION = "Envió recordatorio de evidencia";
+
+/**
+ * Evidence reminders sent for one jornada, newest first (like the store's audit). Reminders are audit-only:
+ * they never go into the jornada's bitácora.
+ */
+export const jornadaReminders = (audit: AuditEntry[], jornadaId: string) =>
+  audit.filter((a) => a.entity === "jornada" && a.entityId === jornadaId && a.action.startsWith(REMINDER_ACTION));
 
 const byTakenAt = (a: Photo, b: Photo) => a.takenAt.localeCompare(b.takenAt);
 

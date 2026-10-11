@@ -138,6 +138,7 @@ export function PhotoCaptureButtons({
   compact,
   disabled,
   help = !compact,
+  onBusyChange,
 }: {
   meta: CaptureMeta;
   onCaptured?: (ids: string[]) => void;
@@ -146,14 +147,24 @@ export function PhotoCaptureButtons({
   disabled?: boolean;
   /** Show `CAPTURE_HELP` under the buttons (default: yes, except in the compact variant). */
   help?: boolean;
+  /**
+   * `true` when a picked photo starts being saved (compressing, reading the position), `false` once it is done —
+   * after `onCaptured`, so a parent can hold its submit until the photos land. Every `true` is followed by one `false`.
+   */
+  onBusyChange?: (busy: boolean) => void;
 }) {
   const camRef = useRef<HTMLInputElement>(null);
   const galRef = useRef<HTMLInputElement>(null);
   const { capture, simulate, busy } = usePhotoCapture();
   const onFiles = async (files: FileList | null, input: CaptureInput) => {
     if (!files?.length) return;
-    const ids = await capture(files, meta, input);
-    if (ids.length) onCaptured?.(ids);
+    onBusyChange?.(true);
+    try {
+      const ids = await capture(files, meta, input);
+      if (ids.length) onCaptured?.(ids);
+    } finally {
+      onBusyChange?.(false);
+    }
   };
   return (
     <div className={cn("flex flex-wrap items-center gap-2", className)}>

@@ -169,7 +169,7 @@ export function SurveyWizard({ token, onSubmitted }: { token: string; onSubmitte
       <div className="flex items-center gap-3 border-t border-hairline bg-surface/70 px-6 py-4 sm:px-8">
         {step > 0 && (
           <Button variant="ghost" onClick={() => go(step - 1)} className="h-12 rounded-[14px] px-4 text-[15px]">
-            <ArrowLeft /> Atrás
+            <ArrowLeft /> Volver
           </Button>
         )}
         <motion.div className="ml-auto" animate={canNext ? { scale: 1, opacity: 1 } : { scale: 0.98, opacity: 0.85 }}>

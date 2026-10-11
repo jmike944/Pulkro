@@ -120,7 +120,8 @@ export function OrdersFilters(props: Props) {
 
       <Sheet open={sheetOpen} onOpenChange={setSheetOpen}>
         <SheetContent side="bottom" className="max-h-[88dvh] gap-0 rounded-t-[26px] px-4 pb-[calc(1rem+env(safe-area-inset-bottom))]">
-          <SheetHeader className="px-1 pb-3 pt-5">
+          {/* 52px + the sheet's 16px = the 68px other sheets keep clear of the 44px close button */}
+          <SheetHeader className="pb-3 pl-1 pr-[52px] pt-5">
             <SheetTitle className="font-serif text-[26px] font-medium">Filtros</SheetTitle>
             <SheetDescription>Combine filtros para encontrar la orden.</SheetDescription>
           </SheetHeader>
