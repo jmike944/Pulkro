@@ -10,7 +10,7 @@ import { photoTimingIssues } from "@/lib/domain";
 import { fmtDateTime } from "@/lib/format";
 import { currentPosition } from "@/lib/geo";
 import { UndecodableImageError, deletePhotoFile, describeCapture, savePhotoFile, type CaptureInput } from "@/lib/photo-store";
-import { flushWrite } from "@/lib/device-storage";
+import { flushWrite, holdForCapture } from "@/lib/device-storage";
 import { plural } from "@/lib/format";
 import { SCENE_AREAS, SCENES_BY_SERVICE } from "@/lib/seed";
 import type { Photo, PhotoKind, SceneKind } from "@/lib/types";
@@ -49,6 +49,8 @@ export const CAPTURE_HELP =
  * (PermissionDeniedError) stops it. "Guardada en el dispositivo" only once the device stored it. Returns the new photo ids.
  * `input` is the file input the pictures came through. Callers that cannot tell pass nothing: a fresh file counts as a
  * camera shot and anything older than a few minutes as a gallery pick.
+ * Until the batch is over, a handover to another window, a sign-out and another account's sign-in wait for it (a photo still
+ * being compressed is in no write and no count of unsent changes yet).
  */
 export async function captureFiles(files: FileList | File[], meta: CaptureMeta, input: CaptureInput = "camera"): Promise<string[]> {
   const addPhoto = useAppStore.getState().addPhoto;
@@ -59,6 +61,7 @@ export async function captureFiles(files: FileList | File[], meta: CaptureMeta, 
   let galleryNote: string | undefined;
   // The captures are the only copy until they are sent: ask the browser not to evict them (once).
   requestPersistentStorage();
+  const release = holdForCapture();
   try {
     // One non-blocking position read per batch: a fix from the last two minutes is reused, no answer in 3 s = no coordinates.
     const position = currentPosition(3000, 120_000);
@@ -123,6 +126,8 @@ export async function captureFiles(files: FileList | File[], meta: CaptureMeta, 
   } catch (e) {
     // The store already told the user why when it refused (PermissionDeniedError).
     if (!(e instanceof PermissionDeniedError)) toast.error(e instanceof Error ? e.message : "No se pudo guardar la foto. Intente de nuevo.");
+  } finally {
+    release();
   }
   return ids;
 }

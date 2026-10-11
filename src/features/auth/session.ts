@@ -29,6 +29,12 @@ export async function loadOwnProfile(supabase: SupabaseBrowserClient, userId: st
   return { ok: true, user, unit: unit ? mapUnit(unit) : undefined };
 }
 
+/**
+ * How long a sign-out, or another account's sign-in, waits for photos still being stored (lib/device-storage
+ * `whenCapturesSettled`) before it counts the unsent changes: a photo is no change until it is queued.
+ */
+export const CAPTURE_WAIT_MS = 20_000;
+
 /** Resolves once the store has been read back from IndexedDB (writing before that would be overwritten by the rehydration). */
 export function whenHydrated(): Promise<void> {
   if (useAppStore.getState().hydrated) return Promise.resolve();

@@ -6,12 +6,12 @@ import { CloudOff } from "lucide-react";
 import { toast } from "sonner";
 import { endSessionOnDevice } from "@/lib/supabase/client";
 import { useAppStore } from "@/lib/store";
-import { ownerOf } from "@/lib/device-storage";
+import { capturesInProgress, ownerOf, whenCapturesSettled } from "@/lib/device-storage";
 import { flagReauth } from "@/lib/sync/pull";
 import { fmtNum, plural } from "@/lib/format";
 import { ConfirmDialog } from "@/features/configuracion/shared";
 import { BusyDialog } from "./busy-dialog";
-import { deviceUnsent } from "./session";
+import { CAPTURE_WAIT_MS, deviceUnsent } from "./session";
 
 /** The account's unsent changes on this device: this tab's and what is saved on the device. */
 const collectUnsent = (): Promise<ReadonlySet<string>> => deviceUnsent(ownerOf(useAppStore.getState().session));
@@ -20,6 +20,32 @@ const collectUnsent = (): Promise<ReadonlySet<string>> => deviceUnsent(ownerOf(u
 const newSince = (now: ReadonlySet<string>, accepted: ReadonlySet<string>) => [...now].some((id) => !accepted.has(id));
 
 const NONE: ReadonlySet<string> = new Set();
+
+/** "ok": signed out and wiped. "again": new unsent changes, nothing changed. "kept": session ended, data kept (re-auth). */
+export type SignOutOutcome = { result: "ok" | "kept" } | { result: "again"; ids: ReadonlySet<string> };
+
+/**
+ * The end of an account sign-out the person confirmed (`accepted`: the unsent changes they agreed to lose). A photo still
+ * being stored is no queue item yet: it is waited for, so it counts as a change the person has not seen — the wipe never runs
+ * while one is being stored.
+ */
+export async function endAccountOnDevice(accepted: ReadonlySet<string>): Promise<SignOutOutcome> {
+  if (!(await whenCapturesSettled(CAPTURE_WAIT_MS))) return { result: "again", ids: await collectUnsent() };
+  // Changes made since the person confirmed (a push answer, a capture) are not part of what they agreed to lose.
+  const before = await collectUnsent();
+  if (newSince(before, accepted)) return { result: "again", ids: before };
+  // This device only. Online, Auth revokes this session's refresh token; the cookies are removed here in any case, because
+  // signOut() keeps them when it cannot refresh an expired access token first (offline for over an hour, Auth down).
+  await endSessionOnDevice({ revoke: !useAppStore.getState().sync.browserOffline });
+  // Last count, right before the wipe. The Supabase session is gone by now: keep the data and ask to sign in again.
+  const settled = await whenCapturesSettled(CAPTURE_WAIT_MS);
+  if (!settled || newSince(await collectUnsent(), accepted) || capturesInProgress() > 0) {
+    flagReauth(useAppStore);
+    return { result: "kept" };
+  }
+  useAppStore.getState().clearDeviceData();
+  return { result: "ok" };
+}
 
 /**
  * "Cerrar sesión" for both kinds of session.
@@ -41,28 +67,11 @@ export function useSignOut({ redirectTo = "/login" }: { redirectTo?: string | nu
     if (redirectTo) router.push(redirectTo);
   };
 
-  /** "ok": signed out and wiped. "again": new unsent changes, nothing changed. "kept": session ended, data kept (re-auth). */
-  const run = async (accepted: ReadonlySet<string>): Promise<{ result: "ok" | "kept" } | { result: "again"; ids: ReadonlySet<string> }> => {
-    // Changes made since the person confirmed (a push answer, a capture) are not part of what they agreed to lose.
-    const before = await collectUnsent();
-    if (newSince(before, accepted)) return { result: "again", ids: before };
-    // This device only. Online, Auth revokes this session's refresh token; the cookies are removed here in any case, because
-    // signOut() keeps them when it cannot refresh an expired access token first (offline for over an hour, Auth down).
-    await endSessionOnDevice({ revoke: !useAppStore.getState().sync.browserOffline });
-    // Last count, right before the wipe. The Supabase session is gone by now: keep the data and ask to sign in again.
-    if (newSince(await collectUnsent(), accepted)) {
-      flagReauth(useAppStore);
-      return { result: "kept" };
-    }
-    useAppStore.getState().clearDeviceData();
-    return { result: "ok" };
-  };
-
   const signOutAccount = async (accepted: ReadonlySet<string>) => {
     setBusy(true);
-    let outcome: Awaited<ReturnType<typeof run>>;
+    let outcome: SignOutOutcome;
     try {
-      outcome = await run(accepted);
+      outcome = await endAccountOnDevice(accepted);
     } finally {
       setBusy(false);
     }
@@ -86,6 +95,8 @@ export function useSignOut({ redirectTo = "/login" }: { redirectTo?: string | nu
       leave();
       return;
     }
+    // A photo still being stored counts once it is queued (it would be wiped unseen otherwise).
+    await whenCapturesSettled(CAPTURE_WAIT_MS);
     const ids = await collectUnsent();
     if (ids.size > 0) setConfirm({ open: true, ids });
     else await signOutAccount(NONE);

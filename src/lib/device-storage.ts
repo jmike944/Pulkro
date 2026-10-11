@@ -336,9 +336,16 @@ async function handOver(id: string) {
   setWriter("handing");
   hooks?.halt(true);
   let saved: SaveResult;
-  // What lands while a write is under way (a photo still being compressed…) goes with the next one.
-  do saved = await flushWrite();
-  while (saved === "committed" && pending);
+  for (;;) {
+    // What lands while a write is under way goes with the next one.
+    do saved = await flushWrite();
+    while (saved === "committed" && pending);
+    // A photo batch still being stored (compressing, waiting for the position) goes too: this tab waits for it, and tells
+    // the requester it is still saving (its timeout starts again).
+    if (saved !== "committed" || capturing === 0) break;
+    for (const r of requesters) post({ t: "releasing", id: r });
+    await whenCapturesSettled(5000);
+  }
   if (saved === "failed") {
     // What this tab holds is not on the device: stepping aside would lose it.
     setWriter("writer");
@@ -550,6 +557,42 @@ export function createDeviceStorage<S extends { session?: SessionLike }>(): Pers
       if (idb && writing()) await del(name, idb);
     },
   };
+}
+
+/* ───────────── photos being stored ───────────── */
+
+/**
+ * Photo batches still being stored (photo-capture: compressed, written, then queued). Until a photo is queued it is in no
+ * write and no count of unsent changes: a handover waits for it, and so do a sign-out and another account's sign-in.
+ */
+let capturing = 0;
+const settledWaiters = new Set<() => void>();
+
+/** A photo batch starts: returns its end (call it once, when the batch is over, whatever happened). */
+export function holdForCapture(): () => void {
+  capturing++;
+  let over = false;
+  return () => {
+    if (over) return;
+    over = true;
+    if (--capturing === 0) [...settledWaiters].forEach((fn) => fn());
+  };
+}
+
+export const capturesInProgress = () => capturing;
+
+/** Resolves true once no photo is being stored, or false after `ms` (some still are). */
+export function whenCapturesSettled(ms: number): Promise<boolean> {
+  if (capturing === 0) return Promise.resolve(true);
+  return new Promise((resolve) => {
+    const done = () => {
+      clearTimeout(wait);
+      settledWaiters.delete(done);
+      resolve(capturing === 0);
+    };
+    const wait = setTimeout(done, ms);
+    settledWaiters.add(done);
+  });
 }
 
 /* ───────────── what is saved on the device ───────────── */

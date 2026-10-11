@@ -5,12 +5,13 @@ import { UserRoundX } from "lucide-react";
 import { toast } from "sonner";
 import { endSessionOnDevice, type SupabaseBrowserClient } from "@/lib/supabase/client";
 import { useAppStore } from "@/lib/store";
+import { capturesInProgress, whenCapturesSettled } from "@/lib/device-storage";
 import { flagReauth } from "@/lib/sync/pull";
 import { fmtNum, plural } from "@/lib/format";
 import type { Unit, User } from "@/lib/types";
 import { ConfirmDialog } from "@/features/configuracion/shared";
 import { NO_PROFILE_MESSAGE } from "./auth-errors";
-import { loadOwnProfile, otherAccountOnDevice, whenHydrated } from "./session";
+import { CAPTURE_WAIT_MS, loadOwnProfile, otherAccountOnDevice, whenHydrated } from "./session";
 
 /**
  * Ends the session that was just opened and was not let in; the account the store holds has no session now either.
@@ -24,6 +25,14 @@ async function leaveSession(inactiveUserId?: string) {
     flagReauth(useAppStore, { noAccess: !!inactiveUserId && useAppStore.getState().session.userId === inactiveUserId });
   }
 }
+
+const CAPTURES_BUSY = "Se están guardando fotos en este dispositivo. Espere a que terminen y vuelva a entrar.";
+
+/** The store holds this account already (startSupabaseSession keeps its data). */
+const holdsAccount = (userId: string) => {
+  const s = useAppStore.getState().session;
+  return s.mode === "supabase" && s.userId === userId;
+};
 
 export type EnterResult = { status: "entered" } | { status: "confirm" } | { status: "refused"; message: string };
 
@@ -52,6 +61,11 @@ export function useEnterAccount({ onEntered, onCancelled }: { onEntered: () => v
         return { status: "refused", message: profile.message };
       }
       await whenHydrated();
+      // A photo still being stored is no unsent change yet: wait for it, so another account's is counted, never wiped unseen.
+      if (!(await whenCapturesSettled(CAPTURE_WAIT_MS)) && !holdsAccount(profile.user.id)) {
+        await leaveSession();
+        return { status: "refused", message: CAPTURES_BUSY };
+      }
       // This tab's memory and what is saved on the device: a write of this tab that failed may have left another account there.
       const other = await otherAccountOnDevice(profile.user.id);
       if (other) {
@@ -100,11 +114,18 @@ export function useEnterAccount({ onEntered, onCancelled }: { onEntered: () => v
       destructive
       onConfirm={async () => {
         if (!pending) return;
+        // A photo still being stored becomes one more change of that account: wait for it, then count again.
+        const settled = await whenCapturesSettled(CAPTURE_WAIT_MS);
         // Changes made since the dialog opened are not part of what the person agreed to lose.
         const now = await otherAccountOnDevice(pending.user.id);
         if (now && [...now.ids].some((id) => !pending.other.ids.has(id))) {
           setPending({ ...pending, other: now });
           toast.warning("Hay cambios nuevos sin enviar", { description: `Revise cuántos cambios de ${now.name} se borrarían antes de entrar.` });
+          return false;
+        }
+        // Never while a photo is being stored (it would be wiped unseen).
+        if (!settled || capturesInProgress() > 0) {
+          toast.warning("Se están guardando fotos", { description: `Espere a que terminen las fotos de ${pending.other.name} y vuelva a intentarlo.` });
           return false;
         }
         confirmed.current = true;
