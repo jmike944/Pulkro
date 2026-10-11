@@ -217,7 +217,7 @@ function SetPasswordInner() {
 function Notice({ icon, title, children, primary }: { icon: React.ReactNode; title: string; children: React.ReactNode; primary?: React.ReactNode }) {
   return (
     <>
-      <span className="mb-5 inline-flex size-14 items-center justify-center rounded-[18px] bg-amber-soft text-amber-fg [&_svg]:size-6">{icon}</span>
+      <span className="mb-5 flex size-14 items-center justify-center rounded-[18px] bg-amber-soft text-amber-fg [&_svg]:size-6">{icon}</span>
       <AuthHeading title={title}>{children}</AuthHeading>
       <div className="mt-7 space-y-3">
         {primary}
@@ -261,7 +261,7 @@ function PasswordStep({ verified, onSaved }: { verified: Verified; onSaved: () =
 
   return (
     <>
-      <span className="mb-5 inline-flex size-14 items-center justify-center rounded-[18px] bg-blue-wash text-blue-ink">
+      <span className="mb-5 flex size-14 items-center justify-center rounded-[18px] bg-blue-wash text-blue-ink">
         <KeyRound className="size-6" />
       </span>
       <AuthHeading title="Defina su contraseña">
@@ -323,7 +323,7 @@ function ConfirmedStep({ verified, onContinue }: { verified: Verified; onContinu
   const [busy, setBusy] = useState(false);
   return (
     <>
-      <span className="mb-5 inline-flex size-14 items-center justify-center rounded-[18px] bg-teal-soft text-teal-fg">
+      <span className="mb-5 flex size-14 items-center justify-center rounded-[18px] bg-teal-soft text-teal-fg">
         <MailCheck className="size-6" />
       </span>
       <AuthHeading title="Correo confirmado">

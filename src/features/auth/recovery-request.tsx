@@ -46,7 +46,7 @@ export function RecoveryRequest({ email, onEmailChange, onBack }: { email: strin
   if (sentTo)
     return (
       <>
-        <span className="mb-5 inline-flex size-14 items-center justify-center rounded-[18px] bg-teal-soft text-teal-fg">
+        <span className="mb-5 flex size-14 items-center justify-center rounded-[18px] bg-teal-soft text-teal-fg">
           <MailCheck className="size-6" />
         </span>
         <AuthHeading title="Revise su correo">
