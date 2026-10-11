@@ -286,6 +286,25 @@ export function discardedCaptures(
 }
 
 /**
+ * Later unsent changes of the same order that need, on the server, what `id` records there without naming it — a report
+ * and its shares need the validated closure, a check-out needs its jornada's check-in. Discarding `id` does not take them
+ * along (discardSet follows only the records an item creates: these may still apply, and they are the person's captures):
+ * the server will probably refuse them too, and they can be discarded then. None when the item's last answer was lost (it
+ * may have been applied).
+ */
+export function likelyRefusedAfter(queue: readonly SyncItem[], id: string): SyncItem[] {
+  const at = queue.findIndex((q) => q.id === id);
+  const item = queue[at];
+  if (!item?.op || !item.orderId || outcomeUnknown(item)) return [];
+  const { rpc, args } = item.op;
+  const needs = (q: SyncItem) =>
+    rpc === "validate_closure"
+      ? q.op?.rpc === "generate_report" || q.op?.rpc === "log_share"
+      : rpc === "check_in" && q.op?.rpc === "check_out" && q.op.args.p_jornada_id === args.p_jornada_id;
+  return queue.slice(at + 1).filter((q) => isUnsent(q) && q.orderId === item.orderId && needs(q));
+}
+
+/**
  * Server answers after which retrying the same request cannot help (only discarding it does): the sheet offers no
  * "Reintentar" for them. Besides the request itself (a reused op id, a check already there, a lost photo): a device time
  * older than the server accepts (`device_time_stale`), a jornada rescheduled or an order reassigned, out of the person's

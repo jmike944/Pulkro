@@ -17,6 +17,7 @@ import {
   discardedCaptures,
   isRetryable,
   isStopped,
+  likelyRefusedAfter,
   outcomeUnknown,
   waitsFor,
 } from "@/lib/sync/queue";
@@ -444,7 +445,8 @@ function capturesText(set: SyncItem[]): string {
 
 /**
  * "Descartar": the change leaves the queue for good; the device goes back to what the server has. Photo captures it deletes
- * can be saved on the phone first (discard-photos.tsx).
+ * can be saved on the phone first (discard-photos.tsx); later changes of the order that will probably be refused too are
+ * named, never taken along.
  */
 function DiscardDialog({ item, onClose }: { item: SyncItem | null; onClose: () => void }) {
   const queue = useAppStore((s) => s.sync.queue);
@@ -457,6 +459,8 @@ function DiscardDialog({ item, onClose }: { item: SyncItem | null; onClose: () =
   const sum = discardSummary(set);
   // The answer may have been lost after the server applied it: only the item itself goes (discardSet).
   const unknown = !!item && outcomeUnknown(item);
+  // A report after a refused closure, a check-out after a refused check-in: they stay queued and are named here.
+  const later = useMemo(() => (item ? likelyRefusedAfter(queue, item.id) : []), [queue, item]);
   // The pictures the discard deletes (only once confirmed), offered to be saved on the phone first.
   const pictures = useMemo(() => discardedCaptures(queue, set, photos), [queue, set, photos]);
   const folios = useMemo(() => new Map(orders.map((o) => [o.id, o.folio])), [orders]);
@@ -516,6 +520,25 @@ function DiscardDialog({ item, onClose }: { item: SyncItem | null; onClose: () =
             ))}
           </ul>
         </>
+      )}
+      {later.length > 0 && (
+        <div className="mt-3 rounded-[14px] bg-amber-soft px-4 py-3 text-[13.5px] leading-snug text-amber-olive">
+          <p>
+            {later.length === 1
+              ? "Más adelante en la cola hay un cambio de la misma orden que lo necesita en el servidor:"
+              : `Más adelante en la cola hay ${later.length} cambios de la misma orden que lo necesitan en el servidor:`}
+          </p>
+          <ul className="mt-1.5 list-disc space-y-0.5 pl-5 text-ink">
+            {later.map((q) => (
+              <li key={q.id}>{q.label}</li>
+            ))}
+          </ul>
+          <p className="mt-1.5">
+            {later.length === 1
+              ? "Es probable que el servidor también lo rechace. No se descarta ahora: si lo rechaza, podrá descartarlo entonces."
+              : "Es probable que el servidor también los rechace. No se descartan ahora: si los rechaza, podrá descartarlos entonces."}
+          </p>
+        </div>
       )}
       {files.length > 0 && <SaveCapturesBox files={files} saved={saved} onSaved={() => item && setSavedFor(item.id)} />}
     </ConfirmDialog>
