@@ -7,9 +7,10 @@ import { useAppStore } from "@/lib/hooks";
 import { Button } from "@/components/ui/button";
 
 /**
- * Account sessions whose Supabase session ended (expired or revoked refresh token, signed out elsewhere, deactivated profile):
- * the device keeps every record and unsent change and keeps working, but nothing is pulled until the person signs in again.
- * /login recognises this state, offers the same account and comes back here.
+ * "Vuelva a entrar": the browser has no Supabase session for the account on the device (expired or revoked refresh token,
+ * signed out elsewhere, another account's invite / recovery link opened here). The device keeps every record and unsent
+ * change and keeps working, but nothing is synced until the person signs in again. /login recognises this state, offers the
+ * same account (its data kept) and comes back here.
  */
 export function ReauthBanner() {
   const show = useAppStore((s) => s.session.mode === "supabase" && s.session.signedIn && !!s.session.needsReauth);
@@ -24,8 +25,11 @@ export function ReauthBanner() {
         <KeyRound className="size-[18px]" />
       </span>
       <p className="min-w-[12rem] flex-1 text-[13.5px] leading-snug text-ink">
-        <b className="font-semibold">Su sesión venció.</b>{" "}
-        <span className="text-ink-soft">Sus datos y cambios siguen en este dispositivo. Entre de nuevo para seguir sincronizando.</span>
+        <b className="font-semibold">Vuelva a entrar.</b>{" "}
+        <span className="text-ink-soft">
+          La sesión de su cuenta ya no está abierta en este dispositivo. Sus datos y cambios siguen aquí: entre de nuevo para seguir
+          sincronizando.
+        </span>
       </p>
       <Button asChild className="h-10 rounded-[12px] px-4 text-[14px] font-semibold">
         <Link href={`/login?next=${encodeURIComponent(pathname)}`}>Entrar de nuevo</Link>

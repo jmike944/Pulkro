@@ -2,19 +2,14 @@
 
 import type { SupabaseBrowserClient } from "@/lib/supabase/client";
 import { unsentCount, useAppStore } from "@/lib/store";
-import { DEMO_ENABLED } from "@/lib/demo";
 import { mapProfile, mapUnit } from "@/lib/sync/map";
 import type { Unit, User } from "@/lib/types";
-import { NETWORK_MESSAGE, isNetworkFailure } from "./auth-errors";
+import { NETWORK_MESSAGE, NO_PROFILE_MESSAGE, isNetworkFailure } from "./auth-errors";
 
 /**
  * Authorization lives in the database: RLS reads public.profiles. The access-token hook (pulkro_role / pulkro_unit_id) may
  * not be enabled, so the app never relies on those claims: it reads the signed-in account's own profile row.
  */
-
-/** RLS hides a missing AND an inactive profile alike (private.my_role() is null for both): one message covers the two. */
-export const NO_PROFILE_MESSAGE =
-  "Su cuenta no tiene un perfil activo en Pulkro Cuadrillas: aún no la dan de alta o está desactivada. Comuníquese con Dirección.";
 
 export type ProfileResult = { ok: true; user: User; unit?: Unit } | { ok: false; message: string };
 
@@ -45,6 +40,13 @@ export function whenHydrated(): Promise<void> {
   });
 }
 
+/** The account session the store holds on this device (data, maybe unsent changes), whatever the state of its Supabase session. */
+export function accountOnDevice(): { userId: string; name: string } | null {
+  const s = useAppStore.getState();
+  if (s.session.mode !== "supabase" || !s.session.signedIn) return null;
+  return { userId: s.session.userId, name: s.users.find((u) => u.id === s.session.userId)?.name ?? "otra cuenta" };
+}
+
 /** Another account's session on this device that still holds unsent changes (they would be lost by signing in). */
 export function otherAccountOnDevice(userId: string): { name: string; unsent: number } | null {
   const s = useAppStore.getState();
@@ -54,15 +56,5 @@ export function otherAccountOnDevice(userId: string): { name: string; unsent: nu
   return { name: s.users.find((u) => u.id === s.session.userId)?.name ?? "otra cuenta", unsent };
 }
 
-/** Where to go after signing in: only a path of this app (never "//host", "/\host" or the auth screens themselves). */
-export function safeNext(next: string | null | undefined): string {
-  if (!next || !next.startsWith("/") || next.startsWith("//") || next.startsWith("/\\")) return "/";
-  if (next.startsWith("/login") || next.startsWith("/acceso")) return "/";
-  return next;
-}
-
 /** Demo-only controls (role switch, demo reset): never for an account session, whatever the build. */
-export function useDemoControls(): boolean {
-  const mode = useAppStore((s) => s.session.mode);
-  return DEMO_ENABLED && mode !== "supabase";
-}
+export { useDemoSession as useDemoControls } from "@/lib/hooks";

@@ -7,6 +7,9 @@ import { isAuthError, isAuthRetryableFetchError, isAuthSessionMissingError, isAu
 
 export const NETWORK_MESSAGE = "No hay conexión con el servidor. Revise su señal o su red e intente de nuevo.";
 export const NO_ACCESS_MESSAGE = "Su cuenta no tiene acceso activo a Pulkro Cuadrillas. Si cree que es un error, comuníquese con Dirección.";
+/** RLS hides a missing AND an inactive profile alike (private.my_role() is null for both): one message covers the two. */
+export const NO_PROFILE_MESSAGE =
+  "Su cuenta no tiene un perfil activo en Pulkro Cuadrillas: aún no la dan de alta o está desactivada. Comuníquese con Dirección.";
 const RATE_LIMIT_MESSAGE = "Demasiados intentos seguidos. Espere unos minutos e intente de nuevo.";
 const SERVER_MESSAGE = "El servidor de cuentas no respondió. Intente de nuevo en unos minutos.";
 
@@ -61,14 +64,21 @@ export function recoveryErrorMessage(error: unknown): string {
   return "No se pudo enviar el enlace. Intente de nuevo en unos minutos.";
 }
 
-export type LinkFailure = { kind: "expired" | "network" | "other"; message: string };
+/** "no-access": the link is fine but the account may not enter (banned, or no active profile): a new link would not help. */
+export type LinkFailure = { kind: "expired" | "network" | "no-access" | "other"; message: string };
 
-/** verifyOtp of an invite / recovery / confirmation link. A used, expired or altered link all answer otp_expired (403). */
+const EXPIRED_LINK_CODES = new Set(["otp_expired", "flow_state_expired", "flow_state_not_found"]);
+
+/**
+ * verifyOtp of an invite / recovery / confirmation link. A used, expired or altered link answers otp_expired (403); a 403
+ * without a code is the access-token hook refusing an account without an active profile, which no new link fixes.
+ */
 export function linkErrorOf(error: unknown): LinkFailure {
   if (isNetworkFailure(error)) return { kind: "network", message: NETWORK_MESSAGE };
   const { code, status } = codeOf(error);
-  if (code === "otp_expired" || code === "flow_state_expired" || code === "flow_state_not_found" || status === 403 || status === 404)
-    return { kind: "expired", message: "Este enlace ya se usó o venció." };
+  if ((code && EXPIRED_LINK_CODES.has(code)) || (!code && status === 404)) return { kind: "expired", message: "Este enlace ya se usó o venció." };
+  if (code === "user_banned") return { kind: "no-access", message: NO_ACCESS_MESSAGE };
+  if (!code && status === 403) return { kind: "no-access", message: NO_PROFILE_MESSAGE };
   if (code === "over_request_rate_limit" || status === 429) return { kind: "other", message: RATE_LIMIT_MESSAGE };
   if (status && status >= 500) return { kind: "other", message: SERVER_MESSAGE };
   return { kind: "other", message: "No se pudo comprobar el enlace. Intente de nuevo en unos minutos." };

@@ -5,7 +5,7 @@ import { AnimatePresence, motion } from "motion/react";
 import { Loader2, LocateFixed, MapPin, TriangleAlert } from "lucide-react";
 import { toast } from "sonner";
 import { uid } from "@/lib/store";
-import { useAppStore } from "@/lib/hooks";
+import { useAppStore, useDemoSession } from "@/lib/hooks";
 import { fmtCoords } from "@/lib/format";
 import type { Client, Site } from "@/lib/types";
 import { GeoMap, readPosition } from "@/components/pk/geo-map";
@@ -42,6 +42,7 @@ export function SiteDialog({ client, site, open, onOpenChange }: { client: Clien
   const upsertSite = useAppStore((s) => s.upsertSite);
   const upsertClient = useAppStore((s) => s.upsertClient);
   const sites = useAppStore((s) => s.sites);
+  const demo = useDemoSession();
   const isNew = !site;
   const anchor = sites.find((x) => x.clientId === client.id) ?? null;
 
@@ -74,7 +75,7 @@ export function SiteDialog({ client, site, open, onOpenChange }: { client: Clien
   const locate = async () => {
     setLocating(true);
     const fallback = coordsValid ? { lat: la!, lng: ln! } : anchor ?? MTY;
-    const r = await readPosition(fallback);
+    const r = await readPosition(fallback, { demo });
     setLocating(false);
     setLat(r.lat.toFixed(6));
     setLng(r.lng.toFixed(6));

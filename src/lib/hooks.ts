@@ -5,6 +5,7 @@ import { useShallow } from "zustand/react/shallow";
 import { isOffline, useAppStore } from "./store";
 import { can, canSeeAuditEntry, canSeeOrder, scopedUnitIds, type Action } from "./permissions";
 import { usePullStatus } from "./sync/status";
+import { DEMO_ENABLED } from "./demo";
 import type { AuditEntry, Client, Jornada, Order, ServiceType, Site, User, Worker, Material, Unit } from "./types";
 
 export { useAppStore } from "./store";
@@ -24,6 +25,15 @@ export function useCurrentUser(): User {
       },
     [users, userId],
   );
+}
+
+/**
+ * A demo session in a build that offers the demo controls (role switch, demo reset, "Simular" sample photos, the scattered
+ * GPS fallback). Never an account session, whatever the build: an account's evidence is always real.
+ */
+export function useDemoSession(): boolean {
+  const mode = useAppStore((s) => s.session.mode);
+  return DEMO_ENABLED && mode !== "supabase";
 }
 
 export function useCan(action: Action) {

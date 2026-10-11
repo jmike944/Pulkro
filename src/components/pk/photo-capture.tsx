@@ -5,7 +5,7 @@ import { Camera, ImagePlus, Loader2, Wand2 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { PermissionDeniedError, useAppStore } from "@/lib/store";
-import { DEMO_ENABLED } from "@/lib/demo";
+import { useDemoSession } from "@/lib/hooks";
 import { photoTimingIssues } from "@/lib/domain";
 import { fmtDateTime } from "@/lib/format";
 import { currentPosition } from "@/lib/geo";
@@ -128,8 +128,8 @@ export function usePhotoCapture() {
 }
 
 /**
- * Capture control: "Tomar foto" (opens rear camera on phones), "Galería", and "Simular" for demos (hidden when the
- * build has NEXT_PUBLIC_DEMO=0: a pilot never mixes made-up pictures into real evidence).
+ * Capture control: "Tomar foto" (opens rear camera on phones), "Galería", and "Simular" in a demo session only (never in an
+ * account session, whatever the build: real evidence never mixes with made-up pictures).
  */
 export function PhotoCaptureButtons({
   meta,
@@ -156,6 +156,7 @@ export function PhotoCaptureButtons({
   const camRef = useRef<HTMLInputElement>(null);
   const galRef = useRef<HTMLInputElement>(null);
   const { capture, simulate, busy } = usePhotoCapture();
+  const demo = useDemoSession();
   const onFiles = async (files: FileList | null, input: CaptureInput) => {
     if (!files?.length) return;
     onBusyChange?.(true);
@@ -176,7 +177,7 @@ export function PhotoCaptureButtons({
       <Button type="button" variant="outline" disabled={disabled || busy} onClick={() => galRef.current?.click()} className="h-10 rounded-[12px] px-3.5">
         <ImagePlus /> {!compact && "Galería"}
       </Button>
-      {DEMO_ENABLED && (
+      {demo && (
         <Button
           type="button"
           variant="ghost"

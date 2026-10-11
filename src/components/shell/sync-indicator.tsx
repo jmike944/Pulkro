@@ -108,8 +108,8 @@ export function SyncChip({ collapsed, compact, slim }: { collapsed?: boolean; co
             )}
             {state === "reauth" && (
               <>
-                <span className="shrink-0 font-semibold text-ink">Sesión vencida</span>
-                {!compact && <span className="truncate text-subtle">entre de nuevo</span>}
+                <span className="shrink-0 font-semibold text-ink">Vuelva a entrar</span>
+                {!compact && <span className="truncate text-subtle">sin sincronizar</span>}
               </>
             )}
           </motion.span>
@@ -243,8 +243,8 @@ function SyncPanel() {
       ? {
           tone: "amber" as const,
           icon: <KeyRound className="size-5" />,
-          title: "Su sesión venció",
-          detail: "Sus datos y cambios siguen en este dispositivo. Entre de nuevo para recibir y enviar cambios.",
+          title: "Vuelva a entrar",
+          detail: "La sesión de su cuenta ya no está abierta en este dispositivo. Sus datos y cambios siguen aquí: entre de nuevo para recibir y enviar cambios.",
         }
     : failed
       ? {

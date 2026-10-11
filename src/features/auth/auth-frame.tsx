@@ -1,15 +1,27 @@
 "use client";
 
+import { createContext, useContext, useEffect, useRef } from "react";
 import { AnimatePresence, motion } from "motion/react";
 import { PulkroLogo } from "@/components/pk/brand";
 import { Bubbles } from "@/components/pk/aurora";
 import { EASE } from "@/components/pk/motion";
+
+/** Whether the frame has been on screen already: a heading that mounts after that belongs to a new card. */
+const FrameShown = createContext<React.RefObject<boolean> | null>(null);
 
 /**
  * The frame of the screens outside the app shell (Entrar, Defina su contraseña): the aurora brand side on desktop and one
  * card with the task. `leaving` fades the card out while the app opens.
  */
 export function AuthFrame({ children, leaving = false, cardKey }: { children: React.ReactNode; leaving?: boolean; cardKey?: string }) {
+  const shown = useRef(false);
+  useEffect(() => {
+    shown.current = true;
+    // Reset on unmount (also React's development double mount, so the first card never steals the focus).
+    return () => {
+      shown.current = false;
+    };
+  }, []);
   return (
     <div className="grid min-h-dvh grid-cols-[minmax(0,1fr)] bg-canvas lg:grid-cols-[1.1fr_1fr]">
       {/* Brand side */}
@@ -64,7 +76,7 @@ export function AuthFrame({ children, leaving = false, cardKey }: { children: Re
               className="w-full max-w-[440px] rounded-[28px] bg-surface p-7 shadow-lift ring-1 ring-edge sm:p-9"
             >
               <PulkroLogo className="mb-8 gap-3 lg:hidden [&>span:first-child]:size-11 [&>span:last-child]:h-[19px]" />
-              {children}
+              <FrameShown value={shown}>{children}</FrameShown>
             </motion.div>
           )}
         </AnimatePresence>
@@ -73,11 +85,22 @@ export function AuthFrame({ children, leaving = false, cardKey }: { children: Re
   );
 }
 
-/** Serif title + one or two sentences, as on the original login card. */
+/**
+ * Serif title + one or two sentences, as on the original login card. A heading that appears once the screen is open (another
+ * panel, the next step of a link, a notice) takes the focus: keyboard and screen-reader users land on the new card and hear
+ * its title, instead of staying on a control that just went away.
+ */
 export function AuthHeading({ title, children }: { title: React.ReactNode; children?: React.ReactNode }) {
+  const shown = useContext(FrameShown);
+  const ref = useRef<HTMLHeadingElement>(null);
+  useEffect(() => {
+    if (shown?.current) ref.current?.focus();
+  }, [shown]);
   return (
     <>
-      <h1 className="font-serif text-[34px] font-medium leading-tight text-ink">{title}</h1>
+      <h1 ref={ref} tabIndex={-1} className="font-serif text-[34px] font-medium leading-tight text-ink outline-none">
+        {title}
+      </h1>
       {children && <p className="mt-2 text-[15px] leading-relaxed text-subtle">{children}</p>}
     </>
   );

@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, useCallback, useEffect, useState } from "react";
+import { Suspense, useCallback, useEffect, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { ArrowRight, KeyRound, Link2Off, Loader2, LockKeyhole, Mail, MailCheck, RotateCw, UserRoundX, WifiOff } from "lucide-react";
 import type { EmailOtpType } from "@supabase/supabase-js";
@@ -12,13 +12,18 @@ import { linkErrorOf, setPasswordErrorMessage, type LinkFailure } from "./auth-e
 import { AuthFrame, AuthHeading } from "./auth-frame";
 import { AuthField, FormMessage, PasswordChecklist, PasswordField } from "./form-bits";
 import { PASSWORD_RULE_TEXT, passwordProblem } from "./password-policy";
+import { accountOnDevice, whenHydrated } from "./session";
 import { useEnterAccount } from "./use-enter-account";
 
 /**
  * /acceso/definir-contrasena — where the invite and recovery e-mails land (supabase/templates):
  *   ?token_hash=…&type=invite|recovery   → verifyOtp, then "Defina su contraseña" (updateUser), then into the app
  *   ?token_hash=…&type=email_change|email → verifyOtp, then "Correo confirmado", then into the app
- * The token works once: it is verified once per page (React may run effects twice) and dropped from the address bar after.
+ * Verifying the link replaces the browser's Supabase session with the link's account: while an account is open on this device,
+ * the page asks first ("other-account"), so a link opened on a shared tablet never silently takes over its session.
+ * The token is a credential until it is used: the query leaves the address bar (and the history) as soon as the page has read
+ * it, whatever happens next; "Reintentar" works from the copy in memory. It is verified once per page (React may run effects
+ * twice).
  */
 
 const PASSWORD_LINKS = ["invite", "recovery"] as const;
@@ -27,11 +32,13 @@ type LinkType = (typeof PASSWORD_LINKS)[number] | (typeof CONFIRM_LINKS)[number]
 const isLinkType = (t: string): t is LinkType => (PASSWORD_LINKS as readonly string[]).includes(t) || (CONFIRM_LINKS as readonly string[]).includes(t);
 const needsPassword = (t: LinkType) => (PASSWORD_LINKS as readonly string[]).includes(t);
 
+type Link = { tokenHash: string; type: string };
 type Verified = { userId: string; email: string; type: LinkType };
 type Outcome = { ok: true; verified: Verified } | { ok: false; failure: LinkFailure };
 
 type Stage =
   | { kind: "checking" }
+  | { kind: "other-account"; name: string }
   | { kind: "unconfigured" }
   | { kind: "incomplete" }
   | { kind: "expired"; type: LinkType }
@@ -41,7 +48,24 @@ type Stage =
   | { kind: "refused"; message: string };
 
 const verifications = new Map<string, Promise<Outcome>>();
+/** This page's link and its verified account, for a remount after the address bar was cleaned (memory only). */
+let pageLink: Link | null = null;
 let lastVerified: Verified | null = null;
+
+/** The link in the query; without one (already cleaned), the one this page read before. */
+function readLink(params: URLSearchParams): Link {
+  const tokenHash = params.get("token_hash") ?? "";
+  if (!tokenHash) return pageLink ?? { tokenHash: "", type: "" };
+  pageLink = { tokenHash, type: params.get("type") ?? "" };
+  lastVerified = null; // a new link: whatever the previous one verified does not carry over
+  return pageLink;
+}
+
+/** The link is finished with (entered, refused, spent): nothing of it stays in memory for a later visit. */
+function forgetLink() {
+  pageLink = null;
+  lastVerified = null;
+}
 
 function verifyOnce(tokenHash: string, type: LinkType): Promise<Outcome> {
   let pending = verifications.get(tokenHash);
@@ -70,16 +94,17 @@ function verifyOnce(tokenHash: string, type: LinkType): Promise<Outcome> {
 
 function stageOf(outcome: Outcome, type: LinkType): Stage {
   if (outcome.ok) return { kind: needsPassword(outcome.verified.type) ? "password" : "confirmed", verified: outcome.verified };
-  return outcome.failure.kind === "expired" ? { kind: "expired", type } : { kind: "failed", failure: outcome.failure };
+  const { failure } = outcome;
+  // No "pedir un enlace nuevo" nor "Reintentar" when the account itself may not enter.
+  if (failure.kind === "no-access") return { kind: "refused", message: failure.message };
+  return failure.kind === "expired" ? { kind: "expired", type } : { kind: "failed", failure };
 }
 
-function initialStage(tokenHash: string, type: string): Stage {
+function initialStage({ tokenHash, type }: Link): Stage {
   if (!isSupabaseConfigured) return { kind: "unconfigured" };
-  if (!tokenHash) {
-    // The address bar was already cleaned after a verification in this page (a remount): keep going with it.
-    if (lastVerified) return { kind: needsPassword(lastVerified.type) ? "password" : "confirmed", verified: lastVerified };
-    return { kind: "incomplete" };
-  }
+  if (!tokenHash) return { kind: "incomplete" };
+  // Verified earlier in this page (a remount): keep going with it.
+  if (lastVerified) return { kind: needsPassword(lastVerified.type) ? "password" : "confirmed", verified: lastVerified };
   return isLinkType(type) ? { kind: "checking" } : { kind: "incomplete" };
 }
 
@@ -94,25 +119,40 @@ export function SetPasswordView() {
 function SetPasswordInner() {
   const router = useRouter();
   const params = useSearchParams();
-  // Read once: the query is removed from the address bar after the verification.
-  const [link] = useState(() => ({ tokenHash: params.get("token_hash") ?? "", type: params.get("type") ?? "" }));
-  const [stage, setStage] = useState<Stage>(() => initialStage(link.tokenHash, link.type));
+  // Read once into memory; the effect below takes it out of the address bar.
+  const [link] = useState(() => readLink(params));
+  const [stage, setStage] = useState<Stage>(() => initialStage(link));
   const [attempt, setAttempt] = useState(0);
   const [leaving, setLeaving] = useState(false);
+  // The person chose to go on with the link although an account is open on this device.
+  const takeOver = useRef(false);
+
+  // Right away, on every outcome (also a failed, expired or abandoned check): the token stays out of the history, the
+  // address bar and anything that stores URLs (sync of open tabs, screenshots, a link shared by mistake).
+  useEffect(() => {
+    if (window.location.search || window.location.hash) window.history.replaceState(null, "", window.location.pathname);
+  }, []);
 
   useEffect(() => {
     if (stage.kind !== "checking" || !isLinkType(link.type)) return;
     const type = link.type;
     let alive = true;
-    void verifyOnce(link.tokenHash, type).then((outcome) => {
-      if (!alive) return;
-      if (outcome.ok) {
-        lastVerified = outcome.verified;
-        // The token is spent: keep it out of the history and of anything that stores URLs.
-        window.history.replaceState(null, "", window.location.pathname);
+    void (async () => {
+      if (!takeOver.current) {
+        await whenHydrated();
+        const open = accountOnDevice();
+        if (open) {
+          if (alive) setStage({ kind: "other-account", name: open.name });
+          return;
+        }
       }
+      const outcome = await verifyOnce(link.tokenHash, type);
+      if (!alive) return;
+      if (outcome.ok) lastVerified = outcome.verified;
+      // Used or refused for good: a later visit to this page starts from its own link.
+      else if (outcome.failure.kind !== "network" && outcome.failure.kind !== "other") forgetLink();
       setStage(stageOf(outcome, type));
-    });
+    })();
     return () => {
       alive = false;
     };
@@ -124,22 +164,30 @@ function SetPasswordInner() {
     setAttempt((a) => a + 1);
   };
 
+  const continueWithLink = () => {
+    takeOver.current = true;
+    setStage({ kind: "checking" });
+  };
+
   const entered = useCallback(() => {
-    lastVerified = null;
+    forgetLink();
     setLeaving(true);
     setTimeout(() => router.replace("/"), 450);
   }, [router]);
 
   const { enter, replaceDialog } = useEnterAccount({
     onEntered: entered,
-    onCancelled: (message) => setStage({ kind: "refused", message }),
+    onCancelled: (message) => {
+      forgetLink();
+      setStage({ kind: "refused", message });
+    },
   });
 
   /** Profile check + store session (step shared with the login). */
   const continueIn = async (verified: Verified) => {
     const result = await enter(getSupabaseBrowserClient(), verified.userId);
     if (result.status === "refused") {
-      lastVerified = null;
+      forgetLink();
       setStage({ kind: "refused", message: result.message });
     }
   };
@@ -152,6 +200,32 @@ function SetPasswordInner() {
             <Loader2 className="size-8 animate-spin text-subtle" />
             <p className="mt-4 text-[15px] text-subtle">Comprobando su enlace…</p>
           </div>
+        )}
+
+        {stage.kind === "other-account" && (
+          <>
+            <span className="mb-5 flex size-14 items-center justify-center rounded-[18px] bg-amber-soft text-amber-fg [&_svg]:size-6">
+              <UserRoundX />
+            </span>
+            <AuthHeading title="Hay una cuenta abierta en este dispositivo">
+              Está abierta la cuenta de <b className="font-semibold text-ink">{stage.name}</b>. Si este enlace es de otra persona, al continuar se
+              cerrará esa sesión aquí; sus cambios sin enviar no se borran sin preguntar antes.
+            </AuthHeading>
+            <div className="mt-7 space-y-3">
+              <BigButton onClick={continueWithLink}>
+                Continuar con el enlace <ArrowRight />
+              </BigButton>
+              <BigButton
+                variant="outline"
+                onClick={() => {
+                  forgetLink();
+                  router.replace("/");
+                }}
+              >
+                Volver a la app
+              </BigButton>
+            </div>
+          </>
         )}
 
         {stage.kind === "unconfigured" && (

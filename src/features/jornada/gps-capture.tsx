@@ -5,6 +5,7 @@ import { AnimatePresence, motion } from "motion/react";
 import { Camera, CircleAlert, CloudOff, Crosshair, Headset, Info, LocateFixed, MapPin, MapPinned, RefreshCw, ShieldCheck, Sparkles, Timer, Wifi } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { GeoInput } from "@/lib/store";
+import { useDemoSession } from "@/lib/hooks";
 import { GEO_NOTE_MIN } from "@/lib/domain";
 import { fmtCoords } from "@/lib/format";
 import { ClientMark } from "@/components/pk/client-mark";
@@ -98,6 +99,7 @@ export function GpsFlow({
   const [error, setError] = useState<string | null>(null);
   const [done, setDone] = useState<Extract<GpsResult, { ok: true }> | null>(null);
   const [slow, setSlow] = useState(false);
+  const demo = useDemoSession();
 
   const siteLat = site.lat;
   const siteLng = site.lng;
@@ -105,7 +107,7 @@ export function GpsFlow({
     if (!open) return;
     let alive = true;
     // Keep the radar on screen long enough to read as "searching", even when GPS answers instantly.
-    void Promise.all([readPosition({ lat: siteLat, lng: siteLng }, 9000), wait(1700)]).then(([r]) => {
+    void Promise.all([readPosition({ lat: siteLat, lng: siteLng }, { demo, timeoutMs: 9000 }), wait(1700)]).then(([r]) => {
       if (alive) setReading((prev) => prev ?? { ...r, at: new Date().toISOString() });
     });
     // An unanswered permission prompt never times out: offer a way forward after a few seconds.
@@ -114,7 +116,7 @@ export function GpsFlow({
       alive = false;
       clearTimeout(t);
     };
-  }, [open, siteLat, siteLng, attempt]);
+  }, [open, siteLat, siteLng, attempt, demo]);
 
   const close = () => onOpenChange(false);
   const retry = () => {
@@ -229,7 +231,7 @@ export function GpsFlow({
               <button
                 type="button"
                 onClick={() =>
-                  setReading({ lat: site.lat, lng: site.lng, accuracy: 25, source: "gps", simulated: true, error: "No se obtuvo señal GPS", at: new Date().toISOString() })
+                  setReading({ lat: site.lat, lng: site.lng, accuracy: 25, source: "manual", simulated: true, error: "No se obtuvo señal GPS", at: new Date().toISOString() })
                 }
                 className="inline-flex h-11 items-center gap-2 rounded-[12px] px-4 text-[14px] font-semibold text-link transition hover:bg-sky-soft"
               >
