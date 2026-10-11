@@ -96,19 +96,19 @@ export function SyncChip({ collapsed, compact, slim }: { collapsed?: boolean; co
             )}
             {state === "downloading" && (
               <>
-                <span className="font-semibold text-ink">Descargando</span>
+                <span className="shrink-0 font-semibold text-ink">Descargando</span>
                 {!compact && <span className="truncate text-subtle">datos de su cuenta</span>}
               </>
             )}
             {state === "stale" && (
               <>
-                <span className="font-semibold text-ink">Sin actualizar</span>
+                <span className="shrink-0 font-semibold text-ink">Sin actualizar</span>
                 {!compact && <span className="truncate text-subtle">{fmtAgo(lastSyncAt)}</span>}
               </>
             )}
             {state === "reauth" && (
               <>
-                <span className="font-semibold text-ink">Sesión vencida</span>
+                <span className="shrink-0 font-semibold text-ink">Sesión vencida</span>
                 {!compact && <span className="truncate text-subtle">entre de nuevo</span>}
               </>
             )}
