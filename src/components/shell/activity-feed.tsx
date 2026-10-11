@@ -191,6 +191,19 @@ function useSeenCursor(scope: string) {
   return { seen, markSeen };
 }
 
+/**
+ * Latest entry id per entity. The store keeps the audit newest-first, so on equal timestamps the entry seen first
+ * (the one recorded later) wins; strictly-later timestamps always win.
+ */
+function latestIdPerEntity(entries: AuditEntry[]) {
+  const latest = new Map<string, AuditEntry>();
+  for (const x of entries) {
+    const cur = latest.get(x.entityId);
+    if (!cur || x.at > cur.at) latest.set(x.entityId, x);
+  }
+  return new Map([...latest].map(([entityId, x]) => [entityId, x.id]));
+}
+
 /** Role-scoped notices from the last 30 days, newest first, never the current user's own actions. */
 function useNotifications() {
   const { audit, orders, incidents, cases, surveys, unitFilter } = useScopedData();
@@ -212,15 +225,14 @@ function useNotifications() {
     const surveyById = new Map(surveys.map((x) => [x.id, x]));
     const orderReassignments = audit.filter((x) => x.entity === "orden" && x.action.startsWith("Reasignó la orden"));
     const reassignedOrders = new Set(orderReassignments.map((x) => x.entityId));
-    const lastOrderReassignment = new Map<string, string>();
-    for (const x of [...orderReassignments].sort((p, q) => (p.at < q.at ? -1 : 1))) lastOrderReassignment.set(x.entityId, x.id);
+    const lastOrderReassignment = latestIdPerEntity(orderReassignments);
     const caseReassignments = audit.filter((x) => x.entity === "caso" && x.action.startsWith("Reasignó el caso"));
     const reassignedCases = new Set(caseReassignments.map((x) => x.entityId));
-    const lastCaseReassignment = new Map<string, string>();
-    for (const x of [...caseReassignments].sort((p, q) => (p.at < q.at ? -1 : 1))) lastCaseReassignment.set(x.entityId, x.id);
+    const lastCaseReassignment = latestIdPerEntity(caseReassignments);
     const seenKeys = new Set<string>();
     const out: Notice[] = [];
-    for (const a of [...audit].sort((x, y) => (x.at < y.at ? 1 : -1))) {
+    // Newest first; equal timestamps keep the store's newest-first order (stable sort, consistent comparator).
+    for (const a of [...audit].sort((x, y) => y.at.localeCompare(x.at))) {
       if (out.length >= LIMIT) break;
       if (a.at > until || a.at < from || a.by === me.id) continue;
       const order = a.orderId ? byOrder.get(a.orderId) : undefined;
