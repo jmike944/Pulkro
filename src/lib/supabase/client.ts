@@ -9,6 +9,22 @@ export type SupabaseBrowserClient = ReturnType<typeof createBrowserClient<Databa
 
 let client: SupabaseBrowserClient | undefined;
 
+/** How long the revoke request of a sign-out may take (endSessionOnDevice sets it below its own wait). */
+let logoutBudgetMs = 7000;
+
+/**
+ * The browser client's fetch. The revoke request a sign-out makes (`/auth/v1/logout`) gives up within endSessionOnDevice's
+ * wait: left running on a weak connection, it would settle after the next person signed in, and auth-js would then remove
+ * *their* session from the cookies (and broadcast SIGNED_OUT to every tab).
+ */
+const clientFetch: typeof fetch = (input, init) => {
+  const url = typeof input === "string" ? input : input instanceof URL ? input.href : input.url;
+  if (!/\/auth\/v1\/logout(\?|$)/.test(url) || typeof AbortSignal === "undefined" || !("timeout" in AbortSignal)) return fetch(input, init);
+  const limit = AbortSignal.timeout(logoutBudgetMs);
+  const signal = init?.signal && "any" in AbortSignal ? AbortSignal.any([init.signal, limit]) : limit;
+  return fetch(input, { ...init, signal });
+};
+
 /**
  * The one browser client (store, sync engine, auth screens). The session lives in cookies, so the proxy and server code
  * read the same session. Call it from event handlers and effects only (never while rendering on the server).
@@ -25,7 +41,7 @@ export function getSupabaseBrowserClient(): SupabaseBrowserClient {
   if (!isSupabaseConfigured) {
     throw new Error("Supabase no está configurado: faltan NEXT_PUBLIC_SUPABASE_URL y NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY.");
   }
-  client ??= createBrowserClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, { auth: { detectSessionInUrl: false } });
+  client ??= createBrowserClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, { auth: { detectSessionInUrl: false }, global: { fetch: clientFetch } });
   return client;
 }
 
@@ -72,8 +88,9 @@ export function removeAuthCookies() {
 
 /**
  * Ends the Supabase session on this device only (scope "local": the account's other devices keep their sessions).
- *  - Online, signOut() asks Auth to revoke this session's refresh token, waiting at most `timeoutMs`. Offline (or with
- *    `revoke: false`) it is not tried: there is nobody to tell.
+ *  - Online, signOut() asks Auth to revoke this session's refresh token, waiting at most `timeoutMs`; the request itself is
+ *    abandoned before that (clientFetch), so signOut never removes a session from the cookies after this returns. Offline
+ *    (or with `revoke: false`) it is not tried: there is nobody to tell.
  *  - Then the session is always removed here. signOut() does not throw when it cannot first refresh an expired access token
  *    (offline for over an hour, Auth unreachable): it resolves with that error and leaves every auth cookie in place.
  */
@@ -81,6 +98,7 @@ export async function endSessionOnDevice({ revoke = true, timeoutMs = 8000 }: { 
   if (!isSupabaseConfigured) return;
   if (revoke && (typeof navigator === "undefined" || navigator.onLine !== false)) {
     let timer: ReturnType<typeof setTimeout> | undefined;
+    logoutBudgetMs = Math.max(1000, timeoutMs - 1000);
     try {
       const outcome = await Promise.race([
         getSupabaseBrowserClient().auth.signOut({ scope: "local" }),
