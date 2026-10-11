@@ -29,7 +29,7 @@ backend is the phased plan in §12.
 | `20261011065308_review_pr9_cubic_round3` | PR #9 review (cubic, round 3): `referenced_profile_ids` reads every profile reference of a visible order and its records (field capture, incidents, photos, closures, reports, shares, surveys, cases) |
 | `20261011125657_decision_closed_order_reassign` | owner decision 19 (§14): Administración reassigns the supervisor of a closed order (only that field) without reopening it |
 
-Written, **not applied yet** (the owner applies it): `20261011140000_admin_users_email_sync` — `sync_profile_email`, the RPC
+Written, **not applied yet** (the owner applies it): `20261011144326_admin_users_email_sync` — `sync_profile_email`, the RPC
 the `admin-users` Edge Function calls after changing a login e-mail (§2, decision 11); suite `18_admin_users`.
 
 Sources of truth mirrored here: `docs/requisitos.md`, `src/lib/types.ts`, `src/lib/permissions.ts`, `src/lib/hooks.ts`,

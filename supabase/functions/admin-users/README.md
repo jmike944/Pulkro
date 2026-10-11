@@ -34,7 +34,7 @@ users screen (Configuración → Usuarios) calls it in account sessions; the dem
 
 ## Before deploying
 
-1. Apply the migration `supabase/migrations/20261011140000_admin_users_email_sync.sql` (it adds `sync_profile_email`) and
+1. Apply the migration `supabase/migrations/20261011144326_admin_users_email_sync.sql` (it adds `sync_profile_email`) and
    run `supabase/tests/18_admin_users.sql` (and `00`, which now lists the new RPC). Until the RPC exists `change_email`
    answers `502 server_error` (and puts the auth e-mail back); the other actions work without it.
 2. Auth settings (Dashboard → Authentication → URL Configuration): `APP_URL/acceso/definir-contrasena` must be in the
