@@ -766,7 +766,8 @@ export async function endInactive(store: PullStore) {
   } catch {
     // cannot tell: end it (the cookies are this device's, and the account on the device has no access)
   }
-  await endSessionOnDevice({ timeoutMs: 5000 });
+  // Only this account's session (another may have landed in the cookies since the check above: it stays).
+  await endSessionOnDevice({ timeoutMs: 5000, userId });
 }
 
 /* ───────────── the browser's Supabase session vs the account on the device ───────────── */

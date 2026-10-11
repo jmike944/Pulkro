@@ -10,9 +10,6 @@ export type SupabaseBrowserClient = ReturnType<typeof createBrowserClient<Databa
 
 let client: SupabaseBrowserClient | undefined;
 
-/** How long the revoke request of a sign-out may take (endSessionOnDevice sets it below its own wait). */
-let logoutBudgetMs = 7000;
-
 /**
  * A sign-in or refresh answer (`/auth/v1/token`, `/auth/v1/verify`) carries an access token the Auth server issued while the
  * request was under way: its `iat` reads the server's clock (sync/clock.ts). Read from a copy of the answer, never delaying
@@ -39,18 +36,11 @@ async function timedTokenFetch(input: RequestInfo | URL, init?: RequestInit): Pr
   return res;
 }
 
-/**
- * The browser client's fetch. The revoke request a sign-out makes (`/auth/v1/logout`) gives up within endSessionOnDevice's
- * wait: left running on a weak connection, it would settle after the next person signed in, and auth-js would then remove
- * *their* session from the cookies (and broadcast SIGNED_OUT to every tab). Token answers also read the server's clock.
- */
+/** The browser client's fetch: token answers also read the server's clock. */
 const clientFetch: typeof fetch = (input, init) => {
   const url = typeof input === "string" ? input : input instanceof URL ? input.href : input.url;
   if (/\/auth\/v1\/(token|verify)(\?|$)/.test(url)) return timedTokenFetch(input, init);
-  if (!/\/auth\/v1\/logout(\?|$)/.test(url) || typeof AbortSignal === "undefined" || !("timeout" in AbortSignal)) return fetch(input, init);
-  const limit = AbortSignal.timeout(logoutBudgetMs);
-  const signal = init?.signal && "any" in AbortSignal ? AbortSignal.any([init.signal, limit]) : limit;
-  return fetch(input, { ...init, signal });
+  return fetch(input, init);
 };
 
 /**
@@ -114,31 +104,79 @@ export function removeAuthCookies() {
   }
 }
 
+/** base64url → UTF-8 text. */
+const fromBase64Url = (b64: string) => {
+  const bin = atob(b64.replace(/-/g, "+").replace(/_/g, "/").padEnd(Math.ceil(b64.length / 4) * 4, "="));
+  return new TextDecoder().decode(Uint8Array.from(bin, (c) => c.charCodeAt(0)));
+};
+
 /**
- * Ends the Supabase session on this device only (scope "local": the account's other devices keep their sessions).
- *  - Online, signOut() asks Auth to revoke this session's refresh token, waiting at most `timeoutMs`; the request itself is
- *    abandoned before that (clientFetch), so signOut never removes a session from the cookies after this returns. Offline
- *    (or with `revoke: false`) it is not tried: there is nobody to tell.
- *  - Then the session is always removed here. signOut() does not throw when it cannot first refresh an expired access token
- *    (offline for over an hour, Auth unreachable): it resolves with that error and leaves every auth cookie in place.
+ * Whose session the auth cookies hold now: the `sub` of its access token (undefined: none, or unreadable). @supabase/ssr
+ * writes the session JSON, `base64-` + base64url, URI-encoded, in one cookie or in chunks `.0…n`.
  */
-export async function endSessionOnDevice({ revoke = true, timeoutMs = 8000 }: { revoke?: boolean; timeoutMs?: number } = {}): Promise<void> {
+export function cookieSessionUser(): string | undefined {
+  if (!AUTH_COOKIE_PREFIX || typeof document === "undefined") return undefined;
+  const jar = new Map<string, string>();
+  for (const pair of document.cookie.split(";")) {
+    const at = pair.indexOf("=");
+    if (at > 0) jar.set(pair.slice(0, at).trim(), pair.slice(at + 1).trim());
+  }
+  try {
+    const chunks: string[] = [];
+    for (let i = 0; jar.has(`${AUTH_COOKIE_PREFIX}.${i}`); i++) chunks.push(jar.get(`${AUTH_COOKIE_PREFIX}.${i}`)!);
+    const value = (jar.has(AUTH_COOKIE_PREFIX) ? [jar.get(AUTH_COOKIE_PREFIX)!] : chunks).map(decodeURIComponent).join("");
+    if (!value) return undefined;
+    const json = value.startsWith("base64-") ? fromBase64Url(value.slice("base64-".length)) : value;
+    const token = (JSON.parse(json) as { access_token?: unknown }).access_token;
+    if (typeof token !== "string") return undefined;
+    const sub = (JSON.parse(fromBase64Url(token.split(".")[1] ?? "")) as { sub?: unknown }).sub;
+    return typeof sub === "string" ? sub : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+/**
+ * Ends the Supabase session on this device only (scope "local": the account's other devices keep their sessions), within
+ * `timeoutMs` whatever the network does.
+ *  - It never calls auth-js's signOut(): that one first refreshes an expired access token — a request with no time limit —
+ *    and, whenever it settles, revokes and removes whatever session the cookies hold by then: the next person's, if they
+ *    signed in meanwhile. Nothing of a sign-out keeps running after this returns.
+ *  - Online (and with `revoke`), the session is read once under the deadline (getSession never revokes or removes one; a
+ *    refresh that answers late is discarded by auth-js, the cookies having changed) and, while its access token is still
+ *    valid, revoked straight with Auth with that token. One AbortController ends both at the deadline (iOS 15 has no
+ *    AbortSignal.timeout). Offline there is nobody to tell.
+ *  - Then the auth cookies are removed — only while they still hold the session that was there when the sign-out started:
+ *    a session that landed meanwhile (the next person signing in, an e-mail link opened) stays.
+ * `userId`: end that account's session only (the cookies may hold another account's by now: nothing is done then).
+ */
+export async function endSessionOnDevice({ revoke = true, timeoutMs = 8000, userId }: { revoke?: boolean; timeoutMs?: number; userId?: string } = {}): Promise<void> {
   if (!isSupabaseConfigured) return;
+  const owner = cookieSessionUser();
+  if (userId && owner && owner !== userId) return;
   if (revoke && (typeof navigator === "undefined" || navigator.onLine !== false)) {
-    let timer: ReturnType<typeof setTimeout> | undefined;
-    logoutBudgetMs = Math.max(1000, timeoutMs - 1000);
+    const deadline = new AbortController();
+    const timer = setTimeout(() => deadline.abort(), timeoutMs);
     try {
-      const outcome = await Promise.race([
-        getSupabaseBrowserClient().auth.signOut({ scope: "local" }),
-        new Promise<"timeout">((resolve) => (timer = setTimeout(() => resolve("timeout"), timeoutMs))),
+      const expired = new Promise<null>((resolve) => deadline.signal.addEventListener("abort", () => resolve(null), { once: true }));
+      const session = await Promise.race([
+        getSupabaseBrowserClient()
+          .auth.getSession()
+          .then(({ data }) => data.session)
+          .catch(() => null),
+        expired,
       ]);
-      // `{ error }` (or no answer in time): the session is still in the cookies — removed below.
-      if (outcome !== "timeout" && outcome.error) console.warn("[auth] signOut:", outcome.error.message);
-    } catch {
-      // removed below
+      // The session the sign-out started with (a cookie this code cannot read: whatever auth-js read), still valid.
+      if (session && (owner === undefined || session.user.id === owner) && (session.expires_at ?? 0) * 1000 > Date.now()) {
+        await fetch(`${SUPABASE_URL}/auth/v1/logout?scope=local`, {
+          method: "POST",
+          headers: { apikey: SUPABASE_PUBLISHABLE_KEY, Authorization: `Bearer ${session.access_token}` },
+          signal: deadline.signal,
+        }).catch(() => undefined);
+      }
     } finally {
       clearTimeout(timer);
     }
   }
-  removeAuthCookies();
+  if (cookieSessionUser() === owner) removeAuthCookies();
 }
