@@ -83,7 +83,7 @@ export const BUSINESS_RULES: {
     title: "Cambios después del cierre",
     rule: "Las ediciones posteriores al cierre generan nueva versión y trazabilidad.",
     how: "Reabrir exige motivo; el siguiente reporte sale como v2, v3… y el cambio queda en bitácora.",
-    href: "/configuracion?tab=auditoria",
+    href: "/bitacora",
     linkLabel: "Bitácora",
   },
 ];

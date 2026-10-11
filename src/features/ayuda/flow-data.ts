@@ -174,7 +174,7 @@ export const FLOW_STEPS: FlowStep[] = [
     who: "Dirección y Administración consultan indicadores y exportan PDF y Excel según su alcance.",
     where: [
       { label: "Indicadores", href: "/indicadores" },
-      { label: "Bitácora", href: "/configuracion?tab=auditoria" },
+      { label: "Bitácora", href: "/bitacora" },
     ],
     rule: "Costos, productividad individual y consumo de materiales requieren captura adicional antes de prometerse (doc §5).",
   },

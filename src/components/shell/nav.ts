@@ -13,6 +13,7 @@ import {
   LayoutGrid,
   MapIcon,
   MessageSquareHeart,
+  ScrollText,
   Settings,
   TriangleAlert,
   Users,
@@ -32,6 +33,7 @@ export type NavKey =
   | "reportes"
   | "postventa"
   | "clientes"
+  | "bitacora"
   | "indicadores"
   | "equipo"
   | "configuracion"
@@ -87,6 +89,8 @@ export const NAV_GROUPS: NavGroup[] = [
       { key: "reportes", href: "/reportes", label: "Reportes", icon: FileText, roles: FIELD },
       { key: "postventa", href: "/postventa", label: "Postventa", icon: MessageSquareHeart, badge: "postventa" },
       { key: "clientes", href: "/clientes", label: "Clientes", icon: Building2 },
+      // The audit log of every change in the role's scope (user, time, reason). Every role: the data is already scoped by useScopedAudit (supervisors: own orders and actions).
+      { key: "bitacora", href: "/bitacora", label: "Bitácora", icon: ScrollText },
     ],
   },
   {

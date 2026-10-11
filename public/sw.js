@@ -31,7 +31,7 @@ const SAFE_ID = /^[A-Za-z0-9_.-]{1,80}$/;
 
 const PAGES = [
   "/", "/offline", "/login", "/pendientes", "/perfil", "/ordenes", "/ordenes/nueva", "/agenda", "/evidencias", "/incidencias",
-  "/reportes", "/postventa", "/clientes", "/indicadores", "/equipo", "/configuracion", "/ayuda",
+  "/reportes", "/postventa", "/clientes", "/bitacora", "/indicadores", "/equipo", "/configuracion", "/ayuda",
   ...TEMPLATES.map((t) => t.url),
 ];
 // The logo is drawn with CSS masks of these two SVGs (brand.tsx): without them an installed app that goes offline before one

@@ -20,7 +20,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
-import { useAppStore, useCan, useCurrentUser, useLookups, useScopedAudit } from "@/lib/hooks";
+import { useAppStore, useCan, useLookups, useScopedAudit } from "@/lib/hooks";
 import { businessDateStamp, exportToExcel, fmtBusinessTime } from "@/lib/export";
 import { fmtLongDay, fmtNum, fmtRelativeDay, fmtTime, plural } from "@/lib/format";
 import { ROLE_LABEL, type Tone } from "@/lib/status";
@@ -32,7 +32,7 @@ import { EmptyState } from "@/components/pk/feedback";
 import { EASE } from "@/components/pk/motion";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { GatedButton, NO_EXCEL, SearchField, norm, selectTriggerCls } from "./shared";
+import { GatedButton, NO_EXCEL, SearchField, norm, selectTriggerCls } from "@/features/configuracion/shared";
 
 export const ENTITY_META: Record<AuditEntity, { label: string; tone: Tone; icon: React.ReactNode }> = {
   orden: { label: "Orden", tone: "navy", icon: <ClipboardList /> },
@@ -49,9 +49,9 @@ export const ENTITY_META: Record<AuditEntity, { label: string; tone: Tone; icon:
 type Range = "hoy" | "7d" | "30d" | "todo";
 const PAGE = 60;
 
-export function AuditTab() {
+/** The Bitácora list: search + filters, day-grouped timeline, Excel export and the "qué / quién" summaries. Renders under the page header. */
+export function AuditLog() {
   const audit = useScopedAudit();
-  const me = useCurrentUser();
   const lk = useLookups();
   const orders = useAppStore((s) => s.orders);
   const canExcel = useCan("export.excel");
@@ -167,12 +167,8 @@ export function AuditTab() {
     <div className="grid gap-10 xl:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)] xl:gap-0">
       <div className="min-w-0 xl:border-r xl:border-hairline xl:pr-10">
         <SectionHeader
-          title={me.role === "supervisor" ? "Mi bitácora" : "Bitácora de cambios"}
-          subtitle={
-            me.role === "supervisor"
-              ? "Movimientos de tus órdenes asignadas y los que tú registraste."
-              : "Todo cambio guarda usuario, fecha y motivo (doc §3)."
-          }
+          title="Historial de cambios"
+          subtitle="Lo más reciente primero, agrupado por día."
           action={
             <GatedButton allowed={canExcel} reason={NO_EXCEL} variant="outline" onClick={exportExcel} disabled={!filtered.length} className="border-line">
               {canExcel && <FileSpreadsheet className="size-4" />} Excel
@@ -231,7 +227,7 @@ export function AuditTab() {
 
         {filtered.length === 0 ? (
           <EmptyState icon={<History />} title="Sin movimientos">
-            Ningún registro coincide con los filtros. Prueba con otro rango de fechas.
+            Ningún registro coincide con los filtros. Pruebe con otro rango de fechas.
           </EmptyState>
         ) : (
           <div>
@@ -262,8 +258,9 @@ export function AuditTab() {
         )}
       </div>
 
-      <aside className="order-first min-w-0 xl:order-none xl:pl-10">
-        <div className="grid gap-8 sm:grid-cols-2 xl:sticky xl:top-6 xl:grid-cols-1">
+      {/* Phones: the list comes first and the summaries follow it; tablets: a two-column strip above the list; xl: a sticky side column. */}
+      <aside aria-label="Resumen de la bitácora" className="min-w-0 sm:order-first xl:order-none xl:pl-10">
+        <div className="scrollbar-none grid gap-8 sm:grid-cols-2 xl:sticky xl:top-6 xl:max-h-[calc(var(--pk-pane-h)-48px)] xl:grid-cols-1 xl:overflow-y-auto xl:overscroll-contain xl:pb-2">
           <div>
             <h2 className="text-[19px] font-medium tracking-[-0.01em] text-ink">Qué se registra</h2>
             <p className="mb-5 mt-1 text-[13.5px] text-subtle">Por tipo de registro en el periodo</p>
