@@ -15,7 +15,16 @@ import { differenceInCalendarDays, format, parseISO, startOfDay } from "date-fns
 import { toast } from "sonner";
 import { DEMO_USER_BY_ROLE, SEED_VERSION, generateSeed, shiftSnapshotDates } from "./seed";
 import { can, canSeeOrder, canSeeUnit, type Action } from "./permissions";
-import { GEO_NOTE_MIN, closureBlockers, photoTimingIssues } from "./domain";
+import {
+  CASE_RESOLUTION_MIN,
+  GEO_NOTE_MIN,
+  SERVICE_HOURS_MAX,
+  SERVICE_HOURS_MIN,
+  closureBlockers,
+  derivedExecutionStatus,
+  isStrongSurveyToken,
+  photoTimingIssues,
+} from "./domain";
 import { plural } from "./format";
 import { DONE_STATUSES, OPEN_STATUSES } from "./status";
 import { DEMO_ENABLED } from "./demo";
@@ -89,7 +98,17 @@ const nextFolio = (items: { folio: string }[], prefix: string, width: number) =>
   const max = items.reduce((m, x) => Math.max(m, parseInt(x.folio.split("-")[1] ?? "0", 10) || 0), 0);
   return `${prefix}-${String(max + 1).padStart(width, "0")}`;
 };
-const surveyToken = () => crypto.randomUUID().replace(/-/g, "").slice(0, 10);
+/** 256-bit survey link token (43 base64url characters): the server refuses shorter or structured tokens (isStrongSurveyToken). */
+const surveyToken = (): string => {
+  for (let attempt = 0; attempt < 8; attempt++) {
+    const token = btoa(String.fromCharCode(...crypto.getRandomValues(new Uint8Array(32))))
+      .replace(/\+/g, "-")
+      .replace(/\//g, "_")
+      .replace(/=+$/, "");
+    if (isStrongSurveyToken(token)) return token;
+  }
+  throw new Error("No se pudo generar un enlace de encuesta seguro en este dispositivo.");
+};
 const omit = <T extends object, K extends keyof T>(obj: T, keys: K[]): Omit<T, K> =>
   Object.fromEntries(Object.entries(obj).filter(([k]) => !keys.includes(k as K))) as Omit<T, K>;
 
@@ -202,7 +221,8 @@ export type AppState = DataSnapshot & {
   setOrderStatus: (orderId: string, status: OrderStatus, reason?: string) => void;
   cancelOrder: (orderId: string, reason: string) => void;
   /** Reabrir (order.reopen): the next report version needs a fresh validateClosure. */
-  reopenOrder: (orderId: string, reason: string) => void;
+  /** Returns whether the order was reopened (a refusal is toasted). */
+  reopenOrder: (orderId: string, reason: string) => boolean;
   /** Archivar (order.archive): reporte enviado / seguimiento with no open post-sale cases. */
   archiveOrder: (orderId: string, reason?: string) => void;
 
@@ -217,7 +237,8 @@ export type AppState = DataSnapshot & {
   /** Audit-only reminder about missing evidence (Evidencias): never writes into the jornada's bitácora. */
   logReminder: (orderId: string, jornadaId?: string, note?: string) => void;
   /** Save the activity-hours split for a jornada (mobile "Desglose de horas" flow). */
-  setJornadaBreakdown: (jornadaId: string, breakdown: { activity: string; hours: number }[], note?: string) => void;
+  /** Returns whether it was saved (a refusal is toasted). */
+  setJornadaBreakdown: (jornadaId: string, breakdown: { activity: string; hours: number }[], note?: string) => boolean;
   addPhoto: (photo: NewPhotoInput) => string;
   updatePhoto: (photoId: string, patch: Partial<Pick<Photo, "area" | "note" | "caseId" | "incidentId">>) => void;
   deletePhoto: (photoId: string) => void;
@@ -235,7 +256,8 @@ export type AppState = DataSnapshot & {
 
   /* post-sale */
   createCase: (input: Omit<PostSaleCase, "id" | "folio" | "createdAt" | "createdBy" | "updatedAt" | "timeline" | "status"> & { status?: CaseStatus }) => PostSaleCase;
-  updateCase: (caseId: string, patch: Partial<PostSaleCase>, note?: string) => void;
+  /** Returns whether the case was updated (a refusal is toasted). */
+  updateCase: (caseId: string, patch: Partial<PostSaleCase>, note?: string) => boolean;
   addCaseNote: (caseId: string, text: string) => void;
   createSurvey: (orderId: string, channel: ShareChannel) => Survey;
   /** Public: the client answers. Refused (false) while a staff session is signed in on the device, or when already answered. */
@@ -310,6 +332,9 @@ export const useAppStore = create<AppState>()(
         return null;
       };
       const CASE_OWNER_RULE = "El responsable del caso debe ser el supervisor de la orden o alguien de Administración de la unidad.";
+      const SUPERVISOR_OTHER_UNIT = "Usted ya no pertenece a la unidad de esta orden: pida a Administración que la reasigne antes de reabrirla.";
+      const CASE_NEW_STATUS_RULE = "Un caso nuevo empieza abierto o en proceso: regístrelo y después márquelo como resuelto con su resolución.";
+      const CASE_RESOLUTION_RULE = `Escriba la resolución (al menos ${CASE_RESOLUTION_MIN} caracteres) para marcar el caso como resuelto o cerrado.`;
       /** Case owners: active Administración of the order's unit, or the order's own supervisor (who can see the case). */
       const isValidCaseOwner = (ownerId: string, order: Order) => {
         const u = getState().users.find((x) => x.id === ownerId);
@@ -523,6 +548,24 @@ export const useAppStore = create<AppState>()(
           if (clean.supervisorId && clean.supervisorId !== order.supervisorId) {
             // Reassignment history (doc §4.1): who had it, who has it now.
             record("orden", orderId, `Reasignó la orden de ${userName(order.supervisorId)} a ${userName(clean.supervisorId)}`, { orderId, reason });
+            // Open cases the former supervisor owned follow the order (server: update_order): they would lose sight of them.
+            const newSup = clean.supervisorId;
+            const at = nowIso();
+            const moved = getState().cases.filter(
+              (c) => c.orderId === orderId && c.ownerId === order.supervisorId && (c.status === "abierto" || c.status === "en_proceso"),
+            );
+            if (moved.length) {
+              const me = ok.user.id;
+              const ids = new Set(moved.map((c) => c.id));
+              setState((st) => ({
+                cases: st.cases.map((c) =>
+                  ids.has(c.id)
+                    ? { ...c, ownerId: newSup, updatedAt: at, timeline: [...c.timeline, { at, by: me, text: `Caso reasignado a ${userName(newSup)} junto con la orden.` }] }
+                    : c,
+                ),
+              }));
+              moved.forEach((c) => record("caso", c.id, `Reasignó caso ${c.folio} con la orden`, { orderId, reason }));
+            }
           }
         },
 
@@ -542,12 +585,21 @@ export const useAppStore = create<AppState>()(
             denied(CLOSED_ORDER);
             return;
           }
-          // Confirming dates only leaves "Reprogramada"; flagging it only enters it.
-          if (status !== "reprogramada" && current !== "reprogramada") {
+          // Confirming dates only leaves "Reprogramada" (the order's own status, or the one it resumes after its incident).
+          const rescheduled = current === "reprogramada" || (current === "con_incidencia" && ok.order.previousStatus === "reprogramada");
+          if (status !== "reprogramada" && !rescheduled) {
             denied("Solo se confirman fechas de una orden reprogramada.");
             return;
           }
-          changeStatus(orderId, status, reason);
+          // The jornadas decide the status when confirming (server: set_order_status), never the requested target.
+          const next = status === "reprogramada" ? "reprogramada" : derivedExecutionStatus(orderId, getState().jornadas);
+          // An open blocking incident stays authoritative: the order stays con_incidencia and resumes `next` afterwards.
+          const blocking = getState().incidents.some((i) => i.orderId === orderId && i.status === "abierta" && i.blocksClosure);
+          if (blocking) {
+            patchOrder(orderId, { previousStatus: next });
+            changeStatus(orderId, "con_incidencia", reason);
+            record("orden", orderId, status === "reprogramada" ? "Marcó la orden como reprogramada (sigue con incidencia)" : "Confirmó fechas (sigue con incidencia)", { orderId, reason });
+          } else changeStatus(orderId, next, reason);
         },
 
         cancelOrder: (orderId, reason) => {
@@ -566,18 +618,24 @@ export const useAppStore = create<AppState>()(
 
         reopenOrder: (orderId, reason) => {
           const ok = allowOrder(["order.reopen"], orderId);
-          if (!ok) return;
+          if (!ok) return false;
           const o = ok.order;
           if (!REOPENABLE.includes(o.status)) {
             denied("Solo se reabren órdenes finalizadas o con reporte enviado.");
-            return;
+            return false;
+          }
+          // A supervisor moved to another unit keeps seeing their closed orders but cannot reopen them (server: reopen_order).
+          if (ok.user.unitId !== o.unitId) {
+            denied(SUPERVISOR_OTHER_UNIT);
+            return false;
           }
           if (reason.trim().length < 5) {
             denied("Indique el motivo para reabrir la orden.");
-            return;
+            return false;
           }
           patchOrder(orderId, { previousStatus: o.status, reopenedAt: nowIso() });
           changeStatus(orderId, "reabierta", reason.trim());
+          return true;
         },
 
         archiveOrder: (orderId, reason) => {
@@ -606,8 +664,14 @@ export const useAppStore = create<AppState>()(
             return;
           }
           const s = getState();
-          if (jornadaId && !s.jornadas.some((j) => j.id === jornadaId && j.orderId === orderId)) {
+          const target = jornadaId ? s.jornadas.find((j) => j.id === jornadaId && j.orderId === orderId) : undefined;
+          if (jornadaId && !target) {
             denied(OUT_OF_SCOPE);
+            return;
+          }
+          // A closed day's crew is the record of who did the work (server: assign_crew → jornada_closed).
+          if (target?.status === "cerrada") {
+            denied(`La jornada ${target.dayIndex} ya se cerró: su cuadrilla queda como registro de quién hizo el trabajo y no se cambia.`);
             return;
           }
           const pool = new Set(s.workers.filter((w) => w.active && w.unitId === order.unitId).map((w) => w.id));
@@ -639,11 +703,17 @@ export const useAppStore = create<AppState>()(
           }
           const s = getState();
           const kept = s.jornadas.filter((j) => j.orderId === orderId && j.status !== "pendiente");
+          if (!days.length && !kept.length) {
+            denied("Indique al menos una jornada: la orden no puede quedarse sin días por ejecutar.");
+            return;
+          }
+          // New days continue after the highest executed day (a day worked out of order never collides).
+          const lastIndex = kept.reduce((m, j) => Math.max(m, j.dayIndex), 0);
           const crew = order.crewHistory.at(-1)?.workerIds ?? [];
           const toIso = (date: string, hm: string) => new Date(`${date}T${hm}:00`).toISOString();
           const sorted = [...days].sort((a, b) => a.date.localeCompare(b.date));
           const fresh: Jornada[] = sorted.map((d, i) => ({
-            id: uid("jor"), orderId, dayIndex: kept.length + i + 1, date: d.date,
+            id: uid("jor"), orderId, dayIndex: lastIndex + i + 1, date: d.date,
             plannedStart: toIso(d.date, d.start), plannedEnd: toIso(d.date, d.end), workerIds: crew, status: "pendiente", log: [],
           }));
           const all = [...kept, ...fresh];
@@ -654,8 +724,13 @@ export const useAppStore = create<AppState>()(
             scheduledEnd: all.map((j) => j.plannedEnd).sort().at(-1) ?? order.scheduledEnd,
           });
           record("orden", orderId, `Programó ${plural(fresh.length, "jornada", "jornadas")}`, { orderId, reason, syncLabel: `Agenda · ${order.folio}` });
-          if (order.status === "borrador" && crew.length) changeStatus(orderId, "programada");
-          if (order.status === "reprogramada") changeStatus(orderId, "programada", reason);
+          // Execution states follow the jornadas (server: schedule_jornadas → derived_status).
+          const derived: OrderStatus[] = ["borrador", "programada", "en_ejecucion", "jornada_cerrada", "pendiente_validacion", "reprogramada"];
+          if (derived.includes(order.status))
+            changeStatus(orderId, derivedExecutionStatus(orderId, getState().jornadas), order.status === "reprogramada" ? reason : undefined);
+          // Under an open blocking incident the new plan decides the status the order resumes.
+          else if (order.status === "con_incidencia" && order.previousStatus && derived.includes(order.previousStatus))
+            patchOrder(orderId, { previousStatus: derivedExecutionStatus(orderId, getState().jornadas) });
         },
 
         /* ── field execution ── */
@@ -674,8 +749,10 @@ export const useAppStore = create<AppState>()(
           record("jornada", jornadaId, `Registro de entrada · Jornada ${j.dayIndex} (${geoLabel(geo)})`, {
             orderId: j.orderId, reason: stamp.note, syncLabel: `Entrada ${geo.source === "remota" ? "remota" : "GPS"} · ${order.folio}`,
           });
+          // Under an open blocking incident the order stays con_incidencia and resumes en_ejecucion (server: record_check).
           const o = getState().orders.find((x) => x.id === j.orderId);
-          if (o && o.status !== "con_incidencia") changeStatus(j.orderId, "en_ejecucion");
+          if (o?.status === "con_incidencia") patchOrder(j.orderId, { previousStatus: "en_ejecucion" });
+          else if (o) changeStatus(j.orderId, "en_ejecucion");
         },
 
         checkOut: (jornadaId, geo) => {
@@ -697,9 +774,12 @@ export const useAppStore = create<AppState>()(
           record("jornada", jornadaId, `Registro de salida · Jornada ${j.dayIndex} (${geoLabel(geo)})`, {
             orderId: j.orderId, reason: stamp.note, syncLabel: `Salida ${geo.source === "remota" ? "remota" : "GPS"} · ${order.folio}`,
           });
-          const remaining = getState().jornadas.filter((x) => x.orderId === j.orderId && x.status === "pendiente").length;
+          // Another day still in progress keeps the order en_ejecucion (server: record_check → derived_status); under an
+          // open blocking incident that status becomes the one the order resumes.
           const o = getState().orders.find((x) => x.id === j.orderId);
-          if (o && o.status !== "con_incidencia") changeStatus(j.orderId, remaining > 0 ? "jornada_cerrada" : "pendiente_validacion");
+          const next = derivedExecutionStatus(j.orderId, getState().jornadas);
+          if (o?.status === "con_incidencia") patchOrder(j.orderId, { previousStatus: next });
+          else if (o) changeStatus(j.orderId, next);
         },
 
         addJornadaNote: (jornadaId, text) => {
@@ -725,17 +805,23 @@ export const useAppStore = create<AppState>()(
 
         setJornadaBreakdown: (jornadaId, breakdown, note) => {
           const ok = allowJornada(["field.capture"], jornadaId);
-          if (!ok) return;
+          if (!ok) return false;
           const { jornada: j } = ok;
           if (isTerminal(ok.order.status)) {
             denied(CLOSED_ORDER);
-            return;
+            return false;
           }
+          // Every line needs a name and hours; 24 h at most in total (server: set_jornada_breakdown → invalid_breakdown).
           const total = breakdown.reduce((sum, b) => sum + b.hours, 0);
+          if (breakdown.some((b) => !b.activity.trim() || !Number.isFinite(b.hours) || b.hours < 0) || total > 24) {
+            denied("Cada actividad necesita nombre y horas (0 a 24 en total).");
+            return false;
+          }
           patchJornada(jornadaId, { breakdown, breakdownNote: note?.trim() || undefined });
           record("jornada", jornadaId, `Registró desglose de horas · Jornada ${j.dayIndex} (${total.toFixed(1)} h)`, {
             orderId: j.orderId, reason: note?.trim() || undefined, syncLabel: `Desglose de horas · ${ok.order.folio}`,
           });
+          return true;
         },
 
         addPhoto: (photo) => {
@@ -830,10 +916,30 @@ export const useAppStore = create<AppState>()(
             denied("La orden ya no admite cambios.");
             return;
           }
+          // The report froze the incident: editing it after closure needs a reopen (server: update_incident → assert_open).
+          if (isTerminal(ok.order.status)) {
+            denied(CLOSED_ORDER);
+            return;
+          }
           // Identity and authorship never change; resolution goes through resolveIncident.
           const rest = omit(patch, ["id", "folio", "orderId", "createdAt", "createdBy", "status", "resolvedAt", "resolvedBy"]);
           setState((st) => ({ incidents: st.incidents.map((i) => (i.id === incidentId ? { ...i, ...rest } : i)) }));
           record("incidencia", incidentId, `Actualizó incidencia ${inc.folio}`, { orderId: inc.orderId });
+          // The blocking flag of an open incident drives Con incidencia, like adding or resolving one (server: update_incident).
+          const blocks = rest.blocksClosure ?? inc.blocksClosure;
+          if (inc.status !== "abierta" || blocks === inc.blocksClosure) return;
+          const o = getState().orders.find((x) => x.id === inc.orderId);
+          if (!o) return;
+          if (blocks && o.status !== "con_incidencia") {
+            patchOrder(o.id, { previousStatus: o.status });
+            changeStatus(o.id, "con_incidencia", rest.description ?? inc.description);
+          } else if (!blocks && o.status === "con_incidencia") {
+            const stillBlocking = getState().incidents.some((i) => i.orderId === inc.orderId && i.status === "abierta" && i.blocksClosure);
+            if (stillBlocking) return;
+            const resumable: OrderStatus[] = ["finalizada", "reabierta", "reprogramada"];
+            const next = o.previousStatus && resumable.includes(o.previousStatus) ? o.previousStatus : derivedExecutionStatus(o.id, getState().jornadas);
+            changeStatus(o.id, next, `La incidencia ${inc.folio} ya no bloquea el cierre`);
+          }
         },
 
         resolveIncident: (incidentId, resolution) => {
@@ -854,12 +960,8 @@ export const useAppStore = create<AppState>()(
           const stillBlocking = getState().incidents.some((i) => i.orderId === inc.orderId && i.status === "abierta" && i.blocksClosure);
           const o = getState().orders.find((x) => x.id === inc.orderId);
           if (o && o.status === "con_incidencia" && !stillBlocking) {
-            const js = getState().jornadas.filter((j) => j.orderId === o.id);
-            const fallback: OrderStatus = js.some((j) => j.status === "en_curso")
-              ? "en_ejecucion"
-              : js.some((j) => j.status === "pendiente")
-                ? js.some((j) => j.status === "cerrada") ? "jornada_cerrada" : "programada"
-                : "pendiente_validacion";
+            // No days → borrador, never pendiente_validacion (server: resolve_incident → derived_status).
+            const fallback = derivedExecutionStatus(o.id, getState().jornadas);
             // Execution states are recomputed from the jornadas; anything else resumes where it was.
             const resumable: OrderStatus[] = ["finalizada", "reabierta", "reprogramada"];
             const next = o.previousStatus && resumable.includes(o.previousStatus) ? o.previousStatus : fallback;
@@ -935,6 +1037,8 @@ export const useAppStore = create<AppState>()(
         createCase: (input) => {
           const { user, order } = must(allowOrder(["postventa.manage"], input.orderId));
           must(isValidCaseOwner(input.ownerId, order) ? true : denied(CASE_OWNER_RULE));
+          // A case is resolved with its resolution, after it exists (server: create_case → resolution_required).
+          must(!input.status || input.status === "abierto" || input.status === "en_proceso" ? true : denied(CASE_NEW_STATUS_RULE));
           const s = getState();
           const at = nowIso();
           const c: PostSaleCase = {
@@ -952,16 +1056,36 @@ export const useAppStore = create<AppState>()(
         updateCase: (caseId, patch, note) => {
           const c = getState().cases.find((x) => x.id === caseId);
           const ok = allowOrder(["postventa.manage"], c?.orderId);
-          if (!ok || !c) return;
+          if (!ok || !c) return false;
           if (patch.ownerId !== undefined && patch.ownerId !== c.ownerId && !isValidCaseOwner(patch.ownerId, ok.order)) {
             denied(CASE_OWNER_RULE);
-            return;
+            return false;
+          }
+          // Reopening hands the case back to its owner, who must still be able to see it (server: update_case).
+          const reopening = (c.status === "resuelto" || c.status === "cerrado") && (patch.status === "abierto" || patch.status === "en_proceso");
+          if (reopening && (note?.trim().length ?? 0) < CASE_RESOLUTION_MIN) {
+            denied(`Indique por qué se reabre el caso (al menos ${CASE_RESOLUTION_MIN} caracteres).`);
+            return false;
+          }
+          if (reopening && !isValidCaseOwner(patch.ownerId ?? c.ownerId, ok.order)) {
+            denied(`${CASE_OWNER_RULE} Reasigne el caso antes de reabrirlo.`);
+            return false;
+          }
+          // Resolved and closed cases keep what was done for the client (server: update_case → resolution_required).
+          if ("status" in patch || "resolution" in patch) {
+            const status = patch.status ?? c.status;
+            const resolution = ("resolution" in patch ? patch.resolution : c.resolution)?.trim() ?? "";
+            if ((status === "resuelto" || status === "cerrado") && resolution.length < CASE_RESOLUTION_MIN) {
+              denied(CASE_RESOLUTION_RULE);
+              return false;
+            }
           }
           const at = nowIso();
           const rest = omit(patch, ["id", "folio", "orderId", "clientId", "createdAt", "createdBy", "timeline"]);
           const timeline = note ? [...c.timeline, { at, by: ok.user.id, text: note }] : c.timeline;
           setState((st) => ({ cases: st.cases.map((x) => (x.id === caseId ? { ...x, ...rest, timeline, updatedAt: at } : x)) }));
           record("caso", caseId, note ?? `Actualizó caso ${c.folio}`, { orderId: c.orderId });
+          return true;
         },
 
         addCaseNote: (caseId, text) => getState().updateCase(caseId, {}, text),
@@ -1071,6 +1195,10 @@ export const useAppStore = create<AppState>()(
         },
         upsertServiceType: (stype) => {
           if (!allowCatalog(undefined)) return;
+          if (!(stype.defaultHoursPerDay >= SERVICE_HOURS_MIN && stype.defaultHoursPerDay <= SERVICE_HOURS_MAX)) {
+            denied(`Las horas por día van de ${SERVICE_HOURS_MIN} a ${SERVICE_HOURS_MAX}.`);
+            return;
+          }
           setState((st) => ({ serviceTypes: st.serviceTypes.some((c) => c.id === stype.id) ? st.serviceTypes.map((c) => (c.id === stype.id ? stype : c)) : [...st.serviceTypes, stype] }));
           record("catalogo", stype.id, `Guardó tipo de servicio ${stype.name}`);
         },

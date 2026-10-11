@@ -2,7 +2,7 @@
  * Pure business rules (doc §8). No React here — safe to use in selectors, metrics and PDF.
  */
 import { differenceInMinutes, isSameDay, parseISO } from "date-fns";
-import type { GeoSource, Incident, Jornada, Order, Photo, Report, Role, Survey, PostSaleCase } from "./types";
+import type { GeoSource, Incident, Jornada, Order, OrderStatus, Photo, Report, Role, Survey, PostSaleCase } from "./types";
 import type { Tone } from "./status";
 import { can } from "./permissions";
 import { plural } from "./format";
@@ -74,6 +74,9 @@ export function closureBlockers(
   const pending = js.filter((j) => j.status !== "cerrada");
   if (pending.length)
     out.push({ id: "jornadas", label: `${plural(pending.length, "jornada", "jornadas")} sin registro de salida`, severity: "block" });
+  else if (!js.some((j) => j.checkIn && j.checkOut))
+    // Same hard blocker as the server: a service that was never executed cannot be closed, not even with an exception.
+    out.push({ id: "sin-ejecucion", label: "Ninguna jornada ejecutada (con entrada y salida)", severity: "block" });
   const ev = orderEvidence(order, jornadas, photos);
   ev.perJornada
     .filter((x) => x.jornada.checkIn)
@@ -91,6 +94,21 @@ export function closureBlockers(
   return out;
 }
 
+/**
+ * Execution status the jornadas support (server: private.derived_status). Used when confirming dates of a rescheduled
+ * order, after a reschedule and when the last blocking incident is resolved — never an execution state without execution.
+ */
+export function derivedExecutionStatus(orderId: string, jornadas: Jornada[]): OrderStatus {
+  const js = jornadas.filter((j) => j.orderId === orderId);
+  if (!js.length) return "borrador";
+  if (js.some((j) => j.status === "en_curso")) return "en_ejecucion";
+  if (js.some((j) => j.status === "pendiente")) {
+    if (js.some((j) => j.status === "cerrada")) return "jornada_cerrada";
+    return js.some((j) => j.workerIds.length > 0) ? "programada" : "borrador";
+  }
+  return "pendiente_validacion";
+}
+
 /* ───────────── evidence integrity ───────────── */
 
 /** How a check-in/out location was obtained, for labels and the report. */
@@ -102,6 +120,28 @@ export const GEO_SOURCE_LABEL: Record<GeoSource, string> = {
 
 /** Minimum length of the note required for a manual location or a remote-supervision record. */
 export const GEO_NOTE_MIN = 8;
+
+/** Minimum length of a post-sale case resolution (required to mark it resuelto or cerrado; server: update_case). */
+export const CASE_RESOLUTION_MIN = 10;
+
+/**
+ * Survey link tokens the server accepts (private.check_token): 43–64 base64url characters, at least 16 distinct ones and
+ * no 6-character sequence repeated. A random 256-bit token fails the last rule with probability ~10⁻⁸ (then regenerate).
+ */
+export function isStrongSurveyToken(token: string) {
+  if (!/^[A-Za-z0-9_-]{43,64}$/.test(token) || new Set(token).size < 16) return false;
+  const seen = new Set<string>();
+  for (let i = 0; i + 6 <= token.length; i++) {
+    const gram = token.slice(i, i + 6);
+    if (seen.has(gram)) return false;
+    seen.add(gram);
+  }
+  return true;
+}
+
+/** Hours per day of a service type (server: upsert_service_type and the service_types check). */
+export const SERVICE_HOURS_MIN = 0.5;
+export const SERVICE_HOURS_MAX = 24;
 
 export type PhotoTimingIssue = { id: "antes_after_checkout" | "despues_before_checkin"; label: string };
 

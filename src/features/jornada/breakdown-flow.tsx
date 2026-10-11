@@ -56,13 +56,16 @@ export function BreakdownFlow({ f, open, onOpenChange }: { f: FieldReady; open: 
   const gap = roundHalf(total - minutes / 60);
   const mismatch = Math.abs(gap) >= 0.5;
 
+  const overDay = total > 24;
+
   const submit = () => {
-    save(
+    // The store refuses (and says why) a breakdown it can't keep: show the success screen only when it was saved.
+    const saved = save(
       jornada.id,
       activities.map((activity, i) => ({ activity, hours: hours[i] })).filter((b) => b.hours > 0),
       note,
     );
-    setDone(true);
+    if (saved) setDone(true);
   };
 
   if (done)
@@ -109,7 +112,7 @@ export function BreakdownFlow({ f, open, onOpenChange }: { f: FieldReady; open: 
       description={`Desglose de horas de la Jornada ${jornada.dayIndex}`}
       dirty={snapshot !== initial}
       footer={
-        <BigButton onClick={submit} disabled={total <= 0}>
+        <BigButton onClick={submit} disabled={total <= 0 || overDay}>
           Guardar desglose
         </BigButton>
       }
@@ -137,7 +140,11 @@ export function BreakdownFlow({ f, open, onOpenChange }: { f: FieldReady; open: 
         sub={`Tiempo en sitio ${fmtDuration(minutes)}`}
         value={`${total.toFixed(1)} h`}
       />
-      {mismatch && (
+      {overDay ? (
+        <p className="mt-2.5 text-[13.5px] leading-snug text-amber-ink">
+          Una jornada registra 24 h como máximo: quite {(total - 24).toFixed(1)} h para guardar.
+        </p>
+      ) : mismatch && (
         <p className="mt-2.5 text-[13.5px] leading-snug text-amber-ink">
           {gap > 0 ? `Sobran ${gap.toFixed(1)} h` : `Faltan ${Math.abs(gap).toFixed(1)} h`} respecto al tiempo entre entrada y salida. Explíquelo en la nota si aplica.
         </p>

@@ -4,6 +4,7 @@ import { useState } from "react";
 import { motion } from "motion/react";
 import { BadgeCheck, CheckCircle2, RotateCcw } from "lucide-react";
 import { toast } from "sonner";
+import { CASE_RESOLUTION_MIN } from "@/lib/domain";
 import { useAppStore } from "@/lib/store";
 import { useUi } from "@/lib/ui-store";
 import { CASE_CATEGORY, CASE_STATUS } from "@/lib/status";
@@ -19,8 +20,8 @@ import { useHeldTarget } from "./use-held-target";
 
 export type CaseMove = { c: PostSaleCase; client?: Client; owner?: User; to: CaseStatus };
 
-/** What the resolution / reopening text must say before it is recorded (unchanged rule). */
-const TEXT_MIN = 10;
+/** What the resolution / reopening text must say before it is recorded (the store and the server check the resolution). */
+const TEXT_MIN = CASE_RESOLUTION_MIN;
 
 /** Which status changes need a confirmation step (resolution text, client agreement or a reason). */
 export function moveNeedsDialog(c: PostSaleCase, to: CaseStatus) {
@@ -30,10 +31,9 @@ export function moveNeedsDialog(c: PostSaleCase, to: CaseStatus) {
 }
 
 /** Apply a status change that needs no extra input. Returns the toast copy. */
-export function quickMove(updateCase: (id: string, patch: Partial<PostSaleCase>, note?: string) => void, c: PostSaleCase, to: CaseStatus) {
+export function quickMove(updateCase: (id: string, patch: Partial<PostSaleCase>, note?: string) => boolean, c: PostSaleCase, to: CaseStatus) {
   const note = to === "en_proceso" ? "Cambió el caso a En proceso." : `Regresó el caso a ${CASE_STATUS[to].label}.`;
-  updateCase(c.id, { status: to }, note);
-  toast.success(`${c.folio} · ${CASE_STATUS[to].label}`);
+  if (updateCase(c.id, { status: to }, note)) toast.success(`${c.folio} · ${CASE_STATUS[to].label}`);
 }
 
 /**
@@ -56,7 +56,7 @@ function CaseStatusForm({ move, open, onOpenChange }: { move: CaseMove; open: bo
   const [agreed, setAgreed] = useState(false);
 
   const reopening = to !== "resuelto" && to !== "cerrado";
-  const needsResolution = to === "resuelto" || (to === "cerrado" && !c.resolution);
+  const needsResolution = to === "resuelto" || (to === "cerrado" && (c.resolution?.trim().length ?? 0) < TEXT_MIN);
   const needsText = needsResolution || reopening;
   const textOk = text.trim().length >= TEXT_MIN;
   const canSubmit = (needsText ? textOk : true) && (to === "cerrado" ? agreed : true);
@@ -64,15 +64,16 @@ function CaseStatusForm({ move, open, onOpenChange }: { move: CaseMove; open: bo
   const submit = () => {
     if (!canSubmit) return;
     const t = text.trim();
+    // A refusal (e.g. the owner can no longer see the case) is toasted by the store: keep the dialog open.
     if (to === "resuelto") {
-      updateCase(c.id, { status: "resuelto", resolution: t }, `Resolución registrada: ${t}`);
+      if (!updateCase(c.id, { status: "resuelto", resolution: t }, `Resolución registrada: ${t}`)) return;
       toast.success(`${c.folio} resuelto`, { description: "Falta confirmar la conformidad del cliente para cerrarlo." });
     } else if (to === "cerrado") {
-      updateCase(c.id, { status: "cerrado", ...(needsResolution ? { resolution: t } : {}) }, "Cerró el caso: el cliente confirmó su conformidad.");
+      if (!updateCase(c.id, { status: "cerrado", ...(needsResolution ? { resolution: t } : {}) }, "Cerró el caso: el cliente confirmó su conformidad.")) return;
       useUi.getState().fireCelebrate();
       toast.success(`${c.folio} cerrado`, { description: "Caso concluido con conformidad del cliente." });
     } else {
-      updateCase(c.id, { status: to }, `Reabrió el caso: ${t}`);
+      if (!updateCase(c.id, { status: to }, `Reabrió el caso: ${t}`)) return;
       toast.success(`${c.folio} reabierto`, { description: `Estado: ${CASE_STATUS[to].label}` });
     }
     onOpenChange(false);
