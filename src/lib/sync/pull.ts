@@ -12,12 +12,14 @@
  *    child row whose parent the device lacks, gets its subtree fetched by order_id (queued in `pull.subtrees`, persisted,
  *    so an interrupted pull resumes). Referenced clients, sites, people, workers… the device lacks are fetched by id.
  *  - Scope loss: sync_reconcile tells which local ids are still visible; the rest go (orders with their records).
- *  - Offline → nothing is tried; network failure → the data stays, retried later; an expired session → stop, flag
- *    `session.needsReauth` (the shell offers to sign in again), keep everything on the device.
+ *  - Offline → nothing is tried; network failure → the data stays, retried later; an expired session, no session or another
+ *    account's session in the browser → stop, flag `session.needsReauth` ("Vuelva a entrar"), keep everything on the device;
+ *    a deactivated profile → also end the Supabase session and flag `session.noAccess` (the shell blocks the app).
+ *  - verifyAccount: the same session check outside a pull (store bootstrap, auth events, /login).
  */
-import { isAuthRetryableFetchError } from "@supabase/supabase-js";
+import { isAuthApiError, isAuthRetryableFetchError, isAuthSessionMissingError } from "@supabase/supabase-js";
 import type { AppState } from "@/lib/store";
-import { getSupabaseBrowserClient, isSupabaseConfigured, type SupabaseBrowserClient } from "@/lib/supabase/client";
+import { endSessionOnDevice, getSupabaseBrowserClient, isSupabaseConfigured, type SupabaseBrowserClient } from "@/lib/supabase/client";
 import { OPEN_STATUSES } from "@/lib/status";
 import type { DataSnapshot, Role } from "@/lib/types";
 import { mapProfile } from "./map";
@@ -79,7 +81,8 @@ const EPOCH = "1970-01-01T00:00:00+00:00";
 
 /* ───────────── errors ───────────── */
 
-type PullErrorKind = "network" | "auth" | "server" | "aborted";
+/** "auth": a JWT problem a refresh may fix. "reauth": no session / another account's (sign in again). "inactive": no active profile. */
+type PullErrorKind = "network" | "auth" | "reauth" | "inactive" | "server" | "aborted";
 
 /** `message` is what the person reads; `detail` (server code and text) goes to the console only. */
 class PullError extends Error {
@@ -430,10 +433,12 @@ async function reconcile(ctx: Ctx, tables: readonly (typeof RECONCILED_TABLES)[n
 async function checkSession(ctx: Ctx): Promise<Row<"profiles">> {
   const { data, error } = await ctx.client.auth.getSession();
   if (error) throw isAuthRetryableFetchError(error) ? new PullError("network", NETWORK_TEXT) : new PullError("auth", error.message);
-  if (!data.session || data.session.user.id !== ctx.userId) throw new PullError("auth", "Sin sesión de Supabase.");
-  // The account's own profile, every cycle: a deactivation, or a role / unit change (full re-sync, §8 step 4).
+  // No session, or another account's (an invite / recovery link opened on this device): no refresh brings this one back.
+  if (!data.session || data.session.user.id !== ctx.userId) throw new PullError("reauth", "La sesión de Supabase no es la de esta cuenta.");
+  // The account's own profile, every cycle: a deactivation, or a role / unit change (full re-sync, §8 step 4). RLS hides an
+  // inactive profile like a missing one.
   const me = await run<Row<"profiles"> | null>(ctx.db.from("profiles").select("*").eq("id", ctx.userId).maybeSingle());
-  if (!me || !me.active) throw new PullError("auth", "El perfil ya no está activo.");
+  if (!me || !me.active) throw new PullError("inactive", "El perfil ya no está activo.");
   return me;
 }
 
@@ -554,11 +559,22 @@ async function once(store: PullStore, full: boolean) {
   } catch (e) {
     const err = e instanceof PullError ? e : new PullError("server", SERVER_TEXT, e instanceof Error ? e.message : String(e));
     if (err.kind === "server") console.warn("[pull]", err.detail ?? err.message);
+    if (err.kind === "reauth" || err.kind === "inactive") {
+      if (err.kind === "inactive") await endInactive(store);
+      else flagReauth(store);
+      usePullStatus.setState({ running: false, initial: false });
+      return;
+    }
     if (err.kind === "auth") {
       // One refresh attempt: an access token that expired while offline is renewed here; a dead refresh token is not.
       const refreshed = await tryRefresh(store);
       if (refreshed === "ok") {
         again = true;
+        usePullStatus.setState({ running: false, initial: false });
+        return;
+      }
+      if (refreshed === "inactive") {
+        await endInactive(store);
         usePullStatus.setState({ running: false, initial: false });
         return;
       }
@@ -582,13 +598,18 @@ async function once(store: PullStore, full: boolean) {
 
 let refreshTried = 0;
 
-/** "ok" → the session is alive again; "dead" → sign in again; "offline" → try later. */
-async function tryRefresh(store: PullStore): Promise<"ok" | "dead" | "offline"> {
+/** The access-token hook refuses an account without an active profile with a 403 and no error code. */
+const isNoProfileRefusal = (error: unknown) =>
+  typeof error === "object" && error !== null && (error as { status?: unknown }).status === 403 && !(error as { code?: unknown }).code;
+
+/** "ok" → the session is alive again; "dead" → sign in again; "inactive" → no active profile; "offline" → try later. */
+async function tryRefresh(store: PullStore): Promise<"ok" | "dead" | "inactive" | "offline"> {
   // At most one refresh attempt per minute (a server that keeps answering 401 must not loop).
   if (Date.now() - refreshTried < 60_000) return "dead";
   refreshTried = Date.now();
   try {
     const { data, error } = await getSupabaseBrowserClient().auth.refreshSession();
+    if (error && isNoProfileRefusal(error)) return "inactive";
     if (error) return isAuthRetryableFetchError(error) ? "offline" : "dead";
     return data.session?.user.id === store.getState().session.userId ? "ok" : "dead";
   } catch {
@@ -596,9 +617,81 @@ async function tryRefresh(store: PullStore): Promise<"ok" | "dead" | "offline"> 
   }
 }
 
-/** The account's Supabase session is gone: keep the data, stop pulling, let the shell offer to sign in again. */
-export function flagReauth(store: PullStore) {
-  store.setState((st) =>
-    st.session.mode === "supabase" && st.session.signedIn && !st.session.needsReauth ? { session: { ...st.session, needsReauth: true } } : st,
-  );
+/**
+ * The account's Supabase session is gone (or belongs to someone else): keep the data, stop pulling, let the shell offer to
+ * sign in again ("Vuelva a entrar"). `noAccess`: the profile is no longer active — the shell blocks the app as well.
+ */
+export function flagReauth(store: PullStore, { noAccess = false }: { noAccess?: boolean } = {}) {
+  store.setState((st) => {
+    if (st.session.mode !== "supabase" || !st.session.signedIn) return st;
+    if (st.session.needsReauth && (st.session.noAccess || !noAccess)) return st;
+    return { session: { ...st.session, needsReauth: true, ...(noAccess ? { noAccess: true } : {}) } };
+  });
+}
+
+/** A deactivated (or deleted) profile: block the app first, then end the Supabase session on this device. */
+async function endInactive(store: PullStore) {
+  flagReauth(store, { noAccess: true });
+  await endSessionOnDevice({ timeoutMs: 5000 });
+}
+
+/* ───────────── the browser's Supabase session vs the account on the device ───────────── */
+
+/**
+ * "match": the browser's Supabase session is this account's (its JWT verified when online). "missing": no session, or Auth
+ * no longer accepts it. "other": another account's session (an invite or recovery link opened on this device). "unknown":
+ * cannot tell (offline with an expired access token, Auth unreachable).
+ */
+export type AccountAuth = "match" | "missing" | "other" | "unknown";
+
+export async function accountAuthState(client: SupabaseBrowserClient, userId: string): Promise<AccountAuth> {
+  try {
+    // The cookies, read locally (the network only to refresh an expired access token): enough to see a missing or foreign one.
+    const { data, error } = await client.auth.getSession();
+    if (error) return isAuthRetryableFetchError(error) ? "unknown" : "missing";
+    if (!data.session) return "missing";
+    if (data.session.user.id !== userId) return "other";
+    // getSession trusts the cookie; getClaims verifies the JWT (JWKS, or the Auth server for a symmetric key).
+    const claims = await client.auth.getClaims();
+    if (claims.data?.claims) return claims.data.claims.sub === userId ? "match" : "other";
+    const e = claims.error;
+    if (!e) return "missing";
+    if (isAuthRetryableFetchError(e)) return "unknown";
+    if (isAuthSessionMissingError(e) || e.name === "AuthInvalidJwtError") return "missing";
+    if (isAuthApiError(e) && (e.status === 401 || e.status === 403 || e.status === 404)) return "missing";
+    return "unknown";
+  } catch {
+    return "unknown";
+  }
+}
+
+let verifying: Promise<AccountAuth | null> | null = null;
+
+/**
+ * Compares the account on the device with the browser's Supabase session (store bootstrap, auth events, /login), outside a
+ * pull. None, or another account's → "Vuelva a entrar": syncing stops, the data stays. This account's → re-authentication is
+ * over (if it was due) and a pull starts, which re-reads the profile (deactivated → no access; new role / unit → full re-sync).
+ * Offline ("unknown") the device keeps working as it was. Resolves with the comparison (null: no account session).
+ */
+export function verifyAccount(store: PullStore): Promise<AccountAuth | null> {
+  if (verifying) return verifying;
+  verifying = (async () => {
+    const st = store.getState();
+    if (!isSupabaseConfigured || st.session.mode !== "supabase" || !st.session.signedIn) return null;
+    const userId = st.session.userId;
+    const auth = await accountAuthState(getSupabaseBrowserClient(), userId);
+    const now = store.getState().session;
+    if (now.mode !== "supabase" || !now.signedIn || now.userId !== userId) return auth; // the session changed meanwhile
+    if (auth === "missing" || auth === "other") {
+      flagReauth(store);
+      return auth;
+    }
+    if (auth === "match" && now.needsReauth)
+      store.setState((s) => (s.session.userId === userId ? { session: { ...s.session, needsReauth: false, noAccess: undefined } } : s));
+    void requestPull(store, { manual: true });
+    return auth;
+  })().finally(() => {
+    verifying = null;
+  });
+  return verifying;
 }

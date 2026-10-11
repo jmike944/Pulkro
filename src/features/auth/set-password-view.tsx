@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, useCallback, useEffect, useState } from "react";
+import { Suspense, useCallback, useEffect, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { ArrowRight, KeyRound, Link2Off, Loader2, LockKeyhole, Mail, MailCheck, RotateCw, UserRoundX, WifiOff } from "lucide-react";
 import type { EmailOtpType } from "@supabase/supabase-js";
@@ -12,12 +12,15 @@ import { linkErrorOf, setPasswordErrorMessage, type LinkFailure } from "./auth-e
 import { AuthFrame, AuthHeading } from "./auth-frame";
 import { AuthField, FormMessage, PasswordChecklist, PasswordField } from "./form-bits";
 import { PASSWORD_RULE_TEXT, passwordProblem } from "./password-policy";
+import { accountOnDevice, whenHydrated } from "./session";
 import { useEnterAccount } from "./use-enter-account";
 
 /**
  * /acceso/definir-contrasena — where the invite and recovery e-mails land (supabase/templates):
  *   ?token_hash=…&type=invite|recovery   → verifyOtp, then "Defina su contraseña" (updateUser), then into the app
  *   ?token_hash=…&type=email_change|email → verifyOtp, then "Correo confirmado", then into the app
+ * Verifying the link replaces the browser's Supabase session with the link's account: while an account is open on this device,
+ * the page asks first ("other-account"), so a link opened on a shared tablet never silently takes over its session.
  * The token is a credential until it is used: the query leaves the address bar (and the history) as soon as the page has read
  * it, whatever happens next; "Reintentar" works from the copy in memory. It is verified once per page (React may run effects
  * twice).
@@ -35,6 +38,7 @@ type Outcome = { ok: true; verified: Verified } | { ok: false; failure: LinkFail
 
 type Stage =
   | { kind: "checking" }
+  | { kind: "other-account"; name: string }
   | { kind: "unconfigured" }
   | { kind: "incomplete" }
   | { kind: "expired"; type: LinkType }
@@ -120,6 +124,8 @@ function SetPasswordInner() {
   const [stage, setStage] = useState<Stage>(() => initialStage(link));
   const [attempt, setAttempt] = useState(0);
   const [leaving, setLeaving] = useState(false);
+  // The person chose to go on with the link although an account is open on this device.
+  const takeOver = useRef(false);
 
   // Right away, on every outcome (also a failed, expired or abandoned check): the token stays out of the history, the
   // address bar and anything that stores URLs (sync of open tabs, screenshots, a link shared by mistake).
@@ -131,13 +137,22 @@ function SetPasswordInner() {
     if (stage.kind !== "checking" || !isLinkType(link.type)) return;
     const type = link.type;
     let alive = true;
-    void verifyOnce(link.tokenHash, type).then((outcome) => {
+    void (async () => {
+      if (!takeOver.current) {
+        await whenHydrated();
+        const open = accountOnDevice();
+        if (open) {
+          if (alive) setStage({ kind: "other-account", name: open.name });
+          return;
+        }
+      }
+      const outcome = await verifyOnce(link.tokenHash, type);
       if (!alive) return;
       if (outcome.ok) lastVerified = outcome.verified;
       // Used or refused for good: a later visit to this page starts from its own link.
       else if (outcome.failure.kind !== "network" && outcome.failure.kind !== "other") forgetLink();
       setStage(stageOf(outcome, type));
-    });
+    })();
     return () => {
       alive = false;
     };
@@ -147,6 +162,11 @@ function SetPasswordInner() {
     verifications.delete(link.tokenHash);
     setStage({ kind: "checking" });
     setAttempt((a) => a + 1);
+  };
+
+  const continueWithLink = () => {
+    takeOver.current = true;
+    setStage({ kind: "checking" });
   };
 
   const entered = useCallback(() => {
@@ -180,6 +200,32 @@ function SetPasswordInner() {
             <Loader2 className="size-8 animate-spin text-subtle" />
             <p className="mt-4 text-[15px] text-subtle">Comprobando su enlace…</p>
           </div>
+        )}
+
+        {stage.kind === "other-account" && (
+          <>
+            <span className="mb-5 flex size-14 items-center justify-center rounded-[18px] bg-amber-soft text-amber-fg [&_svg]:size-6">
+              <UserRoundX />
+            </span>
+            <AuthHeading title="Hay una cuenta abierta en este dispositivo">
+              Está abierta la cuenta de <b className="font-semibold text-ink">{stage.name}</b>. Si este enlace es de otra persona, al continuar se
+              cerrará esa sesión aquí; sus cambios sin enviar no se borran sin preguntar antes.
+            </AuthHeading>
+            <div className="mt-7 space-y-3">
+              <BigButton onClick={continueWithLink}>
+                Continuar con el enlace <ArrowRight />
+              </BigButton>
+              <BigButton
+                variant="outline"
+                onClick={() => {
+                  forgetLink();
+                  router.replace("/");
+                }}
+              >
+                Volver a la app
+              </BigButton>
+            </div>
+          </>
         )}
 
         {stage.kind === "unconfigured" && (

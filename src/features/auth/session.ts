@@ -40,6 +40,13 @@ export function whenHydrated(): Promise<void> {
   });
 }
 
+/** The account session the store holds on this device (data, maybe unsent changes), whatever the state of its Supabase session. */
+export function accountOnDevice(): { userId: string; name: string } | null {
+  const s = useAppStore.getState();
+  if (s.session.mode !== "supabase" || !s.session.signedIn) return null;
+  return { userId: s.session.userId, name: s.users.find((u) => u.id === s.session.userId)?.name ?? "otra cuenta" };
+}
+
 /** Another account's session on this device that still holds unsent changes (they would be lost by signing in). */
 export function otherAccountOnDevice(userId: string): { name: string; unsent: number } | null {
   const s = useAppStore.getState();

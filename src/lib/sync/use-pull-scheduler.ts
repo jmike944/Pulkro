@@ -3,15 +3,17 @@
 import { useEffect } from "react";
 import { getSupabaseBrowserClient, isSupabaseConfigured } from "@/lib/supabase/client";
 import { isOffline, useAppStore } from "@/lib/store";
-import { flagReauth } from "./pull";
+import { flagReauth, verifyAccount } from "./pull";
 
 const INTERVAL_MS = 60_000;
 
 /**
  * When an account session pulls (architecture §8: "pull on reconnect / interval / focus"): on window focus, when the tab
  * becomes visible, when the connection comes back, and every 60 s while the tab is visible. The first pull and the one after
- * signing in are started by the store (ensureSeeded / startSupabaseSession). Also flags re-authentication when Supabase
- * signs the session out (refresh token revoked or expired) while the device still holds the account's data.
+ * signing in are started by the store (ensureSeeded / startSupabaseSession). Also watches the browser's Supabase session:
+ * signed out (refresh token revoked or expired) or replaced by another account's (an invite / recovery link opened on this
+ * device) → "Vuelva a entrar", nothing pulled, data kept; this account's session back (signed in again in another tab) →
+ * checked and syncing again.
  */
 export function usePullScheduler() {
   const hydrated = useAppStore((s) => s.hydrated);
@@ -43,10 +45,11 @@ export function usePullScheduler() {
     let stopAuth = () => {};
     try {
       const { data } = getSupabaseBrowserClient().auth.onAuthStateChange((event, session) => {
-        // Only store writes here (no Supabase calls inside this callback).
+        // Only store writes here: a Supabase call inside this callback would wait on the auth lock (hence the timeout).
         const s = useAppStore.getState();
         if (s.session.mode !== "supabase" || !s.session.signedIn) return;
         if (event === "SIGNED_OUT" || (session && session.user.id !== s.session.userId)) flagReauth(useAppStore);
+        else if (session && s.session.needsReauth) setTimeout(() => void verifyAccount(useAppStore), 0);
       });
       stopAuth = () => data.subscription.unsubscribe();
     } catch {

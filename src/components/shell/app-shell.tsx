@@ -15,15 +15,20 @@ import { CardHeader } from "./card-header";
 import { canSeeRoute } from "./nav";
 import { RouteNotAllowed } from "./out-of-scope";
 import { ReauthBanner } from "./reauth-banner";
+import { NoAccessView } from "@/features/auth/no-access-view";
 
 /**
  * Authenticated chrome: canvas + sidebar (desktop) / top+bottom bars (mobile) + white work panel.
- * Waits for the IndexedDB store to hydrate, then routes to /login when signed out. Routes the current role may not open
- * (nav.ts → canSeeRoute: typed URLs, old links, a role switch) render one uniform "No disponible para su rol" state.
+ * Waits for the IndexedDB store to hydrate, then routes to /login when signed out. The store session alone opens the app
+ * (offline-first); the browser's Supabase session is reconciled with it in the background (sync/pull.ts verifyAccount): a
+ * missing or foreign one shows "Vuelva a entrar" (ReauthBanner), a deactivated profile blocks the app (NoAccessView). Routes
+ * the current role may not open (nav.ts → canSeeRoute: typed URLs, old links, a role switch) render one uniform "No
+ * disponible para su rol" state.
  */
 export function AppShell({ children }: { children: React.ReactNode }) {
   const hydrated = useAppStore((s) => s.hydrated);
   const signedIn = useAppStore((s) => s.session.signedIn);
+  const noAccess = useAppStore((s) => s.session.mode === "supabase" && s.session.signedIn && !!s.session.noAccess);
   const router = useRouter();
   const pathname = usePathname();
 
@@ -32,6 +37,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   }, [hydrated, signedIn, router, pathname]);
 
   if (!hydrated || !signedIn) return <ShellSkeleton />;
+  if (noAccess) return <NoAccessView />;
   return <SignedInShell pathname={pathname}>{children}</SignedInShell>;
 }
 

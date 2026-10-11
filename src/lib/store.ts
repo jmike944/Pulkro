@@ -29,7 +29,7 @@ import { DONE_STATUSES, OPEN_STATUSES } from "./status";
 import { DEMO_ENABLED, DEMO_SIGN_IN } from "./demo";
 import { clearPhotoFiles, deletePhotoFile } from "./photo-store";
 import { createDeviceStorage, flushWrite, ownerOf, registerTab } from "./device-storage";
-import { requestPull, type PullRequest, type PullState } from "./sync/pull";
+import { requestPull, verifyAccount, type PullRequest, type PullState } from "./sync/pull";
 import type {
   AuditEntity,
   CaseStatus,
@@ -163,10 +163,13 @@ type Session = {
    */
   mode: "demo" | "supabase";
   /**
-   * Account sessions: the Supabase session is gone (expired refresh token, signed out elsewhere, profile deactivated). The
-   * device keeps every record and unsent change; pulling stops until the person signs in again (ReauthBanner → /login).
+   * Account sessions: the browser has no Supabase session for this account (expired refresh token, signed out elsewhere,
+   * another account's invite / recovery link opened on this device, profile deactivated). The device keeps every record and
+   * unsent change; pulling stops until the person signs in again ("Vuelva a entrar": ReauthBanner → /login).
    */
   needsReauth?: boolean;
+  /** With needsReauth: the profile is no longer active. The Supabase session was ended and the shell blocks the app. */
+  noAccess?: boolean;
   /** Account sessions: pull cursors and progress (sync/pull.ts). Belongs to this account; a new account starts without it. */
   pull?: PullState;
 };
@@ -474,7 +477,7 @@ export const useAppStore = create<AppState>()(
               users: st.users.some((u) => u.id === user.id) ? st.users.map((u) => (u.id === user.id ? user : u)) : [...st.users, user],
               units: !unit ? st.units : st.units.some((x) => x.id === unit.id) ? st.units.map((x) => (x.id === unit.id ? unit : x)) : [...st.units, unit],
               // Signing in again ends a pending re-authentication; the cursors carry on from where they were.
-              session: { ...st.session, signedIn: true, mode: "supabase", needsReauth: false },
+              session: { ...st.session, signedIn: true, mode: "supabase", needsReauth: false, noAccess: undefined },
             }));
             setTimeout(() => void getState().pullNow({ manual: true }), 0);
             return;
@@ -1353,9 +1356,10 @@ export const useAppStore = create<AppState>()(
         ensureSeeded: () => {
           const s = getState();
           // An account session never gets the demo dataset: it reads its data from the server (after the bootstrap has
-          // set the connectivity flags, hence the timeout).
+          // set the connectivity flags, hence the timeout). First the browser's Supabase session must still be this
+          // account's: none, or another account's (a link opened on this device) → "Vuelva a entrar", no sync.
           if (s.session.mode === "supabase") {
-            if (s.session.signedIn) setTimeout(() => void getState().pullNow({ manual: true }), 0);
+            if (s.session.signedIn) setTimeout(() => void verifyAccount({ getState, setState }), 0);
             return;
           }
           // A build without the demo sign-in keeps no demo data (nor a demo session left by an earlier demo build).
