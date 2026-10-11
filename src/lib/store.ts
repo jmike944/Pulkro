@@ -15,7 +15,7 @@ import { differenceInCalendarDays, format, parseISO, startOfDay } from "date-fns
 import { toast } from "sonner";
 import { DEMO_USER_BY_ROLE, SEED_VERSION, generateSeed, shiftSnapshotDates } from "./seed";
 import { can, canSeeOrder, canSeeUnit, type Action } from "./permissions";
-import { GEO_NOTE_MIN, closureBlockers, photoTimingIssues } from "./domain";
+import { GEO_NOTE_MIN, closureBlockers, derivedExecutionStatus, photoTimingIssues } from "./domain";
 import { plural } from "./format";
 import { DONE_STATUSES, OPEN_STATUSES } from "./status";
 import { DEMO_ENABLED } from "./demo";
@@ -89,7 +89,12 @@ const nextFolio = (items: { folio: string }[], prefix: string, width: number) =>
   const max = items.reduce((m, x) => Math.max(m, parseInt(x.folio.split("-")[1] ?? "0", 10) || 0), 0);
   return `${prefix}-${String(max + 1).padStart(width, "0")}`;
 };
-const surveyToken = () => crypto.randomUUID().replace(/-/g, "").slice(0, 10);
+/** 256-bit survey link token (43 base64url characters): the server refuses shorter or low-entropy tokens. */
+const surveyToken = () =>
+  btoa(String.fromCharCode(...crypto.getRandomValues(new Uint8Array(32))))
+    .replace(/\+/g, "-")
+    .replace(/\//g, "_")
+    .replace(/=+$/, "");
 const omit = <T extends object, K extends keyof T>(obj: T, keys: K[]): Omit<T, K> =>
   Object.fromEntries(Object.entries(obj).filter(([k]) => !keys.includes(k as K))) as Omit<T, K>;
 
@@ -547,7 +552,17 @@ export const useAppStore = create<AppState>()(
             denied("Solo se confirman fechas de una orden reprogramada.");
             return;
           }
-          changeStatus(orderId, status, reason);
+          if (status === "reprogramada") {
+            changeStatus(orderId, status, reason);
+            return;
+          }
+          // Confirming dates: the jornadas decide the status (server: set_order_status), never the requested target.
+          const next = derivedExecutionStatus(orderId, getState().jornadas);
+          const blocking = getState().incidents.some((i) => i.orderId === orderId && i.status === "abierta" && i.blocksClosure);
+          if (blocking) {
+            patchOrder(orderId, { previousStatus: next });
+            changeStatus(orderId, "con_incidencia", reason);
+          } else changeStatus(orderId, next, reason);
         },
 
         cancelOrder: (orderId, reason) => {
@@ -639,11 +654,17 @@ export const useAppStore = create<AppState>()(
           }
           const s = getState();
           const kept = s.jornadas.filter((j) => j.orderId === orderId && j.status !== "pendiente");
+          if (!days.length && !kept.length) {
+            denied("Indique al menos una jornada: la orden no puede quedarse sin días por ejecutar.");
+            return;
+          }
+          // New days continue after the highest executed day (a day worked out of order never collides).
+          const lastIndex = kept.reduce((m, j) => Math.max(m, j.dayIndex), 0);
           const crew = order.crewHistory.at(-1)?.workerIds ?? [];
           const toIso = (date: string, hm: string) => new Date(`${date}T${hm}:00`).toISOString();
           const sorted = [...days].sort((a, b) => a.date.localeCompare(b.date));
           const fresh: Jornada[] = sorted.map((d, i) => ({
-            id: uid("jor"), orderId, dayIndex: kept.length + i + 1, date: d.date,
+            id: uid("jor"), orderId, dayIndex: lastIndex + i + 1, date: d.date,
             plannedStart: toIso(d.date, d.start), plannedEnd: toIso(d.date, d.end), workerIds: crew, status: "pendiente", log: [],
           }));
           const all = [...kept, ...fresh];
@@ -654,8 +675,10 @@ export const useAppStore = create<AppState>()(
             scheduledEnd: all.map((j) => j.plannedEnd).sort().at(-1) ?? order.scheduledEnd,
           });
           record("orden", orderId, `Programó ${plural(fresh.length, "jornada", "jornadas")}`, { orderId, reason, syncLabel: `Agenda · ${order.folio}` });
-          if (order.status === "borrador" && crew.length) changeStatus(orderId, "programada");
-          if (order.status === "reprogramada") changeStatus(orderId, "programada", reason);
+          // Execution states follow the jornadas (server: schedule_jornadas → derived_status).
+          const derived: OrderStatus[] = ["borrador", "programada", "en_ejecucion", "jornada_cerrada", "pendiente_validacion", "reprogramada"];
+          if (derived.includes(order.status))
+            changeStatus(orderId, derivedExecutionStatus(orderId, getState().jornadas), order.status === "reprogramada" ? reason : undefined);
         },
 
         /* ── field execution ── */
@@ -830,6 +853,11 @@ export const useAppStore = create<AppState>()(
             denied("La orden ya no admite cambios.");
             return;
           }
+          // The report froze the incident: editing it after closure needs a reopen (server: update_incident → assert_open).
+          if (isTerminal(ok.order.status)) {
+            denied(CLOSED_ORDER);
+            return;
+          }
           // Identity and authorship never change; resolution goes through resolveIncident.
           const rest = omit(patch, ["id", "folio", "orderId", "createdAt", "createdBy", "status", "resolvedAt", "resolvedBy"]);
           setState((st) => ({ incidents: st.incidents.map((i) => (i.id === incidentId ? { ...i, ...rest } : i)) }));
@@ -854,12 +882,8 @@ export const useAppStore = create<AppState>()(
           const stillBlocking = getState().incidents.some((i) => i.orderId === inc.orderId && i.status === "abierta" && i.blocksClosure);
           const o = getState().orders.find((x) => x.id === inc.orderId);
           if (o && o.status === "con_incidencia" && !stillBlocking) {
-            const js = getState().jornadas.filter((j) => j.orderId === o.id);
-            const fallback: OrderStatus = js.some((j) => j.status === "en_curso")
-              ? "en_ejecucion"
-              : js.some((j) => j.status === "pendiente")
-                ? js.some((j) => j.status === "cerrada") ? "jornada_cerrada" : "programada"
-                : "pendiente_validacion";
+            // No days → borrador, never pendiente_validacion (server: resolve_incident → derived_status).
+            const fallback = derivedExecutionStatus(o.id, getState().jornadas);
             // Execution states are recomputed from the jornadas; anything else resumes where it was.
             const resumable: OrderStatus[] = ["finalizada", "reabierta", "reprogramada"];
             const next = o.previousStatus && resumable.includes(o.previousStatus) ? o.previousStatus : fallback;

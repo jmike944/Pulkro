@@ -2,7 +2,7 @@
  * Pure business rules (doc §8). No React here — safe to use in selectors, metrics and PDF.
  */
 import { differenceInMinutes, isSameDay, parseISO } from "date-fns";
-import type { GeoSource, Incident, Jornada, Order, Photo, Report, Role, Survey, PostSaleCase } from "./types";
+import type { GeoSource, Incident, Jornada, Order, OrderStatus, Photo, Report, Role, Survey, PostSaleCase } from "./types";
 import type { Tone } from "./status";
 import { can } from "./permissions";
 import { plural } from "./format";
@@ -74,6 +74,9 @@ export function closureBlockers(
   const pending = js.filter((j) => j.status !== "cerrada");
   if (pending.length)
     out.push({ id: "jornadas", label: `${plural(pending.length, "jornada", "jornadas")} sin registro de salida`, severity: "block" });
+  else if (!js.some((j) => j.checkIn && j.checkOut))
+    // Same hard blocker as the server: a service that was never executed cannot be closed, not even with an exception.
+    out.push({ id: "sin-ejecucion", label: "Ninguna jornada ejecutada (con entrada y salida)", severity: "block" });
   const ev = orderEvidence(order, jornadas, photos);
   ev.perJornada
     .filter((x) => x.jornada.checkIn)
@@ -89,6 +92,21 @@ export function closureBlockers(
   if (pendingSyncCount > 0)
     out.push({ id: "sync", label: `${plural(pendingSyncCount, "registro", "registros")} sin sincronizar`, detail: "El PDF definitivo se bloquea hasta sincronizar.", severity: "warn" });
   return out;
+}
+
+/**
+ * Execution status the jornadas support (server: private.derived_status). Used when confirming dates of a rescheduled
+ * order, after a reschedule and when the last blocking incident is resolved — never an execution state without execution.
+ */
+export function derivedExecutionStatus(orderId: string, jornadas: Jornada[]): OrderStatus {
+  const js = jornadas.filter((j) => j.orderId === orderId);
+  if (!js.length) return "borrador";
+  if (js.some((j) => j.status === "en_curso")) return "en_ejecucion";
+  if (js.some((j) => j.status === "pendiente")) {
+    if (js.some((j) => j.status === "cerrada")) return "jornada_cerrada";
+    return js.some((j) => j.workerIds.length > 0) ? "programada" : "borrador";
+  }
+  return "pendiente_validacion";
 }
 
 /* ───────────── evidence integrity ───────────── */
