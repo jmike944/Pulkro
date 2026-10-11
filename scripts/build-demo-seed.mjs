@@ -7,9 +7,9 @@
 //   DEMO_NOW          ISO instant used as "now" (default: the current time; the app calls generateSeed(new Date()))
 //   DEMO_CHUNK_BYTES  maximum size of one chunk (default 45000) so each execute_sql call stays reasonable
 //   DEMO_SAMPLE=auto  dry-run aid: only a representative subset of orders, all in ONE transaction that ends in ROLLBACK,
-//                     written to DEMO_OUT (required) instead of supabase/seed/demo.sql; the folio sequences and the audit
-//                     identity are saved before it and restored after the rollback (sequences are not transactional).
-//                     Meant for a database without the demo loaded (ids would collide).
+//                     written to DEMO_OUT (required) instead of supabase/seed/demo.sql. Run it on a disposable database (a
+//                     branch or a scratch project) without the demo loaded: sequences are not transactional, so it uses up
+//                     folio and audit numbers, and it never moves them back — another session may already hold later ones.
 //
 // Encoding (keeps the file small enough to load through the Supabase MCP): times are Unix epoch seconds (or seconds
 // relative to the row's own reference time); app ids are rebuilt from their numbers (12 → 'ord_0012') and mapped with
@@ -1033,22 +1033,10 @@ ${Object.entries(visible).map(([role, v]) => `--   ${role.padEnd(15)} ${v.user} 
 `;
 
 const verifyChunk = `-- ═════ chunk ${total} of ${total} · verification (read-only) ═════\n${VERIFY_SQL}`;
-// Sequences are not transactional: the sample remembers them before its transaction and restores them after the rollback
-// (never below what committed rows use, in case another session took values meanwhile), so a dry run leaves no gaps.
-const SAMPLE_SEQUENCES = [
-  ['private.order_folio_seq', '(select coalesce(max(substr(folio, 4)::bigint), 1) from public.orders)'],
-  ['private.incident_folio_seq', '(select coalesce(max(substr(folio, 5)::bigint), 1) from public.incidents)'],
-  ['private.case_folio_seq', '(select coalesce(max(substr(folio, 4)::bigint), 1) from public.post_sale_cases)'],
-  ['public.audit_log_id_seq', '(select coalesce(max(id), 1) from public.audit_log)'],
-];
-const sampleSave = `-- remember the sequences (restored after the rollback)\ncreate temp table demo_sample_seq as\n${SAMPLE_SEQUENCES
-  .map(([seq]) => `  select '${seq}'::regclass as seq, last_value, is_called from ${seq}`).join('\n  union all\n')};`;
-const sampleRestore = `-- restore the sequences\n${SAMPLE_SEQUENCES
-  .map(([seq, used]) => `select pg_catalog.setval(s.seq, greatest(${used}, s.last_value), ${used} > s.last_value or s.is_called) from demo_sample_seq s where s.seq = '${seq}'::regclass;`)
-  .join('\n')}\ndrop table demo_sample_seq;`;
 const out = SAMPLE
-  ? [`-- SAMPLE DRY RUN (${orders.length} orders) — everything in one transaction, rolled back`, sampleSave, 'begin;',
-    ...chunkSql.map((c) => c.replace(/^begin;$/m, '').replace(/^commit;$/m, '')), verifyChunk, 'rollback;', sampleRestore, ''].join('\n\n')
+  ? [`-- SAMPLE DRY RUN (${orders.length} orders) — everything in one transaction, rolled back. Disposable databases only:\n`
+      + '-- the folio sequences and the audit identity keep the numbers it used (never moved back).\nbegin;',
+    ...chunkSql.map((c) => c.replace(/^begin;$/m, '').replace(/^commit;$/m, '')), verifyChunk, 'rollback;', ''].join('\n\n')
   : [header, ...chunkSql, verifyChunk, ''].join('\n\n');
 const outFile = SAMPLE ? path.resolve(process.env.DEMO_OUT) : path.join(root, 'supabase/seed/demo.sql');
 fs.mkdirSync(path.dirname(outFile), { recursive: true });

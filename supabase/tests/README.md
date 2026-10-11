@@ -27,7 +27,8 @@ auth hook, sync guarantees). Every file:
 | `12_review_round4.sql` | **PR #9 review, cubic (2026-10-11), migration `review_pr9_cubic_wrappers`.** Every binding wrapper digests with SHA-256 (stored digest is 64 hex characters); every RPC wrapper maps invalid input values (NULL into NOT NULL, CHECK, smallint overflow) to `PT422 invalid_value` while duplicates keep `23505` and business errors keep their hint; checking out one day while another is in progress keeps the order `en_ejecucion` |
 | `13_review_round5.sql` | **Adversarial pass on the PR #9 fixes, migration `review_pr9_followups`.** `assign_crew` on a named jornada answers `parent_missing` / `jornada_order_mismatch` / `jornada_rescheduled`; an open incident cannot carry resolution text; reopening a case whose owner moved unit is refused unless reassigned in the same patch; a supervisor moved to another unit cannot reopen their closed order; `crew_worker_ids` materializes the visible orders |
 | `14_review_round6.sql` | **PR #9 review, Codex round 2, migration `review_pr9_codex_round2`.** Reassigning an order moves its open cases (not the closed ones) to the new supervisor with a timeline entry and audit; reopening a case without a 10+ character reason is refused, then the owner is re-checked; flagging Reprogramada or confirming dates under a blocking incident keeps `con_incidencia` and sets the status to resume; a supervisor moved to another unit stays readable for the old unit's Administración and their former orders' supervisor, not for an unrelated supervisor; `upsert_site` locks its clients `FOR SHARE` |
-| `15_review_round7.sql` | **PR #9 review, cubic round 2, migration `review_pr9_cubic_round2`.** `update_incident` refuses an empty patch, a null `jornada_id` and another order's jornada; while the demo dataset is loaded, `drop_demo_data` refuses (`demo_in_use`, nothing deleted) when a real order names a demo material or a real crew names a demo worker — the fixture also holds an incident and a case so no folio sequence could be reset even on a regression |
+| `15_review_round7.sql` | **PR #9 review, cubic round 2, migration `review_pr9_cubic_round2`.** `update_incident` refuses an empty patch, a null `jornada_id` and another order's jornada; rescheduling, check-in and check-out under a blocking incident update the status the order resumes (Reprogramada never survives the work); a supervisor from another unit cannot own the order's case; `upsert_site` locks clients before the site; while the demo dataset is loaded, `drop_demo_data` refuses (`demo_in_use`, nothing deleted) when a real order names a demo material or a real crew names a demo worker — the fixture also holds an incident and a case so no folio sequence could be reset even on a regression |
+| `16_review_round8.sql` | **PR #9 review, cubic round 3, migration `review_pr9_cubic_round3`.** Every foreign key to `profiles` (from the catalog, `audit_log` aside) must be read by `referenced_profile_ids`; a report shared by someone only that share names is readable by the order's supervisor and not by an unrelated one |
 
 ## Sources and generation
 
@@ -43,7 +44,7 @@ node scripts/build-db-tests.mjs
 
 **Today — Supabase MCP (`execute_sql`).** Paste the whole content of one generated file into a single `execute_sql`
 call against the project. The call returns `[{"result":"ok","test":"…"}]` or an error whose message starts with
-`FAIL [label]`. Run the files in order 00 → 15; each one is independent and must print `ok`.
+`FAIL [label]`. Run the files in order 00 → 16; each one is independent and must print `ok`.
 
 **Later — psql / Supabase CLI** (any of them works the same way, the files only need a Postgres connection with the
 `postgres` role):

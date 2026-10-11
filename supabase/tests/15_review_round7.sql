@@ -213,12 +213,20 @@ begin
   perform public.assign_crew(gen_random_uuid(), v_o3, array['44444444-0000-4000-8000-000000000001']::uuid[], 'Inicial');
   perform public.set_order_status(gen_random_uuid(), v_o3, 'reprogramada', 'El cliente movió la fecha');
   perform public.add_incident(gen_random_uuid(), 'dddddddd-1500-4000-8000-000000000003', v_o3, 'otra', 'alta', 'Acceso bloqueado', true);
-  perform pg_temp.eq('check-in under the incident keeps con_incidencia',
-    public.check_in(gen_random_uuid(), '66666666-1000-4000-8000-000000000003', now() - interval '3 hours', 25.7, -100.3, 10) ->> 'order_status', 'con_incidencia');
+  -- rescheduling under the incident: the new plan decides the status to resume (here: a pending day with crew → programada)
+  perform pg_temp.eq('rescheduling under the incident keeps con_incidencia',
+    public.schedule_jornadas(gen_random_uuid(), v_o3, jsonb_build_array(jsonb_build_object('id', 'b3b3b3b3-1500-4000-8000-000000000003',
+      'date', current_date, 'planned_start', now() - interval '4 hours', 'planned_end', now() + interval '4 hours')), 'Nuevo plan') ->> 'status',
+    'con_incidencia');
   perform pg_temp.as_owner();
-  perform pg_temp.eq('…and the order now resumes en_ejecucion, not Reprogramada', (select previous_status::text from public.orders where id = v_o3), 'en_ejecucion');
+  perform pg_temp.eq('…and the order now resumes programada, not Reprogramada', (select previous_status::text from public.orders where id = v_o3), 'programada');
   perform pg_temp.as_user(c_sup1);
-  perform public.check_out(gen_random_uuid(), '66666666-1000-4000-8000-000000000003', now() - interval '1 hour', 25.7, -100.3, 10);
+  perform pg_temp.eq('check-in under the incident keeps con_incidencia',
+    public.check_in(gen_random_uuid(), 'b3b3b3b3-1500-4000-8000-000000000003', now() - interval '3 hours', 25.7, -100.3, 10) ->> 'order_status', 'con_incidencia');
+  perform pg_temp.as_owner();
+  perform pg_temp.eq('…and the order now resumes en_ejecucion', (select previous_status::text from public.orders where id = v_o3), 'en_ejecucion');
+  perform pg_temp.as_user(c_sup1);
+  perform public.check_out(gen_random_uuid(), 'b3b3b3b3-1500-4000-8000-000000000003', now() - interval '1 hour', 25.7, -100.3, 10);
   perform pg_temp.eq('resolving after the work was done resumes pendiente_validacion',
     public.resolve_incident(gen_random_uuid(), 'dddddddd-1500-4000-8000-000000000003', 'Se liberó el acceso') ->> 'order_status', 'pendiente_validacion');
 

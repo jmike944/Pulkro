@@ -1,7 +1,7 @@
 # Pulkro Cuadrillas — backend architecture (Supabase)
 
 Status (2026-10-11, after the PR #9 review): schema, RLS, business-rule RPCs, Storage and the auth hook function are
-**applied** to the Supabase project "Pulkro" (ref `cbdzndpdpwtxbhshidyi`, us-east-1, Postgres 17.11) — the 17 migrations
+**applied** to the Supabase project "Pulkro" (ref `cbdzndpdpwtxbhshidyi`, us-east-1, Postgres 17.11) — the 18 migrations
 below. The project holds the **demo dataset** (302 orders and their history, 11 password-less demo accounts; every row
 registered in `private.demo_rows`, removed in one call by `select private.drop_demo_data();`, see `supabase/seed/README.md`);
 no real accounts or data yet, no Storage objects. The app still runs on the on-device zustand store; wiring it to this
@@ -26,10 +26,11 @@ backend is the phased plan in §12.
 | `20261011054527_review_pr9_followups` | adversarial pass on the PR #9 fixes: `assign_crew` follows the reference contract (`parent_missing` / `jornada_order_mismatch` / `jornada_rescheduled`), an open incident carries no resolution text, reopening a case re-checks its owner, a supervisor of another unit cannot reopen an order (`supervisor_other_unit`), `crew_worker_ids` materializes the visible orders |
 | `20261011061310_review_pr9_codex_round2` | PR #9 review (Codex, round 2): an order's open cases follow it to the new supervisor, reopening a case needs its reason, open blocking incidents stay authoritative when an order is flagged Reprogramada, people on visible orders and cases stay readable after a unit move (`private.referenced_profile_ids()`), `upsert_site` holds the client it authorized against |
 | `20261011063116_review_pr9_cubic_round2` | PR #9 review (cubic, round 2): `update_incident` refuses an empty patch and never detaches an incident from its jornada (`jornada_required`); `drop_demo_data` refuses while a surviving order names a demo material or demo worker; check-in/out and rescheduling under an open blocking incident update the status the order resumes; a supervisor owns a case only inside the order's unit; `upsert_site` locks clients before the site |
+| `20261011065308_review_pr9_cubic_round3` | PR #9 review (cubic, round 3): `referenced_profile_ids` reads every profile reference of a visible order and its records (field capture, incidents, photos, closures, reports, shares, surveys, cases) |
 
 Sources of truth mirrored here: `docs/requisitos.md`, `src/lib/types.ts`, `src/lib/permissions.ts`, `src/lib/hooks.ts`,
-`src/lib/store.ts`, `src/lib/domain.ts`. Tests: `supabase/tests/` (all 16 files pass, including the review regression suites
-`09` to `15`; they ignore the rows of the demo dataset). Types: `src/lib/supabase/database.types.ts` (regenerated after migration `20261011043034`).
+`src/lib/store.ts`, `src/lib/domain.ts`. Tests: `supabase/tests/` (all 17 files pass, including the review regression suites
+`09` to `16`; they ignore the rows of the demo dataset). Types: `src/lib/supabase/database.types.ts` (regenerated after migration `20261011043034`).
 
 ---
 
@@ -195,9 +196,12 @@ statement with the role's own index; the policies compare against that array, wh
 fine at Pulkro's scale (tens of thousands); revisit beyond ~100 000 orders (§14).
 
 **People on visible records** (PR #9 review): `private.referenced_profile_ids()` (SECURITY DEFINER, once per statement)
-collects the supervisors (current and former, `order_assignments`) and creators of the caller's visible orders, the
-owners and creators of their cases and case events, closure validators and survey senders/recorders — so history keeps
-its names after someone moves to another unit.
+collects every profile a visible order or its records names — current and former supervisors (`order_assignments`), the
+order's creator, and every author column of its crew history, checks, notes, incidents (created/resolved), photos
+(created/deleted), closures (validator, exception authorizer), reports, shares, surveys (sent/recorded), cases (owner,
+creator) and case events — so history keeps its names after someone moves to another unit. `audit_log` keeps its own
+`actor_name` snapshot. Suite 16 derives the list of columns from the catalog's foreign keys to `profiles`, so a new one
+cannot be forgotten.
 
 **Workers on a visible crew** (PR #9 review): a worker moved to another unit or deactivated can still be booked on
 open jornadas of the old unit (the app allows it after a confirmation) and is named in closed jornadas and crew history.
@@ -247,15 +251,24 @@ RPCs take the token instead of an op id.
 | `update_my_contact` | any active account | own phone only |
 | `sync_reconcile` (read) | any active account (SECURITY INVOKER, plain RLS) | returns the subset of ids still visible |
 
-**Error contract** (PostgREST maps `PTnnn` to HTTP status; `hint` is a stable machine reason):
+**Error contract** (PostgREST maps `PTnnn` to HTTP status; `hint` is a stable machine reason — the complete list):
 `PT401` (`no_session`, `no_profile`, `inactive`) · `PT403` (`forbidden:<action>`, `other_unit`) · `PT404`
 (`out_of_scope`, `survey_not_found`, `auth_user_missing`) · `PT409` (`order_closed`, `order_cancelled`, `order_frozen`,
-`duplicate_check`, `check_in_missing`, `not_closable`, `closure_blocked`, `evidence_missing`, `revalidation_required`,
-`closure_required`, `open_cases`, `not_reopenable`, `not_archivable`, `not_rescheduled`, `already_resolved`,
-`already_provisioned`, `self_change`, `site_in_use`, `client_in_use`, `has_open_orders`, `has_open_cases`,
-`op_id_reused`, `object_missing`, `parent_missing`, `order_reassigned`, `jornada_rescheduled`, `photo_deleted`,
-`append_only`, `jornada_closed`, `supervisor_other_unit`) · `PT422` (`invalid_*`, `device_time_*`, `location_*`, `reason_required`, `weak_token`,
-`op_id_required`, `days_required`, `jornada_required`, `resolution_required`, `*_order_mismatch`, …) · `23505` duplicate id · `42501` no privilege. Messages are
+`order_not_open`, `duplicate_check`, `check_in_missing`, `not_closable`, `closure_blocked`, `evidence_missing`,
+`revalidation_required`, `closure_required`, `open_cases`, `not_reopenable`, `not_archivable`, `not_rescheduled`,
+`already_resolved`, `already_provisioned`, `self_change`, `site_in_use`, `site_changed`, `client_in_use`,
+`has_open_orders`, `has_open_cases`, `op_id_reused`, `object_missing`, `parent_missing`, `order_reassigned`,
+`jornada_rescheduled`, `jornada_closed`, `photo_deleted`, `supervisor_other_unit`, `append_only`; owner-only
+`drop_demo_data`: `demo_in_use`, `demo_storage_objects`) · `PT422` (`invalid_value` — any malformed or out-of-range input,
+mapped by the wrappers — and `invalid_activities`, `invalid_answers`, `invalid_breakdown`, `invalid_case_owner`,
+`invalid_crew`, `invalid_days`, `invalid_hours`, `invalid_materials`, `invalid_mime`, `invalid_patch`, `invalid_profile`,
+`invalid_service_type`, `invalid_storage_path`, `invalid_supervisor`, `invalid_table`, `invalid_text`, `invalid_unit`,
+`device_time_future`, `device_time_stale`, `device_time_missing`, `location_missing`, `location_note_required`,
+`check_sequence`, `days_required`, `due_date_required`, `empty_patch`, `field_not_editable`, `jornada_required`,
+`op_id_required`, `reason_required`, `resolution_required`, `signature_missing`, `site_client_mismatch`,
+`status_not_settable`, `survey_id_required`, `too_many_ids`, `weak_token`, `jornada_order_mismatch`,
+`incident_order_mismatch`, `case_order_mismatch`) · `23505` duplicate id · `23503` missing reference · `42501` no
+privilege. Messages are
 user-facing Spanish (the same texts as `DENIED_REASON`/store toasts).
 
 **Not found vs. not yours**: a missing or out-of-scope **order** answers `PT404 out_of_scope` (no existence leak), except
@@ -464,7 +477,7 @@ of the integration (phase 1 of §12); the app still runs on its local demo store
 
 - Migrations: `supabase/migrations/<applied version>_<name>.sql`, applied with the MCP `apply_migration` (name = file
   name without version) and verified byte-for-byte (`md5` of `supabase_migrations.schema_migrations.statements[1]` = file
-  `md5`; all 17 match on 2026-10-11). **Never edit an applied file**; fix forward with a new one. Dry run first: one `execute_sql` call
+  `md5`; all 18 match on 2026-10-11). **Never edit an applied file**; fix forward with a new one. Dry run first: one `execute_sql` call
   `begin; <migration>; <tests>; rollback;` (verified to be transactional). Changing an RPC signature: drop the old
   `public.<name>` wrapper, recreate `private.<name>`, call `private.expose_rpc` (which also regenerates the op-args
   digest).

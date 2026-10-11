@@ -66,8 +66,9 @@ nothing, children first, it deletes:
 
 It refuses, deleting nothing, when:
 
-- **`PT409 demo_in_use`** — real data still references demo data (a real order for a demo client, a real account in a
-  demo unit, a real order listing a demo material, a real crew with a demo worker…; the error's detail names the folios).
+- **`PT409 demo_in_use`** — real data still references demo data. For the references without a foreign key (a real order
+  listing a demo material, a real crew with a demo worker) the detail names the folios of those orders; for the others (a
+  real order for a demo client, a real account in a demo unit…) it carries PostgreSQL's foreign-key message (table and key).
   Real rows are never deleted: reassign or delete them first.
 - **`PT409 demo_storage_objects`** — evidence files were uploaded to a demo order (the seed uploads none). Delete them
   through the Storage API (Dashboard → Storage → `evidencias` → `orders/<order id>`) and run again, or call
