@@ -114,6 +114,25 @@ e-mail from Dashboard → Authentication → Users → Invite, and
 and `insert into public.profiles (id, name, initials, role, unit_id, email) select u.id, '<Nombre>', '<IN>', 'direccion', (select id from public.units where code = 'MTY'), lower(u.email) from auth.users u where u.email = '<correo>';`.
 After that every account goes through the app/Edge Function.
 
+**E-mail links (invite, recovery)** land on `/acceso/definir-contrasena`, which accepts every form Supabase sends
+(`src/features/auth/auth-link.ts`):
+- **Default templates** (Free plan without custom SMTP: Supabase's own e-mails, **in English**): the link goes to Auth's
+  `/verify` and comes back to `redirectTo`. Admin invites (`admin-users`, or the dashboard) are not PKCE, so the session
+  comes back in the fragment (`#access_token=…&refresh_token=…&type=invite`) and the page calls `setSession`. A recovery
+  asked for in the app is PKCE (`@supabase/ssr` forces it): it comes back as `?code=…` and the page calls
+  `exchangeCodeForSession`. That only works in the browser that asked, which holds the code verifier: on iOS, a request
+  made in the installed app and a link opened in Safari do not share it. A refused link comes back as
+  `#error=access_denied&error_code=otp_expired…`.
+- **Spanish templates** (`supabase/templates/`, used only with custom SMTP): `?token_hash=…&type=…`, and the page calls
+  `verifyOtp`.
+
+The browser client has `detectSessionInUrl: false`, so this page is the only code that turns a link into a session (with
+detection on, the client would reject the implicit fragment and spend the one-time code before the page could). A link
+that lands elsewhere goes on to the page through an inline script in the root layout, before the store or the client
+read anything. That happens with a `redirectTo` outside the allow list, which falls back to the Site URL, and with a
+dashboard invite, which has no `redirectTo`. Allow list: `<app>/acceso/definir-contrasena`, plus `http://localhost:3000/**`
+and `http://localhost:3100/**` for local development.
+
 ## 3. Data model (`src/lib/types.ts` → tables)
 
 Conventions: `uuid` PKs generated on the device (recommend UUIDv7 in the client for index locality; Postgres 17 has no
@@ -441,8 +460,10 @@ of the integration (phase 1 of §12); the app still runs on its local demo store
 
 ## 12. Phased plan to wire the app
 
-1. **Project settings** (dashboard): disable sign-ups; Site URL + redirect URLs; enable the hook; custom SMTP + Spanish
-   invite/recovery templates; JWT expiry (keep ≤ 1 h) and session limits; new API keys; asymmetric signing keys.
+1. **Project settings** (dashboard): disable sign-ups; Site URL (the app's URL) + redirect URLs
+   (`<app>/acceso/definir-contrasena`, `http://localhost:3000/**`, `http://localhost:3100/**`); enable the hook; custom
+   SMTP + Spanish invite/recovery templates (until then Supabase sends its default English e-mails, whose links the app
+   also accepts: §2 "E-mail links"); JWT expiry (keep ≤ 1 h) and session limits; new API keys; asymmetric signing keys.
    **Passwords** (Authentication → Providers → Email): minimum length 12, require lowercase, uppercase and digits (no
    symbol requirement: supervisors type on phones). Sign-ups off, the hook, the password policy, `jwt_exp` and refresh-token
    rotation are applied by `scripts/supabase-auth-config.mjs` (Management API, your own scoped access token; dry run by

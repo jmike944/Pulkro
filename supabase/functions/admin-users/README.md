@@ -37,9 +37,22 @@ users screen (Configuración → Usuarios) calls it in account sessions; the dem
 1. Apply the migration `supabase/migrations/20261011144326_admin_users_email_sync.sql` (it adds `sync_profile_email`) and
    run `supabase/tests/18_admin_users.sql` (and `00`, which now lists the new RPC). Until the RPC exists `change_email`
    answers `502 server_error` (and puts the auth e-mail back); the other actions work without it.
-2. Auth settings (Dashboard → Authentication → URL Configuration): `APP_URL/acceso/definir-contrasena` must be in the
-   **Redirect URLs** (otherwise Auth falls back to the Site URL; the Spanish invite template builds its link from the Site
-   URL anyway, so the Site URL must be the app's URL too).
+2. Auth settings (Dashboard → Authentication → URL Configuration, or `scripts/supabase-auth-config.mjs --site-url …
+   --redirect …`):
+   - **Site URL**: the app's URL (`APP_URL`, no trailing slash).
+   - **Redirect URLs**: `APP_URL/acceso/definir-contrasena`, plus `http://localhost:3000/**` and `http://localhost:3100/**`
+     for local development. A `redirectTo` outside the list falls back to the Site URL.
+   - **E-mail links**: without custom SMTP (Free plan) Supabase sends its **default templates, in English**. The Spanish
+     ones in `supabase/templates/` are only used once custom SMTP is set up. `/acceso/definir-contrasena` accepts both
+     link forms:
+     - default template: the link goes to Auth's `/verify` and comes back to `redirectTo`. An invite brings the session in
+       the fragment (`#access_token=…&refresh_token=…&type=invite`). A recovery asked for in the app brings a PKCE
+       `?code=…`, which works only in the browser that asked for it. A used or expired link brings
+       `#error=access_denied&error_code=otp_expired…`;
+     - Spanish template: `?token_hash=…&type=invite|recovery`.
+
+     A link that lands on the Site URL (an invite sent from the dashboard has no `redirectTo`) or on any other page of the
+     app is forwarded to `/acceso/definir-contrasena` before the app reads the session.
 3. JWT signing: the function verifies user tokens against the project's JWKS. The project publishes an ES256 key; if the
    project still **signs** with the legacy HS256 secret, every call answers `server_misconfigured` / `no_session`: rotate to
    the asymmetric key first (Dashboard → Project Settings → JWT Keys).
@@ -94,7 +107,8 @@ call() { curl -s -i "$URL/functions/v1/admin-users" -H "apikey: $PK" -H "Authori
 2. **CORS**: `curl -i -X OPTIONS $URL/functions/v1/admin-users -H 'Origin: https://<app-domain>' -H 'Access-Control-Request-Method: POST'`
    → `204` with `Access-Control-Allow-Origin: https://<app-domain>`; with `Origin: https://example.com` → `403`, no CORS headers.
 3. **Invite** (an address the default sender can reach): `call '{"action":"invite","opId":"<uuid>","email":"…","name":"Nombre Apellido","role":"supervisor","unitId":"<unit uuid>"}'`
-   → `200`, the e-mail arrives, its link opens `/acceso/definir-contrasena`, the person sets a password and signs in.
+   → `200`, the e-mail arrives (Supabase's English template until custom SMTP), its link passes through Auth's `/verify`
+   and opens `/acceso/definir-contrasena` ("Defina su contraseña"), the person sets a password and signs in.
    Send the same body again → `duplicate: true`, no second e-mail. Another `opId` with the same e-mail → `409 email_taken`.
 4. **Deactivate**: `call '{"action":"deactivate","opId":"<uuid>","userId":"<id>"}'` → `open_orders` lists the open orders
    the person supervises; signing in as that person fails ("Su cuenta no tiene acceso activo…", `user_banned`); a device
