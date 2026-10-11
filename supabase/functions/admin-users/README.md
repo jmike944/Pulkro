@@ -6,14 +6,15 @@ users screen (Configuración → Usuarios) calls it in account sessions; the dem
 **Status (2026-10-11):** deployed to Pulkro (`cbdzndpdpwtxbhshidyi`), version 1, `verify_jwt` on; migration
 `admin_users_email_sync` applied; secrets `APP_URL=http://localhost:3000` and
 `APP_ORIGINS=http://localhost:3000,http://localhost:3100` until the app has its own URL. Checked from outside: no JWT → 401,
-preflight from an allowed origin → 204, from any other origin → 403.
+preflight from an allowed origin → 204, from any other origin → 403. **Pending:** the review fixes in `index.ts` (version 2)
+need the migration `20261011154423_admin_users_review` first, then a redeploy (see "Before deploying").
 
 | Action | Body | What it does |
 |---|---|---|
 | `invite` | `{ action, opId, email, name, role, unitId, title?, phone?, hue? }` | `inviteUserByEmail` (`redirectTo` = `APP_URL` + `/acceso/definir-contrasena`), then `provision_profile` **with the caller's JWT**. If the profile fails, the auth user this call created is deleted again. |
 | `deactivate` | `{ action, opId, userId }` | `update_profile {active:false}` with the caller's JWT (revokes the sessions, returns `open_orders`), then bans the auth user (`ban_duration` 876000h). |
 | `reactivate` | `{ action, opId, userId }` | `update_profile {active:true}`, then lifts the ban. |
-| `change_email` | `{ action, opId, userId, email }` | admin `updateUserById {email, email_confirm: true}`, then `sync_profile_email` with the caller's JWT. If the sync is refused, the auth e-mail goes back to the previous one; if its outcome is unknown (network, 5xx) it is left as is and the same request sent again completes it. |
+| `change_email` | `{ action, opId, userId, email }` | admin `updateUserById {email, email_confirm: true}`, then `sync_profile_email` with the caller's JWT and the requested address. If the database refuses the sync (any 4xx, a missing RPC included), the auth e-mail goes back to the previous one; if its outcome is unknown (no answer, 5xx) it is left as is and the same request sent again completes it; `409 email_changed` (another change of the same account came in between and won) leaves the login as that change set it. |
 
 - **Who**: `verify_jwt` on (user JWT). The function re-verifies the JWT (`@supabase/server`, project JWKS) and requires an
   **active Dirección** profile before any Auth admin call; every RPC re-checks `users.admin` in the database and audits the
@@ -24,24 +25,29 @@ preflight from an allowed origin → 204, from any other origin → 403.
   `active` in the answer is the profile's, which can differ from the request on a stale retry.
 - **Response** `200`: `{ ok: true, action, duplicate, user_id, profile, open_orders?, active?, email?, invite_pending? }`.
   `profile` is the `public.profiles` row after the change (or `null` if reading it failed). `open_orders` (deactivate) lists
-  the folios the person still supervises. `invite_pending` (change_email) means the person never accepted the invitation:
-  they set a password with "¿Olvidó su contraseña?" and the new address.
+  the folios the person still supervises. `invite_pending` (change_email) means the person never accepted the invitation
+  (invited, never signed in — also on a retry of the same request): they set a password with "¿Olvidó su contraseña?" and
+  the new address. A pending invitation cannot be re-sent (`409 email_taken`, whose message says so): «¿Olvidó su
+  contraseña?» completes it.
 - **Errors**: `{ ok: false, code, message }` — `message` is Spanish (usted) for the person, `code` is stable:
   - refusals from the database keep its hint and status (`PTnnn` → nnn): `forbidden:users.admin`, `self_change`,
     `already_provisioned`, `auth_user_missing`, `out_of_scope`, `invalid_profile`, `op_id_reused`, `email_taken`,
-    `invalid_value`, …;
+    `email_changed`, `invalid_value`, …;
   - from the function: `no_session` 401, `no_profile` / `inactive` 401, `forbidden:users.admin` 403, `origin_not_allowed`
     403, `method_not_allowed` 405, `invalid_body` 400, `unknown_action` 400, `invalid_value` / `invalid_email` /
-    `invalid_unit` 422, `email_taken` 409, `stale_retry` 409, `email_not_authorized` 422, `rate_limited` 429,
+    `invalid_unit` 422, `email_taken` 409, `stale_retry` 409, `email_changed` 409, `email_not_authorized` 422,
+    `rate_limited` 429,
     `auth_user_missing` 404, `invite_failed` / `email_update_failed` / `ban_failed` / `unban_failed` / `server_error` 502,
     `unavailable` 503, `payload_too_large` 413, `server_misconfigured` 500.
 - **Logs** carry the action and error codes only — never tokens, keys, request bodies or e-mail addresses.
 
 ## Before deploying
 
-1. Apply the migration `supabase/migrations/20261011144326_admin_users_email_sync.sql` (it adds `sync_profile_email`) and
-   run `supabase/tests/18_admin_users.sql` (and `00`, which now lists the new RPC). Until the RPC exists `change_email`
-   answers `502 server_error` (and puts the auth e-mail back); the other actions work without it.
+1. Migrations: `supabase/migrations/20261011144326_admin_users_email_sync.sql` (adds `sync_profile_email`; applied) and
+   `20261011154423_admin_users_review.sql` (adds its `p_email`), then run `supabase/tests/00`, `18` and `19`. Apply the
+   second one **before** deploying version 2 of the function, which sends `p_email`: against the old signature PostgREST
+   answers 404 (`PGRST202`), `change_email` answers `502 server_error` and puts the login back (a definite refusal). The
+   migration keeps the old two-argument call working, so version 1 runs fine after it. The other actions need neither.
 2. Auth settings (Dashboard → Authentication → URL Configuration, or `scripts/supabase-auth-config.mjs --site-url …
    --redirect …`):
    - **Site URL**: the app's URL (`APP_URL`, no trailing slash).
