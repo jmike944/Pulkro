@@ -3,12 +3,14 @@
 Account administration for **Dirección** (Pulkro Cuadrillas, `docs/backend/architecture.md` §2 and decision 11). The app's
 users screen (Configuración → Usuarios) calls it in account sessions; the demo never does.
 
-**Status (2026-10-11):** deployed to Pulkro (`cbdzndpdpwtxbhshidyi`), version 1, `verify_jwt` on; migration
-`admin_users_email_sync` applied; secrets `APP_URL=http://localhost:3000` and
-`APP_ORIGINS=http://localhost:3000,http://localhost:3100` until the app has its own URL. Checked from outside: no JWT → 401,
-preflight from an allowed origin → 204, from any other origin → 403. **Pending:** version 2 of `index.ts` (the review fixes
-and `resend_invite`) needs the migrations `20261011154423_admin_users_review` and `20261011174304_admin_users_decisions`
-first, in that order, then a redeploy (see "Before deploying").
+**Status (2026-10-11):** deployed to Pulkro (`cbdzndpdpwtxbhshidyi`), version 3 (the review fixes and `resend_invite`),
+`verify_jwt` on; migrations `admin_users_email_sync`, `20261011174019_admin_users_review` and
+`20261011175442_admin_users_decisions` applied, suites 18–20 pass; secrets `APP_URL=http://localhost:3000` and
+`APP_ORIGINS=http://localhost:3000,http://localhost:3100` until the app has its own URL. Checked from outside (version 1):
+no JWT → 401, preflight from an allowed origin → 204, from any other origin → 403. Not yet exercised with a real user JWT:
+the platform's `verify_jwt` gate is documented to accept the project's ES256 user tokens, while the dashboard labels the
+toggle "Verify JWT with legacy secret". If the first real call answers the gateway's `401 Invalid JWT`, redeploy with
+`verify_jwt` off: the function verifies the user JWT itself against the project JWKS (`createSupabaseContext`, `auth: "user"`).
 
 | Action | Body | What it does |
 |---|---|---|
@@ -66,8 +68,8 @@ first, in that order, then a redeploy (see "Before deploying").
 ## Before deploying
 
 1. Migrations: `supabase/migrations/20261011144326_admin_users_email_sync.sql` (adds `sync_profile_email`; applied), then,
-   in this order, `20261011154423_admin_users_review.sql` (adds its `p_email`) and
-   `20261011174304_admin_users_decisions.sql` (the sync ends the person's sessions; the self-service mirror trigger), then
+   in this order, `20261011174019_admin_users_review.sql` (adds its `p_email`) and
+   `20261011175442_admin_users_decisions.sql` (the sync ends the person's sessions; the self-service mirror trigger), then
    run `supabase/tests/00`, `18`, `19` and `20`. Apply them **before** deploying version 2 of the function, which sends
    `p_email`: against the old signature PostgREST answers 404 (`PGRST202`), `change_email` answers `502 server_error` and
    puts the login back (a definite refusal). Both migrations keep the old two-argument call working, so version 1 runs

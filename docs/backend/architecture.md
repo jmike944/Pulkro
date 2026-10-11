@@ -1,7 +1,7 @@
 # Pulkro Cuadrillas — backend architecture (Supabase)
 
 Status (2026-10-11, after the PR #9 review): schema, RLS, business-rule RPCs, Storage and the auth hook function are
-**applied** to the Supabase project "Pulkro" (ref `cbdzndpdpwtxbhshidyi`, us-east-1, Postgres 17.11) — the 20 migrations
+**applied** to the Supabase project "Pulkro" (ref `cbdzndpdpwtxbhshidyi`, us-east-1, Postgres 17.11) — the 22 migrations
 below. The project holds the **demo dataset** (302 orders and their history, 11 password-less demo accounts; every row
 registered in `private.demo_rows`, removed in one call by `select private.drop_demo_data();`, see `supabase/seed/README.md`);
 no real accounts or data yet, no Storage objects. The app still runs on the on-device zustand store; wiring it to this
@@ -29,27 +29,17 @@ backend is the phased plan in §12.
 | `20261011065308_review_pr9_cubic_round3` | PR #9 review (cubic, round 3): `referenced_profile_ids` reads every profile reference of a visible order and its records (field capture, incidents, photos, closures, reports, shares, surveys, cases) |
 | `20261011125657_decision_closed_order_reassign` | owner decision 19 (§14): Administración reassigns the supervisor of a closed order (only that field) without reopening it |
 | `20261011144326_admin_users_email_sync` | account administration (§2, decision 11): `sync_profile_email`, the RPC the `admin-users` Edge Function calls after changing a login e-mail |
+| `20261011174019_admin_users_review` | account administration review: `sync_profile_email(p_op_id, p_user_id, p_email default null)` syncs only while the login still holds the address the request set (`PT409 email_changed` otherwise); `p_email` is part of the op digest |
+| `20261011175442_admin_users_decisions` | owner decisions on account administration: an actual e-mail change also ends the person's sessions; the fail-safe trigger `pulkro_mirror_email_change` on `auth.users` copies a self-service e-mail change into `profiles.email` |
 
-**Written, to apply in this order** (2026-10-11, account administration):
-1. `20261011154423_admin_users_review` (review) — `sync_profile_email(p_op_id, p_user_id, p_email default null)`: syncs
-   only while the login still holds the address the request set (`PT409 email_changed` otherwise), `p_email` part of the
-   op digest; suite `19`.
-2. `20261011174304_admin_users_decisions` (owner decisions) — recreates that `sync_profile_email` so that a change of the
-   e-mail also ends the person's sessions (decision 2), and adds the fail-safe trigger `pulkro_mirror_email_change` on
-   `auth.users` that copies a self-service e-mail change into `profiles.email` (decision 3); suite `20`.
-
-Apply both **before** redeploying `admin-users` (the function now sends `p_email`; against the old signature
-`change_email` would answer `502 server_error` and put the login back).
-
-Edge Function `admin-users` **deployed** (version 1, `verify_jwt` on; secrets `APP_URL` / `APP_ORIGINS` point at local
-development until the app has its own URL; the review fixes and `resend_invite` in `index.ts` await a redeploy after the
-migrations above). Auth settings applied: sign-ups off, the password policy, the access-token hook
+Edge Function `admin-users` **deployed** (version 3, 2026-10-11: the review fixes and `resend_invite`; `verify_jwt` on;
+secrets `APP_URL` / `APP_ORIGINS` point at local development until the app has its own URL). Auth settings applied: sign-ups off, the password policy, the access-token hook
 (enabled), redirect URLs `http://localhost:3000/**` and `http://localhost:3100/**` (Site URL `http://localhost:3000`).
 
 Sources of truth mirrored here: `docs/requisitos.md`, `src/lib/types.ts`, `src/lib/permissions.ts`, `src/lib/hooks.ts`,
-`src/lib/store.ts`, `src/lib/domain.ts`. Tests: `supabase/tests/` (files `00` to `18` pass, including the review regression
-suites `09` to `16`, the owner-decision suite `17` and the account-administration suite `18`; `19` needs the migration
-`admin_users_review` and `20` also `admin_users_decisions`; they ignore the rows of the demo dataset). Types: `src/lib/supabase/database.types.ts` (regenerated after migration `20261011043034`).
+`src/lib/store.ts`, `src/lib/domain.ts`. Tests: `supabase/tests/` (files `00` to `20` pass, including the review regression
+suites `09` to `16`, the owner-decision suite `17` and the account-administration suites `18` to `20`; they ignore the
+rows of the demo dataset). Types: `src/lib/supabase/database.types.ts` (regenerated after migration `20261011043034`).
 
 ---
 
@@ -534,9 +524,9 @@ of the integration (phase 1 of §12); the app still runs on its local demo store
    (`closureBlockers` "ninguna jornada ejecutada", `derivedExecutionStatus`, day numbering, frozen incidents, 256-bit
    survey tokens).
 5. **Admin**: deploy `admin-users`, users screen calls it (shows `open_orders` after a deactivation) — **done** (function
-   deployed, migration `admin_users_email_sync` applied, suite 18, users screen); the review fixes and the owner decisions
-   (migrations `admin_users_review` then `admin_users_decisions`, suites 19 and 20, function redeploy with
-   `resend_invite`) are pending; catalogs via RPCs; import real catalogs.
+   deployed, migration `admin_users_email_sync` applied, suite 18, users screen), and so are the review fixes and the owner
+   decisions (migrations `admin_users_review` then `admin_users_decisions`, suites 19 and 20, function version 3 with
+   `resend_invite`); catalogs via RPCs; import real catalogs.
 6. **Pilot hardening**: run `supabase/tests` in CI against a branch, `pg_cron` purge of `private.sync_ops` (> 90 days),
    storage retention job, PITR/backups, monitoring of advisors and logs.
 
@@ -544,8 +534,8 @@ of the integration (phase 1 of §12); the app still runs on its local demo store
 
 - Migrations: `supabase/migrations/<applied version>_<name>.sql`, applied with the MCP `apply_migration` (name = file
   name without version) and verified byte-for-byte (`md5` of `supabase_migrations.schema_migrations.statements[1]` = file
-  `md5`; the first 19 matched on 2026-10-11; `20261011144326_admin_users_email_sync` was applied after that check and
-  still needs it). **Never edit an applied file**; fix forward with a new one. Dry run first: one `execute_sql` call
+  `md5`; all 22 match as of 2026-10-11: the first 19 in the PR #9 check, `admin_users_email_sync`, `admin_users_review`
+  and `admin_users_decisions` right after each was applied). **Never edit an applied file**; fix forward with a new one. Dry run first: one `execute_sql` call
   `begin; <migration>; <tests>; rollback;` (verified to be transactional). Changing an RPC signature: drop the old
   `public.<name>` wrapper, recreate `private.<name>`, call `private.expose_rpc` (which also regenerates the op-args
   digest).
