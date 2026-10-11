@@ -20,6 +20,7 @@ import { PersonAvatar } from "@/components/pk/bits";
 import { ClientMark } from "@/components/pk/client-mark";
 import { EmptyState } from "@/components/pk/feedback";
 import { EASE } from "@/components/pk/motion";
+import { MODAL_DESKTOP_QUERY, ModalShell } from "@/components/pk/modal-shell";
 import { tileShape } from "./evidence-data";
 import { ALL, ClearFilters, FilterPill, pillClass } from "./filter-pill";
 import { PhotoLightbox } from "./photo-lightbox";
@@ -124,6 +125,12 @@ export function GalleryTab({ photos, orders, now }: { photos: Photo[]; orders: O
     [sorted, f.kind, f.client, f.sup, interval, orderById],
   );
 
+  // Photos in the chosen dates alone (type, client and supervisor aside): what the date sheet's hint talks about.
+  const dateCount = useMemo(
+    () => (interval ? sorted.filter((p) => isWithinInterval(new Date(p.takenAt), interval)).length : sorted.length),
+    [sorted, interval],
+  );
+
   const visible = useMemo(() => filtered.slice(0, limit), [filtered, limit]);
   // Greedy shortest-column placement: appending a page never moves existing tiles.
   const columns = useMemo(() => {
@@ -147,7 +154,7 @@ export function GalleryTab({ photos, orders, now }: { photos: Photo[]; orders: O
         {(options.sups.length > 1 || f.sup !== ALL) && (
           <FilterPill label="Supervisor" value={f.sup} onChange={(v) => update({ sup: v })} options={options.sups} allLabel="Todos los supervisores" />
         )}
-        <DatePill filters={f} onChange={update} now={now} />
+        <DatePill filters={f} onChange={update} now={now} count={filtered.length} dateCount={dateCount} />
         {active && <ClearFilters onClick={() => update(EMPTY)} />}
         <p className="ml-auto hidden text-[13.5px] text-subtle sm:block">
           <b className="font-semibold text-ink tabular">{fmtNum(filtered.length)}</b> {filtered.length === 1 ? "foto" : "fotos"} · {plural(orderCount, "orden", "órdenes")}
@@ -164,7 +171,7 @@ export function GalleryTab({ photos, orders, now }: { photos: Photo[]; orders: O
             title={photos.length ? "Sin fotos con estos filtros" : "Aún no hay fotos"}
             action={active ? <ClearFilters onClick={() => update(EMPTY)} /> : undefined}
           >
-            {photos.length ? "Prueba con otro tipo, cliente o rango de fechas." : "Las fotos ANTES, DESPUÉS y de incidencias aparecerán aquí al capturarse."}
+            {photos.length ? "Pruebe con otro tipo, cliente o rango de fechas." : "Las fotos ANTES, DESPUÉS y de incidencias aparecerán aquí al capturarse."}
           </EmptyState>
         ) : (
           <>
@@ -269,36 +276,124 @@ function GalleryTile({
   );
 }
 
-function DatePill({ filters, onChange, now }: { filters: Filters; onChange: (patch: Partial<Filters>) => void; now: Date }) {
+/**
+ * Date filter. Desktop keeps the popover (presets on the left, calendar on the right, 36px cells for the mouse).
+ * Below lg it is a bottom sheet instead: presets as 44px chips and a calendar with 44px cells, and the button at the
+ * bottom says how many photos the filters and dates give ("Ver 38 fotos"). Presets apply and close; a range applies as you mark it.
+ */
+function DatePill({
+  filters,
+  onChange,
+  now,
+  count,
+  dateCount,
+}: {
+  filters: Filters;
+  onChange: (patch: Partial<Filters>) => void;
+  now: Date;
+  /** Photos that pass every filter (what the button's "Ver N fotos" opens). */
+  count: number;
+  /** Photos in the chosen dates alone, ignoring the type, client and supervisor filters. */
+  dateCount: number;
+}) {
   const [open, setOpen] = useState(false);
+  const desktop = useMediaQuery(MODAL_DESKTOP_QUERY);
   const active = filters.preset !== "todo";
   const label =
     filters.preset === "custom" && filters.range?.from
       ? `${fmtDay(filters.range.from)}${filters.range.to && filters.range.to.getTime() !== filters.range.from.getTime() ? ` – ${fmtDay(filters.range.to)}` : ""}`
       : PRESETS.find((p) => p.value === filters.preset)?.label;
-  return (
-    <Popover open={open} onOpenChange={setOpen}>
-      <PopoverTrigger className={cn(pillClass, active ? "border-blue-mid bg-blue-wash" : "border-hairline")} aria-label="Filtrar por fechas">
-        <CalendarRange className="size-4 shrink-0 text-subtle" />
-        <span className={cn("shrink-0", active ? "text-subtle" : "font-medium")}>Fechas</span>
-        {active && (
-          <span className="min-w-0 truncate font-semibold">
-            <span className="text-subtle">:</span> {label}
-          </span>
-        )}
-        <ChevronDown className="size-4 shrink-0 text-subtle" />
-      </PopoverTrigger>
-      <PopoverContent align="start" className="w-auto max-w-[calc(100vw-2rem)] rounded-[18px] p-2">
-        <div className="flex flex-col gap-2 sm:flex-row">
-          <div className="flex flex-wrap gap-1 sm:w-[168px] sm:flex-col">
+
+  const pillBody = (
+    <>
+      <CalendarRange className="size-4 shrink-0 text-subtle" />
+      <span className={cn("shrink-0", active ? "text-subtle" : "font-medium")}>Fechas</span>
+      {active && (
+        <span className="min-w-0 truncate font-semibold">
+          <span className="text-subtle">:</span> {label}
+        </span>
+      )}
+      <ChevronDown className="size-4 shrink-0 text-subtle" />
+    </>
+  );
+  const pillCls = cn(pillClass, active ? "border-blue-mid bg-blue-wash" : "border-hairline");
+
+  const choosePreset = (preset: Exclude<Preset, "custom">) => {
+    onChange({ preset, range: undefined });
+    setOpen(false);
+  };
+  const chooseRange = (range: DateRange | undefined) => onChange({ preset: range?.from ? "custom" : "todo", range });
+
+  if (!desktop)
+    return (
+      <>
+        <button type="button" onClick={() => setOpen(true)} aria-haspopup="dialog" aria-expanded={open} aria-label="Filtrar por fechas" className={pillCls}>
+          {pillBody}
+        </button>
+        <ModalShell
+          open={open}
+          onOpenChange={setOpen}
+          title="Fechas"
+          description="Elija un período o marque un rango de días en el calendario."
+          size="sm"
+          footerHint={
+            filters.preset === "custom" && filters.range?.from && !filters.range.to
+              ? "Hay un solo día marcado. Toque otro día para marcar un rango."
+              : count > 0
+                ? undefined
+                : dateCount === 0
+                  ? "Ninguna foto en estas fechas. Pruebe con otro rango."
+                  : "Ninguna foto coincide con estas fechas y los demás filtros."
+          }
+          footer={
+            <Button onClick={() => setOpen(false)} className="h-12 rounded-[12px] px-6 text-[15px] font-semibold">
+              {count === 0 ? "Cerrar" : `Ver ${plural(count, "foto", "fotos")}`}
+            </Button>
+          }
+        >
+          <div role="group" aria-label="Períodos" className="flex flex-wrap gap-2 pt-1">
             {PRESETS.map((p) => (
               <button
                 key={p.value}
                 type="button"
-                onClick={() => {
-                  onChange({ preset: p.value, range: undefined });
-                  setOpen(false);
-                }}
+                aria-pressed={filters.preset === p.value}
+                onClick={() => choosePreset(p.value)}
+                className={cn(
+                  "inline-flex h-11 items-center rounded-full border px-4 text-[14px] outline-none transition focus-visible:ring-3 focus-visible:ring-ring/50 active:scale-[0.97]",
+                  filters.preset === p.value ? "border-transparent bg-ink font-semibold text-on-ink" : "border-line bg-surface text-ink",
+                )}
+              >
+                {p.label}
+              </button>
+            ))}
+          </div>
+          <p className="mb-1 mt-5 text-[12px] font-semibold uppercase tracking-[0.1em] text-subtle">Rango de días</p>
+          <Calendar
+            mode="range"
+            locale={es}
+            selected={filters.preset === "custom" ? filters.range : undefined}
+            onSelect={chooseRange}
+            defaultMonth={filters.range?.from ?? now}
+            disabled={{ after: now }}
+            className="mx-auto bg-transparent p-0 [--cell-size:44px]"
+          />
+        </ModalShell>
+      </>
+    );
+
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger className={pillCls} aria-label="Filtrar por fechas">
+        {pillBody}
+      </PopoverTrigger>
+      <PopoverContent align="start" className="w-auto max-w-[calc(100vw-2rem)] rounded-[18px] p-2">
+        <div className="flex flex-row gap-2">
+          <div className="flex w-[168px] flex-col gap-1">
+            {PRESETS.map((p) => (
+              <button
+                key={p.value}
+                type="button"
+                onClick={() => choosePreset(p.value)}
                 className={cn(
                   "min-h-10 rounded-[10px] px-3 text-left text-[13.5px] transition",
                   filters.preset === p.value ? "bg-ink font-semibold text-on-ink" : "text-ink hover:bg-muted",
@@ -308,12 +403,13 @@ function DatePill({ filters, onChange, now }: { filters: Filters; onChange: (pat
               </button>
             ))}
           </div>
-          <div className="border-t border-hairline pt-2 sm:border-l sm:border-t-0 sm:pl-2 sm:pt-0">
+          <div className="border-l border-hairline pl-2">
             <Calendar
               mode="range"
               locale={es}
               selected={filters.preset === "custom" ? filters.range : undefined}
-              onSelect={(range) => onChange({ preset: range?.from ? "custom" : "todo", range })}
+              onSelect={chooseRange}
+              defaultMonth={filters.range?.from ?? now}
               disabled={{ after: now }}
               className="[--cell-size:--spacing(9)]"
             />

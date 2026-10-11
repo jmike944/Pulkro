@@ -116,11 +116,14 @@ function ServiceTypeDialog({ serviceType, open, onOpenChange }: { serviceType: S
   const [hue, setHue] = useState(serviceType?.hue ?? 205);
   const [hours, setHours] = useState(serviceType?.defaultHoursPerDay ?? 8);
   const [submitted, setSubmitted] = useState(false);
+  // what the form opened with: any difference makes Esc / outside tap / X / Cancelar ask "¿Descartar cambios?"
+  const snapshot = JSON.stringify([name, short, hue, hours]);
+  const [initial] = useState(snapshot);
 
   const dup = existing.some((s) => s.id !== serviceType?.id && s.name.trim().toLowerCase() === name.trim().toLowerCase());
   const errors = {
-    name: name.trim().length < 4 ? "Captura el nombre del servicio." : dup ? "Ya existe un tipo con ese nombre." : null,
-    short: !short.trim() ? "Captura una etiqueta corta." : short.trim().length > 14 ? "Máximo 14 caracteres." : null,
+    name: name.trim().length < 4 ? "Escriba el nombre del servicio." : dup ? "Ya existe un tipo con ese nombre: use otro." : null,
+    short: !short.trim() ? "Escriba una etiqueta corta, de hasta 14 caracteres." : short.trim().length > 14 ? "Use 14 caracteres o menos." : null,
   };
   const valid = !errors.name && !errors.short;
 
@@ -130,8 +133,9 @@ function ServiceTypeDialog({ serviceType, open, onOpenChange }: { serviceType: S
       onOpenChange={onOpenChange}
       icon={<Sparkles />}
       title={isNew ? "Nuevo tipo de servicio" : "Editar tipo de servicio"}
-      description="Catálogo de tipos de limpieza (doc §4.1 · PENDIENTE de confirmar con Pulkro)."
+      description="Tipo de limpieza que se elige al programar una orden."
       submitLabel={isNew ? "Crear tipo" : "Guardar cambios"}
+      dirty={snapshot !== initial}
       onSubmit={() => {
         setSubmitted(true);
         if (!valid) return;
@@ -161,7 +165,7 @@ function ServiceTypeDialog({ serviceType, open, onOpenChange }: { serviceType: S
             <Input id="st-short" value={short} onChange={(e) => setShort(e.target.value)} placeholder="Profunda" maxLength={18} className={inputCls} aria-invalid={submitted && !!errors.short} />
           </Field>
         </div>
-        <Field label="Color" hint="Distingue el servicio en agenda, tarjetas y reportes.">
+        <Field label="Color" hint="Sirve para distinguir el servicio en agenda, tarjetas y reportes.">
           <HueRange value={hue} onChange={setHue} />
         </Field>
         <Field label="Horas por jornada" hint="Duración sugerida al programar cada jornada (1 a 12 h).">

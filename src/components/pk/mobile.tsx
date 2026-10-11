@@ -5,6 +5,7 @@
  * sand chrome, time tiles, chevron list rows, an aurora-framed next-step card, full-screen flows
  * with a centered title + sticky primary action, steppers, total cards and success screens.
  */
+import { useRef, useState, useSyncExternalStore } from "react";
 import Link from "next/link";
 import { AnimatePresence, motion } from "motion/react";
 import { Dialog as DialogPrimitive } from "radix-ui";
@@ -168,11 +169,114 @@ export function BigButton({
   );
 }
 
+/* ───────────── modal plumbing shared with ModalShell ───────────── */
+
+/** Breakpoint where modals stop being phone flows / bottom sheets (the shell switches to the desktop panel here too). */
+export const MODAL_DESKTOP_QUERY = "(min-width: 1024px)";
+
+/** Scrim behind centered modals. Token-based: `--ink` in light, a deeper black in dark. */
+export const MODAL_SCRIM = "bg-ink/35 backdrop-blur-[2px] dark:bg-black/60";
+
+function subscribeViewport(cb: () => void) {
+  const vv = window.visualViewport;
+  if (!vv) return () => {};
+  vv.addEventListener("resize", cb);
+  vv.addEventListener("scroll", cb);
+  return () => {
+    vv.removeEventListener("resize", cb);
+    vv.removeEventListener("scroll", cb);
+  };
+}
+
+function readKeyboardInset() {
+  const vv = window.visualViewport;
+  if (!vv || vv.scale > 1.01) return 0; // pinch-zoom is not a keyboard
+  const inset = Math.round(window.innerHeight - vv.height - vv.offsetTop);
+  return inset > 80 ? inset : 0;
+}
+
+/**
+ * Height of the on-screen keyboard that overlaps the layout viewport (iOS Safari, which ignores
+ * `interactive-widget=resizes-content`). 0 where the browser already resizes the page (Android) or on desktop.
+ * Lift fixed bottom UI by this amount so sticky footers stay above the keyboard.
+ */
+export function useKeyboardInset() {
+  return useSyncExternalStore(subscribeViewport, readKeyboardInset, () => 0);
+}
+
+/**
+ * "¿Descartar cambios?" guard for modals holding unsaved work. Wrap the modal's onOpenChange with it: while `dirty`,
+ * Esc, an outside tap, the X and any `<DialogClose>` ask first instead of closing. Render `prompt` next to the modal.
+ * Programmatic closes (calling your own onOpenChange(false) after saving) are never intercepted.
+ */
+export function useDiscardGuard(dirty: boolean | undefined, onOpenChange: (open: boolean) => void) {
+  const [asking, setAsking] = useState(false);
+  const requestClose = () => (dirty ? setAsking(true) : onOpenChange(false));
+  return {
+    /** pass to the Radix root instead of the raw onOpenChange */
+    onOpenChange: (v: boolean) => (v ? onOpenChange(true) : requestClose()),
+    requestClose,
+    prompt: (
+      <DiscardDialog
+        open={asking}
+        onKeep={() => setAsking(false)}
+        onDiscard={() => {
+          setAsking(false);
+          onOpenChange(false);
+        }}
+      />
+    ),
+  };
+}
+
+/** Small alert stacked above the modal. "Seguir editando" is the focused, safe default. */
+function DiscardDialog({ open, onKeep, onDiscard }: { open: boolean; onKeep: () => void; onDiscard: () => void }) {
+  const keepRef = useRef<HTMLButtonElement>(null);
+  return (
+    <DialogPrimitive.Root open={open} onOpenChange={(v) => !v && onKeep()}>
+      <DialogPrimitive.Portal>
+        <DialogPrimitive.Overlay className="fixed inset-0 z-[60] bg-ink/25 duration-150 dark:bg-black/50 data-open:animate-in data-open:fade-in-0 data-closed:animate-out data-closed:fade-out-0" />
+        <DialogPrimitive.Content
+          role="alertdialog"
+          onOpenAutoFocus={(e) => {
+            e.preventDefault();
+            keepRef.current?.focus();
+          }}
+          className="fixed left-1/2 top-1/2 z-[60] w-[min(400px,calc(100vw-32px))] -translate-x-1/2 -translate-y-1/2 rounded-[28px] bg-surface p-6 text-ink shadow-lift outline-none ring-1 ring-edge duration-150 data-open:animate-in data-open:fade-in-0 data-open:zoom-in-95 data-closed:animate-out data-closed:fade-out-0 data-closed:zoom-out-95"
+        >
+          <DialogPrimitive.Title className="font-serif text-[26px] font-medium leading-[1.15] tracking-[-0.01em] text-ink">¿Descartar cambios?</DialogPrimitive.Title>
+          <DialogPrimitive.Description className="mt-2 text-[14.5px] leading-relaxed text-subtle">
+            Lo que capturó en este formulario no se ha guardado y se perderá.
+          </DialogPrimitive.Description>
+          <div className="mt-6 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+            <button
+              type="button"
+              onClick={onDiscard}
+              className="inline-flex h-12 items-center justify-center rounded-[12px] border border-red-line bg-surface px-5 text-[15px] font-semibold text-red-fg outline-none transition hover:bg-red-wash focus-visible:ring-3 focus-visible:ring-ring/50 sm:h-11 sm:text-[14px]"
+            >
+              Descartar
+            </button>
+            <button
+              ref={keepRef}
+              type="button"
+              onClick={onKeep}
+              className="inline-flex h-12 items-center justify-center rounded-[12px] bg-brand-deep px-5 text-[15px] font-semibold text-white outline-none transition hover:bg-brand-hover focus-visible:ring-3 focus-visible:ring-ring/50 sm:h-11 sm:text-[14px]"
+            >
+              Seguir editando
+            </button>
+          </div>
+        </DialogPrimitive.Content>
+      </DialogPrimitive.Portal>
+    </DialogPrimitive.Root>
+  );
+}
+
 /* ───────────── full-screen flow ("Labor breakdown") ───────────── */
 
 /**
- * Full-screen task flow on phones (sand frame, white panel, X + centered title, sticky footer);
- * a centered card dialog on desktop. Accessible (Radix Dialog: focus trap, Esc, aria).
+ * Full-screen task flow on phones (inset white panel, X + centered title, scroll body, sticky footer above the
+ * keyboard and the home indicator); a page sheet on tablets and a centered card dialog from `lg`.
+ * Accessible (Radix Dialog: focus trap, Esc, aria). Pass `dirty` to ask before unsaved work is thrown away.
  */
 export function FlowScreen({
   open,
@@ -183,6 +287,10 @@ export function FlowScreen({
   closeSide = "left",
   className,
   description,
+  dirty,
+  heading,
+  footerSlot,
+  onSubmit,
 }: {
   open: boolean;
   onOpenChange: (v: boolean) => void;
@@ -192,62 +300,116 @@ export function FlowScreen({
   footer?: React.ReactNode;
   closeSide?: "left" | "right";
   className?: string;
-  /** screen-reader description */
-  description?: string;
+  /** screen-reader description (with `heading`, the heading renders it visibly; pass it here too so it is announced) */
+  description?: React.ReactNode;
+  /** unsaved work: Esc / X / `<DialogClose>` ask "¿Descartar cambios?" first */
+  dirty?: boolean;
+  /** heading block at the top of the body that renders its own `DialogPrimitive.Title` (ModalShell uses it) */
+  heading?: React.ReactNode;
+  /** ref to the footer element so content can be portalled into it (ModalShell's `ModalFooter`) */
+  footerSlot?: (el: HTMLDivElement | null) => void;
+  /** wraps the panel in a `<form>` so Enter and `type="submit"` buttons submit */
+  onSubmit?: () => void;
 }) {
-  const desktop = useMediaQuery("(min-width: 768px)");
-  return (
-    <DialogPrimitive.Root open={open} onOpenChange={onOpenChange}>
-      <AnimatePresence>
-        {open && (
-          <DialogPrimitive.Portal forceMount>
-            <DialogPrimitive.Overlay asChild forceMount>
-              <motion.div
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-                className={cn("fixed inset-0 z-50", desktop ? "bg-[#0e1726]/35 backdrop-blur-[2px] dark:bg-black/60" : "bg-canvas")}
-              />
-            </DialogPrimitive.Overlay>
-            <DialogPrimitive.Content asChild forceMount {...(description ? {} : { "aria-describedby": undefined })}>
-              <motion.div
-                initial={desktop ? { opacity: 0, scale: 0.96, y: 10 } : { y: "100%" }}
-                animate={desktop ? { opacity: 1, scale: 1, y: 0 } : { y: 0 }}
-                exit={desktop ? { opacity: 0, scale: 0.97, y: 6 } : { y: "100%" }}
-                transition={desktop ? { duration: 0.28, ease: EASE } : { type: "spring", stiffness: 340, damping: 36 }}
-                className={cn(
-                  "fixed z-50 flex flex-col overflow-hidden bg-surface outline-none",
-                  desktop
-                    ? "left-1/2 top-1/2 max-h-[88dvh] w-[min(460px,calc(100vw-32px))] -translate-x-1/2 -translate-y-1/2 rounded-[28px] shadow-lift"
-                    : "inset-x-2 bottom-2 top-[max(8px,env(safe-area-inset-top))] rounded-[28px]",
-                  className,
-                )}
-              >
-                <div className={cn("relative flex min-h-[64px] shrink-0 items-center px-5 pt-3", title ? "justify-center" : closeSide === "right" ? "justify-end" : "justify-start")}>
-                  <DialogPrimitive.Close
-                    className={cn(
-                      "inline-flex size-10 items-center justify-center rounded-[12px] border border-hairline bg-surface text-ink transition hover:bg-sand",
-                      title && (closeSide === "left" ? "absolute left-5 top-3" : "absolute right-5 top-3"),
-                    )}
-                    aria-label="Cerrar"
-                  >
-                    <X className="size-[18px]" />
-                  </DialogPrimitive.Close>
-                  {title ? (
-                    <DialogPrimitive.Title className="text-[16px] font-semibold text-ink">{title}</DialogPrimitive.Title>
-                  ) : (
-                    <DialogPrimitive.Title className="sr-only">{description ?? "Detalle"}</DialogPrimitive.Title>
-                  )}
-                  {description && <DialogPrimitive.Description className="sr-only">{description}</DialogPrimitive.Description>}
-                </div>
-                <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-5 pb-6 pt-3 sm:px-6">{children}</div>
-                {footer && <div className="shrink-0 border-t border-transparent bg-surface px-5 pb-[max(16px,env(safe-area-inset-bottom))] pt-3 sm:px-6">{footer}</div>}
-              </motion.div>
-            </DialogPrimitive.Content>
-          </DialogPrimitive.Portal>
+  const desktop = useMediaQuery(MODAL_DESKTOP_QUERY);
+  const tablet = useMediaQuery("(min-width: 768px)") && !desktop;
+  const keyboard = useKeyboardInset();
+  const guard = useDiscardGuard(dirty, onOpenChange);
+  const lifted = !desktop && keyboard > 0;
+
+  // On phones the panel floats 8px above the screen edge (`bottom-2`), so only `inset - 8px` of the home-indicator inset
+  // overlaps it: that padding puts the actions exactly on the edge of the safe area, never inside it.
+  const footerCls = cn(
+    "shrink-0 border-t border-transparent bg-surface px-5 pt-3 sm:px-6",
+    desktop || lifted ? "pb-4" : "pb-[max(16px,calc(env(safe-area-inset-bottom)-8px))]",
+    tablet && "md:px-8",
+  );
+  const panel = (
+    <>
+      <div className={cn("relative flex min-h-[68px] shrink-0 items-center px-4 pt-3", title ? "justify-center" : closeSide === "right" ? "justify-end" : "justify-start")}>
+        <DialogPrimitive.Close
+          className={cn(
+            "inline-flex size-11 items-center justify-center rounded-[12px] border border-hairline bg-surface text-ink outline-none transition hover:bg-sand focus-visible:ring-3 focus-visible:ring-ring/50 active:scale-95",
+            title && (closeSide === "left" ? "absolute left-4 top-3" : "absolute right-4 top-3"),
+          )}
+          aria-label="Cerrar"
+        >
+          <X className="size-[18px]" />
+        </DialogPrimitive.Close>
+        {heading ? null : title ? (
+          <DialogPrimitive.Title className="max-w-[calc(100%-120px)] truncate text-[16px] font-semibold text-ink">{title}</DialogPrimitive.Title>
+        ) : (
+          <DialogPrimitive.Title className="sr-only">{description ?? "Detalle"}</DialogPrimitive.Title>
         )}
-      </AnimatePresence>
-    </DialogPrimitive.Root>
+        {!heading && description && <DialogPrimitive.Description className="sr-only">{description}</DialogPrimitive.Description>}
+      </div>
+      <div className={cn("min-h-0 flex-1 overflow-y-auto overscroll-contain px-5 pb-6 pt-3 sm:px-6", tablet && "md:px-8")}>
+        {heading}
+        {children}
+      </div>
+      {footerSlot ? (
+        <div ref={footerSlot} className={cn(footerCls, "empty:hidden")}>
+          {footer}
+        </div>
+      ) : (
+        footer && <div className={footerCls}>{footer}</div>
+      )}
+    </>
+  );
+
+  return (
+    <>
+      <DialogPrimitive.Root open={open} onOpenChange={guard.onOpenChange}>
+        <AnimatePresence>
+          {open && (
+            <DialogPrimitive.Portal forceMount>
+              <DialogPrimitive.Overlay asChild forceMount>
+                <motion.div
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  className={cn("fixed inset-0 z-50", desktop || tablet ? MODAL_SCRIM : "bg-canvas")}
+                />
+              </DialogPrimitive.Overlay>
+              <DialogPrimitive.Content asChild forceMount {...(description ? {} : { "aria-describedby": undefined })}>
+                <motion.div
+                  initial={desktop ? { opacity: 0, scale: 0.96, y: 10 } : { y: "100%" }}
+                  animate={desktop ? { opacity: 1, scale: 1, y: 0 } : { y: 0 }}
+                  exit={desktop ? { opacity: 0, scale: 0.97, y: 6 } : { y: "100%" }}
+                  transition={desktop ? { duration: 0.28, ease: EASE } : { type: "spring", stiffness: 340, damping: 36 }}
+                  style={lifted ? { bottom: 8 + keyboard } : undefined}
+                  className={cn(
+                    "fixed z-50 flex flex-col overflow-hidden bg-surface text-ink outline-none",
+                    desktop
+                      ? "left-1/2 top-1/2 max-h-[88dvh] w-[min(460px,calc(100vw-32px))] -translate-x-1/2 -translate-y-1/2 rounded-[28px] shadow-lift"
+                      : tablet
+                        ? "bottom-4 left-1/2 top-[max(16px,env(safe-area-inset-top))] w-[min(620px,calc(100vw-48px))] -translate-x-1/2 rounded-[28px] shadow-lift"
+                        : "inset-x-2 bottom-2 top-[max(8px,env(safe-area-inset-top))] rounded-[28px]",
+                    className,
+                  )}
+                >
+                  {onSubmit ? (
+                    <form
+                      noValidate
+                      className="contents"
+                      onSubmit={(e) => {
+                        e.preventDefault();
+                        onSubmit();
+                      }}
+                    >
+                      {panel}
+                    </form>
+                  ) : (
+                    panel
+                  )}
+                </motion.div>
+              </DialogPrimitive.Content>
+            </DialogPrimitive.Portal>
+          )}
+        </AnimatePresence>
+      </DialogPrimitive.Root>
+      {guard.prompt}
+    </>
   );
 }
 

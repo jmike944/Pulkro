@@ -7,12 +7,27 @@ import { DEMO_ENABLED } from "@/lib/demo";
 import { fmtNum } from "@/lib/format";
 import { ConfirmDialog } from "@/features/configuracion/shared";
 
+/** How long a covering transition (`onBeforeReset`) runs before the data is replaced: the blade is across the screen by then. */
+const COVER_MS = 420;
+
 /**
  * "Restablecer datos demo" always goes through this confirmation (key-value summary + explicit checkbox): it replaces every
  * record on the device, so it is blocked while captures have not reached the server. Renders nothing when the demo is off
  * (NEXT_PUBLIC_DEMO="0"). Used by the sidebar user menu and Perfil.
  */
-export function DemoResetDialog({ open, onOpenChange, onDone }: { open: boolean; onOpenChange: (v: boolean) => void; onDone?: () => void }) {
+export function DemoResetDialog({
+  open,
+  onOpenChange,
+  onBeforeReset,
+  onDone,
+}: {
+  open: boolean;
+  onOpenChange: (v: boolean) => void;
+  /** starts a transition that covers the screen (the squeegee wipe); the reset then runs `COVER_MS` later, under it */
+  onBeforeReset?: () => void;
+  /** after the data was replaced */
+  onDone?: () => void;
+}) {
   const resetDemo = useAppStore((s) => s.resetDemo);
   const orders = useScopedData().orders.length;
   const { pending, syncing } = useSyncSummary();
@@ -35,9 +50,14 @@ export function DemoResetDialog({ open, onOpenChange, onDone }: { open: boolean;
       confirmDisabled={unsynced > 0}
       destructive
       onConfirm={() => {
-        resetDemo();
-        toast.success("Datos de demostración restablecidos");
-        onDone?.();
+        const reset = () => {
+          resetDemo();
+          toast.success("Datos de demostración restablecidos");
+          onDone?.();
+        };
+        if (!onBeforeReset) return reset();
+        onBeforeReset();
+        setTimeout(reset, COVER_MS);
       }}
     >
       {unsynced > 0 && (

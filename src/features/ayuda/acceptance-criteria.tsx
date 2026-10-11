@@ -6,7 +6,7 @@ import { motion } from "motion/react";
 import { ArrowRight, Sparkle } from "lucide-react";
 import { useAppStore, useCurrentUser, useScopedData } from "@/lib/hooks";
 import { can } from "@/lib/permissions";
-import { fmtNum } from "@/lib/format";
+import { fmtNum, plural } from "@/lib/format";
 import { ROLE_LABEL } from "@/lib/status";
 import { AnimatedNumber } from "@/components/pk/bits";
 import { EASE } from "@/components/pk/motion";
@@ -86,7 +86,7 @@ export function AcceptanceCriteria() {
       {
         text: "Puede revisar un PDF, seleccionar fotos y abrir WhatsApp o email para compartirlo manualmente.",
         screens: reach([{ label: "Reportes", href: "/reportes" }]),
-        example: shared ? { label: `${folio.get(shared.orderId) ?? "Reporte"} · v${shared.version} · ${shared.shares.length} envío(s)`, href: reportHref(shared.orderId) } : null,
+        example: shared ? { label: `${folio.get(shared.orderId) ?? "Reporte"} · v${shared.version} · ${plural(shared.shares.length, "envío", "envíos")}`, href: reportHref(shared.orderId) } : null,
       },
       {
         text: "Dirección consulta órdenes e indicadores autorizados; el supervisor no ve información restringida.",
@@ -96,8 +96,8 @@ export function AcceptanceCriteria() {
         ]),
         note:
           user.role === "direccion"
-            ? `Como ${ROLE_LABEL[user.role]} ves ${fmtNum(orders.length)} de ${fmtNum(totalOrders)} órdenes.`
-            : `Como ${ROLE_LABEL[user.role]} ves ${fmtNum(orders.length)} ${orders.length === 1 ? "orden" : "órdenes"}: ${user.role === "supervisor" ? "las asignadas a ti" : "las de tu unidad"}.`,
+            ? `Como ${ROLE_LABEL[user.role]} ve ${fmtNum(orders.length)} de ${fmtNum(totalOrders)} órdenes.`
+            : `Como ${ROLE_LABEL[user.role]} ve ${fmtNum(orders.length)} ${orders.length === 1 ? "orden" : "órdenes"}: ${user.role === "supervisor" ? "las asignadas a usted" : "las de su unidad"}.`,
       },
       {
         text: "Se pueden exportar PDF de orden y Excel de indicadores habilitados.",
@@ -105,7 +105,7 @@ export function AcceptanceCriteria() {
           { label: "Indicadores", href: "/indicadores" },
           { label: "Reportes", href: "/reportes" },
         ]),
-        note: can(user.role, "export.excel") ? `Tu rol exporta PDF y Excel.` : `Tu rol exporta PDF; Excel es para Dirección y Administración.`,
+        note: can(user.role, "export.excel") ? `Su rol exporta PDF y Excel.` : `Su rol exporta PDF; Excel es para Dirección y Administración.`,
       },
       {
         text: "Las encuestas y quejas quedan asociadas a cliente y orden, según el alcance finalmente contratado.",
@@ -125,7 +125,7 @@ export function AcceptanceCriteria() {
       <div className="lg:sticky lg:top-6 lg:self-start">
         <CoverageRing covered={items.length} total={items.length} />
         <p className="mt-4 text-[14px] leading-relaxed text-subtle">
-          Cada criterio del documento (§10) tiene una pantalla en el prototipo. <b className="font-semibold text-ink">{withExample}</b> se pueden comprobar ahora mismo con tus datos.
+          Cada criterio de aceptación tiene una pantalla en el prototipo. <b className="font-semibold text-ink">{withExample}</b> se pueden comprobar ahora mismo con sus datos.
         </p>
       </div>
       <ol className="min-w-0">

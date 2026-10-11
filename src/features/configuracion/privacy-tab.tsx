@@ -61,9 +61,9 @@ export function PrivacyTab() {
   const copy = async () => {
     try {
       await navigator.clipboard.writeText(noticeAsText());
-      toast.success("Aviso copiado", { description: "Pégalo en el documento para revisión legal." });
+      toast.success("Aviso copiado", { description: "Péguelo en el documento para revisión legal." });
     } catch {
-      toast.error("No se pudo copiar", { description: "Usa la descarga en texto." });
+      toast.error("No se pudo copiar", { description: "Use la descarga en texto." });
     }
   };
   const download = () => {
@@ -83,7 +83,7 @@ export function PrivacyTab() {
               </div>
               <h2 className="mt-3 font-serif text-[30px] font-medium leading-tight text-ink sm:text-[36px]">Aviso de privacidad</h2>
               <p className="mt-2 max-w-xl text-[14.5px] leading-relaxed text-ink/75">
-                Fotografías, ubicación GPS, firmas y datos de contacto que la app recaba para documentar cada servicio (doc §6).
+                Fotografías, ubicación GPS, firmas y datos de contacto que la app recaba para documentar cada servicio.
               </p>
               <div className="mt-5 flex flex-wrap gap-2.5">
                 <Button onClick={copy} className="h-11 rounded-[12px] px-4 font-semibold">
@@ -137,7 +137,7 @@ export function PrivacyTab() {
 
       <aside className="min-w-0 space-y-10 xl:pl-10">
         <section>
-          <SectionHeader title="Datos que maneja la app" subtitle="Volumen visible para tu rol en este dispositivo." />
+          <SectionHeader title="Datos que maneja la app" subtitle="Volumen visible para su rol en este dispositivo." />
           <ul className="space-y-1">
             {DATA.map((d, i) => (
               <motion.li
@@ -189,7 +189,6 @@ export function PrivacyTab() {
                   <p className="flex flex-wrap items-center gap-x-2 gap-y-1 text-[14px] font-semibold text-ink">
                     {p.title}
                     <DocTag status={p.status} />
-                    <span className="text-[11.5px] font-medium text-subtle">doc {p.ref}</span>
                   </p>
                   <p className="mt-1 text-[13px] leading-snug text-subtle">
                     <span className="font-semibold text-ink/75">Propuesta: </span>

@@ -32,8 +32,8 @@ export function WeekView(props: Props) {
   if (data.items.length === 0) {
     return (
       <EmptyState icon={<CalendarDays />} title="Semana sin jornadas">
-        No hay jornadas programadas en tu alcance para estos días. Usa las flechas para ver otra semana
-        {data.unassigned.length ? " o programa las órdenes pendientes." : "."}
+        No hay jornadas programadas en su alcance para estos días. Use las flechas para ver otra semana
+        {data.unassigned.length ? " o programe las órdenes pendientes." : "."}
       </EmptyState>
     );
   }
@@ -237,7 +237,7 @@ function WeekSwipe({ data, now, focusKey, onOpen, onPickDay, highlightOrderId }:
     <div
       ref={ref}
       className="scrollbar-none relative -mx-4 flex snap-x snap-mandatory gap-3 overflow-x-auto px-4 pb-2 sm:-mx-7 sm:px-7 md:hidden"
-      aria-label="Jornadas de la semana, desliza para ver más días"
+      aria-label="Jornadas de la semana, deslice para ver más días"
     >
       {days.map((d, di) => {
         const k = dayKey(d);

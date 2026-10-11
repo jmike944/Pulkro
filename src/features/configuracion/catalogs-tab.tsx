@@ -62,7 +62,7 @@ export function CatalogsTab() {
           />
         </div>
         <p className="flex items-center gap-2 text-[13px] text-subtle">
-          <DocTag status="pendiente" /> Catálogos por definir con Pulkro (doc §4.1); el prototipo los propone editables.
+          <DocTag status="pendiente" /> Catálogos por definir con Pulkro; el prototipo los propone editables.
         </p>
       </div>
 

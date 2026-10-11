@@ -2,18 +2,19 @@
 
 import { useMemo, useState } from "react";
 import { AnimatePresence, motion } from "motion/react";
-import { Pencil, UserMinus, UserPlus, Users } from "lucide-react";
+import { Pencil, UserPlus, Users } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
-import { useAppStore, useCan, useCurrentUser, useLookups, useShallow } from "@/lib/hooks";
-import { OPEN_STATUSES, ROLE_LABEL } from "@/lib/status";
+import { useAppStore, useCan, useCurrentUser, useLookups } from "@/lib/hooks";
+import { ROLE_LABEL } from "@/lib/status";
 import type { Role, User } from "@/lib/types";
 import { PersonAvatar, SectionHeader } from "@/components/pk/bits";
 import { Segmented } from "@/components/pk/page";
 import { EmptyState } from "@/components/pk/feedback";
 import { EASE } from "@/components/pk/motion";
 import { Button } from "@/components/ui/button";
-import { ConfirmDialog, GatedButton, useDialogTarget, InlineSwitch, ListHead, NO_USERS, ROLES, RoleBadge, SearchField, norm } from "./shared";
+import { GatedButton, useDialogTarget, InlineSwitch, ListHead, NO_USERS, ROLES, RoleBadge, SearchField, norm } from "./shared";
+import { DeactivateUserDialog, useOpenOrdersBy } from "./deactivate-user";
 import { UserDialog } from "./user-dialog";
 import { PermissionMatrix } from "./permission-matrix";
 
@@ -30,7 +31,7 @@ const rowIn = {
 };
 
 export function UsersTab() {
-  const { users, orders } = useAppStore(useShallow((s) => ({ users: s.users, orders: s.orders })));
+  const users = useAppStore((s) => s.users);
   const upsertUser = useAppStore((s) => s.upsertUser);
   const lk = useLookups();
   const me = useCurrentUser();
@@ -41,13 +42,7 @@ export function UsersTab() {
   const [deactivating, setDeactivating] = useState<User | null>(null);
   const [confirmOpen, setConfirmOpen] = useState(false);
 
-  const openOrdersBy = useMemo(() => {
-    const m = new Map<string, number>();
-    orders.forEach((o) => {
-      if (OPEN_STATUSES.includes(o.status)) m.set(o.supervisorId, (m.get(o.supervisorId) ?? 0) + 1);
-    });
-    return m;
-  }, [orders]);
+  const openOrdersBy = useOpenOrdersBy();
 
   const list = useMemo(() => {
     const term = norm(q.trim());
@@ -78,7 +73,7 @@ export function UsersTab() {
       <section>
         <SectionHeader
           title="Usuarios"
-          subtitle="Cada persona inicia sesión con su cuenta individual (doc §6). Los trabajadores de cuadrilla no usan la app."
+          subtitle="Cada persona inicia sesión con su cuenta individual. Los trabajadores de cuadrilla no usan la app."
           action={
             <GatedButton allowed={canAdmin} reason={NO_USERS} onClick={() => dlg.show("new")}>
               <UserPlus className="size-4" /> Nuevo usuario
@@ -138,7 +133,7 @@ export function UsersTab() {
                         <div className="min-w-0">
                           <p className="flex items-center gap-2 truncate text-[16px] font-semibold text-ink xl:text-[15px]">
                             <span className="truncate">{u.name}</span>
-                            {isMe && <span className="shrink-0 rounded-md bg-sky-soft px-1.5 py-0.5 text-[10.5px] font-bold tracking-[0.06em] text-azure-fg">TÚ</span>}
+                            {isMe && <span className="shrink-0 rounded-md bg-sky-soft px-1.5 py-0.5 text-[10.5px] font-bold tracking-[0.06em] text-azure-fg">USTED</span>}
                           </p>
                           <p className="truncate text-[13px] text-subtle">
                             {u.title}
@@ -164,7 +159,7 @@ export function UsersTab() {
                           onChange={(v) => toggleActive(u, v)}
                           label={`${u.active ? "Desactivar" : "Activar"} a ${u.name}`}
                           disabled={!canAdmin || isMe}
-                          reason={isMe ? "No puedes desactivar tu propia cuenta." : NO_USERS}
+                          reason={isMe ? "No puede desactivar su propia cuenta." : NO_USERS}
                         />
                         <Button
                           variant="outline"
@@ -195,42 +190,18 @@ export function UsersTab() {
 
       {dlg.target && <UserDialog key={dlg.key} user={dlg.target === "new" ? null : dlg.target} open={dlg.open} onOpenChange={dlg.onOpenChange} />}
 
-      <ConfirmDialog
+      <DeactivateUserDialog
+        user={deactivating}
         open={confirmOpen}
         onOpenChange={setConfirmOpen}
-        icon={<UserMinus />}
-        iconTone="red"
-        title="Desactivar usuario"
-        description="La cuenta deja de iniciar sesión. Su historial, bitácora y órdenes se conservan."
-        rows={
-          deactivating
-            ? [
-                { k: "Usuario", v: deactivating.name },
-                { k: "Rol", v: ROLE_LABEL[deactivating.role] },
-                { k: "Unidad", v: lk.units.get(deactivating.unitId)?.name ?? "—" },
-                { k: "Órdenes abiertas asignadas", v: openOrdersBy.get(deactivating.id) ?? 0 },
-              ]
-            : []
-        }
-        checkboxLabel={`Entiendo que ${deactivating?.name.split(" ")[0] ?? "la persona"} ya no podrá iniciar sesión.`}
-        confirmLabel="Desactivar usuario"
-        destructive
-        onConfirm={() => {
-          if (!deactivating) return;
-          const u = deactivating;
+        onConfirm={(u) => {
           upsertUser({ ...u, active: false });
           toast(`${u.name} quedó desactivado`, {
             description: "Registrado en la bitácora.",
             action: { label: "Deshacer", onClick: () => upsertUser({ ...u, active: true }) },
           });
         }}
-      >
-        {deactivating && (openOrdersBy.get(deactivating.id) ?? 0) > 0 && (
-          <p className="rounded-[14px] bg-amber-soft px-4 py-3 text-[13.5px] leading-snug text-amber-ink">
-            Tiene órdenes abiertas. Reasígnalas desde el detalle de cada orden para que no queden sin supervisor.
-          </p>
-        )}
-      </ConfirmDialog>
+      />
     </div>
   );
 }

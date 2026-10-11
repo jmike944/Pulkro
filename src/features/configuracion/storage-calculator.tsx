@@ -88,7 +88,7 @@ export function StorageCalculator() {
             </div>
           </div>
           <p className="text-[12px] leading-snug text-subtle">
-            Base: {baseline.perMonth} servicios/mes y {baseline.perService} fotos por servicio en los datos que ves. No incluye reportes PDF ni respaldos.
+            Base: {baseline.perMonth} servicios/mes y {baseline.perService} fotos por servicio en los datos que ve. No incluye reportes PDF ni respaldos.
           </p>
         </div>
       </div>

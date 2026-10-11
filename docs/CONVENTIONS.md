@@ -87,6 +87,9 @@ Visual rules:
 - Animate with intent: stagger list rows (`rowVariants`), spring layout transitions (`layout`, `layoutId`), counters, bars growing. Respect reduced motion (MotionConfig is global). Never animate layout-thrashing properties in loops.
 - **Mobile-first**: the doc says the product is used on phones by all roles. Every screen must work at 375px: stack columns, tables become cards (`md:` breakpoints), tap targets ≥ 40px, no horizontal page scroll. The shell adds `pb-28` for the bottom nav.
 - Copy: Spanish, sentence case, numbers `tabular`. Dates via `fmtDay`, `fmtDate`, `fmtTime`, `fmtRelativeDay`, `fmtAgo`, `fmtDaysLeft`. Durations via `fmtDuration` / `fmtHours`.
+- Voice: usted, never tú (`Escriba`, `Elija`, `su alcance`, `Está al día`; never `Escribe`, `tu`, `Estás`). Where an imperative would read as tú, use a noun phrase or an infinitive. No internal references in user text (`doc §2`, `PENDIENTE §5`): keep those in code comments.
+- Back-out words: **Cancelar** abandons a form or confirmation, **Cerrar** dismisses a view, sheet or notice, **Volver** goes back one step or to the parent screen (`Volver a Postventa`). Never `Atrás`, `Regresar` or `Ir a` for going back; `Listo` only finishes an inline edit. Exception: where the primary action is itself "Cancelar …" (cancel an order), the secondary is `Volver`.
+- Errors say what to change (`Escriba al menos 10 dígitos, con lada`, `Ya hay otra jornada ese día: elija otra fecha`), never only what failed. Empty states say what will appear and what to do next. Plurals go through `plural()`, never `registro(s)`.
 - Accessibility: buttons have labels, icons-only buttons get `aria-label`, color is never the only signal.
 
 ## Theming (Claro / Oscuro / Sistema)

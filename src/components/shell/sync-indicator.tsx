@@ -1,13 +1,14 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useId, useMemo, useState } from "react";
 import { AnimatePresence, motion } from "motion/react";
-import { Check, ChevronRight, CloudOff, CloudUpload, Loader2, RefreshCw, WifiOff } from "lucide-react";
+import { Check, ChevronRight, CloudOff, CloudUpload, Loader2, RefreshCw, TriangleAlert, WifiOff } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAppStore, useNow, useSyncSummary } from "@/lib/hooks";
 import { useUi } from "@/lib/ui-store";
 import { fmtAgo, fmtTime, plural } from "@/lib/format";
-import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
+import type { SyncItem } from "@/lib/types";
+import { ModalShell } from "@/components/pk/modal-shell";
 import { Switch } from "@/components/ui/switch";
 import { Button } from "@/components/ui/button";
 
@@ -81,7 +82,7 @@ export function SyncChip({ collapsed, compact, slim }: { collapsed?: boolean; co
             {state === "offline" && (
               <>
                 <span className="font-semibold text-ink">Sin conexión</span>
-                <span className="truncate text-subtle">{pending.length}{compact ? "" : " pendientes"}</span>
+                <span className="truncate text-subtle">{compact ? pending.length : plural(pending.length, "pendiente", "pendientes")}</span>
               </>
             )}
           </motion.span>
@@ -149,88 +150,178 @@ export function MobileSyncPill({ hidden }: { hidden?: boolean }) {
   );
 }
 
-/** Sync queue sheet: pending/synced items, simulate offline, retry. */
+const STATE_WORD: Record<SyncItem["state"], string> = {
+  sincronizado: "Enviado",
+  sincronizando: "Enviando",
+  pendiente: "En espera de conexión",
+  error: "No se pudo enviar",
+};
+
+/**
+ * Sync queue: right sheet on desktop, bottom sheet below lg (same chrome as every other modal). Status first, then
+ * the queue newest-first; the retry button lives in the sticky footer so it is reachable however long the queue is.
+ * Queue rows do not animate: the list reorders on every capture and per-row motion made the whole sheet shimmer.
+ */
 export function SyncSheet() {
   const open = useUi((s) => s.syncOpen);
   const setOpen = useUi((s) => s.setSyncOpen);
+  const { queue } = useSyncSummary();
+  const retry = useAppStore((s) => s.retrySync);
+  const failed = queue.reduce((n, q) => n + (q.state === "error" ? 1 : 0), 0);
+
+  return (
+    <ModalShell
+      open={open}
+      onOpenChange={setOpen}
+      title="Sincronización"
+      description="La captura funciona sin internet. Los registros quedan en el dispositivo y se envían al recuperar la conexión."
+      desktop="sheet"
+      size="sm"
+      bodyClassName="pt-2"
+      footer={
+        failed > 0 ? (
+          <Button onClick={retry} className="h-11 rounded-[12px] px-5 text-[14px] font-semibold">
+            <RefreshCw /> Reintentar {plural(failed, "envío", "envíos")}
+          </Button>
+        ) : undefined
+      }
+    >
+      <SyncPanel />
+    </ModalShell>
+  );
+}
+
+function SyncPanel() {
   const { offline, queue, lastSyncAt } = useSyncSummary();
   const forced = useAppStore((s) => s.sync.forcedOffline);
   const browserOffline = useAppStore((s) => s.sync.browserOffline);
   const setForced = useAppStore((s) => s.setForcedOffline);
-  const retry = useAppStore((s) => s.retrySync);
-  const items = [...queue].reverse();
-  const pending = queue.filter((q) => q.state !== "sincronizado").length;
+  const items = useMemo(() => [...queue].reverse(), [queue]);
+  const waiting = queue.filter((q) => q.state !== "sincronizado").length;
+  const failed = queue.filter((q) => q.state === "error").length;
+  useNow(30_000); // keeps "hace 2 min" honest while the sheet stays open
+  const switchId = useId();
+
+  const status = offline
+    ? {
+        tone: "amber" as const,
+        icon: <WifiOff className="size-5" />,
+        title: "Trabajando sin conexión",
+        detail: waiting
+          ? `${plural(waiting, "registro", "registros")} ${waiting === 1 ? "espera" : "esperan"} conexión`
+          : "Nada por enviar. Lo que se capture queda en el dispositivo.",
+      }
+    : failed
+      ? {
+          tone: "red" as const,
+          icon: <TriangleAlert className="size-5" />,
+          title: "Hay registros sin enviar",
+          detail: `${plural(failed, "registro", "registros")} con error. Reintente el envío o revise la conexión.`,
+        }
+      : waiting
+        ? {
+            tone: "blue" as const,
+            icon: <CloudUpload className="size-5" />,
+            title: "Enviando registros…",
+            detail: `${plural(waiting, "registro", "registros")} en cola · última sincronización ${fmtAgo(lastSyncAt)}`,
+          }
+        : {
+            tone: "blue" as const,
+            icon: <CloudUpload className="size-5" />,
+            title: "Todo sincronizado",
+            detail: `Última sincronización ${fmtAgo(lastSyncAt)} · ${fmtTime(lastSyncAt)}`,
+          };
 
   return (
-    <Sheet open={open} onOpenChange={setOpen}>
-      <SheetContent className="w-full gap-0 p-0 sm:max-w-md">
-        <SheetHeader className="border-b border-hairline p-6">
-          <SheetTitle className="font-serif text-[26px] font-medium">Sincronización</SheetTitle>
-          <SheetDescription>
-            La captura funciona sin internet. Los registros quedan en el dispositivo y se envían al recuperar la conexión.
-          </SheetDescription>
-        </SheetHeader>
-        <div className="space-y-4 border-b border-hairline p-6">
-          <div className={cn("flex items-center gap-3 rounded-[16px] p-4", offline ? "bg-amber-soft" : "bg-blue-soft")}>
-            <span className={cn("inline-flex size-10 items-center justify-center rounded-[12px]", offline ? "bg-amber-mid text-amber-fg" : "bg-blue-mid text-azure-fg")}>
-              {offline ? <WifiOff className="size-5" /> : <CloudUpload className="size-5" />}
-            </span>
-            <div className="min-w-0 flex-1 text-[14px]">
-              <p className="font-semibold text-ink">{offline ? "Trabajando sin conexión" : pending ? "Enviando registros…" : "Todo sincronizado"}</p>
-              <p className="text-subtle">
-                {offline ? `${pending} registro(s) esperando conexión` : `Última sincronización ${fmtAgo(lastSyncAt)} · ${fmtTime(lastSyncAt)}`}
-              </p>
-            </div>
-          </div>
-          <label className="flex items-center justify-between gap-4 text-[14px]">
-            <span>
-              <span className="block font-medium text-ink">Simular sin conexión</span>
-              <span className="text-subtle">Prueba la captura offline en campo{browserOffline ? " · el navegador está sin red" : ""}</span>
-            </span>
-            <Switch checked={forced} onCheckedChange={setForced} />
-          </label>
-          {queue.some((q) => q.state === "error") && (
-            <Button variant="outline" onClick={retry} className="w-full">
-              <RefreshCw /> Reintentar envíos con error
-            </Button>
+    <div className="space-y-5">
+      <div
+        role="status"
+        className={cn(
+          "flex items-center gap-3 rounded-[16px] p-4",
+          status.tone === "amber" && "bg-amber-soft",
+          status.tone === "red" && "bg-red-soft",
+          status.tone === "blue" && "bg-blue-soft",
+        )}
+      >
+        <span
+          className={cn(
+            "inline-flex size-10 shrink-0 items-center justify-center rounded-[12px]",
+            status.tone === "amber" && "bg-amber-mid text-amber-fg",
+            status.tone === "red" && "bg-red-tint text-red-fg",
+            status.tone === "blue" && "bg-blue-mid text-azure-fg",
           )}
+        >
+          {status.icon}
+        </span>
+        <div className="min-w-0 flex-1 text-[14px] leading-snug">
+          <p className="font-semibold text-ink">{status.title}</p>
+          <p className="text-subtle">{status.detail}</p>
         </div>
-        <div className="flex-1 overflow-y-auto p-6">
-          <p className="mb-3 text-[12px] font-semibold uppercase tracking-[0.1em] text-subtle">Cola de sincronización</p>
-          {items.length === 0 && <p className="text-[14px] text-subtle">Sin movimientos recientes en este dispositivo.</p>}
-          <ul className="space-y-1">
-            <AnimatePresence initial={false}>
-              {items.map((q) => (
-                <motion.li
-                  key={q.id}
-                  layout
-                  initial={{ opacity: 0, x: 12 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  exit={{ opacity: 0 }}
-                  className="flex items-center gap-3 rounded-[12px] px-2 py-2.5 text-[13.5px] hover:bg-muted"
-                >
-                  <span
-                    className={cn(
-                      "inline-flex size-7 shrink-0 items-center justify-center rounded-full",
-                      q.state === "sincronizado" && "bg-teal-soft text-teal-fg",
-                      q.state === "sincronizando" && "bg-blue-soft text-link",
-                      q.state === "pendiente" && "bg-amber-soft text-amber-fg",
-                      q.state === "error" && "bg-red-soft text-red-fg",
-                    )}
-                  >
-                    {q.state === "sincronizado" && <Check className="size-3.5" />}
-                    {q.state === "sincronizando" && <Loader2 className="size-3.5 animate-spin" />}
-                    {q.state === "pendiente" && <CloudOff className="size-3.5" />}
-                    {q.state === "error" && <RefreshCw className="size-3.5" />}
-                  </span>
-                  <span className="min-w-0 flex-1 truncate text-ink">{q.label}</span>
-                  <span className="shrink-0 text-[12px] text-subtle tabular">{fmtTime(q.at)}</span>
-                </motion.li>
-              ))}
-            </AnimatePresence>
+      </div>
+
+      <label className="flex min-h-14 cursor-pointer items-center justify-between gap-4 rounded-[16px] border border-hairline px-4 py-3 text-[14px]">
+        <span className="min-w-0">
+          <span id={`${switchId}-l`} className="block font-medium text-ink">
+            Simular sin conexión
+          </span>
+          <span id={`${switchId}-d`} className="block text-[12.5px] leading-snug text-subtle">
+            Para probar la captura sin internet{browserOffline ? ". El navegador ya está sin red." : "."}
+          </span>
+        </span>
+        <Switch checked={forced} onCheckedChange={setForced} aria-labelledby={`${switchId}-l`} aria-describedby={`${switchId}-d`} />
+      </label>
+
+      <section aria-label="Cola de sincronización">
+        <h3 className="mb-2 flex items-baseline justify-between text-[12px] font-semibold uppercase tracking-[0.1em] text-subtle">
+          Cola de sincronización
+          {items.length > 0 && <span className="tabular tracking-normal">{items.length}</span>}
+        </h3>
+        {items.length === 0 ? (
+          <p className="rounded-[16px] border border-dashed border-line-strong px-4 py-5 text-[13.5px] leading-snug text-subtle">
+            Aún no hay registros en este dispositivo. Al capturar una foto, una entrada o un cierre, aparece aquí hasta que se envíe.
+          </p>
+        ) : (
+          <ul className="-mx-2">
+            {items.map((q) => (
+              <QueueRow key={q.id} item={q} />
+            ))}
           </ul>
-        </div>
-      </SheetContent>
-    </Sheet>
+        )}
+      </section>
+    </div>
+  );
+}
+
+function QueueRow({ item: q }: { item: SyncItem }) {
+  return (
+    <li className="flex items-center gap-3 rounded-[12px] px-2 py-2.5 text-[13.5px]">
+      <span
+        className={cn(
+          "inline-flex size-7 shrink-0 items-center justify-center rounded-full",
+          q.state === "sincronizado" && "bg-teal-soft text-teal-fg",
+          q.state === "sincronizando" && "bg-blue-soft text-link",
+          q.state === "pendiente" && "bg-amber-soft text-amber-fg",
+          q.state === "error" && "bg-red-soft text-red-fg",
+        )}
+      >
+        {q.state === "sincronizado" && <Check className="size-3.5" aria-hidden />}
+        {q.state === "sincronizando" && <Loader2 className="size-3.5 animate-spin" aria-hidden />}
+        {q.state === "pendiente" && <CloudOff className="size-3.5" aria-hidden />}
+        {q.state === "error" && <RefreshCw className="size-3.5" aria-hidden />}
+      </span>
+      <span className="min-w-0 flex-1">
+        <span className="line-clamp-2 text-ink">
+          <span className="sr-only">{STATE_WORD[q.state]}: </span>
+          {q.label}
+        </span>
+        {/* the icon alone must not carry the state: say it for everything that has not gone out yet */}
+        {q.state !== "sincronizado" && (
+          <span aria-hidden className={cn("block text-[12px]", q.state === "error" ? "text-red-fg" : "text-subtle")}>
+            {STATE_WORD[q.state]}
+          </span>
+        )}
+      </span>
+      <span className="shrink-0 text-[12px] text-subtle tabular">{fmtTime(q.at)}</span>
+    </li>
   );
 }

@@ -1,11 +1,11 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo } from "react";
+import { useEffect, useMemo } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { AnimatePresence, motion } from "motion/react";
 import { CircleHelp } from "lucide-react";
-import { useCan, useCurrentUser, useScopedAudit, useScopedCatalog, useScopedData, useSyncSummary } from "@/lib/hooks";
+import { useCan, useCurrentUser, useScopedCatalog, useScopedData, useSyncSummary } from "@/lib/hooks";
 import { plural } from "@/lib/format";
 import { PageHeader, UnderlineTabs, type TabItem } from "@/components/pk/page";
 import { EASE } from "@/components/pk/motion";
@@ -14,13 +14,12 @@ import { ProfileCard } from "./profile-card";
 import { UsersTab } from "./users-tab";
 import { CatalogsTab } from "./catalogs-tab";
 import { SyncTab } from "./sync-tab";
-import { AuditTab } from "./audit-tab";
 import { PrivacyTab } from "./privacy-tab";
 import { useCatalogUnit } from "./use-catalog-unit";
 
-export type SettingsTab = "usuarios" | "catalogos" | "sincronizacion" | "auditoria" | "privacidad";
+export type SettingsTab = "usuarios" | "catalogos" | "sincronizacion" | "privacidad";
 
-/** /configuracion — settings, catalogs, offline data, audit log and privacy (doc §2, §4.1, §6). */
+/** /configuracion — settings, catalogs, offline data and privacy (doc §2, §4.1, §6). The audit log lives in /bitacora. */
 export function SettingsView() {
   const user = useCurrentUser();
   const canUsers = useCan("users.admin");
@@ -32,19 +31,22 @@ export function SettingsView() {
   const { users, units, clients, sites } = useScopedCatalog();
   const { pending } = useSyncSummary();
   const { orders } = useScopedData();
-  const audit = useScopedAudit();
 
   const tabs = useMemo(() => {
     const out: (TabItem & { value: SettingsTab })[] = [];
     if (canUsers) out.push({ value: "usuarios", label: "Usuarios y permisos", count: users.length });
     if (canCatalogs) out.push({ value: "catalogos", label: "Catálogos" });
     out.push({ value: "sincronizacion", label: "Sincronización y datos", count: pending.length || undefined });
-    out.push({ value: "auditoria", label: "Bitácora", count: audit.length > 999 ? "999+" : audit.length });
     out.push({ value: "privacidad", label: "Privacidad" });
     return out;
-  }, [canUsers, canCatalogs, users.length, pending.length, audit.length]);
+  }, [canUsers, canCatalogs, users.length, pending.length]);
 
   const requested = params.get("tab");
+  // The Bitácora used to be a tab here: old links (?tab=auditoria) land on its own page.
+  const legacyAudit = requested === "auditoria";
+  useEffect(() => {
+    if (legacyAudit) router.replace("/bitacora");
+  }, [legacyAudit, router]);
   const tab: SettingsTab = (tabs.find((t) => t.value === requested)?.value ?? tabs[0].value) as SettingsTab;
 
   const setTab = (v: string) => {
@@ -59,7 +61,7 @@ export function SettingsView() {
   const description =
     user.role === "supervisor" ? (
       <>
-        Tu dispositivo guarda <b>{plural(orders.length, "orden asignada", "órdenes asignadas")}</b>
+        Su dispositivo guarda <b>{plural(orders.length, "orden asignada", "órdenes asignadas")}</b>
         {pending.length > 0 ? (
           <>
             {" "}y <b>{plural(pending.length, "registro", "registros")}</b> esperan sincronizar.
@@ -67,13 +69,17 @@ export function SettingsView() {
         ) : (
           <> y todo está sincronizado.</>
         )}{" "}
-        Revisa tu bitácora y el aviso de privacidad.
+        Revise{" "}
+        <Link href="/bitacora" className="font-semibold text-link hover:underline">
+          su bitácora
+        </Link>{" "}
+        y el aviso de privacidad.
       </>
     ) : (
       <>
         <b>{plural(activeUsers, "usuario activo", "usuarios activos")}</b> en <b>{plural(units.length, "unidad", "unidades")}</b>,{" "}
         <b>{plural(clients.length, "cliente", "clientes")}</b> con <b>{plural(sites.length, "sitio", "sitios")}</b> en catálogo
-        {catalogUnit !== "all" && <> de {units.find((u) => u.id === catalogUnit)?.name ?? "tu unidad"}</>}.
+        {catalogUnit !== "all" && <> de {units.find((u) => u.id === catalogUnit)?.name ?? "su unidad"}</>}.
         {pending.length > 0 && (
           <>
             {" "}
@@ -82,6 +88,9 @@ export function SettingsView() {
         )}
       </>
     );
+
+  // Nothing to show on the way out: no flash of the first tab.
+  if (legacyAudit) return null;
 
   return (
     <div>
@@ -113,7 +122,6 @@ export function SettingsView() {
           {tab === "usuarios" && <UsersTab />}
           {tab === "catalogos" && <CatalogsTab />}
           {tab === "sincronizacion" && <SyncTab />}
-          {tab === "auditoria" && <AuditTab />}
           {tab === "privacidad" && <PrivacyTab />}
         </motion.div>
       </AnimatePresence>

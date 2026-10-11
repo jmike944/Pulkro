@@ -279,7 +279,7 @@ function NewOrderWizard() {
           {step > 0 && (
             <BigButton variant="outline" onClick={() => go(step - 1)} className="w-[64px] shrink-0">
               <ChevronLeft />
-              <span className="sr-only">Atrás</span>
+              <span className="sr-only">Volver</span>
             </BigButton>
           )}
           <span ref={nextScope} className="block min-w-0 flex-1">
@@ -412,7 +412,7 @@ function NewOrderWizard() {
                 className="h-11 rounded-[14px] border-line px-4 text-[14.5px] font-semibold"
               >
                 <ChevronLeft className="size-4" />
-                Atrás
+                Volver
               </Button>
               <Tooltip>
                 <TooltipTrigger asChild>

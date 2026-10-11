@@ -177,7 +177,7 @@ export function ClientsCatalog() {
           onCreated={(c) => {
             setExpanded(c.id);
             toast.success(`Cliente ${c.shortName} creado`, {
-              description: "Agrega su primer sitio para poder programar órdenes.",
+              description: "Agregue su primer sitio para poder programar órdenes.",
               action: { label: "Agregar sitio", onClick: () => siteDlg.show({ client: c, site: null }) },
             });
           }}
@@ -221,7 +221,7 @@ function ClientDetail({
         </div>
         {sites.length === 0 ? (
           <p className="mt-4 rounded-[14px] border border-dashed border-line-strong bg-surface px-4 py-6 text-center text-[13.5px] text-subtle">
-            Sin sitios registrados. Agrega uno para poder programar órdenes.
+            Sin sitios registrados. Agregue uno para poder programar órdenes.
           </p>
         ) : (
           <ul className="mt-3 space-y-2">

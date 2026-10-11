@@ -157,7 +157,7 @@ export function Faq() {
       <SearchField value={q} onChange={setQ} placeholder="Buscar en preguntas frecuentes" className="mb-4 max-w-md" />
       {list.length === 0 ? (
         <p className="rounded-[18px] border border-dashed border-line-strong px-5 py-8 text-center text-[14px] text-subtle">
-          Sin resultados para «{q}». Llama a la Matriz si necesitas ayuda directa.
+          Sin resultados para «{q}». Pruebe con otras palabras o llame a la Matriz para recibir ayuda directa.
         </p>
       ) : (
         <ul className="divide-y divide-hairline rounded-[22px] border border-hairline bg-surface shadow-soft">

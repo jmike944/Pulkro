@@ -265,12 +265,15 @@ export const minutesOf = (hhmm: string) => {
   return h * 60 + m;
 };
 
-/** Validate one plan row. Returns a Spanish error message or null. */
-export function validatePlan(p: DayPlan, todayKey: string): string | null {
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(p.date)) return "Elige una fecha.";
-  if (p.date < todayKey) return "La fecha ya pasó.";
-  if (!/^\d{2}:\d{2}$/.test(p.start) || !/^\d{2}:\d{2}$/.test(p.end)) return "Indica inicio y término.";
-  if (minutesOf(p.end) <= minutesOf(p.start)) return "El término debe ser posterior al inicio (mismo día).";
+/** What is wrong with a plan row, and which field to mark: the date, or the start/end times. */
+export type PlanIssue = { field: "date" | "time"; message: string };
+
+/** Validate one plan row (a date not in the past, start and end on the same day). Returns the first issue or null. */
+export function validatePlan(p: DayPlan, todayKey: string): PlanIssue | null {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(p.date)) return { field: "date", message: "Elija una fecha." };
+  if (p.date < todayKey) return { field: "date", message: "La fecha ya pasó: elija hoy o un día posterior." };
+  if (!/^\d{2}:\d{2}$/.test(p.start) || !/^\d{2}:\d{2}$/.test(p.end)) return { field: "time", message: "Indique inicio y término." };
+  if (minutesOf(p.end) <= minutesOf(p.start)) return { field: "time", message: "El término debe ser posterior al inicio, el mismo día: ajuste la hora." };
   return null;
 }
 

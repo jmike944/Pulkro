@@ -50,7 +50,7 @@ export function MobileMenu({ open, onOpenChange }: { open: boolean; onOpenChange
               </button>
             </DrawerClose>
           </div>
-          <DrawerDescription className="sr-only">Tu perfil, acciones rápidas y todas las secciones de Pulkro.</DrawerDescription>
+          <DrawerDescription className="sr-only">Su perfil, acciones rápidas y todas las secciones de Pulkro.</DrawerDescription>
           <MenuBody onClose={close} onPickUnit={then(() => setUnitOpen(true))} onSearch={then(() => setCommandOpen(true))} onSync={then(() => setSyncOpen(true))} />
         </DrawerContent>
       </Drawer>

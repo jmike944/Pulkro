@@ -2,16 +2,16 @@
 
 import { cn } from "@/lib/utils";
 import { ReasonTip } from "@/components/pk/reason-tip";
-import { DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { ModalShellContent } from "@/components/pk/modal-shell";
 
 /** Copy for actions a role can't perform (doc §2 "Gestionar quejas/encuestas"). */
 export const REASON_POSTVENTA = "Solo Administración y Supervisores gestionan quejas y encuestas.";
 export const REASON_ORDER_CREATE = "Solo Administración da de alta órdenes.";
 export const REASON_EXPORT = "Exportar a Excel está disponible para Dirección y Administración.";
 
-/** Shared field styles (taller than shadcn defaults: ≥ 44px tap targets on phones). */
-export const inputCls = "h-11 rounded-[12px] border-input bg-surface px-3.5 text-[15px] shadow-[0_1px_2px_rgb(16_24_40/0.03)]";
-export const textareaCls = "min-h-[104px] rounded-[14px] border-input bg-surface px-3.5 py-3 text-[15px]";
+/** Shared field styles (taller than shadcn defaults: ≥ 44px tap targets; 16px text below lg so iOS does not zoom). */
+export const inputCls = "h-11 rounded-[12px] border-input bg-surface px-3.5 text-[16px] shadow-[0_1px_2px_rgb(16_24_40/0.03)] md:text-[16px] lg:text-[15px]";
+export const textareaCls = "min-h-[104px] rounded-[14px] border-input bg-surface px-3.5 py-3 text-[16px] md:text-[16px] lg:text-[15px]";
 export const menuItemCls = "min-h-10 gap-2.5 rounded-[10px] px-2.5 text-[14px]";
 export const outlineBtnCls = "h-10 rounded-[12px] border-line px-4 text-[14px] font-semibold shadow-[0_1px_2px_rgb(16_24_40/0.05)]";
 
@@ -42,11 +42,16 @@ export function FieldLabel({ children, htmlFor, hint, className }: { children: R
   );
 }
 
-/** Dialog chrome: serif title, scrolling body, sticky footer. Children = body. */
+/**
+ * Dialog chrome rendered inside the caller's `<Dialog open onOpenChange>`: a thin wrapper over the shared
+ * `ModalShellContent` (centered dialog at lg+, bottom sheet on phones, 44px "Cerrar", sticky footer).
+ * Children = body. For a discard guard or a phone flow, use `ModalShell` (it owns the root) instead.
+ */
 export function DialogPanel({
   title,
   description,
   footer,
+  footerHint,
   children,
   className,
   wide,
@@ -54,25 +59,16 @@ export function DialogPanel({
   title: React.ReactNode;
   description?: React.ReactNode;
   footer?: React.ReactNode;
+  /** what is still missing before the primary action is enabled */
+  footerHint?: React.ReactNode;
   children: React.ReactNode;
   className?: string;
   wide?: boolean;
 }) {
   return (
-    <DialogContent
-      className={cn(
-        "flex max-h-[92dvh] flex-col gap-0 overflow-hidden rounded-[24px] p-0",
-        wide ? "sm:max-w-[600px]" : "sm:max-w-[500px]",
-        className,
-      )}
-    >
-      <DialogHeader className="gap-1.5 border-b border-hairline px-6 pb-5 pt-6 pr-12 text-left">
-        <DialogTitle className="font-serif text-[26px] font-medium leading-tight tracking-[-0.01em] text-ink">{title}</DialogTitle>
-        {description && <DialogDescription className="text-[14px] text-subtle">{description}</DialogDescription>}
-      </DialogHeader>
-      <div className="min-h-0 flex-1 overflow-y-auto px-6 py-5">{children}</div>
-      {footer && <div className="flex flex-col-reverse gap-2 border-t border-hairline bg-wash px-6 py-4 sm:flex-row sm:items-center sm:justify-end">{footer}</div>}
-    </DialogContent>
+    <ModalShellContent title={title} description={description} footer={footer} footerHint={footerHint} size={wide ? "lg" : "md"} className={className}>
+      {children}
+    </ModalShellContent>
   );
 }
 

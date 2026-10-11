@@ -140,7 +140,7 @@ function CaseMenu({ row, canManage, onMove }: { row: CaseRow; canManage: boolean
           <DropdownMenuItem key={st} disabled={!canManage} className={menuItemCls} onClick={() => onMove(row, st)}>
             <StatusDot tone={CASE_STATUS[st].tone} />
             {CASE_STATUS[st].label}
-            {(st === "resuelto" || st === "cerrado") && <span className="ml-auto text-[12px] text-subtle">{st === "resuelto" ? "Pide resolución" : "Pide conformidad"}</span>}
+            {(st === "resuelto" || st === "cerrado") && <span className="ml-auto text-[12px] text-subtle">{st === "resuelto" ? "Requiere resolución" : "Requiere conformidad"}</span>}
           </DropdownMenuItem>
         ))}
         <DropdownMenuSeparator />

@@ -5,13 +5,15 @@ import { QRCodeSVG } from "qrcode.react";
 import { motion } from "motion/react";
 import { Check, Copy, Mail, MessageCircle } from "lucide-react";
 import { toast } from "sonner";
+import { cn } from "@/lib/utils";
 import { mailtoLink, whatsappLink } from "@/lib/domain";
 import type { Client, Order, Survey } from "@/lib/types";
 import { PulkroMark } from "@/components/pk/brand";
+import { ModalShell } from "@/components/pk/modal-shell";
 import { Button } from "@/components/ui/button";
-import { Dialog } from "@/components/ui/dialog";
 import { contactFor, surveyMessage, surveyUrl } from "./lib";
-import { DialogPanel, REASON_POSTVENTA, outlineBtnCls } from "./ui";
+import { REASON_POSTVENTA, outlineBtnCls } from "./ui";
+import { useHeldTarget } from "./use-held-target";
 
 export type SurveyTarget = { s: Survey; order: Order; client?: Client };
 
@@ -24,14 +26,14 @@ export async function copySurveyLink(token: string) {
     await navigator.clipboard.writeText(url);
     toast.success("Enlace de encuesta copiado", { description: url.replace(/^https?:\/\//, "") });
   } catch {
-    toast.error("No se pudo copiar el enlace", { description: url });
+    toast.error("No se pudo copiar el enlace", { description: `Cópielo manualmente: ${url}` });
   }
 }
 
 export function shareSurveyWhatsapp({ s, order, client }: SurveyTarget) {
   const contact = contactFor(order, client);
   if (!contact.phone) {
-    toast.error("La orden no tiene teléfono de contacto");
+    toast.error("La orden no tiene teléfono de contacto", { description: "Registre el teléfono en la orden o elija otro canal." });
     return;
   }
   const text = surveyMessage({ contactName: contact.name, folio: order.folio, title: order.title, url: surveyUrl(s.token) });
@@ -41,7 +43,7 @@ export function shareSurveyWhatsapp({ s, order, client }: SurveyTarget) {
 
 export function shareSurveyEmail({ s, order, client }: SurveyTarget) {
   if (!client?.contactEmail) {
-    toast.error("El cliente no tiene correo registrado");
+    toast.error("El cliente no tiene correo registrado", { description: "Agregue el correo en Configuración o elija otro canal." });
     return;
   }
   const body = surveyMessage({ contactName: client.contactName, folio: order.folio, title: order.title, url: surveyUrl(s.token) });
@@ -49,21 +51,35 @@ export function shareSurveyEmail({ s, order, client }: SurveyTarget) {
   toast("Se abrió su app de correo", { description: NO_DELIVERY });
 }
 
-/** QR to show on the supervisor's phone so the client answers on site. */
+/**
+ * QR to show on the supervisor's phone so the client answers on site.
+ * Centered dialog on desktop, bottom sheet on phones; stays mounted while it closes (exit animation).
+ */
 export function SurveyQrDialog({ target, canManage, onOpenChange }: { target: SurveyTarget | null; canManage: boolean; onOpenChange: (open: boolean) => void }) {
-  return (
-    <Dialog open={!!target} onOpenChange={onOpenChange}>
-      {target && <QrBody key={target.s.id} target={target} canManage={canManage} />}
-    </Dialog>
-  );
+  const { held, session } = useHeldTarget(target);
+  if (!held) return null;
+  return <QrBody key={session} open={!!target} target={held} canManage={canManage} onOpenChange={onOpenChange} />;
 }
 
-function QrBody({ target, canManage }: { target: SurveyTarget; canManage: boolean }) {
+/** 48px on phones, 44px from lg: three share actions that stack on a phone and sit in a row from sm. */
+const SHARE_BTN = cn(outlineBtnCls, "h-12 w-full lg:h-11");
+
+function QrBody({ target, open, canManage, onOpenChange }: { target: SurveyTarget; open: boolean; canManage: boolean; onOpenChange: (open: boolean) => void }) {
   const { s, order, client } = target;
   const url = surveyUrl(s.token);
   const [copied, setCopied] = useState(false);
   return (
-    <DialogPanel title="Encuesta por QR" description={`${order.folio} · ${client?.shortName ?? order.title}`}>
+    <ModalShell
+      open={open}
+      onOpenChange={onOpenChange}
+      title="Encuesta por QR"
+      description={
+        <>
+          <b>{order.folio}</b> · {client?.shortName ?? order.title}
+        </>
+      }
+      size="md"
+    >
       <div className="flex flex-col items-center">
         <motion.div
           initial={{ opacity: 0, scale: 0.92, rotate: -2 }}
@@ -83,10 +99,10 @@ function QrBody({ target, canManage }: { target: SurveyTarget; canManage: boolea
           Pida al cliente que escanee el código con la cámara de su teléfono. No necesita instalar nada ni iniciar sesión.
         </p>
         <p className="mt-3 max-w-full truncate rounded-[10px] bg-soft px-3 py-1.5 text-[12.5px] text-ink/70 tabular">{url.replace(/^https?:\/\//, "")}</p>
-        <div className="mt-5 flex w-full flex-wrap justify-center gap-2">
+        <div className="mt-5 grid w-full gap-2 sm:grid-cols-3">
           <Button
             variant="outline"
-            className={outlineBtnCls}
+            className={SHARE_BTN}
             disabled={!canManage}
             onClick={() => {
               void copySurveyLink(s.token).then(() => setCopied(true));
@@ -94,15 +110,15 @@ function QrBody({ target, canManage }: { target: SurveyTarget; canManage: boolea
           >
             {copied ? <Check className="text-teal-fg" /> : <Copy />} {copied ? "Copiado" : "Copiar enlace"}
           </Button>
-          <Button variant="outline" className={outlineBtnCls} disabled={!canManage} onClick={() => shareSurveyWhatsapp(target)}>
+          <Button variant="outline" className={SHARE_BTN} disabled={!canManage} onClick={() => shareSurveyWhatsapp(target)}>
             <MessageCircle /> WhatsApp
           </Button>
-          <Button variant="outline" className={outlineBtnCls} disabled={!canManage} onClick={() => shareSurveyEmail(target)}>
+          <Button variant="outline" className={SHARE_BTN} disabled={!canManage} onClick={() => shareSurveyEmail(target)}>
             <Mail /> Correo
           </Button>
         </div>
         {!canManage && <p className="mt-3 text-center text-[12.5px] leading-snug text-subtle">{REASON_POSTVENTA}</p>}
       </div>
-    </DialogPanel>
+    </ModalShell>
   );
 }

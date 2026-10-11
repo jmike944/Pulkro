@@ -16,7 +16,7 @@ export function WithReason({ reason, children, className }: { reason?: string | 
 }
 
 export const REASON = {
-  share: "Solo el supervisor asignado genera y comparte el reporte (Autorizar cierre y envío).",
+  share: "Solo el supervisor asignado genera y comparte el reporte.",
   export: "Su rol no tiene permiso para exportar PDF.",
   sync: "Hay registros de esta orden sin sincronizar. El PDF definitivo se comparte cuando todo esté en el servidor.",
   noReport: "Genere el PDF primero.",

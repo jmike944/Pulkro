@@ -89,7 +89,7 @@ export function DayView({
 
       {items.length === 0 ? (
         <EmptyState icon={<CalendarDays />} title="Día libre" className="border-none py-10">
-          No hay jornadas programadas este día en tu alcance.
+          No hay jornadas programadas este día en su alcance.
         </EmptyState>
       ) : stacked ? (
         <DayStack items={items} now={now} isToday={isToday} multiLane={data.multiLane} onOpen={onOpen} highlightOrderId={highlightOrderId} />

@@ -115,7 +115,7 @@ export function ClientsView() {
         actions={
           <>
             <Gate allowed={canExport} reason={REASON_EXPORT}>
-              <Button variant="outline" disabled={!canExport} onClick={() => void exportClients().catch(() => toast.error("No se pudo generar el Excel"))} className={outlineBtnCls}>
+              <Button variant="outline" disabled={!canExport} onClick={() => void exportClients().catch(() => toast.error("No se pudo generar el Excel", { description: "Intente de nuevo en unos segundos." }))} className={outlineBtnCls}>
                 <Download /> Exportar
               </Button>
             </Gate>

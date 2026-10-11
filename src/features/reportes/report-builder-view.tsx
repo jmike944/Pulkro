@@ -26,7 +26,7 @@ function ReportBuilder({ folio }: { folio: string }) {
     return (
       <div>
         <PageHeader breadcrumb={[{ label: "Órdenes", href: "/ordenes" }, { label: "Reporte" }]} title="Reporte final" />
-        <NotFoundOrOutOfScope subject="Esta orden" backHref="/reportes" backLabel="Ver reportes" />
+        <NotFoundOrOutOfScope subject="Esta orden" backHref="/reportes" backLabel="Volver a reportes" />
       </div>
     );
 

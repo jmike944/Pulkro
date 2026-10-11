@@ -59,7 +59,7 @@ export function SupervisorsTab({ data }: { data: TeamData }) {
             <SoftBadge tone="amber" className="mr-1.5 align-[1px]">
               PENDIENTE
             </SoftBadge>
-            Denominador de productividad por definir (doc §5). Mientras tanto: <b className="font-semibold">horas por servicio = horas reales (entrada → salida) ÷ órdenes cerradas</b> en el
+            Denominador de productividad por definir. Mientras tanto: <b className="font-semibold">horas por servicio = horas reales (entrada → salida) ÷ órdenes cerradas</b> en el
             periodo.
           </span>
         </div>
@@ -68,7 +68,7 @@ export function SupervisorsTab({ data }: { data: TeamData }) {
 
       {rows.length === 0 ? (
         <EmptyState title="Sin supervisores" icon={<CalendarDays />}>
-          No hay supervisores activos en tu alcance.
+          No hay supervisores activos en su alcance.
         </EmptyState>
       ) : (
         <motion.div key={period} variants={staggerContainer(0.07, 0.05)} initial="hidden" animate="show" className="grid gap-4 md:grid-cols-2 2xl:grid-cols-3">

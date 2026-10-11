@@ -23,7 +23,7 @@ export async function compressImage(file: Blob, maxSide = 1600, quality = 0.82) 
   ctx.drawImage(bitmap, 0, 0, width, height);
   bitmap.close?.();
   const blob: Blob = await new Promise((resolve, reject) =>
-    canvas.toBlob((b) => (b ? resolve(b) : reject(new Error("No se pudo comprimir la imagen"))), "image/jpeg", quality),
+    canvas.toBlob((b) => (b ? resolve(b) : reject(new Error("No se pudo comprimir la imagen. Elija otra foto o tómela de nuevo."))), "image/jpeg", quality),
   );
   return { blob, width, height };
 }

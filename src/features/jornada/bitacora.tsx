@@ -97,6 +97,7 @@ export function NoteFlow({ f, open, onOpenChange }: { f: FieldReady; open: boole
       onOpenChange={onOpenChange}
       title="Bitácora"
       description="Agregar nota a la bitácora de la jornada"
+      dirty={text.trim().length > 0}
       footer={
         <BigButton onClick={save} disabled={!ok}>
           <Send /> Agregar a la bitácora
@@ -104,7 +105,7 @@ export function NoteFlow({ f, open, onOpenChange }: { f: FieldReady; open: boole
       }
     >
       <FlowHeading eyebrow={<FlowEyebrow f={f} />} title="Nota de bitácora">
-        Queda con tu nombre y la hora del dispositivo, aunque no haya señal.
+        Queda con su nombre y la hora del dispositivo, aunque no haya señal.
       </FlowHeading>
       <FieldCaption>
         <label htmlFor="note-flow">Nota</label>

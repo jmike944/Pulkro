@@ -1,223 +1,220 @@
 "use client";
 
-import { useRef, useState } from "react";
-import { addDays, addMinutes, format, isSunday, parseISO } from "date-fns";
-import { AnimatePresence, motion } from "motion/react";
-import { CalendarPlus, Lock, Trash2 } from "lucide-react";
+import { useState } from "react";
+import { addMinutes, format, parseISO } from "date-fns";
 import { toast } from "sonner";
-import { cn } from "@/lib/utils";
 import { useAppStore } from "@/lib/store";
-import { fmtDay, fmtHours, plural } from "@/lib/format";
-import { Button } from "@/components/ui/button";
-import { JORNADA_STATUS, fmtWeekdayDay, toTimeInput } from "./orden-format";
+import { useMediaQuery } from "@/lib/hooks";
+import { fmtDay, plural } from "@/lib/format";
+import { BigButton } from "@/components/pk/mobile";
+import { MODAL_DESKTOP_QUERY, ModalShell, firstMissing } from "@/components/pk/modal-shell";
+import { dayKey, dowShort, nextWorkingDay, toDayPlan } from "@/features/agenda/agenda-model";
+import { useOpenSession } from "@/features/agenda/modal-bits";
+import {
+  ScheduleDone,
+  ScheduleRows,
+  StepActions,
+  StepBar,
+  StepPanel,
+  planErrors,
+  planSignature,
+  planSummary,
+  usePlanRows,
+  useStepper,
+  type KeptJornada,
+  type PlanRow,
+} from "@/features/agenda/schedule-form";
+import { JORNADA_STATUS } from "./orden-format";
 import { useOrder } from "./order-context";
-import { ConfirmCheck, DialogActions, OrderDialog, ReasonField, inputClass } from "./ui";
+import { ConfirmCheck, ReasonField, reasonOk } from "./ui";
 
 type Mode = "reprogramar" | "agregar";
-type Row = { key: string; date: string; start: string; end: string; original?: string };
 
-const toMin = (hm: string) => {
-  const [h, m] = hm.split(":").map(Number);
-  return (h || 0) * 60 + (m || 0);
+const STEPS = ["Fechas", "Motivo"] as const;
+const REASONS: Record<Mode, string[]> = {
+  agregar: ["Jornada adicional para trabajo de varios días", "Trabajo adicional solicitado"],
+  reprogramar: ["Solicitud del cliente", "Acceso al sitio no disponible", "Falta de personal", "Condiciones climáticas"],
 };
 
 /**
  * Reprogramar / Agregar jornada. Both rewrite the pending jornadas through store.scheduleJornadas()
  * (executed jornadas are always kept). Reprogramar can flag the order as "Reprogramada" until the
- * client confirms the new dates.
+ * client confirms the new dates. Same rows editor, validation and stepper as the agenda's "Programar orden":
+ * phones get Fechas → Motivo (a FlowScreen ending in a success screen), desktop one dialog.
  */
 export function ScheduleDialog({ open, onOpenChange, mode }: { open: boolean; onOpenChange: (v: boolean) => void; mode: Mode }) {
-  const { d } = useOrder();
-  return (
-    <OrderDialog
-      open={open}
-      onOpenChange={onOpenChange}
-      eyebrow={d.order.folio}
-      title={mode === "agregar" ? "Agregar jornada" : "Reprogramar jornadas"}
-      description={
-        mode === "agregar"
-          ? "Para trabajos de varios días. Cada jornada guarda su propia entrada, salida, fotos y bitácora; el cierre y el reporte siguen siendo únicos."
-          : "Mueva las fechas u horarios de las jornadas pendientes. Las jornadas ya ejecutadas se conservan sin cambios."
-      }
-    >
-      <ScheduleForm mode={mode} onDone={() => onOpenChange(false)} />
-    </OrderDialog>
-  );
+  // a fresh form on every open; it stays mounted while closing so the exit animation plays
+  const session = useOpenSession(open);
+  if (session === 0) return null;
+  return <ScheduleForm key={session} open={open} onOpenChange={onOpenChange} mode={mode} />;
 }
 
-function ScheduleForm({ mode, onDone }: { mode: Mode; onDone: () => void }) {
+type Done = { title: string; message: string };
+
+function ScheduleForm({ open, onOpenChange, mode }: { open: boolean; onOpenChange: (v: boolean) => void; mode: Mode }) {
   const { d } = useOrder();
-  const { order, jornadas, pendingJornadas, serviceType, now } = d;
+  const { order, client, jornadas, pendingJornadas, serviceType, now } = d;
   const scheduleJornadas = useAppStore((s) => s.scheduleJornadas);
   const setOrderStatus = useAppStore((s) => s.setOrderStatus);
+  const stepped = !useMediaQuery(MODAL_DESKTOP_QUERY);
 
-  const kept = jornadas.filter((j) => j.status !== "pendiente");
+  const kept: KeptJornada[] = jornadas
+    .filter((j) => j.status !== "pendiente")
+    .map((j) => ({ id: j.id, dayIndex: j.dayIndex, date: j.date, label: JORNADA_STATUS[j.status].label }));
+  const keptDates = kept.map((j) => j.date);
   const today = format(now, "yyyy-MM-dd");
   const template = pendingJornadas[0] ?? jornadas.at(-1);
-  const defStart = template ? toTimeInput(template.plannedStart) : "08:00";
-  const defEnd = template ? toTimeInput(template.plannedEnd) : format(addMinutes(parseISO(`${today}T08:00:00`), serviceType.defaultHoursPerDay * 60), "HH:mm");
-  const nextWorkday = (after: string) => {
-    let dt = addDays(parseISO(after), 1);
-    if (isSunday(dt)) dt = addDays(dt, 1);
-    return format(dt, "yyyy-MM-dd");
-  };
+  const defaults = template ? toDayPlan(template) : null;
+  const defStart = defaults?.start ?? "08:00";
+  const defEnd = defaults?.end ?? format(addMinutes(parseISO(`${today}T08:00:00`), serviceType.defaultHoursPerDay * 60), "HH:mm");
+  const nextWorkday = (after: string) => dayKey(nextWorkingDay(parseISO(after)));
 
-  const counter = useRef(0);
-  const [rows, setRows] = useState<Row[]>(() => {
-    const existing = pendingJornadas.map((j) => ({ key: j.id, date: j.date, start: toTimeInput(j.plannedStart), end: toTimeInput(j.plannedEnd), original: j.date }));
-    const last = [today, ...jornadas.map((j) => j.date)].sort().at(-1) ?? today;
-    const fresh = { key: "nueva-0", date: nextWorkday(last < today ? today : last), start: defStart, end: defEnd };
-    if (mode === "agregar") return [...existing, fresh];
-    return existing.length ? existing : [{ ...fresh, date: nextWorkday(today) }];
-  });
-  const [reason, setReason] = useState(mode === "agregar" ? "Jornada adicional para trabajo de varios días" : "");
   const canFlag = mode === "reprogramar" && (order.status === "programada" || order.status === "jornada_cerrada");
-  const [flag, setFlag] = useState(canFlag);
-
-  const update = (key: string, patch: Partial<Row>) => setRows((rs) => rs.map((r) => (r.key === key ? { ...r, ...patch } : r)));
-  const remove = (key: string) => setRows((rs) => rs.filter((r) => r.key !== key));
-  const add = () => {
-    counter.current += 1;
-    const last = [today, ...kept.map((j) => j.date), ...rows.map((r) => r.date)].sort().at(-1) ?? today;
-    setRows((rs) => [...rs, { key: `nueva-${counter.current}`, date: nextWorkday(last), start: defStart, end: defEnd }]);
-  };
-
-  // validation
-  const keptDates = new Set(kept.map((j) => j.date));
-  const errors = new Map<string, string>();
-  rows.forEach((r) => {
-    if (!r.date) errors.set(r.key, "Elija la fecha");
-    else if (r.date < today && r.date !== r.original) errors.set(r.key, "La fecha ya pasó");
-    else if (keptDates.has(r.date)) errors.set(r.key, "Ya hay una jornada ejecutada ese día");
-    else if (rows.some((o) => o.key !== r.key && o.date === r.date)) errors.set(r.key, "Fecha repetida");
-    else if (!r.start || !r.end || toMin(r.end) <= toMin(r.start)) errors.set(r.key, "La salida debe ser después de la entrada");
-  });
-  const unchanged =
-    mode === "reprogramar" &&
-    rows.length === pendingJornadas.length &&
-    rows.every((r) => {
-      const j = pendingJornadas.find((x) => x.id === r.key);
-      return j && j.date === r.date && toTimeInput(j.plannedStart) === r.start && toTimeInput(j.plannedEnd) === r.end;
+  const [seed] = useState(() => {
+    const existing: PlanRow[] = pendingJornadas.map((j) => {
+      const p = toDayPlan(j);
+      return {
+        key: j.id,
+        date: p.date,
+        start: p.start,
+        end: p.end,
+        original: j.date,
+        note: p.clamped ? `Terminaba al día siguiente (${p.originalEnd}); ajustado al mismo día.` : undefined,
+      };
     });
-  const reasonOk = reason.trim().length >= 5;
-  const valid = rows.length > 0 && errors.size === 0 && reasonOk && !unchanged && (mode === "reprogramar" || rows.length > pendingJornadas.length);
-  const totalMin = rows.reduce((s, r) => s + Math.max(0, toMin(r.end) - toMin(r.start)), 0);
-  const sortedDates = rows.map((r) => r.date).filter(Boolean).sort();
-  const hint = rows.length === 0
-    ? "Agregue al menos una jornada"
-    : errors.size
-      ? "Revise las fechas marcadas"
-      : unchanged
-        ? "Sin cambios en las fechas"
-        : !reasonOk
-          ? "Indique el motivo"
-          : `${plural(rows.length, "jornada", "jornadas")} · ${fmtDay(sortedDates[0])}${sortedDates.length > 1 ? ` – ${fmtDay(sortedDates.at(-1)!)}` : ""} · ${fmtHours(totalMin)}`;
+    const last = [today, ...jornadas.map((j) => j.date)].sort().at(-1) ?? today;
+    const fresh: PlanRow = { key: "nueva-0", date: nextWorkday(last < today ? today : last), start: defStart, end: defEnd };
+    const rows = mode === "agregar" ? [...existing, fresh] : existing.length ? existing : [{ ...fresh, date: nextWorkday(today) }];
+    return { existing, rows, reason: mode === "agregar" ? "Jornada adicional para trabajo de varios días" : "", flag: canFlag };
+  });
+  const { rows, update, remove, add } = usePlanRows(() => seed.rows, { today, keptDates, start: defStart, end: defEnd });
+  const [reason, setReason] = useState(seed.reason);
+  const [flag, setFlag] = useState(seed.flag);
+  const [done, setDone] = useState<Done | null>(null);
+  const { step, dir, go } = useStepper();
+
+  const errors = planErrors(rows, { today, keptDates: new Set(keptDates) });
+  // an overnight jornada that was clamped to 23:59 counts as a change: saving is how the clamp gets stored
+  const unchanged = mode === "reprogramar" && planSignature(rows) === planSignature(seed.existing) && !seed.existing.some((r) => r.note);
+  const reasonReady = reasonOk(reason);
+  const datesMissing = firstMissing(
+    [rows.length === 0, "Agregue al menos una jornada"],
+    [mode === "agregar" && rows.length <= pendingJornadas.length, "Agregue la jornada nueva"],
+    [errors.size > 0, "Corrija las fechas marcadas"],
+    [unchanged, "Sin cambios en las fechas"],
+  );
+  const datesReady = !datesMissing;
+  const valid = datesReady && reasonReady;
+  const reasonMissing = firstMissing([!reasonReady, "Indique el motivo (mínimo 5 caracteres)"]);
+
+  // desktop shows both parts at once; phones walk through them
+  const showDates = !stepped || step === 0;
+  const showReason = !stepped || step === 1;
+  const last = !stepped || step === STEPS.length - 1;
+  const ready = last ? valid : datesReady;
+  const summary = planSummary(rows);
+  const hint = (stepped ? (step === 0 ? datesMissing : reasonMissing) : (datesMissing ?? reasonMissing)) ?? summary;
+  const sorted = [...rows].sort((a, c) => a.date.localeCompare(c.date));
+  const dirty = !done && (planSignature(rows) !== planSignature(seed.rows) || reason !== seed.reason || flag !== seed.flag);
 
   const save = () => {
     if (!valid) return;
     const r = reason.trim();
     scheduleJornadas(order.id, rows.map(({ date, start, end }) => ({ date, start, end })), r);
     if (flag && canFlag) setOrderStatus(order.id, "reprogramada", r);
-    toast.success(mode === "agregar" ? "Jornada agregada" : "Jornadas reprogramadas", {
-      description: flag && canFlag ? "La orden quedó Reprogramada hasta confirmar con el cliente." : `${plural(kept.length + rows.length, "jornada", "jornadas")} en total.`,
-    });
-    onDone();
+    const title = mode === "agregar" ? "Jornada agregada" : "Jornadas reprogramadas";
+    const message = flag && canFlag ? "La orden quedó Reprogramada hasta confirmar con el cliente." : `${plural(kept.length + rows.length, "jornada", "jornadas")} en total.`;
+    if (stepped) setDone({ title, message });
+    else {
+      toast.success(title, { description: message });
+      onOpenChange(false);
+    }
   };
 
+  if (done) {
+    return (
+      <ModalShell
+        open={open}
+        onOpenChange={onOpenChange}
+        title={<span className="sr-only">{done.title}</span>}
+        size="md"
+        phone="flow"
+        footer={
+          <BigButton variant="outline" onClick={() => onOpenChange(false)}>
+            Volver a la orden
+          </BigButton>
+        }
+      >
+        <ScheduleDone title={done.title} message={done.message} client={client} order={order} />
+      </ModalShell>
+    );
+  }
+
   return (
-    <div className="space-y-5">
-      {kept.length > 0 && (
-        <ul className="space-y-1.5">
-          {kept.map((j) => (
-            <li key={j.id} className="flex items-center gap-3 rounded-[14px] bg-soft px-3.5 py-2.5 text-[13.5px]">
-              <Lock className="size-3.5 shrink-0 text-subtle" />
-              <span className="font-medium text-ink">Jornada {j.dayIndex}</span>
-              <span className="text-subtle">· {fmtWeekdayDay(j.date)}</span>
-              <span className="ml-auto text-[12.5px] text-subtle">{JORNADA_STATUS[j.status].label} · se conserva</span>
-            </li>
-          ))}
-        </ul>
-      )}
+    <ModalShell
+      open={open}
+      onOpenChange={onOpenChange}
+      eyebrow={order.folio}
+      title={mode === "agregar" ? "Agregar jornada" : "Reprogramar jornadas"}
+      description={
+        mode === "agregar"
+          ? "Para trabajos de varios días. Cada jornada guarda su propia entrada, salida, fotos y bitácora; el cierre y el reporte siguen siendo únicos."
+          : "Mueva las fechas u horarios de las jornadas pendientes. Las jornadas ya ejecutadas se conservan sin cambios."
+      }
+      size="md"
+      phone="flow"
+      dirty={dirty}
+      footerHint={hint}
+      footer={
+        <StepActions
+          step={stepped ? step : 0}
+          last={last}
+          ready={ready}
+          onBack={() => go(step - 1)}
+          onNext={() => go(step + 1)}
+          onSubmit={save}
+          submitLabel={mode === "agregar" ? "Agregar jornada" : "Guardar fechas"}
+        />
+      }
+    >
+      {stepped && <StepBar labels={STEPS} step={step} canGo={(i) => i <= step || datesReady} onGo={go} />}
 
-      <ul className="space-y-3">
-        <AnimatePresence initial={false}>
-          {rows.map((r, i) => {
-            const err = errors.get(r.key);
-            const isNew = !r.original;
-            return (
-              <motion.li
-                key={r.key}
-                layout
-                initial={{ opacity: 0, y: 8, scale: 0.98 }}
-                animate={{ opacity: 1, y: 0, scale: 1 }}
-                exit={{ opacity: 0, x: -16, transition: { duration: 0.18 } }}
-                className={cn("rounded-[18px] border p-3.5", err ? "border-amber-line-strong bg-amber-wash" : isNew ? "border-blue-line bg-blue-wash" : "border-hairline bg-surface")}
-              >
-                <div className="mb-2.5 flex items-center justify-between gap-3">
-                  <p className="text-[13px] font-semibold text-ink">
-                    Jornada {kept.length + i + 1}
-                    {isNew && <span className="ml-2 rounded-md bg-blue-tint px-1.5 py-0.5 text-[11px] font-bold tracking-[0.06em] text-azure-fg">NUEVA</span>}
-                    {r.date && <span className="ml-2 font-normal text-subtle">{fmtWeekdayDay(r.date)}</span>}
-                  </p>
-                  <button
-                    type="button"
-                    onClick={() => remove(r.key)}
-                    aria-label={`Quitar jornada ${kept.length + i + 1}`}
-                    className="-mr-1 inline-flex size-10 items-center justify-center rounded-full text-subtle transition hover:bg-red-soft hover:text-red-fg"
-                  >
-                    <Trash2 className="size-4" />
-                  </button>
-                </div>
-                <div className="grid grid-cols-2 gap-2 sm:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)_minmax(0,1fr)]">
-                  <label className="col-span-2 sm:col-span-1">
-                    <span className="sr-only">Fecha</span>
-                    <input type="date" value={r.date} min={today} onChange={(e) => update(r.key, { date: e.target.value })} className={cn(inputClass, "tabular")} />
-                  </label>
-                  <label>
-                    <span className="mb-1 block text-[11.5px] text-subtle sm:sr-only">Entrada</span>
-                    <input type="time" value={r.start} onChange={(e) => update(r.key, { start: e.target.value })} className={cn(inputClass, "tabular")} aria-label="Hora de entrada" />
-                  </label>
-                  <label>
-                    <span className="mb-1 block text-[11.5px] text-subtle sm:sr-only">Salida</span>
-                    <input type="time" value={r.end} onChange={(e) => update(r.key, { end: e.target.value })} className={cn(inputClass, "tabular")} aria-label="Hora de salida" />
-                  </label>
-                </div>
-                {err && <p className="mt-2 text-[12.5px] font-medium text-amber-fg">{err}</p>}
-              </motion.li>
-            );
-          })}
-        </AnimatePresence>
-      </ul>
+      <StepPanel step={stepped ? step : 0} dir={dir}>
+        {showDates && (
+          <>
+            <ScheduleRows rows={rows} errors={errors} today={today} kept={kept} showNew onUpdate={update} onRemove={remove} onAdd={add} />
+            <p className="text-[12.5px] leading-relaxed text-subtle">
+              Las jornadas se numeran por fecha. La cuadrilla de las jornadas pendientes será la última asignada; puede cambiarla después por jornada.
+            </p>
+          </>
+        )}
 
-      <Button variant="outline" onClick={add} className="h-11 w-full rounded-[14px] border-dashed border-line-heavy font-semibold text-ink">
-        <CalendarPlus className="size-4" /> Agregar otro día
-      </Button>
-
-      <p className="text-[12.5px] leading-relaxed text-subtle">
-        Las jornadas se numeran por fecha. La cuadrilla de las jornadas pendientes será la última asignada; puede cambiarla después por jornada.
-      </p>
-
-      <ReasonField
-        value={reason}
-        onChange={setReason}
-        id="schedule-reason"
-        suggestions={mode === "agregar" ? ["Jornada adicional para trabajo de varios días", "Trabajo adicional solicitado"] : ["Solicitud del cliente", "Acceso al sitio no disponible", "Falta de personal", "Condiciones climáticas"]}
-      />
-
-      {canFlag && (
-        <ConfirmCheck checked={flag} onChange={setFlag}>
-          <span className="font-semibold">Marcar como Reprogramada</span> hasta confirmar las nuevas fechas con el cliente. Podrá confirmarlas desde la pestaña Jornadas.
-        </ConfirmCheck>
-      )}
-
-      <DialogActions hint={hint}>
-        <Button variant="outline" onClick={onDone} className="h-11 rounded-[12px] border-line px-5 font-semibold">
-          Cancelar
-        </Button>
-        <Button onClick={save} disabled={!valid} className="h-11 rounded-[12px] px-5 font-semibold">
-          {mode === "agregar" ? "Agregar jornada" : "Guardar fechas"}
-        </Button>
-      </DialogActions>
-    </div>
+        {showReason && (
+          <>
+            {stepped && (
+              <div className="rounded-[18px] border border-hairline p-4">
+                <p className="mb-2.5 text-[13px] font-semibold text-ink">Quedará así</p>
+                <ul className="space-y-2 text-[14px]">
+                  {sorted.map((r, i) => (
+                    <li key={r.key} className="flex items-baseline justify-between gap-3">
+                      <span className="font-medium text-ink">Jornada {kept.length + i + 1}</span>
+                      <span className="text-right text-subtle tabular">
+                        {dowShort(parseISO(r.date))} {fmtDay(r.date)} · {r.start}–{r.end}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+            <ReasonField value={reason} onChange={setReason} id="schedule-reason" suggestions={REASONS[mode]} />
+            {canFlag && (
+              <ConfirmCheck checked={flag} onChange={setFlag}>
+                <span className="font-semibold">Marcar como Reprogramada</span> hasta confirmar las nuevas fechas con el cliente. Podrá confirmarlas desde la pestaña Jornadas.
+              </ConfirmCheck>
+            )}
+          </>
+        )}
+      </StepPanel>
+    </ModalShell>
   );
 }

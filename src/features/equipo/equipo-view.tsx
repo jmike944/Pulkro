@@ -12,11 +12,12 @@ import { PillBars } from "@/components/pk/pill-bars";
 import { AnimatedNumber, IconTile, MiniStat } from "@/components/pk/bits";
 import { EASE } from "@/components/pk/motion";
 import { dowShort, weekNumber } from "@/features/agenda/agenda-model";
+import { useDialogTarget } from "@/features/configuracion/shared";
 import { useTeamData } from "./use-team";
 import { PersonalTab } from "./personal-tab";
 import { SupervisorsTab } from "./supervisors-tab";
 import { WorkerSheet } from "./worker-sheet";
-import { WorkerDialog, type EditorState } from "./worker-dialog";
+import { WorkerEditor } from "./worker-editor";
 
 type Tab = "personal" | "supervisores";
 
@@ -37,10 +38,12 @@ export function EquipoView() {
   // Keep the last profile mounted while the sheet animates closed.
   const [shownW, setShownW] = useState<string | null>(w);
   if (w && w !== shownW) setShownW(w);
-  const [editor, setEditor] = useState<EditorState>(null);
+  // "Nuevo" opens the shared worker editor; editing an existing worker happens inside the profile sheet.
+  const creator = useDialogTarget<true>();
+  const closeCreator = creator.onOpenChange;
 
-  // Activity keeps this route alive in the background: drop the editor when it hides.
-  useLayoutEffect(() => () => setEditor(null), []);
+  // Activity keeps this route alive in the background: close the editor when it hides.
+  useLayoutEffect(() => () => closeCreator(false), [closeCreator]);
 
   const setWorkerParam = (id: string | null) => {
     const params = new URLSearchParams(window.location.search);
@@ -115,7 +118,7 @@ export function EquipoView() {
             <p className="text-[14px] font-medium text-ink/70">Personas asignadas{data.weekBars[0] ? ` · semana ${weekNumber(data.weekBars[0].date)}` : ""}</p>
             <AnimatedNumber value={shownBar?.value ?? peak} className="mt-1 block text-[38px] font-medium leading-none tracking-[-0.03em] text-ink" />
             <p className="mt-2 text-[14px] text-ink/70">
-              {picked && picked !== todayBar ? fmtLongDay(picked.date) : todayBar ? "hoy" : "máximo de la semana"} · de {counts.active} disponibles · toca un día para ver su carga
+              {picked && picked !== todayBar ? fmtLongDay(picked.date) : todayBar ? "hoy" : "máximo de la semana"} · de {counts.active} disponibles · toque un día para ver su carga
             </p>
             <PillBars
               data={bars}
@@ -149,7 +152,7 @@ export function EquipoView() {
           transition={{ duration: 0.28, ease: EASE }}
         >
           {tab === "personal" ? (
-            <PersonalTab data={data} canCatalog={canCatalog} onOpen={(id) => setWorkerParam(id)} onAdd={() => setEditor({ workerId: null, open: true })} />
+            <PersonalTab data={data} canCatalog={canCatalog} onOpen={(id) => setWorkerParam(id)} onAdd={() => creator.show(true)} />
           ) : (
             <SupervisorsTab data={data} />
           )}
@@ -162,16 +165,8 @@ export function EquipoView() {
         data={data}
         canCatalog={canCatalog}
         onOpenChange={(open) => !open && setWorkerParam(null)}
-        onEdit={(id) => setEditor({ workerId: id, open: true })}
       />
-      <WorkerDialog
-        state={editor}
-        onOpenChange={(open) => setEditor((s) => (s ? { ...s, open } : s))}
-        onSaved={(id, created) => {
-          setEditor((s) => (s ? { ...s, open: false } : s));
-          if (created) setWorkerParam(id);
-        }}
-      />
+      {creator.target && <WorkerEditor key={creator.key} workerId={null} open={creator.open} onOpenChange={creator.onOpenChange} onSaved={(id) => setWorkerParam(id)} />}
     </div>
   );
 }

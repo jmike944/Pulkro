@@ -30,6 +30,9 @@ export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
   viewportFit: "cover",
+  // The on-screen keyboard shrinks the layout viewport (Chrome/Android), so fixed modal footers stay above it.
+  // iOS Safari ignores this; ModalShell/FlowScreen lift their footer with useKeyboardInset() there.
+  interactiveWidget: "resizes-content",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {

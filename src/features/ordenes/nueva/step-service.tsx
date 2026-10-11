@@ -82,7 +82,7 @@ export function StepService({
 
   return (
     <div>
-      <FormSection title="Tipo de servicio" description="Define las actividades y materiales sugeridos.">
+      <FormSection title="Tipo de servicio" description="De este tipo dependen las actividades y los materiales sugeridos.">
         <LayoutGroup id="service-pick">
           <div className="grid grid-cols-2 gap-2.5 md:grid-cols-4" role="radiogroup" aria-label="Tipo de servicio">
             {serviceTypes.map((st, i) => {

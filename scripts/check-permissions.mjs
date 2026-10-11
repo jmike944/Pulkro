@@ -82,5 +82,7 @@ for (const role of ['direccion', 'supervisor']) assert.equal(canSeeRoute(role, '
 for (const role of ['direccion', 'administracion', 'supervisor']) {
   for (const route of ['/ordenes', '/ordenes/OS-1', '/postventa', '/mapa', '/clientes']) assert.equal(canSeeRoute(role, route), true, `${role} ${route}`);
 }
+// Bitácora (Seguimiento) is open to every role: its data is already scoped per role (canSeeAuditEntry above), supervisors see only their own.
+for (const role of ['direccion', 'administracion', 'supervisor']) assert.equal(canSeeRoute(role, '/bitacora'), true, `${role} /bitacora`);
 
 console.log('Permission, route and cross-unit audit regression checks passed.');

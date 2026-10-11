@@ -160,7 +160,7 @@ export function PersonalTab({
       {data.user.role === "supervisor" && (
         <p className="mb-4 flex items-start gap-2 rounded-[14px] bg-blue-wash px-4 py-3 text-[13px] leading-snug text-ink/80">
           <Info className="mt-0.5 size-4 shrink-0 text-azure-fg" />
-          Jornadas, horas y último servicio consideran solo tus órdenes. La disponibilidad de hoy considera a toda la unidad.
+          Jornadas, horas y último servicio consideran solo sus órdenes. La disponibilidad de hoy considera a toda la unidad.
         </p>
       )}
 

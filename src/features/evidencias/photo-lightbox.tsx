@@ -1,9 +1,9 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useId, useMemo, useState } from "react";
 import { AnimatePresence, motion, type Variants } from "motion/react";
-import { ArrowUpRight, ChevronLeft, ChevronRight, CloudOff, MapPin, X } from "lucide-react";
+import { ArrowUpRight, ChevronLeft, ChevronRight, CloudOff, Lock, MapPin, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAppStore, useLookups, useShallow } from "@/lib/hooks";
 import { mapsLink } from "@/lib/domain";
@@ -12,6 +12,7 @@ import { PHOTO_KIND, toneDot } from "@/lib/status";
 import type { Photo } from "@/lib/types";
 import { Dialog, DialogClose, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
+import { Switch } from "@/components/ui/switch";
 import { BeforeAfter, PhotoImage } from "@/components/pk/scene-photo";
 import { photoGeoLabel, photoOriginLabel, photoTimeLabel } from "@/components/pk/photo-flags";
 import { KeyValues, PersonAvatar } from "@/components/pk/bits";
@@ -27,36 +28,53 @@ const slide: Variants = {
 };
 
 /**
- * Full-size photo viewer with prev/next (buttons, ← → keys, swipe), capture metadata
- * (área, hora, GPS + mapa, capturó, orden) and an ANTES/DESPUÉS squeegee view when a pair exists.
- * `pairPool` is where the matching pair is looked up (defaults to `photos`).
+ * Where the lightbox is opened from. It only decides which links the details repeat:
+ * `global` (gallery, incidents, requests) links to the order and the jornada; `orden` is already on the order, so it
+ * drops the order/client rows and the "Evidencia de la orden" button; `jornada` keeps the order and client rows (the
+ * photo may be opened from a jornada page) and the button, but drops the jornada row since it is already there.
+ */
+export type LightboxScope = "global" | "orden" | "jornada";
+
+/** Extra controls for one photo (report toggle, delete…), drawn under the details. `index` is the photo's place in `photos`. */
+export type LightboxActions = (photo: Photo, ctx: { index: number; total: number; close: () => void }) => React.ReactNode;
+
+/**
+ * THE photo viewer of the app (gallery, order, jornada, incidents, evidence requests): full-size photo with prev/next
+ * (buttons, ← → keys, swipe), capture metadata (área, hora, GPS + mapa, capturó, orden) and an ANTES/DESPUÉS squeegee
+ * view when a pair exists. `pairPool` is where the matching pair is looked up (defaults to `photos`); `actions` adds
+ * per-photo controls under the details (see `LightboxReportToggle`).
  */
 export function PhotoLightbox({
   photos,
   index,
   onIndexChange,
   pairPool,
+  scope = "global",
+  actions,
 }: {
   photos: Photo[];
   index: number | null;
   onIndexChange: (i: number | null) => void;
   pairPool?: Photo[];
+  scope?: LightboxScope;
+  actions?: LightboxActions;
 }) {
-  const open = index !== null && index >= 0 && index < photos.length;
-  // Keep the last photo mounted while the dialog animates out.
-  const [lastIndex, setLastIndex] = useState<number | null>(index);
-  if (open && index !== lastIndex) setLastIndex(index);
+  const live = index !== null ? photos[index] : undefined;
+  const open = !!live;
+  // Keep the last photo mounted while the dialog animates out: no blank frame, and the title does not flip to "Foto".
+  const [last, setLast] = useState<{ photo: Photo; index: number } | null>(live && index !== null ? { photo: live, index } : null);
+  if (live && index !== null && (last?.photo !== live || last.index !== index)) setLast({ photo: live, index });
   const [dir, setDir] = useState(0);
   const [compare, setCompare] = useState(false);
 
-  const current = open ? index : lastIndex;
-  const photo = current !== null ? photos[current] : undefined;
+  const view = live && index !== null ? { photo: live, index } : last;
   const total = photos.length;
 
+  const close = () => onIndexChange(null);
   const go = (delta: number) => {
-    if (current === null || total < 2) return;
+    if (!open || index === null || total < 2) return;
     setDir(delta);
-    onIndexChange((current + delta + total) % total);
+    onIndexChange((index + delta + total) % total);
   };
 
   const onKeyDown = (e: React.KeyboardEvent) => {
@@ -71,22 +89,26 @@ export function PhotoLightbox({
   };
 
   return (
-    <Dialog open={open} onOpenChange={(v) => !v && onIndexChange(null)}>
+    <Dialog open={open} onOpenChange={(v) => !v && close()}>
       <DialogContent
         showCloseButton={false}
         onKeyDown={onKeyDown}
+        {...(view ? {} : { "aria-describedby": undefined })}
         className="max-h-[94dvh] gap-0 overflow-y-auto rounded-[26px] p-0 ring-edge sm:max-w-[min(1100px,calc(100%-3rem))] lg:grid-cols-[minmax(0,1fr)_340px] lg:overflow-hidden"
       >
-        {photo ? (
+        {view ? (
           <LightboxBody
-            photo={photo}
-            index={current ?? 0}
+            photo={view.photo}
+            index={view.index}
             total={total}
             dir={dir}
             compare={compare}
             onCompare={setCompare}
             go={go}
             pool={pairPool ?? photos}
+            scope={scope}
+            actions={actions}
+            close={close}
           />
         ) : (
           <DialogTitle className="sr-only">Foto</DialogTitle>
@@ -105,6 +127,9 @@ function LightboxBody({
   onCompare,
   go,
   pool,
+  scope,
+  actions,
+  close,
 }: {
   photo: Photo;
   index: number;
@@ -114,6 +139,9 @@ function LightboxBody({
   onCompare: (v: boolean) => void;
   go: (delta: number) => void;
   pool: Photo[];
+  scope: LightboxScope;
+  actions?: LightboxActions;
+  close: () => void;
 }) {
   const lk = useLookups();
   const { orders, jornadas, incidents, queue } = useAppStore(
@@ -131,10 +159,21 @@ function LightboxBody({
   const kind = PHOTO_KIND[photo.kind];
   const by = lk.users.get(photo.by);
   const client = order ? lk.clients.get(order.clientId) : undefined;
+  const showOrder = scope !== "orden" && !!order;
+  const showJornada = scope !== "jornada" && !!jornada;
+
+  // What a screen reader hears when the dialog opens (the visible details are read as the user moves through them).
+  const spoken = [
+    `Foto ${kind.label.toUpperCase()}${order ? ` de la orden ${order.folio}` : ""}.`,
+    `Tomada el ${fmtLongDay(photo.takenAt)} a las ${fmtTime(photo.takenAt)}.`,
+    total > 1 ? `Foto ${index + 1} de ${total}.` : null,
+  ]
+    .filter(Boolean)
+    .join(" ");
 
   type Row = { k: string; v: React.ReactNode };
   const rows = ([
-    order && {
+    showOrder && {
       k: "Orden",
       v: (
         <Link href={`/ordenes/${order.folio}`} className="text-link hover:underline">
@@ -142,8 +181,8 @@ function LightboxBody({
         </Link>
       ),
     },
-    client && { k: "Cliente", v: client.shortName },
-    jornada && {
+    showOrder && client && { k: "Cliente", v: client.shortName },
+    showJornada && {
       k: "Jornada",
       v: (
         <Link href={`/jornada/${jornada.id}`} className="text-link hover:underline">
@@ -201,12 +240,12 @@ function LightboxBody({
         </Link>
       ),
     },
-  ] as (Row | undefined)[]).filter((r): r is Row => !!r);
+  ] as (Row | false | undefined)[]).filter((r): r is Row => !!r);
 
   return (
     <>
-      {/* stage */}
-      <div className="relative aspect-[4/3] w-full overflow-hidden bg-[#0d1b2a] max-lg:max-h-[60dvh] lg:self-start">
+      {/* stage: a photo matte stays dark in both themes */}
+      <div className="relative aspect-[4/3] w-full overflow-hidden bg-black max-lg:max-h-[60dvh] lg:self-start">
         <AnimatePresence initial={false} custom={dir} mode="popLayout">
           <motion.div
             key={showCompare && pair ? `cmp-${pair.before.id}-${pair.after.id}` : photo.id}
@@ -222,7 +261,7 @@ function LightboxBody({
               if (info.offset.x < -70) go(1);
               else if (info.offset.x > 70) go(-1);
             }}
-            className={cn("absolute inset-0 [&_img]:pointer-events-none", !showCompare && total > 1 && "cursor-grab active:cursor-grabbing")}
+            className={cn("absolute inset-0 touch-pan-y [&_img]:pointer-events-none", !showCompare && total > 1 && "cursor-grab active:cursor-grabbing")}
           >
             {showCompare && pair ? (
               <BeforeAfter before={pair.before} after={pair.after} className="h-full rounded-none ring-0" />
@@ -240,19 +279,23 @@ function LightboxBody({
         )}
         {total > 1 && (
           <>
-            <span className="pointer-events-none absolute bottom-3.5 left-3.5 rounded-full bg-black/45 px-2.5 py-1 text-[12px] font-semibold text-white tabular backdrop-blur">
+            <span aria-hidden className="pointer-events-none absolute bottom-3.5 left-3.5 rounded-full bg-black/45 px-2.5 py-1 text-[12px] font-semibold text-white tabular backdrop-blur">
               {index + 1} / {total}
             </span>
             <StageButton side="left" onClick={() => go(-1)} label="Foto anterior" />
             <StageButton side="right" onClick={() => go(1)} label="Foto siguiente" />
           </>
         )}
+        {/* the arrows keep focus on themselves: say which photo is showing now */}
+        <p className="sr-only" aria-live="polite" aria-atomic>
+          {total > 1 ? `Foto ${index + 1} de ${total}: ${photo.area}` : ""}
+        </p>
       </div>
 
       {/* metadata */}
       <aside className="relative min-w-0 bg-surface">
         <div className="p-5 sm:p-6 lg:absolute lg:inset-0 lg:overflow-y-auto">
-          <div className="flex flex-wrap items-center gap-2 pr-12">
+          <div className="flex flex-wrap items-center gap-2 lg:pr-12">
             <SoftBadge tone={kind.tone}>{kind.label.toUpperCase()}</SoftBadge>
             {photo.selectedForReport && <SoftBadge tone="navy">En reporte</SoftBadge>}
             {pending && (
@@ -262,9 +305,10 @@ function LightboxBody({
             )}
           </div>
           <DialogTitle className="mt-3 font-serif text-[26px] font-medium leading-tight text-ink">{photo.area}</DialogTitle>
-          <DialogDescription className="mt-1 text-[14px] text-subtle first-letter:uppercase">
+          <DialogDescription className="sr-only">{spoken}</DialogDescription>
+          <p className="mt-1 text-[14px] text-subtle first-letter:uppercase">
             {fmtLongDay(photo.takenAt)} · {fmtTime(photo.takenAt)}
-          </DialogDescription>
+          </p>
 
           {pair && (
             <Segmented
@@ -278,19 +322,21 @@ function LightboxBody({
               onChange={(v) => onCompare(v === "comparar")}
             />
           )}
-          {showCompare && <p className="mt-2 text-[12.5px] text-subtle">Arrastra el jalador para comparar.</p>}
+          {showCompare && <p className="mt-2 text-[12.5px] text-subtle">Deslice el control para comparar.</p>}
 
           <KeyValues className="mt-6" rows={rows} />
           {photo.note && <p className="mt-5 rounded-[14px] bg-soft p-3.5 text-[13.5px] leading-relaxed text-ink">{photo.note}</p>}
 
-          {order && (
-            <Button asChild variant="outline" className="mt-6 h-10 rounded-[12px] border-line px-4 font-semibold">
+          {actions && <div key={photo.id}>{actions(photo, { index, total, close })}</div>}
+
+          {showOrder && (
+            <Button asChild variant="outline" className="mt-6 h-11 rounded-[12px] border-line px-4 font-semibold">
               <Link href={`/ordenes/${order.folio}?tab=evidencia`}>
                 Evidencia de la orden <ArrowUpRight />
               </Link>
             </Button>
           )}
-          {total > 1 && <p className="mt-6 hidden text-[12px] text-subtle lg:block">Usa ← → para recorrer las fotos.</p>}
+          {total > 1 && <p className="mt-6 hidden text-[12px] text-subtle lg:block">Las flechas ← → recorren las fotos.</p>}
         </div>
       </aside>
 
@@ -298,9 +344,9 @@ function LightboxBody({
         <button
           type="button"
           aria-label="Cerrar"
-          className="absolute right-3 top-3 z-10 inline-flex size-11 items-center justify-center rounded-full bg-surface/95 text-ink shadow-[0_2px_10px_rgb(16_24_40/0.18)] transition hover:bg-surface dark:bg-tile dark:ring-1 dark:ring-edge-strong dark:hover:bg-well lg:size-10"
+          className="absolute right-3 top-3 z-10 inline-flex size-11 items-center justify-center rounded-full bg-surface/95 text-ink shadow-lift outline-none transition hover:bg-surface focus-visible:ring-3 focus-visible:ring-ring/50 dark:bg-tile dark:ring-1 dark:ring-edge-strong dark:hover:bg-well lg:size-10"
         >
-          <X className="size-[18px]" />
+          <X className="size-[18px]" aria-hidden />
         </button>
       </DialogClose>
     </>
@@ -317,12 +363,54 @@ function StageButton({ side, onClick, label }: { side: "left" | "right"; onClick
       whileHover={{ scale: 1.06 }}
       whileTap={{ scale: 0.94 }}
       className={cn(
-        "absolute top-1/2 z-[2] inline-flex size-11 -translate-y-1/2 items-center justify-center rounded-full bg-white/90 text-ink shadow-[0_6px_20px_-6px_rgb(0_0_0/0.45)] backdrop-blur dark:text-on-light",
+        "absolute top-1/2 z-[2] inline-flex size-11 -translate-y-1/2 items-center justify-center rounded-full bg-white/90 text-ink shadow-[0_6px_20px_-6px_rgb(0_0_0/0.45)] backdrop-blur outline-none focus-visible:ring-3 focus-visible:ring-ring/50 dark:text-on-light",
         side === "left" ? "left-3" : "right-3",
       )}
     >
-      <Icon className="size-5" />
+      <Icon className="size-5" aria-hidden />
     </motion.button>
+  );
+}
+
+/**
+ * "Incluir en el reporte" row for the lightbox `actions` slot (order and jornada use it). `blockedReason` is why the
+ * current role cannot change it: printed under the switch instead of a hover tip, so it also reads on a phone.
+ */
+export function LightboxReportToggle({ photo, blockedReason }: { photo: Photo; blockedReason?: string | null }) {
+  const toggle = useAppStore((s) => s.togglePhotoForReport);
+  const id = useId();
+  const blocked = !!blockedReason;
+  return (
+    <div className="mt-6">
+      <label
+        className={cn(
+          "flex min-h-14 w-full items-center justify-between gap-4 rounded-[16px] border border-hairline px-4 py-3",
+          blocked ? "cursor-not-allowed opacity-60" : "cursor-pointer",
+        )}
+      >
+        <span className="min-w-0">
+          <span id={`${id}-l`} className="block text-[14px] font-semibold text-ink">
+            Incluir en el reporte
+          </span>
+          <span id={`${id}-d`} className="block text-[12.5px] leading-snug text-subtle">
+            Aparece en el PDF que recibe el cliente.
+          </span>
+        </span>
+        <Switch
+          checked={photo.selectedForReport}
+          disabled={blocked}
+          onCheckedChange={() => toggle(photo.id)}
+          aria-labelledby={`${id}-l`}
+          aria-describedby={`${id}-d`}
+        />
+      </label>
+      {blocked && (
+        <p className="mt-2 flex items-start gap-1.5 text-[12.5px] leading-snug text-subtle">
+          <Lock className="mt-0.5 size-3.5 shrink-0" aria-hidden />
+          {blockedReason}
+        </p>
+      )}
+    </div>
   );
 }
 

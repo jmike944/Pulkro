@@ -115,7 +115,7 @@ export function EvidenceView() {
               <p className="min-w-0 flex-1 truncate text-[14px] text-ink">
                 <span className="text-subtle">Orden </span>
                 <b className="font-semibold tabular">{folio}</b>
-                {filterOrder ? <span className="text-subtle"> · {filterOrder.title}</span> : <span className="text-subtle"> · no disponible en tu alcance</span>}
+                {filterOrder ? <span className="text-subtle"> · {filterOrder.title}</span> : <span className="text-subtle"> · no disponible en su alcance</span>}
               </p>
               <button
                 type="button"

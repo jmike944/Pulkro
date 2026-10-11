@@ -119,7 +119,7 @@ export function StarInput({
               transition={{ type: "spring", stiffness: 520, damping: 18 }}
               className={cn(
                 "relative inline-flex items-center justify-center rounded-full outline-none focus-visible:ring-2 focus-visible:ring-sky",
-                size === "lg" ? "size-[52px] sm:size-16" : size === "md" ? "size-11" : "size-10",
+                size === "lg" ? "size-[52px] sm:size-16" : size === "md" ? "size-11" : "size-11 lg:size-10",
               )}
             >
               <motion.span

@@ -3,7 +3,7 @@
 import { motion } from "motion/react";
 import { CalendarClock, Check, CircleAlert, ClipboardCheck, FileText, ShieldAlert, X } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { fmtDateTime, fmtTime } from "@/lib/format";
+import { fmtDateTime, fmtTime, plural } from "@/lib/format";
 import { DONE_STATUSES } from "@/lib/status";
 import { PulkroMark } from "@/components/pk/brand";
 import { BigButton, NextStepCard } from "@/components/pk/mobile";
@@ -131,7 +131,7 @@ export function EvidenceChecklist({ f }: { f: FieldReady }) {
     label: "Sin incidencias que impidan el cierre",
     ok: blockingIncidents.length === 0,
     warn: blockingIncidents.length === 0 && otherOpen.length > 0,
-    detail: blockingIncidents.length ? blockingIncidents.map((i) => i.folio).join(", ") : otherOpen.length ? `${otherOpen.length} abierta(s) sin bloqueo` : undefined,
+    detail: blockingIncidents.length ? blockingIncidents.map((i) => i.folio).join(", ") : otherOpen.length ? `${plural(otherOpen.length, "abierta", "abiertas")} sin bloqueo` : undefined,
   });
   const pending = f.pendingSync.length;
   checks.push({ id: "sync", label: "Registros sincronizados", ok: pending === 0, warn: pending > 0, detail: pending ? `${pending} por enviar` : undefined });

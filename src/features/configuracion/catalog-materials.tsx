@@ -43,7 +43,7 @@ export function MaterialsCatalog() {
         </GatedButton>
       </div>
       <p className="mb-5 text-[13px] text-subtle">
-        Se usan como recursos de la orden. El consumo real por orden aún no se captura (doc §5 · advertencia de alcance).
+        Se usan como recursos de la orden. El consumo real por orden aún no se captura.
       </p>
 
       {list.length === 0 ? (
@@ -108,12 +108,15 @@ function MaterialDialog({ material, open, onOpenChange }: { material: Material |
   const [unit, setUnit] = useState<string>(preset ? initialUnit : "otra");
   const [custom, setCustom] = useState(preset ? "" : initialUnit);
   const [submitted, setSubmitted] = useState(false);
+  // what the form opened with: any difference makes Esc / outside tap / X / Cancelar ask "¿Descartar cambios?"
+  const snapshot = JSON.stringify([name, unit, custom]);
+  const [initial] = useState(snapshot);
 
   const dup = materials.some((m) => m.id !== material?.id && norm(m.name) === norm(name.trim()));
   const finalUnit = unit === "otra" ? custom.trim() : unit;
   const errors = {
-    name: name.trim().length < 3 ? "Captura el nombre del material." : dup ? "Ese material ya está en el catálogo." : null,
-    unit: !finalUnit ? "Captura la unidad de medida." : null,
+    name: name.trim().length < 3 ? "Escriba el nombre del material." : dup ? "Ese material ya está en el catálogo: búsquelo en la lista o use otro nombre." : null,
+    unit: !finalUnit ? "Elija una unidad de medida o escriba otra." : null,
   };
 
   return (
@@ -124,6 +127,7 @@ function MaterialDialog({ material, open, onOpenChange }: { material: Material |
       title={isNew ? "Nuevo material" : "Editar material"}
       description="Materiales y productos que se asignan como recursos de una orden."
       submitLabel={isNew ? "Agregar material" : "Guardar cambios"}
+      dirty={snapshot !== initial}
       onSubmit={() => {
         setSubmitted(true);
         if (errors.name || errors.unit) return;

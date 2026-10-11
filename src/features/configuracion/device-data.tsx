@@ -2,18 +2,18 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { format } from "date-fns";
-import { motion } from "motion/react";
-import { Download, HardDrive, RotateCcw, ShieldCheck, Sparkles } from "lucide-react";
+import { Download, HardDrive, RotateCcw, ShieldCheck } from "lucide-react";
 import { toast } from "sonner";
-import { useAppStore, useCurrentUser, useLookups, useScopedAudit, useScopedData, useShallow, useSyncSummary } from "@/lib/hooks";
+import { useAppStore, useCurrentUser, useLookups, useScopedAudit, useScopedData, useShallow } from "@/lib/hooks";
 import { can } from "@/lib/permissions";
 import { DEMO_ENABLED } from "@/lib/demo";
 import { downloadBlob } from "@/lib/export";
 import { fmtNum } from "@/lib/format";
 import { ROLE_LABEL } from "@/lib/status";
 import { KeyValues, ProgressLine } from "@/components/pk/bits";
+import { DemoResetDialog } from "@/components/shell/demo-reset-dialog";
 import { Button } from "@/components/ui/button";
-import { ConfirmDialog, ReadOnlyNote, fmtBytes } from "./shared";
+import { ReadOnlyNote, fmtBytes } from "./shared";
 import { SqueegeeWipe } from "./squeegee-wipe";
 
 type Estimate = { usage: number; quota: number };
@@ -51,11 +51,8 @@ export function DeviceData() {
     })),
   );
   const unitFilter = useAppStore((s) => s.session.unitFilter);
-  const resetDemo = useAppStore((s) => s.resetDemo);
   const scoped = useScopedData();
   const audit = useScopedAudit();
-  const { pending, syncing } = useSyncSummary();
-  const unsynced = pending.length + syncing.length;
   const canBackup = can(user.role, "export.backup");
   const [refresh, setRefresh] = useState(0);
   const [confirmReset, setConfirmReset] = useState(false);
@@ -176,7 +173,7 @@ export function DeviceData() {
               <Download className="size-4" /> Exportar respaldo (JSON)
             </Button>
             <p className="text-center text-[12.5px] text-subtle">
-              Incluye solo la información que tu rol puede ver
+              Incluye solo la información que su rol puede ver
               {/* the global unit filter narrows Dirección's backup, and on a phone that filter is easy to forget */}
               {user.role === "direccion" && <> · alcance: {unitFilter === "all" ? "todas las unidades" : (lk.units.get(unitFilter)?.name ?? unitFilter)}</>}.
             </p>
@@ -191,41 +188,14 @@ export function DeviceData() {
         )}
       </section>
 
-      {DEMO_ENABLED && (
-        <ConfirmDialog
-          open={confirmReset}
-          onOpenChange={setConfirmReset}
-          icon={<Sparkles />}
-          iconTone="sky"
-          title="Restablecer datos de demostración"
-          description="Se reemplaza todo lo guardado en este dispositivo por el escenario de demostración, anclado a hoy."
-          rows={[
-            { k: "Sus órdenes en el dispositivo", v: fmtNum(scoped.orders.length) },
-            { k: "Registros sin sincronizar", v: <span className={unsynced ? "text-amber-fg" : undefined}>{fmtNum(unsynced)}</span> },
-            { k: "Fotos tomadas con cámara", v: fmtNum(captured) },
-            { k: "Movimientos en bitácora", v: fmtNum(audit.length) },
-          ]}
-          checkboxLabel="Entiendo que se perderán los cambios hechos en este dispositivo."
-          confirmLabel="Restablecer"
-          confirmDisabled={unsynced > 0}
-          destructive
-          onConfirm={() => {
-            setWipe((w) => w + 1);
-            setTimeout(() => {
-              resetDemo();
-              setRefresh((r) => r + 1);
-              toast.success("Datos de demostración restablecidos", { description: "Todo quedó limpio y listo para otra demostración." });
-            }, 420);
-          }}
-        >
-          {unsynced > 0 && (
-            <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="rounded-[14px] bg-amber-soft px-4 py-3 text-[13.5px] leading-snug text-amber-ink">
-              Hay {fmtNum(unsynced)} registros que aún no llegan al servidor, así que no se puede restablecer. Espere a que se sincronicen
-              (o desactive «Simular sin conexión») y vuelva a intentarlo.
-            </motion.p>
-          )}
-        </ConfirmDialog>
-      )}
+      {/* the same confirmation the sidebar and Perfil use; it refuses while records are unsynced */}
+      <DemoResetDialog
+        open={confirmReset}
+        onOpenChange={setConfirmReset}
+        // the wipe starts first and the dialog replaces the data under it, so the transition covers the change
+        onBeforeReset={() => setWipe((w) => w + 1)}
+        onDone={() => setRefresh((r) => r + 1)}
+      />
 
       <SqueegeeWipe trigger={wipe} />
     </div>

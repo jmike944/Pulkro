@@ -40,7 +40,7 @@ export function PermissionMatrix() {
     <section>
       <SectionHeader
         title="Matriz de permisos"
-        subtitle="Roles y acciones del documento maestro (§2). La columna resaltada es tu rol actual."
+        subtitle="Roles y acciones del documento maestro. La columna resaltada es su rol actual."
       />
 
       <div className="overflow-hidden rounded-[22px] border border-hairline bg-surface shadow-soft">
@@ -50,7 +50,7 @@ export function PermissionMatrix() {
             <span key={r} className={cn("relative flex flex-col items-center gap-1 text-center", r === me.role && "text-ink")}>
               {r === me.role && (
                 <motion.span layoutId="matrix-you" className="rounded-md bg-sky-soft px-1.5 py-0.5 text-[10px] tracking-[0.08em] text-azure-fg">
-                  TÚ
+                  USTED
                 </motion.span>
               )}
               <span className="sm:hidden">{ROLE_SHORT[r]}</span>

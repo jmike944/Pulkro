@@ -104,7 +104,7 @@ export function usePhotoCapture() {
         toast.warning([...new Set(warnings)].join(" · "), { description: "Se guardó, pero queda marcada para revisión en la bitácora." });
     } catch (e) {
       // The store already told the user why when it refused (PermissionDeniedError).
-      if (!(e instanceof PermissionDeniedError)) toast.error(e instanceof Error ? e.message : "No se pudo guardar la foto");
+      if (!(e instanceof PermissionDeniedError)) toast.error(e instanceof Error ? e.message : "No se pudo guardar la foto. Intente de nuevo.");
     } finally {
       setBusy(false);
     }

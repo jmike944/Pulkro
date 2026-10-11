@@ -47,7 +47,7 @@ export function PageHeader({
               aria-label="Ruta"
             >
               {breadcrumb[0]?.href && (
-                <Link href={breadcrumb[0].href} aria-label="Regresar" className="-ml-1 rounded-md p-1 text-subtle hover:bg-muted hover:text-ink">
+                <Link href={breadcrumb[0].href} aria-label="Volver" className="-ml-1 rounded-md p-1 text-subtle hover:bg-muted hover:text-ink">
                   <ChevronLeft className="size-4" />
                 </Link>
               )}

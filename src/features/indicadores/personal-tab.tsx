@@ -190,7 +190,7 @@ export function PersonalTab({
         <div className="mt-6 flex gap-3 rounded-[16px] border border-dashed border-amber-line-strong bg-amber-wash p-4 text-[13.5px] leading-relaxed text-ink">
           <Info className="mt-0.5 size-4 shrink-0 text-amber-fg" />
           <p>
-            <b className="font-semibold">Definir denominador (PENDIENTE §5).</b> Las horas por servicio se calculan sobre órdenes con cierre validado. Falta
+            <b className="font-semibold">Denominador por definir.</b> Las horas por servicio se calculan sobre órdenes con cierre validado. Falta
             acordar si la productividad se mide por servicio, por jornada o por hora-persona.
           </p>
         </div>

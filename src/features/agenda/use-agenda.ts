@@ -123,7 +123,7 @@ export function useAgendaData(focusKey: string, now: Date) {
   const scopeLabel = useMemo(() => {
     if (!scope) return "todas las unidades";
     const id = [...scope][0];
-    return lk.units.get(id)?.name ?? "tu unidad";
+    return lk.units.get(id)?.name ?? "su unidad";
   }, [scope, lk.units]);
 
   return {

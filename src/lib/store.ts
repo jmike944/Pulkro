@@ -16,8 +16,10 @@ import { toast } from "sonner";
 import { DEMO_USER_BY_ROLE, SEED_VERSION, generateSeed, shiftSnapshotDates } from "./seed";
 import { can, canSeeOrder, canSeeUnit, type Action } from "./permissions";
 import { GEO_NOTE_MIN, closureBlockers, photoTimingIssues } from "./domain";
+import { plural } from "./format";
 import { DONE_STATUSES, OPEN_STATUSES } from "./status";
 import { DEMO_ENABLED } from "./demo";
+import { deletePhotoFile } from "./photo-store";
 import type {
   AuditEntity,
   CaseStatus,
@@ -48,6 +50,7 @@ import type {
 const idb = typeof indexedDB !== "undefined" ? createIdbStore("pulkro-cuadrillas", "state") : undefined;
 let writeTimer: ReturnType<typeof setTimeout> | undefined;
 let pendingWrite: { name: string; value: string } | null = null;
+let pendingSince = 0;
 const flushWrite = () => {
   clearTimeout(writeTimer);
   if (!idb || !pendingWrite) return;
@@ -66,9 +69,13 @@ const idbStorage: StateStorage = {
   getItem: async (name) => (idb ? ((await get<string>(name, idb)) ?? null) : null),
   setItem: (name, value) => {
     if (!idb) return;
+    const waiting = pendingWrite !== null;
     pendingWrite = { name, value };
+    // Debounce 350 ms, but never let a stream of updates postpone the write by more than ~1 s (a sign-in or a capture
+    // followed by constant store activity used to stay unsaved until the stream stopped).
+    if (!waiting) pendingSince = Date.now();
     clearTimeout(writeTimer);
-    writeTimer = setTimeout(flushWrite, 350);
+    writeTimer = setTimeout(flushWrite, Date.now() - pendingSince >= 1000 ? 0 : 350);
   },
   removeItem: async (name) => {
     if (idb) await del(name, idb);
@@ -301,6 +308,12 @@ export const useAppStore = create<AppState>()(
         lastDenied = message;
         toast.error("Acción no permitida", { id: "pk-denied", description: message });
         return null;
+      };
+      const CASE_OWNER_RULE = "El responsable del caso debe ser el supervisor de la orden o alguien de Administración de la unidad.";
+      /** Case owners: active Administración of the order's unit, or the order's own supervisor (who can see the case). */
+      const isValidCaseOwner = (ownerId: string, order: Order) => {
+        const u = getState().users.find((x) => x.id === ownerId);
+        return !!u && u.active && u.unitId === order.unitId && (u.role === "administracion" || (u.role === "supervisor" && u.id === order.supervisorId));
       };
       /** For actions that must return a value: stop the caller after telling the user why. */
       const must = <T>(v: T | null): T => {
@@ -640,7 +653,7 @@ export const useAppStore = create<AppState>()(
             scheduledStart: all.map((j) => j.plannedStart).sort()[0] ?? order.scheduledStart,
             scheduledEnd: all.map((j) => j.plannedEnd).sort().at(-1) ?? order.scheduledEnd,
           });
-          record("orden", orderId, `Programó ${fresh.length} jornada(s)`, { orderId, reason, syncLabel: `Agenda · ${order.folio}` });
+          record("orden", orderId, `Programó ${plural(fresh.length, "jornada", "jornadas")}`, { orderId, reason, syncLabel: `Agenda · ${order.folio}` });
           if (order.status === "borrador" && crew.length) changeStatus(orderId, "programada");
           if (order.status === "reprogramada") changeStatus(orderId, "programada", reason);
         },
@@ -767,6 +780,9 @@ export const useAppStore = create<AppState>()(
           const ok = allowPhotoEdit(photoId);
           if (!ok) return;
           setState((st) => ({ photos: st.photos.filter((x) => x.id !== photoId) }));
+          // The image blob goes with the record (every caller: lightbox delete, discarded drafts, incident/case photos),
+          // and only after the permission check passed.
+          if (ok.photo.source.type === "idb") void deletePhotoFile(ok.photo.source.key);
           record("foto", photoId, `Eliminó foto · ${ok.photo.area}`, { orderId: ok.photo.orderId });
         },
 
@@ -917,7 +933,8 @@ export const useAppStore = create<AppState>()(
 
         /* ── post-sale ── */
         createCase: (input) => {
-          const { user } = must(allowOrder(["postventa.manage"], input.orderId));
+          const { user, order } = must(allowOrder(["postventa.manage"], input.orderId));
+          must(isValidCaseOwner(input.ownerId, order) ? true : denied(CASE_OWNER_RULE));
           const s = getState();
           const at = nowIso();
           const c: PostSaleCase = {
@@ -936,6 +953,10 @@ export const useAppStore = create<AppState>()(
           const c = getState().cases.find((x) => x.id === caseId);
           const ok = allowOrder(["postventa.manage"], c?.orderId);
           if (!ok || !c) return;
+          if (patch.ownerId !== undefined && patch.ownerId !== c.ownerId && !isValidCaseOwner(patch.ownerId, ok.order)) {
+            denied(CASE_OWNER_RULE);
+            return;
+          }
           const at = nowIso();
           const rest = omit(patch, ["id", "folio", "orderId", "clientId", "createdAt", "createdBy", "timeline"]);
           const timeline = note ? [...c.timeline, { at, by: ok.user.id, text: note }] : c.timeline;
@@ -1132,7 +1153,7 @@ export const useAppStore = create<AppState>()(
           // A reset would silently throw away captures that never reached the server.
           const unsynced = getState().sync.queue.filter((q) => q.state !== "sincronizado").length;
           if (unsynced > 0) {
-            denied(`Hay ${unsynced} registro(s) sin sincronizar. Espere a que lleguen al servidor (o desactive «Simular sin conexión») antes de restablecer.`);
+            denied(`Hay ${plural(unsynced, "registro", "registros")} sin sincronizar. Espere a que lleguen al servidor (o desactive «Simular sin conexión») antes de restablecer.`);
             return;
           }
           reseed();

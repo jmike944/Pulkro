@@ -19,7 +19,7 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { fmtAgo, fmtDateTime, fmtHours, fmtRelativeDay, fmtTime } from "@/lib/format";
+import { fmtAgo, fmtDateTime, fmtHours, fmtRelativeDay, fmtTime, plural } from "@/lib/format";
 import { SHARE_CHANNEL, type Tone } from "@/lib/status";
 import { AuroraFrame } from "@/components/pk/aurora";
 import { AnimatedNumber, ProgressLine } from "@/components/pk/bits";
@@ -117,7 +117,7 @@ function statusLine(d: OrderDetail): { text: string; tone: Tone; live?: boolean;
     }
     case "pendiente_validacion":
     case "reabierta": {
-      if (pendingJornadas.length) return { text: `${pendingJornadas.length} jornada(s) por ejecutar`, tone: "blue" };
+      if (pendingJornadas.length) return { text: `${plural(pendingJornadas.length, "jornada", "jornadas")} por ejecutar`, tone: "blue" };
       if (openIncidents.some((i) => i.blocksClosure)) return { text: "Incidencia abierta impide el cierre", tone: "red", icon: TriangleAlert };
       if (missing.length) return { text: "Falta evidencia para cerrar", tone: "amber", icon: Camera };
       return { text: "Listo para validar", tone: "teal", icon: Sparkles };

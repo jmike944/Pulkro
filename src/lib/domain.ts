@@ -5,6 +5,7 @@ import { differenceInMinutes, isSameDay, parseISO } from "date-fns";
 import type { GeoSource, Incident, Jornada, Order, Photo, Report, Role, Survey, PostSaleCase } from "./types";
 import type { Tone } from "./status";
 import { can } from "./permissions";
+import { plural } from "./format";
 
 export type JornadaEvidence = {
   jornada: Jornada;
@@ -72,7 +73,7 @@ export function closureBlockers(
   const js = jornadas.filter((j) => j.orderId === order.id);
   const pending = js.filter((j) => j.status !== "cerrada");
   if (pending.length)
-    out.push({ id: "jornadas", label: `${pending.length} jornada(s) sin registro de salida`, severity: "block" });
+    out.push({ id: "jornadas", label: `${plural(pending.length, "jornada", "jornadas")} sin registro de salida`, severity: "block" });
   const ev = orderEvidence(order, jornadas, photos);
   ev.perJornada
     .filter((x) => x.jornada.checkIn)
@@ -86,7 +87,7 @@ export function closureBlockers(
       out.push({ id: i.id, label: `Incidencia abierta ${i.folio}`, detail: i.description, severity: i.blocksClosure ? "block" : "warn", href: incidentHref(i.id) }),
     );
   if (pendingSyncCount > 0)
-    out.push({ id: "sync", label: `${pendingSyncCount} registro(s) sin sincronizar`, detail: "El PDF definitivo se bloquea hasta sincronizar.", severity: "warn" });
+    out.push({ id: "sync", label: `${plural(pendingSyncCount, "registro", "registros")} sin sincronizar`, detail: "El PDF definitivo se bloquea hasta sincronizar.", severity: "warn" });
   return out;
 }
 

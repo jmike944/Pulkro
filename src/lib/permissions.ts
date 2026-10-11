@@ -77,7 +77,7 @@ export const PERMISSION_ROWS: PermissionRow[] = [
     label: "Crear orden",
     status: "confirmado",
     scope: { direccion: "Consulta" },
-    note: "Solo Administración da de alta órdenes (decisión de Pulkro sobre §2 y §10).",
+    note: "Solo Administración da de alta órdenes (decisión de Pulkro).",
   },
   { action: "order.edit", label: "Editar orden", status: "confirmado", scope: { direccion: "Consulta", administracion: "Su unidad" } },
   {
@@ -91,7 +91,7 @@ export const PERMISSION_ROWS: PermissionRow[] = [
     label: "Reprogramar y confirmar fechas",
     status: "propuesto",
     scope: { direccion: "Consulta", administracion: "Consulta", supervisor: "Solo propias" },
-    note: "Mueve la agenda de la cuadrilla: lo decide el supervisor (§4.1).",
+    note: "Mueve la agenda de la cuadrilla: lo decide el supervisor.",
   },
   {
     action: "order.reopen",
@@ -159,21 +159,21 @@ export const PERMISSION_ROWS: PermissionRow[] = [
     action: "users.admin",
     label: "Administrar usuarios y permisos",
     status: "pendiente",
-    note: "Pendiente de decisión (§2): en el prototipo solo Dirección da de alta, edita y desactiva usuarios. Cada quien edita su propio teléfono.",
+    note: "Pendiente de decisión: en el prototipo solo Dirección da de alta, edita y desactiva usuarios. Cada quien edita su propio teléfono.",
   },
   {
     action: "catalogs.admin",
     label: "Administrar catálogos",
     status: "pendiente",
     scope: { administracion: "Su unidad" },
-    note: "Pendiente de decisión (§2): clientes, sitios y personal por unidad; tipos de servicio y materiales son de toda la empresa.",
+    note: "Pendiente de decisión: clientes, sitios y personal por unidad; tipos de servicio y materiales son de toda la empresa.",
   },
   {
     action: "view.allUnits",
     label: "Ver todas las unidades",
     status: "pendiente",
     scope: { administracion: "Su unidad", supervisor: "Sus asignaciones" },
-    note: "§2 no define aún quién ve información de otras unidades; el prototipo asume que solo Dirección.",
+    note: "Pendiente de decisión: aún no está definido quién ve información de otras unidades; el prototipo asume que solo Dirección.",
   },
 ];
 

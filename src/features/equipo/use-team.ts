@@ -172,7 +172,7 @@ export function useTeamData() {
       },
       supervisors,
       supervisorToday,
-      scopeLabel: !scope ? `${lk.units.size} unidades` : (lk.units.get([...scope][0])?.name ?? "tu unidad"),
+      scopeLabel: !scope ? `${lk.units.size} unidades` : (lk.units.get([...scope][0])?.name ?? "su unidad"),
       byWorker,
       orderById,
     };

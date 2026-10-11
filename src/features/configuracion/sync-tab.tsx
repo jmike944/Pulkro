@@ -24,7 +24,7 @@ const DECISIONS: { icon: React.ReactNode; title: string; status: DocStatus; text
     icon: <Globe />,
     title: "Nube o servidor propio",
     status: "pendiente",
-    text: "El desarrollador debe proponer opciones con costo mensual, retención y respaldos (doc §6).",
+    text: "El desarrollador debe proponer opciones con costo mensual, retención y respaldos.",
     now: "Todo vive en el navegador (IndexedDB) y la sincronización con el servidor está simulada.",
   },
   {
@@ -45,7 +45,7 @@ const DECISIONS: { icon: React.ReactNode; title: string; status: DocStatus; text
     icon: <MapPinned />,
     title: "Mapas y GPS sin conexión",
     status: "pendiente",
-    text: "Soporte offline de mapas y política cuando el GPS no está disponible (doc §4.2).",
+    text: "Mapas sin conexión y política cuando el GPS no está disponible.",
     now: "El GPS funciona sin red; los mapas se cargan solo con conexión. Sin señal se pide justificación.",
   },
   {
@@ -59,7 +59,7 @@ const DECISIONS: { icon: React.ReactNode; title: string; status: DocStatus; text
     icon: <MessageCircle />,
     title: "Correo y proveedor de WhatsApp",
     status: "pendiente",
-    text: "Hoja de compartir del teléfono (MVP) o integración oficial con registro de entrega (doc §4.3).",
+    text: "Hoja de compartir del teléfono (MVP) o integración oficial con registro de entrega.",
     now: "Se abre WhatsApp o el correo del teléfono; nunca se afirma que el mensaje fue entregado.",
   },
 ];
@@ -116,7 +116,7 @@ export function SyncTab() {
               <div className="min-w-0">
                 <p className="text-[14px] font-semibold text-ink">Simular sin conexión</p>
                 <p className="text-[12.5px] leading-snug text-subtle">
-                  {browserOffline ? "El navegador está sin red: la captura sigue funcionando." : "Prueba la captura en campo sin internet."}
+                  {browserOffline ? "El navegador está sin red: la captura sigue funcionando." : "Pruebe la captura en campo sin internet."}
                 </p>
               </div>
               <SwitchLite checked={forced} onChange={setForced} label="Simular sin conexión" />
@@ -167,7 +167,7 @@ export function SyncTab() {
 
       {/* ── Pending infrastructure decisions ── */}
       <section className="mt-12">
-        <SectionHeader title="Decisiones de infraestructura" subtitle="Definiciones del documento maestro (§6) necesarias para cotizar. Cada tarjeta indica lo que hoy supone el prototipo." />
+        <SectionHeader title="Decisiones de infraestructura" subtitle="Definiciones del documento maestro necesarias para cotizar. Cada tarjeta indica lo que hoy supone el prototipo." />
         <div className="grid gap-4 xl:grid-cols-[minmax(0,1.15fr)_minmax(0,1fr)]">
           <StorageCalculator />
           <motion.ul variants={{ show: { transition: { staggerChildren: 0.05 } } }} initial="hidden" whileInView="show" viewport={{ once: true, margin: "-60px" }} className="grid gap-3 sm:grid-cols-2">
@@ -231,7 +231,7 @@ function QueueActivity({ queue, offline }: { queue: SyncItem[]; offline: boolean
         <EmptyState icon={filter === "pendientes" ? <Check /> : <CloudUpload />} title={filter === "pendientes" ? "Nada pendiente" : "Sin movimientos"}>
           {filter === "pendientes"
             ? "Todo lo capturado ya llegó al servidor."
-            : `Registra una entrada, una foto o una incidencia${offline ? " sin conexión" : ""} para ver cómo viaja.`}
+            : `Registre una entrada, una foto o una incidencia${offline ? " sin conexión" : ""} para ver cómo viaja.`}
         </EmptyState>
       ) : (
         <ul className="max-h-[560px] overflow-y-auto pr-1 [scrollbar-width:thin]">

@@ -46,7 +46,7 @@ export function Fase2Section() {
       title: "Productividad por trabajador",
       icon: HardHat,
       missing: ["Entrada y salida por persona (hoy es por cuadrilla)", "Definir si se mide en servicios, horas o rendimiento"],
-      today: "La definición sigue abierta (preguntas pendientes, §11).",
+      today: "La definición sigue abierta: está entre las decisiones pendientes del Centro de ayuda.",
       chart: "bubbles",
       href: "/equipo",
       linkLabel: "Ver asignaciones del equipo",
@@ -69,7 +69,7 @@ export function Fase2Section() {
             prometer números sin respaldo, primero hace falta un módulo de captura o una integración.
           </p>
         </div>
-        <p className="shrink-0 text-[12.5px] text-subtle sm:pt-9">Doc §5 · advertencia de alcance · §9</p>
+        <p className="shrink-0 text-[12.5px] text-subtle sm:pt-9">Advertencia de alcance</p>
       </div>
 
       <motion.div

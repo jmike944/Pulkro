@@ -185,8 +185,8 @@ export function IndicadoresView() {
           },
           hint:
             user.role === "supervisor"
-              ? "Como supervisor ve solo las órdenes asignadas a usted (doc §2)."
-              : "Administración consulta los indicadores de su unidad (doc §2).",
+              ? "Como supervisor ve solo las órdenes asignadas a usted."
+              : "Administración consulta los indicadores de su unidad.",
         }}
         onExport={onExport}
         exporting={exporting}

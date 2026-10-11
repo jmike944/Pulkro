@@ -10,7 +10,7 @@ import { useAppStore, useCurrentUser, useLookups, useSyncSummary } from "@/lib/h
 import { useUi } from "@/lib/ui-store";
 import { DEMO_ENABLED } from "@/lib/demo";
 import { ROLE_LABEL } from "@/lib/status";
-import { fmtAgo } from "@/lib/format";
+import { fmtAgo, plural } from "@/lib/format";
 import type { Role } from "@/lib/types";
 import { PersonAvatar } from "@/components/pk/bits";
 import { Segmented } from "@/components/pk/page";
@@ -93,7 +93,7 @@ export function PerfilView() {
             </span>
             <div className="min-w-0 flex-1">
               <p className="font-semibold text-ink">{offline ? "Sin conexión" : pending.length ? "Sincronizando" : "Sincronizado"}</p>
-              <p className="text-[13.5px] text-subtle">{pending.length ? `${pending.length} registro(s) en el dispositivo` : `Última sincronización ${fmtAgo(lastSyncAt)}`}</p>
+              <p className="text-[13.5px] text-subtle">{pending.length ? `${plural(pending.length, "registro", "registros")} en el dispositivo` : `Última sincronización ${fmtAgo(lastSyncAt)}`}</p>
             </div>
             <button onClick={() => setSyncOpen(true)} className="-mr-2 inline-flex min-h-11 items-center px-2 text-[14px] font-semibold text-link">
               Ver cola
@@ -102,7 +102,7 @@ export function PerfilView() {
           <label className="mt-4 flex items-center justify-between gap-4 border-t border-hairline pt-4 text-[14.5px]">
             <span>
               <span className="block font-medium text-ink">Simular sin conexión</span>
-              <span className="text-[13px] text-subtle">Prueba la captura en campo sin señal</span>
+              <span className="text-[13px] text-subtle">Pruebe la captura en campo sin señal</span>
             </span>
             <Switch checked={forced} onCheckedChange={setForced} />
           </label>
@@ -119,12 +119,12 @@ export function PerfilView() {
                 <p className="text-[13px] leading-snug text-subtle">
                   {ios ? (
                     <>
-                      En Safari toca <Share className="inline size-3.5" /> Compartir y luego “Agregar a inicio”.
+                      En Safari, toque <Share className="inline size-3.5" /> Compartir y luego “Agregar a inicio”.
                     </>
                   ) : canPrompt ? (
-                    "Ábrela desde tu pantalla de inicio y trabaja sin señal."
+                    "Instálela para abrirla desde su pantalla de inicio y trabajar aun sin señal."
                   ) : (
-                    "Usa el menú del navegador → “Instalar app” o “Agregar a pantalla de inicio”."
+                    "Use el menú del navegador → “Instalar app” o “Agregar a pantalla de inicio”."
                   )}
                 </p>
               </div>
@@ -132,7 +132,7 @@ export function PerfilView() {
                 <button
                   onClick={async () => {
                     const ok = await install();
-                    if (!ok) toast("Puedes instalarla más tarde desde aquí");
+                    if (!ok) toast("Podrá instalarla más tarde desde esta pantalla");
                   }}
                   className="inline-flex h-10 shrink-0 items-center gap-1.5 rounded-[12px] bg-brand-deep px-3.5 text-[14px] font-semibold text-white"
                 >
@@ -153,7 +153,7 @@ export function PerfilView() {
               value={user.role}
               onChange={(r) => {
                 switchRole(r);
-                toast.success(`Ahora ves Pulkro como ${ROLE_LABEL[r]}`);
+                toast.success(`Ahora ve Pulkro como ${ROLE_LABEL[r]}`);
               }}
             />
           </Card>
@@ -176,7 +176,7 @@ export function PerfilView() {
               <span className="inline-flex size-9 items-center justify-center rounded-[11px] bg-sand">
                 <RotateCcw className="size-[18px]" />
               </span>
-              Restablecer datos demo
+              Restablecer datos de demostración
             </button>
           )}
           <button

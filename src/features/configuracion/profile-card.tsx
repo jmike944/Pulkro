@@ -100,7 +100,7 @@ function PermissionsPopover({ allowed }: { allowed: number }) {
       <PopoverContent align="end" className="w-[min(360px,calc(100vw-2rem))] p-0">
         <div className="border-b border-hairline px-4 py-3">
           <p className="font-semibold text-ink">Permisos de {ROLE_LABEL[user.role]}</p>
-          <p className="text-[12.5px] text-subtle">Matriz de roles del documento maestro (§2).</p>
+          <p className="text-[12.5px] text-subtle">Matriz de roles del documento maestro.</p>
         </div>
         <ul className="max-h-[360px] overflow-y-auto p-2">
           {PERMISSION_ROWS.map((r, i) => {
@@ -142,17 +142,18 @@ function EditMyPhoneDialog({ open, onOpenChange }: { open: boolean; onOpenChange
   const updateMyContact = useAppStore((s) => s.updateMyContact);
   const [phone, setPhone] = useState(user.phone);
   const [touched, setTouched] = useState(false);
-  const error = phoneDigits(phone) < 10 ? "Captura un teléfono de al menos 10 dígitos." : null;
+  const error = phoneDigits(phone) < 10 ? "Escriba al menos 10 dígitos, con lada." : null;
 
   return (
     <FormDialog
       open={open}
       onOpenChange={onOpenChange}
       title="Mis datos de contacto"
-      description="Tu teléfono aparece en los reportes y en la ficha de las órdenes que supervisas."
+      description="Su teléfono aparece en los reportes y en la ficha de las órdenes que supervisa."
       icon={<Phone />}
       submitLabel="Guardar teléfono"
       footerNote="Nombre, rol, unidad y correo los administra Dirección."
+      dirty={phone.trim() !== user.phone.trim()}
       onSubmit={() => {
         setTouched(true);
         if (error) return;

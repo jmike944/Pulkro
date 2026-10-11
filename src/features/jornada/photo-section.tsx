@@ -236,7 +236,7 @@ export function PhotoSection({ f, kind }: { f: FieldReady; kind: Kind }) {
                   ? "La orden ya no admite captura en campo."
                   : f.photoBlock
                     ? "Se habilitan al registrar la entrada."
-                    : "Elige el área y toma la foto; se guarda aunque no haya señal."}
+                    : "Elija el área y tome la foto; se guarda aunque no haya señal."}
             </p>
           </div>
         </div>

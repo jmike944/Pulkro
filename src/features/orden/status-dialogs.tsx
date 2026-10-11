@@ -66,7 +66,7 @@ function CancelForm({ onDone }: { onDone: () => void }) {
       <ConfirmCheck checked={confirmed} onChange={setConfirmed}>
         Entiendo que la orden quedará <b className="font-semibold">cancelada</b> y que no se ejecutarán las jornadas pendientes.
       </ConfirmCheck>
-      <DialogActions hint={!reason.trim() ? "Indique el motivo" : !confirmed ? "Confirme la cancelación" : undefined}>
+      <DialogActions hint={!reason.trim() ? "Indique el motivo" : !confirmed ? "Marque la casilla de confirmación" : undefined}>
         <Button variant="outline" onClick={onDone} className="h-11 rounded-[12px] border-line px-5 font-semibold">
           Volver
         </Button>
@@ -143,9 +143,9 @@ function ReopenForm({ onDone }: { onDone: () => void }) {
       <ConfirmCheck checked={confirmed} onChange={setConfirmed}>
         Entiendo que debo <b className="font-semibold">validar el cierre otra vez</b> para generar una nueva versión del reporte y que el cambio queda auditado.
       </ConfirmCheck>
-      <DialogActions hint={!reason.trim() ? "Indique el motivo" : !confirmed ? "Confirme la reapertura" : undefined}>
+      <DialogActions hint={!reason.trim() ? "Indique el motivo" : !confirmed ? "Marque la casilla de confirmación" : undefined}>
         <Button variant="outline" onClick={onDone} className="h-11 rounded-[12px] border-line px-5 font-semibold">
-          Volver
+          Cancelar
         </Button>
         <Button onClick={submit} disabled={!valid} className="h-11 rounded-[12px] px-5 font-semibold">
           <RotateCcw className="size-4" /> Reabrir orden
@@ -206,9 +206,9 @@ function ArchiveForm({ onDone }: { onDone: () => void }) {
       <ConfirmCheck checked={confirmed} onChange={setConfirmed}>
         Entiendo que la orden <b className="font-semibold">sale de las abiertas</b>. Para hacer cambios deberá reabrirse.
       </ConfirmCheck>
-      <DialogActions hint={!reason.trim() ? "Indique el motivo" : !confirmed ? "Confirme el archivado" : undefined}>
+      <DialogActions hint={!reason.trim() ? "Indique el motivo" : !confirmed ? "Marque la casilla de confirmación" : undefined}>
         <Button variant="outline" onClick={onDone} className="h-11 rounded-[12px] border-line px-5 font-semibold">
-          Volver
+          Cancelar
         </Button>
         <Button onClick={submit} disabled={!valid} className="h-11 rounded-[12px] px-5 font-semibold">
           <Archive className="size-4" /> Archivar orden

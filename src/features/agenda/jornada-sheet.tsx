@@ -2,9 +2,7 @@
 
 import { useMemo, useState } from "react";
 import Link from "next/link";
-import { AnimatePresence, motion, type Variants } from "motion/react";
-import { ArrowLeft, ArrowRight, CalendarClock, Lock, Navigation, Phone, TriangleAlert, Users } from "lucide-react";
-import { toast } from "sonner";
+import { ArrowRight, CalendarClock, Lock, Navigation, Phone, TriangleAlert, Users } from "lucide-react";
 import { parseISO } from "date-fns";
 import { cn } from "@/lib/utils";
 import { useAppStore, useCan, useJornadaBundle, useLookups, useMediaQuery, useNow, useScopedData } from "@/lib/hooks";
@@ -12,50 +10,27 @@ import { jornadaMinutes, mapsLink } from "@/lib/domain";
 import { fmtDateTime, fmtDay, fmtDuration, fmtTime, plural } from "@/lib/format";
 import { ORDER_STATUS } from "@/lib/status";
 import type { Jornada, OrderStatus } from "@/lib/types";
-import { CrewPicker } from "@/components/pk/crew-picker";
 import { AvatarStack, Eyebrow, KeyValues, PersonAvatar } from "@/components/pk/bits";
 import { ClientMark } from "@/components/pk/client-mark";
 import { OrderStatusPill, StatusDot, TonePill } from "@/components/pk/status";
-import { EASE } from "@/components/pk/motion";
 import { Button } from "@/components/ui/button";
-import { Switch } from "@/components/ui/switch";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
-import {
-  REASON_CREW,
-  dayKey,
-  dayLabel,
-  hm,
-  jornadaVisual,
-  longDay,
-  pendingDaysWithMove,
-  sameSet,
-  toDayPlan,
-  validatePlan,
-} from "./agenda-model";
-import { ConfirmCheck, DateTimeInput, FieldError, FieldLabel, MotivoField } from "./form-bits";
+import { CrewModal } from "@/features/jornada/crew-flow";
+import { REASON_CREW, dayLabel, jornadaVisual, longDay } from "./agenda-model";
 import { Gate } from "./gate";
+import { MoveDialog, type MoveState } from "./move-dialog";
 
 type Bundle = NonNullable<ReturnType<typeof useJornadaBundle>>;
-type Mode = "detalle" | "cuadrilla" | "reprogramar";
 
 /** Orders whose plan can no longer change from the agenda. */
 const LOCKED: OrderStatus[] = ["cancelada", "finalizada", "reporte_enviado", "seguimiento", "archivada"];
 
-const CREW_REASONS = ["Ausencia de personal", "Ajuste de carga", "Especialidad requerida", "Solicitud del cliente"];
-const MOVE_REASONS = ["Solicitud del cliente", "Acceso no disponible", "Clima", "Reasignación de personal"];
-
 export type SheetState = { id: string; open: boolean } | null;
-
-/** Forward (detail → editor) slides left, back slides right. */
-const modeSlide: Variants = {
-  enter: (d: number) => ({ opacity: 0, x: d * 18 }),
-  center: { opacity: 1, x: 0, transition: { duration: 0.22, ease: EASE } },
-  exit: (d: number) => ({ opacity: 0, x: d * -18, transition: { duration: 0.15, ease: EASE } }),
-};
 
 /**
  * Side sheet for one jornada: order + jornada summary, crew, status and the planning actions
- * (Cambiar cuadrilla / Reprogramar) — the latter only with can("crew.assign").
+ * (Cambiar cuadrilla / Reprogramar) — the latter only with can("crew.assign"). Both actions open their own modal
+ * (the shared `CrewModal` and `MoveDialog`) over the sheet: a full-screen flow on phones, a dialog on desktop.
  */
 export function JornadaSheet({
   state,
@@ -71,19 +46,30 @@ export function JornadaSheet({
   onMoved: (jornadaId: string, date: string) => void;
 }) {
   const isDesktop = useMediaQuery("(min-width: 768px)");
+  // Lives outside the sheet: rescheduling replaces the jornada (new id), which re-keys the sheet body.
+  const [move, setMove] = useState<MoveState>(null);
   return (
-    <Sheet open={!!state?.open} onOpenChange={onOpenChange}>
-      <SheetContent
-        side={isDesktop ? "right" : "bottom"}
-        className={cn("gap-0 p-0", isDesktop ? "w-full sm:max-w-[500px]" : "h-[92dvh] max-h-[92dvh] rounded-t-[24px]")}
-      >
-        {state ? (
-          <SheetBody key={state.id} jornadaId={state.id} onClose={() => onOpenChange(false)} onSelect={onSelect} onMoved={onMoved} />
-        ) : (
-          <SheetTitle className="sr-only">Jornada</SheetTitle>
-        )}
-      </SheetContent>
-    </Sheet>
+    <>
+      <Sheet open={!!state?.open} onOpenChange={onOpenChange}>
+        <SheetContent
+          side={isDesktop ? "right" : "bottom"}
+          className={cn("gap-0 p-0", isDesktop ? "w-full sm:max-w-[500px]" : "h-[92dvh] max-h-[92dvh] rounded-t-[28px]")}
+        >
+          {state ? (
+            <SheetBody
+              key={state.id}
+              jornadaId={state.id}
+              onClose={() => onOpenChange(false)}
+              onSelect={onSelect}
+              onMove={() => setMove({ jornadaId: state.id, open: true })}
+            />
+          ) : (
+            <SheetTitle className="sr-only">Jornada</SheetTitle>
+          )}
+        </SheetContent>
+      </Sheet>
+      <MoveDialog state={move} onOpenChange={(open) => setMove((m) => (m ? { ...m, open } : m))} onMoved={onMoved} />
+    </>
   );
 }
 
@@ -91,20 +77,20 @@ function SheetBody({
   jornadaId,
   onClose,
   onSelect,
-  onMoved,
+  onMove,
 }: {
   jornadaId: string;
   onClose: () => void;
   onSelect: (id: string) => void;
-  onMoved: (id: string, date: string) => void;
+  onMove: () => void;
 }) {
   const b = useJornadaBundle(jornadaId);
   const now = useNow(60_000);
-  const [mode, setMode] = useState<Mode>("detalle");
+  const [crewOpen, setCrewOpen] = useState(false);
 
   if (!b) {
     return (
-      <SheetHeader className="p-6">
+      <SheetHeader className="p-6 pr-[68px]">
         <SheetTitle className="font-serif text-[26px] font-medium">Jornada no disponible</SheetTitle>
         <SheetDescription>Es posible que se haya reprogramado o eliminado.</SheetDescription>
       </SheetHeader>
@@ -115,7 +101,8 @@ function SheetBody({
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">
-      <SheetHeader className="border-b border-hairline p-5 pr-12 sm:p-6 sm:pr-14">
+      {/* 68px on the right keeps a long title clear of the 44px close button */}
+      <SheetHeader className="border-b border-hairline p-5 pr-[68px] sm:p-6 sm:pr-[68px]">
         <div className="mb-2 flex flex-wrap items-center gap-2">
           <TonePill tone={visual.tone} live={visual.live}>
             {visual.label}
@@ -129,21 +116,16 @@ function SheetBody({
         </SheetDescription>
       </SheetHeader>
 
-      <AnimatePresence mode="wait" initial={false} custom={mode === "detalle" ? -1 : 1}>
-        <motion.div
-          key={mode}
-          custom={mode === "detalle" ? -1 : 1}
-          variants={modeSlide}
-          initial="enter"
-          animate="center"
-          exit="exit"
-          className="flex min-h-0 flex-1 flex-col"
-        >
-          {mode === "detalle" && <Detail b={b} now={now} onClose={onClose} onSelect={onSelect} onMode={setMode} />}
-          {mode === "cuadrilla" && <CrewEditor b={b} onBack={() => setMode("detalle")} />}
-          {mode === "reprogramar" && <MoveEditor b={b} now={now} onBack={() => setMode("detalle")} onMoved={onMoved} />}
-        </motion.div>
-      </AnimatePresence>
+      <Detail b={b} now={now} onClose={onClose} onSelect={onSelect} onCrew={() => setCrewOpen(true)} onMove={onMove} />
+
+      <CrewModal
+        open={crewOpen}
+        onOpenChange={setCrewOpen}
+        order={b.order}
+        jornadas={b.jornadas}
+        jornadaId={b.jornada.id}
+        allowApplyAll
+      />
     </div>
   );
 }
@@ -178,13 +160,15 @@ function Detail({
   now,
   onClose,
   onSelect,
-  onMode,
+  onCrew,
+  onMove,
 }: {
   b: Bundle;
   now: Date;
   onClose: () => void;
   onSelect: (id: string) => void;
-  onMode: (m: Mode) => void;
+  onCrew: () => void;
+  onMove: () => void;
 }) {
   const { jornada: j, order, client, site, serviceType, supervisor, unit, jornadas } = b;
   const lk = useLookups();
@@ -202,7 +186,7 @@ function Detail({
   const crewReason = baseReason ?? (j.status === "cerrada" ? "La jornada ya se cerró; su cuadrilla queda en el historial." : null);
   const moveReason =
     baseReason ??
-    (j.status === "en_curso" ? "La jornada ya inició: registra la salida o una incidencia." : j.status === "cerrada" ? "La jornada ya se cerró." : null);
+    (j.status === "en_curso" ? "La jornada ya inició: registre la salida o una incidencia." : j.status === "cerrada" ? "La jornada ya se cerró." : null);
 
   return (
     <>
@@ -242,7 +226,7 @@ function Detail({
                     aria-selected={on}
                     onClick={() => !on && onSelect(x.id)}
                     className={cn(
-                      "inline-flex h-10 items-center gap-2 rounded-[12px] border px-3 text-[12.5px] font-medium tabular transition",
+                      "inline-flex h-11 items-center gap-2 rounded-[12px] border px-3 text-[12.5px] font-medium tabular transition",
                       on
                         ? visual.live
                           ? "border-white/30 bg-white/15 text-white"
@@ -276,7 +260,7 @@ function Detail({
               target="_blank"
               rel="noreferrer"
               aria-label="Cómo llegar (abre mapas)"
-              className="inline-flex size-10 shrink-0 items-center justify-center rounded-[12px] border border-hairline text-ink transition hover:bg-muted"
+              className="inline-flex size-11 shrink-0 items-center justify-center rounded-[12px] border border-hairline text-ink transition hover:bg-muted"
             >
               <Navigation className="size-4" />
             </a>
@@ -366,7 +350,7 @@ function Detail({
         )}
       </div>
 
-      <div className="border-t border-hairline p-4">
+      <div className="border-t border-hairline px-4 pb-[max(16px,env(safe-area-inset-bottom))] pt-4">
         {(crewReason ?? moveReason) && (
           // the dimmed buttons below can't explain themselves on touch (no hover): say why in plain sight
           <p className="mb-3 flex items-start gap-2 text-[12.5px] leading-snug text-subtle">
@@ -386,239 +370,16 @@ function Detail({
             </Link>
           </Button>
           <Gate allowed={!crewReason} reason={crewReason ?? ""} className="w-full">
-            <Button variant="outline" disabled={!!crewReason} onClick={() => onMode("cuadrilla")} className="h-11 w-full rounded-[12px] font-semibold">
+            <Button variant="outline" disabled={!!crewReason} onClick={onCrew} className="h-11 w-full rounded-[12px] font-semibold">
               <Users className="size-4" /> Cambiar cuadrilla
             </Button>
           </Gate>
           <Gate allowed={!moveReason} reason={moveReason ?? ""} className="w-full">
-            <Button variant="outline" disabled={!!moveReason} onClick={() => onMode("reprogramar")} className="h-11 w-full rounded-[12px] font-semibold">
+            <Button variant="outline" disabled={!!moveReason} onClick={onMove} className="h-11 w-full rounded-[12px] font-semibold">
               <CalendarClock className="size-4" /> Reprogramar
             </Button>
           </Gate>
         </div>
-      </div>
-    </>
-  );
-}
-
-function ModeHeader({ title, subtitle, onBack }: { title: string; subtitle: string; onBack: () => void }) {
-  return (
-    <div className="mb-5 flex items-start gap-3">
-      <button type="button" onClick={onBack} aria-label="Regresar al detalle" className="inline-flex size-10 shrink-0 items-center justify-center rounded-[12px] border border-hairline hover:bg-muted">
-        <ArrowLeft className="size-4" />
-      </button>
-      <div className="min-w-0">
-        <p className="text-[17px] font-semibold text-ink">{title}</p>
-        <p className="text-[13px] text-subtle">{subtitle}</p>
-      </div>
-    </div>
-  );
-}
-
-/* ───────────── change crew ───────────── */
-
-function CrewEditor({ b, onBack }: { b: Bundle; onBack: () => void }) {
-  const { jornada: j, order, jornadas } = b;
-  const assignCrew = useAppStore((s) => s.assignCrew);
-  const lk = useLookups();
-  const [crew, setCrew] = useState<string[]>(j.workerIds);
-  const [motivo, setMotivo] = useState("");
-  const [applyAll, setApplyAll] = useState(false);
-  const [ok, setOk] = useState(false);
-
-  const pending = jornadas.filter((x) => x.status === "pendiente");
-  const canApplyAll = j.status === "pendiente" && pending.length > 1;
-  const added = crew.filter((id) => !j.workerIds.includes(id));
-  const removed = j.workerIds.filter((id) => !crew.includes(id));
-  const changed = added.length > 0 || removed.length > 0 || (applyAll && pending.some((x) => !sameSet(x.workerIds, crew)));
-  const valid = crew.length > 0 && changed && motivo.trim().length >= 4 && ok;
-  const dates = applyAll ? pending.map((x) => x.date) : [j.date];
-
-  const save = () => {
-    if (!valid) return;
-    assignCrew(order.id, crew, motivo.trim(), applyAll ? undefined : j.id);
-    toast.success("Cuadrilla actualizada", {
-      description: `${order.folio} · ${applyAll ? "jornadas pendientes" : `Jornada ${j.dayIndex}`} · ${plural(crew.length, "persona", "personas")}`,
-    });
-    onBack();
-  };
-
-  const people = (ids: string[]) => ids.map((id) => lk.workers.get(id)).filter((w) => !!w);
-
-  return (
-    <>
-      <div className="flex-1 space-y-5 overflow-y-auto p-5 sm:p-6">
-        <ModeHeader title="Cambiar cuadrilla" subtitle={`Jornada ${j.dayIndex} · ${longDay(parseISO(j.plannedStart))}`} onBack={onBack} />
-        <CrewPicker unitId={order.unitId} dates={dates} value={crew} onChange={setCrew} excludeOrderId={order.id} className="h-[min(44dvh,360px)]" />
-
-        <AnimatePresence initial={false}>
-          {(added.length > 0 || removed.length > 0) && (
-            <motion.div
-              initial={{ opacity: 0, height: 0 }}
-              animate={{ opacity: 1, height: "auto" }}
-              exit={{ opacity: 0, height: 0 }}
-              className="overflow-hidden"
-            >
-              <div className="flex flex-wrap gap-x-6 gap-y-2 rounded-[16px] border border-hairline p-4 text-[13px]">
-                {added.length > 0 && (
-                  <span className="flex items-center gap-2">
-                    <b className="font-semibold text-teal-fg">+{added.length}</b>
-                    <AvatarStack people={people(added)} size={24} />
-                  </span>
-                )}
-                {removed.length > 0 && (
-                  <span className="flex items-center gap-2">
-                    <b className="font-semibold text-red-fg">−{removed.length}</b>
-                    <AvatarStack people={people(removed)} size={24} className="opacity-60" />
-                  </span>
-                )}
-              </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
-
-        {canApplyAll && (
-          <label className="flex items-start justify-between gap-4 rounded-[16px] border border-hairline p-4">
-            <span className="text-[13.5px]">
-              <span className="block font-semibold text-ink">Aplicar a todas las jornadas pendientes</span>
-              <span className="text-subtle">{plural(pending.length, "jornada pendiente", "jornadas pendientes")} de la orden.</span>
-            </span>
-            <Switch checked={applyAll} onCheckedChange={setApplyAll} aria-label="Aplicar a todas las jornadas pendientes" />
-          </label>
-        )}
-
-        <MotivoField id="crew-motivo" value={motivo} onChange={setMotivo} suggestions={CREW_REASONS} />
-        <ConfirmCheck id="crew-ok" checked={ok} onChange={setOk}>
-          Confirmo el cambio de cuadrilla. Quedará en el historial de reasignaciones con mi usuario, fecha y motivo.
-        </ConfirmCheck>
-      </div>
-      <div className="flex justify-end gap-2 border-t border-hairline p-4">
-        <Button variant="outline" onClick={onBack} className="h-11 rounded-[12px] px-5">
-          Cancelar
-        </Button>
-        <Button onClick={save} disabled={!valid} className="h-11 rounded-[12px] px-5 font-semibold">
-          Guardar cuadrilla
-        </Button>
-      </div>
-    </>
-  );
-}
-
-/* ───────────── reschedule one jornada ───────────── */
-
-function MoveEditor({ b, now, onBack, onMoved }: { b: Bundle; now: Date; onBack: () => void; onMoved: (id: string, date: string) => void }) {
-  const { jornada: j, order, jornadas } = b;
-  const scheduleJornadas = useAppStore((s) => s.scheduleJornadas);
-  const assignCrew = useAppStore((s) => s.assignCrew);
-  const todayK = dayKey(now);
-  const current = toDayPlan(j);
-  const [date, setDate] = useState(current.date < todayK ? todayK : current.date);
-  const [start, setStart] = useState(current.start);
-  const [end, setEnd] = useState(current.end);
-  const [motivo, setMotivo] = useState("");
-  const [ok, setOk] = useState(false);
-
-  const others = jornadas.filter((x) => x.id !== j.id);
-  const lastExecuted = others
-    .filter((x) => x.status !== "pendiente")
-    .map((x) => x.date)
-    .sort()
-    .at(-1);
-  let error = validatePlan({ date, start, end }, todayK);
-  if (!error && others.some((x) => x.date === date)) error = "La orden ya tiene otra jornada ese día.";
-  if (!error && lastExecuted && date <= lastExecuted) error = `Debe ser posterior al ${fmtDay(lastExecuted)}, la última jornada ejecutada.`;
-  const unchanged = date === current.date && start === current.start && end === current.end && !current.clamped;
-  const clampedOthers = others.filter((x) => x.status === "pendiente").map(toDayPlan).filter((p) => p.clamped);
-  const valid = !error && !unchanged && motivo.trim().length >= 4 && ok;
-  const dateErr = error && /fecha|día|posterior al/i.test(error) ? error : null;
-  const timeErr = error && !dateErr ? error : null;
-
-  const save = () => {
-    if (!valid) return;
-    const days = pendingDaysWithMove(jornadas, { jornadaId: j.id, date, start, end });
-    scheduleJornadas(
-      order.id,
-      days.map(({ date: d, start: s, end: e }) => ({ date: d, start: s, end: e })),
-      motivo.trim(),
-    );
-    // scheduleJornadas gives every fresh jornada the order's latest crew — keep each day's own crew.
-    const fresh = useAppStore
-      .getState()
-      .jornadas.filter((x) => x.orderId === order.id && x.status === "pendiente")
-      .sort((a, c) => a.date.localeCompare(c.date) || a.plannedStart.localeCompare(c.plannedStart));
-    fresh.forEach((fj, i) => {
-      const want = days[i]?.crew;
-      if (want && want.length && !sameSet(want, fj.workerIds)) assignCrew(order.id, want, "Se conserva la cuadrilla de la jornada reprogramada", fj.id);
-    });
-    const moved = fresh.find((x) => x.date === date && hm(x.plannedStart) === start) ?? fresh.find((x) => x.date === date);
-    toast.success("Jornada reprogramada", { description: `${order.folio} · ${longDay(parseISO(date))} · ${start}–${end}` });
-    if (moved) onMoved(moved.id, date);
-    else onBack();
-  };
-
-  return (
-    <>
-      <div className="flex-1 space-y-5 overflow-y-auto p-5 sm:p-6">
-        <ModeHeader title="Reprogramar jornada" subtitle={`Jornada ${j.dayIndex} de ${Math.max(order.plannedDays, j.dayIndex)} · ${order.folio}`} onBack={onBack} />
-
-        <div className="grid grid-cols-2 gap-3">
-          <div className="col-span-2">
-            <FieldLabel htmlFor="mv-date">Nueva fecha</FieldLabel>
-            <DateTimeInput id="mv-date" type="date" min={todayK} value={date} onChange={(e) => setDate(e.target.value)} invalid={!!dateErr} />
-            <FieldError>{dateErr}</FieldError>
-          </div>
-          <div>
-            <FieldLabel htmlFor="mv-start">Inicio</FieldLabel>
-            <DateTimeInput id="mv-start" type="time" step={900} value={start} onChange={(e) => setStart(e.target.value)} invalid={!!timeErr} />
-          </div>
-          <div>
-            <FieldLabel htmlFor="mv-end">Término</FieldLabel>
-            <DateTimeInput id="mv-end" type="time" step={900} value={end} onChange={(e) => setEnd(e.target.value)} invalid={!!timeErr} />
-          </div>
-          <div className="col-span-2 -mt-1">
-            <FieldError>{timeErr}</FieldError>
-            {current.clamped && <p className="mt-1.5 text-[12.5px] text-amber-fg">Esta jornada terminaba al día siguiente ({current.originalEnd}); las jornadas se registran dentro del mismo día.</p>}
-          </div>
-        </div>
-
-        <div className="grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-3 rounded-[18px] border border-hairline p-4">
-          <div className="min-w-0">
-            <Eyebrow>Antes</Eyebrow>
-            <p className="mt-1 truncate text-[14px] font-medium text-subtle line-through decoration-ghost">{fmtDay(current.date)}</p>
-            <p className="text-[13px] text-subtle tabular">
-              {current.start}–{current.clamped ? current.originalEnd : current.end}
-            </p>
-          </div>
-          <motion.span animate={{ x: [0, 4, 0] }} transition={{ duration: 1.6, repeat: Infinity, ease: "easeInOut" }} className="text-subtle">
-            <ArrowRight className="size-4" />
-          </motion.span>
-          <div className="min-w-0">
-            <Eyebrow>Después</Eyebrow>
-            <p className="mt-1 truncate text-[14px] font-semibold text-ink">{/^\d{4}-\d{2}-\d{2}$/.test(date) ? fmtDay(date) : "—"}</p>
-            <p className="text-[13px] text-ink tabular">
-              {start}–{end}
-            </p>
-          </div>
-        </div>
-
-        {clampedOthers.length > 0 && (
-          <p className="rounded-[14px] bg-amber-soft px-4 py-3 text-[12.5px] leading-snug text-amber-ink">
-            {plural(clampedOthers.length, "otra jornada nocturna", "otras jornadas nocturnas")} de la orden se registrará{clampedOthers.length > 1 ? "n" : ""} con término a las 23:59 del mismo día.
-          </p>
-        )}
-
-        <MotivoField id="mv-motivo" value={motivo} onChange={setMotivo} suggestions={MOVE_REASONS} />
-        <ConfirmCheck id="mv-ok" checked={ok} onChange={setOk}>
-          Confirmo la nueva fecha y aviso al contacto en sitio por los medios habituales (la app no envía notificaciones). El cambio queda en la bitácora.
-        </ConfirmCheck>
-      </div>
-      <div className="flex justify-end gap-2 border-t border-hairline p-4">
-        <Button variant="outline" onClick={onBack} className="h-11 rounded-[12px] px-5">
-          Cancelar
-        </Button>
-        <Button onClick={save} disabled={!valid} className="h-11 rounded-[12px] px-5 font-semibold">
-          Reprogramar
-        </Button>
       </div>
     </>
   );

@@ -48,6 +48,9 @@ export function BreakdownFlow({ f, open, onOpenChange }: { f: FieldReady; open: 
   const [hours, setHours] = useState<number[]>(() => initialSplit(activities, clockHours, jornada.breakdown));
   const [note, setNote] = useState(jornada.breakdownNote ?? "");
   const [done, setDone] = useState(false);
+  // what the flow opened with: changed hours or note make the X / Esc ask "¿Descartar cambios?"
+  const snapshot = JSON.stringify([hours, note]);
+  const [initial] = useState(snapshot);
 
   const total = hours.reduce((s, h) => s + h, 0);
   const gap = roundHalf(total - minutes / 60);
@@ -104,6 +107,7 @@ export function BreakdownFlow({ f, open, onOpenChange }: { f: FieldReady; open: 
       onOpenChange={onOpenChange}
       title="Desglose de horas"
       description={`Desglose de horas de la Jornada ${jornada.dayIndex}`}
+      dirty={snapshot !== initial}
       footer={
         <BigButton onClick={submit} disabled={total <= 0}>
           Guardar desglose
@@ -111,12 +115,12 @@ export function BreakdownFlow({ f, open, onOpenChange }: { f: FieldReady; open: 
       }
     >
       <FlowHeading eyebrow={<FlowEyebrow f={f} />} title="¿En qué se fue el tiempo?">
-        Reparte el tiempo real en sitio entre las actividades de la orden. Es opcional y ayuda a medir horas por servicio.
+        Reparta el tiempo real en sitio entre las actividades de la orden. Es opcional y ayuda a medir horas por servicio.
       </FlowHeading>
 
       <div>
         {activities.map((a, i) => (
-          <StepperRow key={a} label={a} hint={i === 0 ? "Ajusta en pasos de media hora" : undefined}>
+          <StepperRow key={a} label={a} hint={i === 0 ? "Ajuste en pasos de media hora" : undefined}>
             <Stepper
               value={hours[i]}
               onChange={(v) => setHours((xs) => xs.map((x, k) => (k === i ? v : x)))}
@@ -135,7 +139,7 @@ export function BreakdownFlow({ f, open, onOpenChange }: { f: FieldReady; open: 
       />
       {mismatch && (
         <p className="mt-2.5 text-[13.5px] leading-snug text-amber-ink">
-          {gap > 0 ? `Sobran ${gap.toFixed(1)} h` : `Faltan ${Math.abs(gap).toFixed(1)} h`} respecto al tiempo entre entrada y salida. Explícalo en la nota si aplica.
+          {gap > 0 ? `Sobran ${gap.toFixed(1)} h` : `Faltan ${Math.abs(gap).toFixed(1)} h`} respecto al tiempo entre entrada y salida. Explíquelo en la nota si aplica.
         </p>
       )}
 

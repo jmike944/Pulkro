@@ -36,7 +36,7 @@ export function ListView({
   if (data.items.length === 0) {
     return (
       <EmptyState icon={<CalendarDays />} title="Semana sin jornadas">
-        No hay jornadas programadas en tu alcance para estos días.
+        No hay jornadas programadas en su alcance para estos días.
       </EmptyState>
     );
   }

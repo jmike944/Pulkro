@@ -1,9 +1,9 @@
 "use client";
 
 import { motion } from "motion/react";
-import { ChevronDown, Lock, X } from "lucide-react";
+import { ChevronDown, Lock } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { Dialog, DialogClose, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
+import { ModalFooter, ModalShell } from "@/components/pk/modal-shell";
 import { ReasonTip } from "@/components/pk/reason-tip";
 import type { Gate } from "./order-context";
 
@@ -34,8 +34,8 @@ export function GateHint({ gate, className }: { gate: Gate; className?: string }
 }
 
 /**
- * Pulkro dialog shell: serif title, scrollable body, sticky footer.
- * Centered card on desktop, bottom sheet on phones.
+ * Order dialog: a thin wrapper over the shared `ModalShell` (centered dialog at lg+, bottom sheet on phones, or a
+ * FlowScreen with `phone="flow"`). Kept for its callers; new code can use `ModalShell` directly.
  */
 export function OrderDialog({
   open,
@@ -45,8 +45,11 @@ export function OrderDialog({
   eyebrow,
   icon,
   footer,
+  footerHint,
   children,
   size = "md",
+  dirty,
+  phone,
 }: {
   open: boolean;
   onOpenChange: (v: boolean) => void;
@@ -55,118 +58,43 @@ export function OrderDialog({
   eyebrow?: React.ReactNode;
   icon?: React.ReactNode;
   footer?: React.ReactNode;
+  footerHint?: React.ReactNode;
   children: React.ReactNode;
   size?: "md" | "lg";
+  /** unsaved work: Esc / outside tap / X ask "¿Descartar cambios?" first */
+  dirty?: boolean;
+  /** phone presentation: bottom sheet (default) or full-screen flow */
+  phone?: "flow" | "sheet";
 }) {
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent
-        showCloseButton={false}
-        className={cn(
-          "flex max-h-[92dvh] flex-col gap-0 overflow-hidden rounded-[26px] bg-surface p-0 text-ink shadow-lift ring-1 ring-edge",
-          size === "lg" ? "sm:max-w-[620px]" : "sm:max-w-[540px]",
-          "max-sm:inset-x-0 max-sm:top-auto max-sm:bottom-0 max-sm:left-0 max-sm:max-h-[94dvh] max-sm:max-w-none max-sm:translate-x-0 max-sm:translate-y-0 max-sm:rounded-b-none",
-        )}
-      >
-        <div className="relative shrink-0 px-5 pb-4 pt-6 sm:px-7 sm:pt-7">
-          <span className="mx-auto mb-4 block h-1 w-10 rounded-full bg-track sm:hidden" aria-hidden />
-          <DialogClose
-            aria-label="Cerrar"
-            className="absolute right-4 top-4 inline-flex size-10 items-center justify-center rounded-full text-subtle transition hover:bg-muted hover:text-ink sm:right-5 sm:top-5"
-          >
-            <X className="size-[18px]" />
-          </DialogClose>
-          {icon && <div className="mb-4">{icon}</div>}
-          {eyebrow && <p className="mb-1.5 text-[12px] font-semibold uppercase tracking-[0.1em] text-subtle">{eyebrow}</p>}
-          <DialogTitle className="pr-10 font-serif text-[26px] font-medium leading-[1.12] tracking-[-0.01em] text-ink sm:text-[28px]">{title}</DialogTitle>
-          {description ? (
-            <DialogDescription className="mt-2 text-[14.5px] leading-relaxed text-subtle [&_b]:font-semibold [&_b]:text-ink">{description}</DialogDescription>
-          ) : (
-            <DialogDescription className="sr-only">Formulario de la orden</DialogDescription>
-          )}
-        </div>
-        <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-5 pb-6 sm:px-7">{children}</div>
-        {footer && (
-          <div className="flex shrink-0 flex-col-reverse gap-2 border-t border-hairline bg-wash px-5 py-4 pb-[max(1rem,env(safe-area-inset-bottom))] sm:flex-row sm:items-center sm:justify-end sm:px-7">
-            {footer}
-          </div>
-        )}
-      </DialogContent>
-    </Dialog>
+    <ModalShell
+      open={open}
+      onOpenChange={onOpenChange}
+      title={title}
+      description={description}
+      eyebrow={eyebrow}
+      icon={icon}
+      footer={footer}
+      footerHint={footerHint}
+      size={size}
+      dirty={dirty}
+      phone={phone}
+    >
+      {children}
+    </ModalShell>
   );
 }
 
 /**
- * Sticky action bar rendered at the end of a dialog body (for forms whose state lives inside the body).
- * Pins to the bottom of the scroll area so the primary action is always reachable on phones.
+ * Action bar for forms whose state lives inside the dialog body: it renders in the modal's sticky footer
+ * (`ModalFooter`), with `hint` saying what is still missing while the primary action is disabled.
  */
 export function DialogActions({ children, hint }: { children: React.ReactNode; hint?: React.ReactNode }) {
-  return (
-    <div className="sticky bottom-[-24px] z-10 -mx-5 -mb-6 mt-6 flex flex-col-reverse gap-2 border-t border-hairline bg-wash/95 px-5 py-4 pb-[max(1rem,env(safe-area-inset-bottom))] backdrop-blur sm:-mx-7 sm:flex-row sm:items-center sm:justify-end sm:px-7">
-      {hint && <p className="text-center text-[12.5px] text-subtle sm:mr-auto sm:text-left">{hint}</p>}
-      {children}
-    </div>
-  );
+  return <ModalFooter hint={hint}>{children}</ModalFooter>;
 }
 
-/** Required "motivo" textarea with quick-pick chips (doc §3: every change records a reason). */
-export function ReasonField({
-  value,
-  onChange,
-  suggestions = [],
-  label = "Motivo",
-  placeholder = "Explique brevemente el motivo del cambio",
-  id = "motivo",
-  min = 5,
-}: {
-  value: string;
-  onChange: (v: string) => void;
-  suggestions?: string[];
-  label?: string;
-  placeholder?: string;
-  id?: string;
-  min?: number;
-}) {
-  const short = value.trim().length > 0 && value.trim().length < min;
-  return (
-    <div>
-      <label htmlFor={id} className="mb-2 flex items-baseline justify-between gap-3 text-[13px] font-medium text-ink">
-        <span>
-          {label} <span className="text-red-fg">*</span>
-        </span>
-        <span className="text-[12px] font-normal text-subtle">Queda en la actividad de la orden</span>
-      </label>
-      {suggestions.length > 0 && (
-        <div className="mb-2 flex flex-wrap gap-1.5">
-          {suggestions.map((s) => (
-            <motion.button
-              key={s}
-              type="button"
-              whileTap={{ scale: 0.96 }}
-              onClick={() => onChange(s)}
-              className={cn(
-                "min-h-8 rounded-full border px-3 text-[12.5px] transition",
-                value === s ? "border-ink bg-ink text-on-ink" : "border-hairline bg-surface text-ink hover:bg-muted",
-              )}
-            >
-              {s}
-            </motion.button>
-          ))}
-        </div>
-      )}
-      <textarea
-        id={id}
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        placeholder={placeholder}
-        rows={3}
-        aria-invalid={short || undefined}
-        className="w-full resize-none rounded-[14px] border border-input bg-surface px-3.5 py-3 text-[15px] leading-relaxed outline-none transition placeholder:text-faint focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 aria-invalid:border-st-amber"
-      />
-      {short && <p className="mt-1 text-[12px] text-amber-fg">Escriba al menos {min} caracteres.</p>}
-    </div>
-  );
-}
+/** Required "motivo" (doc §3). Shared field: `@/components/pk/reason-field`. */
+export { ReasonField, reasonOk, REASON_MIN } from "@/components/pk/reason-field";
 
 /** Confirm checkbox row used at the bottom of every confirmation dialog. */
 export function ConfirmCheck({ checked, onChange, children }: { checked: boolean; onChange: (v: boolean) => void; children: React.ReactNode }) {
@@ -225,7 +153,8 @@ export function Field({ label, htmlFor, children, hint, className }: { label: Re
   );
 }
 
-export const inputClass = "h-11 w-full rounded-[12px] border border-input bg-surface px-3.5 text-[15px] outline-none transition placeholder:text-faint focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 disabled:bg-muted disabled:text-subtle";
+/** Text input / native select. 16px below lg so iOS does not zoom on focus. */
+export const inputClass = "h-11 w-full rounded-[12px] border border-input bg-surface px-3.5 text-[16px] outline-none lg:text-[15px] transition placeholder:text-faint focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 disabled:bg-muted disabled:text-subtle";
 
 /** Section label inside long forms. */
 export function FormSection({ title, children, className, aside }: { title: string; children: React.ReactNode; className?: string; aside?: React.ReactNode }) {

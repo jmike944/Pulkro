@@ -53,6 +53,9 @@ export function SiteDialog({ client, site, open, onOpenChange }: { client: Clien
   const [accuracy, setAccuracy] = useState<number | null>(null);
   const [locating, setLocating] = useState(false);
   const [submitted, setSubmitted] = useState(false);
+  // what the form opened with: any difference makes Esc / outside tap / X / Cancelar ask "¿Descartar cambios?"
+  const snapshot = JSON.stringify([name, address, municipality, lat, lng]);
+  const [initial] = useState(snapshot);
 
   const la = parseCoord(lat);
   const ln = parseCoord(lng);
@@ -60,10 +63,10 @@ export function SiteDialog({ client, site, open, onOpenChange }: { client: Clien
   const outsideMexico = coordsValid && (la! < 14 || la! > 33 || ln! < -118.5 || ln! > -86);
 
   const errors = {
-    name: !name.trim() ? "Captura el nombre del sitio." : null,
-    address: address.trim().length < 6 ? "Captura calle, número y colonia." : null,
-    municipality: !municipality.trim() ? "Captura el municipio." : null,
-    coords: !coordsValid ? "Captura latitud y longitud válidas o usa tu ubicación." : null,
+    name: !name.trim() ? "Escriba el nombre del sitio." : null,
+    address: address.trim().length < 6 ? "Escriba calle, número y colonia." : null,
+    municipality: !municipality.trim() ? "Escriba el municipio." : null,
+    coords: !coordsValid ? "Escriba latitud y longitud válidas o use su ubicación." : null,
   };
   const valid = !Object.values(errors).some(Boolean);
   const show = (k: keyof typeof errors) => (submitted ? errors[k] : null);
@@ -76,7 +79,7 @@ export function SiteDialog({ client, site, open, onOpenChange }: { client: Clien
     setLat(r.lat.toFixed(6));
     setLng(r.lng.toFixed(6));
     setAccuracy(r.accuracy);
-    if (r.simulated) toast(r.error ?? "Ubicación aproximada", { description: "Se usó una posición de referencia; ajústala si es necesario." });
+    if (r.simulated) toast(r.error ?? "Ubicación aproximada", { description: "Se usó una posición de referencia; ajústela si es necesario." });
     else toast.success(`Ubicación obtenida · ±${r.accuracy} m`);
   };
 
@@ -93,6 +96,7 @@ export function SiteDialog({ client, site, open, onOpenChange }: { client: Clien
       }
       submitLabel={isNew ? "Agregar sitio" : "Guardar sitio"}
       className="sm:max-w-[620px]"
+      dirty={snapshot !== initial}
       onSubmit={() => {
         setSubmitted(true);
         if (!valid) return;
@@ -149,7 +153,7 @@ export function SiteDialog({ client, site, open, onOpenChange }: { client: Clien
           <AnimatePresence initial={false}>
             {outsideMexico && (
               <motion.p initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} exit={{ opacity: 0, height: 0 }} className="mt-2 flex items-center gap-2 overflow-hidden text-[12.5px] text-amber-fg">
-                <TriangleAlert className="size-3.5 shrink-0" /> Las coordenadas quedan fuera de México. Verifica el signo de la longitud (debe ser negativa).
+                <TriangleAlert className="size-3.5 shrink-0" /> Las coordenadas quedan fuera de México. Verifique el signo de la longitud (debe ser negativa).
               </motion.p>
             )}
           </AnimatePresence>
@@ -164,7 +168,7 @@ export function SiteDialog({ client, site, open, onOpenChange }: { client: Clien
             ) : (
               <div className="flex h-[200px] flex-col items-center justify-center gap-2 rounded-[20px] bg-soft text-center text-[13.5px] text-subtle sm:h-[230px]">
                 <MapPin className="size-6 text-faint" />
-                Captura coordenadas para ver la vista previa del mapa.
+                Escriba las coordenadas para ver la vista previa del mapa.
               </div>
             )}
             {coordsValid && (
