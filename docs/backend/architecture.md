@@ -457,7 +457,13 @@ One RPC per queue item keeps generated TypeScript types for every argument (a ba
 - **Scope loss** (order reassigned, unit change, deactivation, role change): `rpc('sync_reconcile', {p_table, p_ids})`
   returns which of the device's ids are still visible (≤ 2000 per call); the device drops the rest and their children.
   Run it after login, on unit/role change and periodically (e.g. daily) per table. Queued items for dropped orders go to
-  quarantine (above), not to the trash.
+  quarantine (above), not to the trash; an order kept that way keeps the client, site, people and crew it names. A read
+  (page, subtree, reconcile) that started before an item reached the server treats that item's order as still unsent, so
+  it never wipes what was just sent; catalog / profile rows held for an unsent edit are read again by id afterwards.
+- **Tabs**: every tab of an account holds the dataset in memory and saves it whole to IndexedDB with a revision; a tab
+  whose last read or write is older merges its changes into what another tab saved (record by record, the queue by item)
+  instead of replacing it, and every save is announced so the other tabs merge it. A sign-out or another account's
+  sign-in counts the unsent items of every live tab and of the saved queue before it wipes anything.
 - **Initial load**: catalogs (small) + orders in scope that are open or updated in the last N months (Dirección: N
   chosen in §14) + their children by `order_id in (…)`; `audit_log` only for a recent window (it is not reconciled).
 - Server-assigned values (folios, `server_at`, versions, snapshots, `scope_changed_at`) reach the device through the RPC
@@ -501,7 +507,7 @@ of the integration (phase 1 of §12); the app still runs on its local demo store
   database still decides. Use `supabase.auth.getClaims()` there and in server code, never `getSession()`.
 - Login (`/login`, to rewire from the demo role picker): `signInWithPassword`; invite landing
   (`/acceso/definir-contrasena`, to create): verify the invite link, then `updateUser({ password })`. Sign-out clears
-  IndexedDB only after the queue is empty (or warns).
+  IndexedDB only after the queue is empty (or warns), counting every open tab and the saved queue.
 - Do not use the deprecated `@supabase/server` framework adapters; `@supabase/server` (`withSupabase`) is for the Edge
   Function only.
 - `src/lib/supabase/database.types.ts` (exists) is generated; regenerate after every migration.
