@@ -1,4 +1,5 @@
 import { createBrowserClient } from "@supabase/ssr";
+import { createClient } from "@supabase/supabase-js";
 import type { Database } from "./database.types";
 import { SUPABASE_PUBLISHABLE_KEY, SUPABASE_URL, isSupabaseConfigured } from "./config";
 
@@ -26,6 +27,24 @@ export function getSupabaseBrowserClient(): SupabaseBrowserClient {
   }
   client ??= createBrowserClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, { auth: { detectSessionInUrl: false } });
   return client;
+}
+
+let bound: { token: string; client: SupabaseBrowserClient } | undefined;
+
+/**
+ * A data client (tables, RPCs, Storage) whose every request carries `accessToken`, whatever session the cookies hold by the
+ * time the request goes out. The shared client reads the cookies on each request, and they are shared by every tab: an
+ * e-mail link or a sign-in in another tab can put another account's session there in the middle of a pull or a push. The
+ * sync engine checks the session once per run and binds the run's requests to that session's token. It has no `auth`
+ * (sessions are read and refreshed through getSupabaseBrowserClient): a token that expires answers 401, and the engine
+ * refreshes and binds again.
+ */
+export function getTokenClient(accessToken: string): SupabaseBrowserClient {
+  if (bound?.token !== accessToken) {
+    const client = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, { accessToken: async () => accessToken });
+    bound = { token: accessToken, client };
+  }
+  return bound.client;
 }
 
 /** supabase-js' storage key (`sb-<first label of the project host>-auth-token`): the session cookie and the ones derived from it. */

@@ -22,7 +22,7 @@
  */
 import { isAuthApiError, isAuthRetryableFetchError, isAuthSessionMissingError } from "@supabase/supabase-js";
 import type { AppState } from "@/lib/store";
-import { endSessionOnDevice, getSupabaseBrowserClient, isSupabaseConfigured, type SupabaseBrowserClient } from "@/lib/supabase/client";
+import { endSessionOnDevice, getSupabaseBrowserClient, getTokenClient, isSupabaseConfigured, type SupabaseBrowserClient } from "@/lib/supabase/client";
 import { OPEN_STATUSES } from "@/lib/status";
 import type { DataSnapshot, Role } from "@/lib/types";
 import { mapProfile } from "./map";
@@ -160,7 +160,10 @@ export type PullStore = {
 
 type Ctx = {
   store: PullStore;
+  /** The shared client: the browser's session (read, refreshed). */
   client: SupabaseBrowserClient;
+  /** Tables and RPCs of this cycle: bound to the token checkSession verified (getTokenClient). */
+  data: SupabaseBrowserClient;
   db: LooseClient;
   userId: string;
 };
@@ -414,7 +417,7 @@ async function reconcile(ctx: Ctx, tables: readonly (typeof RECONCILED_TABLES)[n
     const visible = new Set<string>();
     for (let i = 0; i < ids.length; i += RECONCILE_CHUNK) {
       const chunk = ids.slice(i, i + RECONCILE_CHUNK);
-      const rpc = ctx.client.rpc("sync_reconcile", { p_table: t, p_ids: chunk }) as unknown as PromiseLike<Result>;
+      const rpc = ctx.data.rpc("sync_reconcile", { p_table: t, p_ids: chunk }) as unknown as PromiseLike<Result>;
       for (const id of await run<string[]>(rpc)) visible.add(id);
     }
     const gone = ids.filter((id) => !visible.has(id));
@@ -454,6 +457,10 @@ async function checkSession(ctx: Ctx): Promise<Row<"profiles">> {
   if (error) throw isAuthRetryableFetchError(error) ? new PullError("network", NETWORK_TEXT) : new PullError("auth", error.message);
   // No session, or another account's (an invite / recovery link opened on this device): no refresh brings this one back.
   if (!data.session || data.session.user.id !== ctx.userId) throw new PullError("reauth", "La sesión de Supabase no es la de esta cuenta.");
+  // Every read and RPC of this cycle carries this session's token from here on: another account's session written to the
+  // shared cookies meanwhile (an e-mail link opened in another tab) never reads, merges or reconciles in this account's name.
+  ctx.data = getTokenClient(data.session.access_token);
+  ctx.db = ctx.data as unknown as LooseClient;
   // The account's own profile, every cycle: a deactivation, or a role / unit change (full re-sync, §8 step 4). RLS hides an
   // inactive profile like a missing one.
   const me = await run<Row<"profiles"> | null>(ctx.db.from("profiles").select("*").eq("id", ctx.userId).maybeSingle());
@@ -502,7 +509,7 @@ async function cycle(store: PullStore, opts: { full?: boolean }) {
   const startedAt = new Date().toISOString();
   const st0 = store.getState();
   const client = getSupabaseBrowserClient();
-  const ctx: Ctx = { store, client, db: client as unknown as LooseClient, userId: st0.session.userId };
+  const ctx: Ctx = { store, client, data: client, db: client as unknown as LooseClient, userId: st0.session.userId };
   if (missesOf !== ctx.userId) {
     misses.clear();
     missesOf = ctx.userId;
@@ -697,9 +704,20 @@ export function flagReauth(store: PullStore, { noAccess = false }: { noAccess?: 
   });
 }
 
-/** A deactivated (or deleted) profile: block the app first, then end the Supabase session on this device. */
+/**
+ * A deactivated (or deleted) profile: block the app first, then end the Supabase session on this device — this account's
+ * only: by now the browser may hold another account's (signed in, or an e-mail link opened, in another tab), and that one
+ * stays.
+ */
 export async function endInactive(store: PullStore) {
+  const userId = store.getState().session.userId;
   flagReauth(store, { noAccess: true });
+  try {
+    const { data } = await getSupabaseBrowserClient().auth.getSession();
+    if (data.session && data.session.user.id !== userId) return;
+  } catch {
+    // cannot tell: end it (the cookies are this device's, and the account on the device has no access)
+  }
   await endSessionOnDevice({ timeoutMs: 5000 });
 }
 
