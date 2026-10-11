@@ -1,8 +1,11 @@
 # Pulkro Cuadrillas — backend architecture (Supabase)
 
-Status (2026-10-11, after the review round): schema, RLS, business-rule RPCs, Storage and the auth hook are **applied** to
-the Supabase project "Pulkro" (ref `cbdzndpdpwtxbhshidyi`, us-east-1, Postgres 17.11). All public and private tables are
-empty. The app still runs on the on-device zustand store; wiring it to this backend is the phased plan in §12.
+Status (2026-10-11, after the PR #9 review): schema, RLS, business-rule RPCs, Storage and the auth hook function are
+**applied** to the Supabase project "Pulkro" (ref `cbdzndpdpwtxbhshidyi`, us-east-1, Postgres 17.11) — the 17 migrations
+below. The project holds the **demo dataset** (302 orders and their history, 11 password-less demo accounts; every row
+registered in `private.demo_rows`, removed in one call by `select private.drop_demo_data();`, see `supabase/seed/README.md`);
+no real accounts or data yet, no Storage objects. The app still runs on the on-device zustand store; wiring it to this
+backend is the phased plan in §12.
 
 | Applied migration (version = file name) | Content |
 |---|---|
@@ -16,14 +19,17 @@ empty. The app still runs on the on-device zustand store; wiring it to this back
 | `20261011042704_review_history_and_defaults` | review F13: global default privilege (no `EXECUTE` to `PUBLIC` on new functions) · F12: append-only tables also reject DELETE/TRUNCATE (vetted purge path), `service_role` read + append only on them |
 | `20261011042743_review_sync_and_visibility` | review F07: op id bound to a digest of its arguments (`sync_ops.args_hash`, regenerated wrappers) · F03: `orders.scope_changed_at` · F04: `private.order_assignments` (previous supervisors) · F14: `private.visible_order_ids()` and index-friendly order/child policies |
 | `20261011043034_review_business_rules` | review F01, F02, F04–F06, F08–F11: closure needs an executed jornada, day numbering, conflict reasons (`order_reassigned`, `jornada_rescheduled`, `parent_missing`, `photo_deleted`), client/supervisor moves with open work, bounded device times, incidents frozen after closure, 256-bit survey tokens, status derived from the jornadas |
+| `20261011050457_demo_data_registry` | `private.demo_rows` (registry of the demo dataset), `private.demo_uuid()`, `private.drop_demo_data()` (one-step removal; refuses with `PT409 demo_in_use` while real data references demo rows) |
 | `20261011050659_review_pr9_codex` | PR #9 review: a closed jornada keeps its crew (`jornada_closed`), the blocking flag of an open incident moves the order in/out of `con_incidencia` on edits, photos/incidents/cases re-read under the order lock, resolved/closed cases need their resolution (`resolution_required` + table check), validated rows locked `FOR SHARE` until commit (client, supervisor, case owner, crew), workers readable wherever they are on a visible crew (`private.crew_worker_ids()`) |
 | `20261011052012_review_pr9_cubic` | PR #9 review (cubic): op ids fail closed when only one side carries the request digest, service hours 0.5–24 (RPC + table check), breakdown lines need numeric hours, survey tokens without repeated 6-character sequences, incident resolution fields all-or-nothing, a conformity method needs the client's name |
 | `20261011053107_review_pr9_cubic_wrappers` | PR #9 review (cubic): request digests use SHA-256, wrappers map invalid input values to `PT422 invalid_value`, check-out derives the order status from every live jornada (`derived_status`) |
 | `20261011054527_review_pr9_followups` | adversarial pass on the PR #9 fixes: `assign_crew` follows the reference contract (`parent_missing` / `jornada_order_mismatch` / `jornada_rescheduled`), an open incident carries no resolution text, reopening a case re-checks its owner, a supervisor of another unit cannot reopen an order (`supervisor_other_unit`), `crew_worker_ids` materializes the visible orders |
+| `20261011061310_review_pr9_codex_round2` | PR #9 review (Codex, round 2): an order's open cases follow it to the new supervisor, reopening a case needs its reason, open blocking incidents stay authoritative when an order is flagged Reprogramada, people on visible orders and cases stay readable after a unit move (`private.referenced_profile_ids()`), `upsert_site` holds the client it authorized against |
+| `20261011063116_review_pr9_cubic_round2` | PR #9 review (cubic, round 2): `update_incident` refuses an empty patch and never detaches an incident from its jornada (`jornada_required`); `drop_demo_data` refuses while a surviving order names a demo material or demo worker; check-in/out and rescheduling under an open blocking incident update the status the order resumes; a supervisor owns a case only inside the order's unit; `upsert_site` locks clients before the site |
 
 Sources of truth mirrored here: `docs/requisitos.md`, `src/lib/types.ts`, `src/lib/permissions.ts`, `src/lib/hooks.ts`,
-`src/lib/store.ts`, `src/lib/domain.ts`. Tests: `supabase/tests/` (all 14 files pass, including the review regression suites
-`09` to `13`; they ignore the rows of the demo dataset). Types: `src/lib/supabase/database.types.ts` (regenerated after migration `20261011043034`).
+`src/lib/store.ts`, `src/lib/domain.ts`. Tests: `supabase/tests/` (all 16 files pass, including the review regression suites
+`09` to `15`; they ignore the rows of the demo dataset). Types: `src/lib/supabase/database.types.ts` (regenerated after migration `20261011043034`).
 
 ---
 
@@ -173,7 +179,7 @@ the RPCs. One permissive SELECT policy per table, `to authenticated`. `R` = `(se
 | `jornadas`, `crew_changes`, `jornada_checks`, `jornada_notes`, `incidents`, `photos`, `order_closures`, `reports`, `report_shares`, `post_sale_cases`, `case_events`, `surveys` | `order_id = any(V)` — canSeeOrder is defined once, in `visible_order_ids()` | same | same |
 | `survey_tokens` | none (consults only) | `R in (administracion, supervisor) and order_id = any(V)` | same |
 | `units` | all | `id = U` | `id = U` |
-| `profiles` | all | `unit_id = U or role = 'direccion'` | self, creators of visible orders, owners/creators of visible cases |
+| `profiles` | all | `unit_id = U or role = 'direccion'`, or referenced by a visible record | self, or referenced by a visible record |
 | `workers` | all | `unit_id = U` or on a visible crew | `unit_id = U` or on a visible crew |
 | `clients` | all | `unit_id = U` | `id in (select client_id from orders)` |
 | `sites` | all | `client_id in (select id from clients)` | `id in (select site_id from orders)` |
@@ -187,6 +193,11 @@ statement with the role's own index; the policies compare against that array, wh
 `orders_pkey` / `<child>_order_id_idx` (measured with 20 000 orders / 80 000 photos: a supervisor's photo read went from
 23–36 ms to 1.4–3.6 ms; Dirección's incremental photo pull from 132 ms to 21 ms). Dirección's array holds every order id:
 fine at Pulkro's scale (tens of thousands); revisit beyond ~100 000 orders (§14).
+
+**People on visible records** (PR #9 review): `private.referenced_profile_ids()` (SECURITY DEFINER, once per statement)
+collects the supervisors (current and former, `order_assignments`) and creators of the caller's visible orders, the
+owners and creators of their cases and case events, closure validators and survey senders/recorders — so history keeps
+its names after someone moves to another unit.
 
 **Workers on a visible crew** (PR #9 review): a worker moved to another unit or deactivated can still be booked on
 open jornadas of the old unit (the app allows it after a confirmation) and is named in closed jornadas and crew history.
@@ -213,8 +224,8 @@ RPCs take the token instead of an op id.
 | RPC | Permission (scope) | Main server-side rules |
 |---|---|---|
 | `create_order` | order.create (Administración, own unit) | client in unit, site ∈ client, active supervisor of that unit, materials/activities/days validated; folio; starts `borrador` |
-| `update_order` | general fields: order.edit · operational: + order.editOperational (own) | whitelisted keys; closed/cancelled refused; supervisor reassignment within unit, audited "Reasignó la orden de A a B", recorded in `private.order_assignments`, `scope_changed_at` stamped |
-| `set_order_status` | order.reschedule | flag `reprogramada` (reason ≥ 5) or confirm dates: leaving `reprogramada` goes to the status the jornadas support (`derived_status`), or `con_incidencia` while a blocking incident is open — the requested target is not trusted |
+| `update_order` | general fields: order.edit · operational: + order.editOperational (own) | whitelisted keys; closed/cancelled refused; supervisor reassignment within unit, audited "Reasignó la orden de A a B", recorded in `private.order_assignments`, `scope_changed_at` stamped; the order's open cases owned by the former supervisor move to the new one (timeline entry + audit) |
+| `set_order_status` | order.reschedule | flag `reprogramada` (reason ≥ 5) or confirm dates: leaving `reprogramada` goes to the status the jornadas support (`derived_status`); while a blocking incident is open the order stays `con_incidencia` and the requested status becomes `previous_status` (check-in/out and `schedule_jornadas` update it the same way) (dates of an order that resumes `reprogramada` can be confirmed under the incident) — the requested target is not trusted |
 | `cancel_order` | order.edit | open orders only, reason ≥ 5 |
 | `reopen_order` | order.reopen (supervisor, own, still in the order's unit — `supervisor_other_unit`) | finalizada/reporte_enviado/seguimiento → `reabierta`, keeps `previous_status`, stamps `reopened_at` |
 | `archive_order` | order.archive | reporte_enviado/seguimiento and no open cases |
@@ -223,10 +234,10 @@ RPCs take the token instead of an op id.
 | `check_in` / `check_out` | field.capture | see §6 |
 | `add_jornada_note`, `log_reminder`, `set_jornada_breakdown` | field.capture | breakdown: every line a named activity with numeric hours ≥ 0, ≤ 24 h in total; notes allowed until cancelled/archived |
 | `add_photo`, `update_photo`, `delete_photo`, `set_photo_selected` | field.capture (postventa photos: postventa.manage) | object must already exist in Storage at `orders/<order>/<kind>/<photo>.<ext>`; references checked (`parent_missing` / `*_order_mismatch` / `jornada_rescheduled`); field photos frozen on closed orders; soft delete (`photo_deleted` afterwards) |
-| `add_incident`, `update_incident`, `resolve_incident` | field.capture | blocking incident → `con_incidencia` (+ previous status); edits only on open orders; flagging an open incident as blocking enters `con_incidencia`, un-flagging or resolving the last blocking one recomputes the status (`derived_status`; previous `finalizada`/`reabierta`/`reprogramada` resume); the incident is re-read under the order lock, so a second resolution answers `already_resolved` |
+| `add_incident`, `update_incident`, `resolve_incident` | field.capture | blocking incident → `con_incidencia` (+ previous status); edits only on open orders, never empty (`empty_patch`), and an incident cannot be detached from its jornada (`jornada_required`); flagging an open incident as blocking enters `con_incidencia`, un-flagging or resolving the last blocking one recomputes the status (`derived_status`; previous `finalizada`/`reabierta`/`reprogramada` resume); the incident is re-read under the order lock, so a second resolution answers `already_resolved` |
 | `validate_closure` | closure.authorize | see §6; new closure version |
 | `generate_report`, `log_share` | report.share | see §6 |
-| `create_case`, `update_case`, `add_case_note` | postventa.manage | owner = active Administración of the unit or the order's supervisor; new cases start `abierto`/`en_proceso`; `resuelto`/`cerrado` need a resolution ≥ 10 characters (`resolution_required`; table check `post_sale_cases_resolution_required` as backstop); reopening a resolved/closed case re-checks its owner (`invalid_case_owner` — reassign in the same patch); case on reporte_enviado/archivada → seguimiento |
+| `create_case`, `update_case`, `add_case_note` | postventa.manage | owner = an active member of the order's unit — its Administración or the order's own supervisor; new cases start `abierto`/`en_proceso`; `resuelto`/`cerrado` need a resolution ≥ 10 characters (`resolution_required`; table check `post_sale_cases_resolution_required` as backstop); reopening a resolved/closed case needs its reason as the note (≥ 10 characters, `reason_required`) and re-checks its owner (`invalid_case_owner` — reassign in the same patch); case on reporte_enviado/archivada → seguimiento |
 | `create_survey`, `record_manual_survey` | postventa.manage | token 256-bit (`^[A-Za-z0-9_-]{43,64}$`, ≥ 16 distinct characters, no repeated 6-character sequence — a broken generator's cycles are refused; a random token fails it with p ≈ 10⁻⁸ and the app regenerates), device-generated |
 | `get_survey`, `submit_survey` | **anon only** | see §9 |
 | `upsert_unit` | users.admin (Dirección) | code normalised, unique |
@@ -283,8 +294,9 @@ still be in the device's queue; this reveals only whether a random UUID exists.
 - **Sharing** never claims delivery; the first share moves `finalizada → reporte_enviado`.
 - **Organisation integrity**: a client with orders keeps its unit; a supervisor/owner with open orders/cases keeps unit
   and role (reassign first); open orders therefore always have an active-or-deactivated supervisor of their own unit.
-- **Concurrency** (PR #9 review): every RPC locks the order first, then re-reads the row it edits (photo, incident, case)
-  `FOR UPDATE`, so an edit or delete committed by another device while the call waited is seen. A row that a validation
+- **Concurrency** (PR #9 review): every RPC that changes an existing order or its records locks the order first, then
+  re-reads the row it edits (photo, incident, case) `FOR UPDATE`, so an edit or delete committed by another device while
+  the call waited is seen. `create_order` has no order to lock yet: it holds its client and supervisor instead (below). A row that a validation
   relies on but another RPC can move is locked `FOR SHARE` until commit — the client and supervisor in `create_order`, the
   new supervisor in `update_order`, the case owner, the crew in `assign_crew` — and the moving side (`upsert_client`,
   `update_profile`, `upsert_worker`) takes `FOR UPDATE` before its own checks: either the move waits and then sees the new
@@ -429,7 +441,7 @@ of the integration (phase 1 of §12); the app still runs on its local demo store
    **Passwords** (Authentication → Providers → Email): minimum length 12, require lowercase, uppercase and digits (no
    symbol requirement: supervisors type on phones). Sign-ups off, the hook, the password policy, `jwt_exp` and refresh-token
    rotation are applied by `scripts/supabase-auth-config.mjs` (Management API, your own scoped access token; dry run by
-   default, `--apply` to write, `--ref` for staging, `--pro` adds leaked-password protection). Leaked-password protection (HaveIBeenPwned) needs the **Pro plan**; the
+   default; writing needs an explicit `--ref <project-ref> --apply`; `--pro` adds leaked-password protection). Leaked-password protection (HaveIBeenPwned) needs the **Pro plan**; the
    organization is on Free today. Move the project to Pro before the pilot — Free projects pause after a week without
    activity and have no daily backups — and turn leaked-password protection on then.
    Drop the demo dataset and bootstrap the first Dirección (§2). Create a **dev/staging project or branch** for everything
@@ -452,7 +464,7 @@ of the integration (phase 1 of §12); the app still runs on its local demo store
 
 - Migrations: `supabase/migrations/<applied version>_<name>.sql`, applied with the MCP `apply_migration` (name = file
   name without version) and verified byte-for-byte (`md5` of `supabase_migrations.schema_migrations.statements[1]` = file
-  `md5`; all 10 match). **Never edit an applied file**; fix forward with a new one. Dry run first: one `execute_sql` call
+  `md5`; all 17 match on 2026-10-11). **Never edit an applied file**; fix forward with a new one. Dry run first: one `execute_sql` call
   `begin; <migration>; <tests>; rollback;` (verified to be transactional). Changing an RPC signature: drop the old
   `public.<name>` wrapper, recreate `private.<name>`, call `private.expose_rpc` (which also regenerates the op-args
   digest).

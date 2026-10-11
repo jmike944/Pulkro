@@ -67,7 +67,8 @@ nothing, children first, it deletes:
 It refuses, deleting nothing, when:
 
 - **`PT409 demo_in_use`** — real data still references demo data (a real order for a demo client, a real account in a
-  demo unit…). Real rows are never deleted: reassign or delete them first.
+  demo unit, a real order listing a demo material, a real crew with a demo worker…; the error's detail names the folios).
+  Real rows are never deleted: reassign or delete them first.
 - **`PT409 demo_storage_objects`** — evidence files were uploaded to a demo order (the seed uploads none). Delete them
   through the Storage API (Dashboard → Storage → `evidencias` → `orders/<order id>`) and run again, or call
   `private.drop_demo_data(p_delete_storage_rows => true)` to drop only their metadata rows (the files stay as orphans).

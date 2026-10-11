@@ -4,18 +4,35 @@
 // The token stays in your shell: create a personal access token scoped to this project at
 // https://supabase.com/dashboard/account/tokens, then in your own terminal (never commit it, never paste it in chat):
 //   export SUPABASE_ACCESS_TOKEN=…
-//   node scripts/supabase-auth-config.mjs                 # dry run: current vs desired, changes nothing
-//   node scripts/supabase-auth-config.mjs --apply         # PATCH /v1/projects/{ref}/config/auth
-// Options: --ref <project-ref> (default: Pulkro), --pro (also turns on leaked-password protection, Pro plan only).
+//   node scripts/supabase-auth-config.mjs                                   # dry run on Pulkro: current vs desired
+//   node scripts/supabase-auth-config.mjs --ref <project-ref> --apply      # PATCH /v1/projects/{ref}/config/auth
+// --apply always needs an explicit --ref (no default target for writes). --pro also turns on leaked-password protection
+// (Pro plan only). The script exits non-zero when the API refuses a change or leaves a setting different.
 
 const args = process.argv.slice(2);
 const flag = (name) => args.includes(name);
 const option = (name) => {
   const i = args.indexOf(name);
-  return i >= 0 ? args[i + 1] : undefined;
+  if (i < 0) return undefined;
+  const value = args[i + 1];
+  if (!value || value.startsWith('--')) {
+    console.error(`Falta el valor de ${name}.`);
+    process.exit(1);
+  }
+  return value;
 };
 
-const ref = option('--ref') ?? 'cbdzndpdpwtxbhshidyi';
+const apply = flag('--apply');
+const explicitRef = option('--ref');
+if (apply && !explicitRef) {
+  console.error('--apply necesita --ref <project-ref> explícito: los cambios de Auth nunca van a un proyecto por omisión.');
+  process.exit(1);
+}
+const ref = explicitRef ?? 'cbdzndpdpwtxbhshidyi';
+if (!/^[a-z]{20}$/.test(ref)) {
+  console.error(`Referencia de proyecto inválida: ${ref} (20 letras minúsculas, como en la URL del dashboard).`);
+  process.exit(1);
+}
 const token = process.env.SUPABASE_ACCESS_TOKEN;
 if (!token) {
   console.error('Falta SUPABASE_ACCESS_TOKEN en el entorno (créelo en https://supabase.com/dashboard/account/tokens).');
@@ -58,8 +75,8 @@ if (unknown.length) console.warn(`Campos que la API no devolvió (revise el nomb
 
 if (!changes.length) {
   console.log('Nada que cambiar.');
-} else if (!flag('--apply')) {
-  console.log(`${changes.length} cambio(s) pendiente(s). Ejecute de nuevo con --apply para aplicarlos.`);
+} else if (!apply) {
+  console.log(`${changes.length} cambio(s) pendiente(s). Para aplicarlos: --ref ${ref} --apply`);
 } else {
   const res = await fetch(url, { method: 'PATCH', headers, body: JSON.stringify(Object.fromEntries(changes)) });
   if (!res.ok) {
@@ -68,5 +85,9 @@ if (!changes.length) {
   }
   const after = await res.json();
   const missed = changes.filter(([key, value]) => after[key] !== value).map(([key]) => key);
-  console.log(missed.length ? `Aplicado, pero no quedó igual: ${missed.join(', ')}` : `Aplicado: ${changes.length} cambio(s).`);
+  if (missed.length) {
+    console.error(`Aplicado, pero no quedó igual: ${missed.join(', ')}`);
+    process.exit(1);
+  }
+  console.log(`Aplicado: ${changes.length} cambio(s).`);
 }

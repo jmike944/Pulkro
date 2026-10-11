@@ -31,10 +31,9 @@ export function moveNeedsDialog(c: PostSaleCase, to: CaseStatus) {
 }
 
 /** Apply a status change that needs no extra input. Returns the toast copy. */
-export function quickMove(updateCase: (id: string, patch: Partial<PostSaleCase>, note?: string) => void, c: PostSaleCase, to: CaseStatus) {
+export function quickMove(updateCase: (id: string, patch: Partial<PostSaleCase>, note?: string) => boolean, c: PostSaleCase, to: CaseStatus) {
   const note = to === "en_proceso" ? "Cambió el caso a En proceso." : `Regresó el caso a ${CASE_STATUS[to].label}.`;
-  updateCase(c.id, { status: to }, note);
-  toast.success(`${c.folio} · ${CASE_STATUS[to].label}`);
+  if (updateCase(c.id, { status: to }, note)) toast.success(`${c.folio} · ${CASE_STATUS[to].label}`);
 }
 
 /**
@@ -65,15 +64,16 @@ function CaseStatusForm({ move, open, onOpenChange }: { move: CaseMove; open: bo
   const submit = () => {
     if (!canSubmit) return;
     const t = text.trim();
+    // A refusal (e.g. the owner can no longer see the case) is toasted by the store: keep the dialog open.
     if (to === "resuelto") {
-      updateCase(c.id, { status: "resuelto", resolution: t }, `Resolución registrada: ${t}`);
+      if (!updateCase(c.id, { status: "resuelto", resolution: t }, `Resolución registrada: ${t}`)) return;
       toast.success(`${c.folio} resuelto`, { description: "Falta confirmar la conformidad del cliente para cerrarlo." });
     } else if (to === "cerrado") {
-      updateCase(c.id, { status: "cerrado", ...(needsResolution ? { resolution: t } : {}) }, "Cerró el caso: el cliente confirmó su conformidad.");
+      if (!updateCase(c.id, { status: "cerrado", ...(needsResolution ? { resolution: t } : {}) }, "Cerró el caso: el cliente confirmó su conformidad.")) return;
       useUi.getState().fireCelebrate();
       toast.success(`${c.folio} cerrado`, { description: "Caso concluido con conformidad del cliente." });
     } else {
-      updateCase(c.id, { status: to }, `Reabrió el caso: ${t}`);
+      if (!updateCase(c.id, { status: to }, `Reabrió el caso: ${t}`)) return;
       toast.success(`${c.folio} reabierto`, { description: `Estado: ${CASE_STATUS[to].label}` });
     }
     onOpenChange(false);

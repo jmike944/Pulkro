@@ -92,7 +92,7 @@ begin
       perform pg_temp.check('anon cannot execute private.' || r.proname, not has_function_privilege('anon', r.oid, 'execute'));
     end if;
     if r.nspname = 'private' and r.proname not in (select unnest(v_rpcs)) and r.proname not in
-       ('my_role', 'my_unit', 'can', 'visible_order_ids', 'crew_worker_ids', 'evidence_order_id', 'evidence_kind', 'can_upload_evidence') then
+       ('my_role', 'my_unit', 'can', 'visible_order_ids', 'crew_worker_ids', 'referenced_profile_ids', 'evidence_order_id', 'evidence_kind', 'can_upload_evidence') then
       perform pg_temp.check('authenticated cannot execute helper private.' || r.proname, not has_function_privilege('authenticated', r.oid, 'execute'));
     end if;
   end loop;

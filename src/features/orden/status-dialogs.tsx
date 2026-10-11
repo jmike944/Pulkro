@@ -116,7 +116,8 @@ function ReopenForm({ onDone }: { onDone: () => void }) {
 
   const submit = () => {
     if (!valid) return;
-    reopenOrder(order.id, reason.trim());
+    // A refusal (e.g. the supervisor now belongs to another unit) is toasted by the store: keep the form open.
+    if (!reopenOrder(order.id, reason.trim())) return;
     toast.success(`${order.folio} reabierta`, { description: `El cierre anterior ya no vale: valídelo de nuevo para emitir el reporte v${(latest?.version ?? 0) + 1}.` });
     onDone();
   };

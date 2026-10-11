@@ -18,6 +18,7 @@ declare
   v_o uuid;
   v_j uuid;
   v_src text;
+  v_pat text;
 begin
   ------------------------------------------------------------------ R1 · a closed jornada keeps its crew
   v_o := pg_temp.new_order(1);
@@ -66,9 +67,16 @@ begin
     exists (select 1 from public.audit_log where order_id = v_o and action = 'Cambió estado a Programada' and reason like 'La incidencia INC-% ya no bloquea el cierre'));
 
   ------------------------------------------------------------------ R3 · re-read under the order lock
-  foreach v_src in array array['lock_photo_for_edit', 'set_photo_selected', 'update_incident', 'resolve_incident', 'update_case'] loop
-    perform pg_temp.check('R3 ' || v_src || ' re-reads its row FOR UPDATE after lock_order', (
-      select position('lock_order' in d) > 0 and position('for update' in substr(d, position('lock_order' in d))) > 0
+  -- each function re-reads ITS row by its id, FOR UPDATE, after lock_order (not just "some FOR UPDATE somewhere")
+  for v_src, v_pat in select * from (values
+      ('lock_photo_for_edit', 'from public\.photos p where p\.id = p_photo_id for update'),
+      ('set_photo_selected', 'from public\.photos p where p\.id = p_photo_id for update'),
+      ('update_incident', 'from public\.incidents i where i\.id = p_incident_id for update'),
+      ('resolve_incident', 'from public\.incidents i where i\.id = p_incident_id for update'),
+      ('update_case', 'from public\.post_sale_cases c where c\.id = p_case_id for update')) x(fn, pat)
+  loop
+    perform pg_temp.check('R3 ' || v_src || ' re-reads its own row FOR UPDATE after lock_order', (
+      select d ~ ('lock_order\([^;]*;\s*select \* into [a-z_]+ ' || v_pat)
       from (select pg_get_functiondef(p.oid) d from pg_proc p join pg_namespace n on n.oid = p.pronamespace
             where n.nspname = 'private' and p.proname = v_src) f));
   end loop;
