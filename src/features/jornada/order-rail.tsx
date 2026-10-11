@@ -95,9 +95,12 @@ function OrderMapCard({ f, showCall = true }: { f: FieldReady; showCall?: boolea
   const { checkIn, checkOut, status } = jornada;
   const map = useMemo(() => {
     const markers: GeoMarker[] = [{ lat: site.lat, lng: site.lng, kind: "site", label: "Sitio", tooltip: site.name }];
-    if (checkIn) markers.push({ lat: checkIn.lat, lng: checkIn.lng, kind: status === "en_curso" ? "live" : "checkin", tooltip: `Entrada ${fmtTime(checkIn.deviceAt)}` });
-    if (checkOut) markers.push({ lat: checkOut.lat, lng: checkOut.lng, kind: "checkout", tooltip: `Salida ${fmtTime(checkOut.deviceAt)}` });
-    const accuracy = checkIn ? { lat: checkIn.lat, lng: checkIn.lng, radius: checkIn.accuracy } : undefined;
+    // Supervisión remota is where the supervisor was (or the site's own coordinates as a stand-in): never drawn as a pin on site.
+    const inFix = checkIn && checkIn.source !== "remota" ? checkIn : undefined;
+    const outFix = checkOut && checkOut.source !== "remota" ? checkOut : undefined;
+    if (inFix) markers.push({ lat: inFix.lat, lng: inFix.lng, kind: status === "en_curso" ? "live" : "checkin", tooltip: `Entrada ${fmtTime(inFix.deviceAt)}` });
+    if (outFix) markers.push({ lat: outFix.lat, lng: outFix.lng, kind: "checkout", tooltip: `Salida ${fmtTime(outFix.deviceAt)}` });
+    const accuracy = inFix ? { lat: inFix.lat, lng: inFix.lng, radius: inFix.accuracy } : undefined;
     return { markers, accuracy };
   }, [site, checkIn, checkOut, status]);
 

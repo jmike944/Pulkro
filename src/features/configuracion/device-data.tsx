@@ -5,14 +5,15 @@ import { format } from "date-fns";
 import { motion } from "motion/react";
 import { Download, HardDrive, RotateCcw, ShieldCheck, Sparkles } from "lucide-react";
 import { toast } from "sonner";
-import { useAppStore, useCurrentUser, useLookups, useScopedData, useShallow, useSyncSummary } from "@/lib/hooks";
+import { useAppStore, useCurrentUser, useLookups, useScopedAudit, useScopedData, useShallow, useSyncSummary } from "@/lib/hooks";
 import { can } from "@/lib/permissions";
+import { DEMO_ENABLED } from "@/lib/demo";
 import { downloadBlob } from "@/lib/export";
 import { fmtNum } from "@/lib/format";
 import { ROLE_LABEL } from "@/lib/status";
 import { KeyValues, ProgressLine } from "@/components/pk/bits";
 import { Button } from "@/components/ui/button";
-import { ConfirmDialog, fmtBytes } from "./shared";
+import { ConfirmDialog, ReadOnlyNote, fmtBytes } from "./shared";
 import { SqueegeeWipe } from "./squeegee-wipe";
 
 type Estimate = { usage: number; quota: number };
@@ -42,26 +43,29 @@ function useStorageInfo(refresh: number) {
 export function DeviceData() {
   const user = useCurrentUser();
   const lk = useLookups();
+  // Raw slices only feed the backup's catalogs (which are filtered by unit below); every count on screen is scoped.
   const data = useAppStore(
     useShallow((s) => ({
       units: s.units, users: s.users, workers: s.workers, clients: s.clients, sites: s.sites, serviceTypes: s.serviceTypes,
-      materials: s.materials, orders: s.orders, jornadas: s.jornadas, photos: s.photos, incidents: s.incidents,
-      reports: s.reports, cases: s.cases, surveys: s.surveys, audit: s.audit, meta: s.meta,
+      materials: s.materials, meta: s.meta,
     })),
   );
   const unitFilter = useAppStore((s) => s.session.unitFilter);
   const resetDemo = useAppStore((s) => s.resetDemo);
   const scoped = useScopedData();
-  const { pending } = useSyncSummary();
+  const audit = useScopedAudit();
+  const { pending, syncing } = useSyncSummary();
+  const unsynced = pending.length + syncing.length;
+  const canBackup = can(user.role, "export.backup");
   const [refresh, setRefresh] = useState(0);
   const [confirmReset, setConfirmReset] = useState(false);
   const [wipe, setWipe] = useState(0);
   const { estimate, persisted, supported } = useStorageInfo(refresh);
 
-  const captured = useMemo(() => data.photos.filter((p) => p.source.type === "idb").length, [data.photos]);
+  const captured = useMemo(() => scoped.photos.filter((p) => p.source.type === "idb").length, [scoped.photos]);
 
   const exportBackup = () => {
-    if (!can(user.role, "export.backup")) return;
+    if (!canBackup) return;
     const full = user.role === "direccion" && unitFilter === "all";
     const unitScope = user.role === "direccion" ? unitFilter : user.unitId;
     const inUnit = <T extends { unitId: string }>(xs: T[]) => (unitScope === "all" ? xs : xs.filter((x) => x.unitId === unitScope));
@@ -98,7 +102,7 @@ export function DeviceData() {
         reportes: scoped.reports,
         casos: scoped.cases,
         encuestas: scoped.surveys,
-        bitacora: scoped.audit,
+        bitacora: audit,
       },
     };
     const json = JSON.stringify(snapshot, null, 2);
@@ -151,65 +155,77 @@ export function DeviceData() {
       </section>
 
       <section>
-        <p className="mb-3 text-[12px] font-semibold uppercase tracking-[0.1em] text-subtle">Registros en este dispositivo</p>
+        <p className="mb-3 text-[12px] font-semibold uppercase tracking-[0.1em] text-subtle">Sus registros en este dispositivo</p>
         <KeyValues
           rows={[
-            { k: "Órdenes", v: fmtNum(data.orders.length) },
-            { k: "Jornadas", v: fmtNum(data.jornadas.length) },
-            { k: "Fotografías", v: <>{fmtNum(data.photos.length)} <span className="font-normal text-subtle">· {fmtNum(captured)} con cámara</span></> },
-            { k: "Incidencias", v: fmtNum(data.incidents.length) },
-            { k: "Reportes", v: fmtNum(data.reports.length) },
-            { k: "Casos y encuestas", v: fmtNum(data.cases.length + data.surveys.length) },
-            { k: "Movimientos en bitácora", v: fmtNum(data.audit.length) },
+            { k: "Órdenes", v: fmtNum(scoped.orders.length) },
+            { k: "Jornadas", v: fmtNum(scoped.jornadas.length) },
+            { k: "Fotografías", v: <>{fmtNum(scoped.photos.length)} <span className="font-normal text-subtle">· {fmtNum(captured)} con cámara</span></> },
+            { k: "Incidencias", v: fmtNum(scoped.incidents.length) },
+            { k: "Reportes", v: fmtNum(scoped.reports.length) },
+            { k: "Casos y encuestas", v: fmtNum(scoped.cases.length + scoped.surveys.length) },
+            { k: "Movimientos en bitácora", v: fmtNum(audit.length) },
           ]}
         />
       </section>
 
       <section className="space-y-3">
-        <Button disabled={!can(user.role, "export.backup")} onClick={exportBackup} className="h-11 w-full rounded-[12px] text-[14.5px] font-semibold">
-          <Download className="size-4" /> Exportar respaldo (JSON)
-        </Button>
-        <p className="text-center text-[12.5px] text-subtle">
-          Incluye solo la información que tu rol puede ver
-          {/* the global unit filter narrows Dirección's backup, and on a phone that filter is easy to forget */}
-          {user.role === "direccion" && <> · alcance: {unitFilter === "all" ? "todas las unidades" : (lk.units.get(unitFilter)?.name ?? unitFilter)}</>}.
-        </p>
-        <Button variant="outline" onClick={() => setConfirmReset(true)} className="h-11 w-full rounded-[12px] border-line text-[14.5px] font-semibold text-red-fg hover:text-red-fg">
-          <RotateCcw className="size-4" /> Restablecer datos de demostración
-        </Button>
+        {canBackup ? (
+          <>
+            <Button onClick={exportBackup} className="h-11 w-full rounded-[12px] text-[14.5px] font-semibold">
+              <Download className="size-4" /> Exportar respaldo (JSON)
+            </Button>
+            <p className="text-center text-[12.5px] text-subtle">
+              Incluye solo la información que tu rol puede ver
+              {/* the global unit filter narrows Dirección's backup, and on a phone that filter is easy to forget */}
+              {user.role === "direccion" && <> · alcance: {unitFilter === "all" ? "todas las unidades" : (lk.units.get(unitFilter)?.name ?? unitFilter)}</>}.
+            </p>
+          </>
+        ) : (
+          <ReadOnlyNote>Solo Dirección y Administración exportan respaldos de los datos.</ReadOnlyNote>
+        )}
+        {DEMO_ENABLED && (
+          <Button variant="outline" onClick={() => setConfirmReset(true)} className="h-11 w-full rounded-[12px] border-line text-[14.5px] font-semibold text-red-fg hover:text-red-fg">
+            <RotateCcw className="size-4" /> Restablecer datos de demostración
+          </Button>
+        )}
       </section>
 
-      <ConfirmDialog
-        open={confirmReset}
-        onOpenChange={setConfirmReset}
-        icon={<Sparkles />}
-        iconTone="sky"
-        title="Restablecer datos de demostración"
-        description="Se reemplaza todo lo guardado en este dispositivo por el escenario de demostración, anclado a hoy."
-        rows={[
-          { k: "Órdenes en el dispositivo", v: fmtNum(data.orders.length) },
-          { k: "Registros sin sincronizar", v: <span className={pending.length ? "text-amber-fg" : undefined}>{fmtNum(pending.length)}</span> },
-          { k: "Fotos tomadas con cámara", v: fmtNum(captured) },
-          { k: "Movimientos en bitácora", v: fmtNum(data.audit.length) },
-        ]}
-        checkboxLabel="Entiendo que se perderán los cambios hechos en este dispositivo, incluidos los registros sin sincronizar."
-        confirmLabel="Restablecer"
-        destructive
-        onConfirm={() => {
-          setWipe((w) => w + 1);
-          setTimeout(() => {
-            resetDemo();
-            setRefresh((r) => r + 1);
-            toast.success("Datos de demostración restablecidos", { description: "Todo quedó limpio y listo para otra demostración." });
-          }, 420);
-        }}
-      >
-        {pending.length > 0 && (
-          <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="rounded-[14px] bg-amber-soft px-4 py-3 text-[13.5px] leading-snug text-amber-ink">
-            Hay {fmtNum(pending.length)} registros que aún no llegan al servidor. Exporta un respaldo antes de continuar.
-          </motion.p>
-        )}
-      </ConfirmDialog>
+      {DEMO_ENABLED && (
+        <ConfirmDialog
+          open={confirmReset}
+          onOpenChange={setConfirmReset}
+          icon={<Sparkles />}
+          iconTone="sky"
+          title="Restablecer datos de demostración"
+          description="Se reemplaza todo lo guardado en este dispositivo por el escenario de demostración, anclado a hoy."
+          rows={[
+            { k: "Sus órdenes en el dispositivo", v: fmtNum(scoped.orders.length) },
+            { k: "Registros sin sincronizar", v: <span className={unsynced ? "text-amber-fg" : undefined}>{fmtNum(unsynced)}</span> },
+            { k: "Fotos tomadas con cámara", v: fmtNum(captured) },
+            { k: "Movimientos en bitácora", v: fmtNum(audit.length) },
+          ]}
+          checkboxLabel="Entiendo que se perderán los cambios hechos en este dispositivo."
+          confirmLabel="Restablecer"
+          confirmDisabled={unsynced > 0}
+          destructive
+          onConfirm={() => {
+            setWipe((w) => w + 1);
+            setTimeout(() => {
+              resetDemo();
+              setRefresh((r) => r + 1);
+              toast.success("Datos de demostración restablecidos", { description: "Todo quedó limpio y listo para otra demostración." });
+            }, 420);
+          }}
+        >
+          {unsynced > 0 && (
+            <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="rounded-[14px] bg-amber-soft px-4 py-3 text-[13.5px] leading-snug text-amber-ink">
+              Hay {fmtNum(unsynced)} registros que aún no llegan al servidor, así que no se puede restablecer. Espere a que se sincronicen
+              (o desactive «Simular sin conexión») y vuelva a intentarlo.
+            </motion.p>
+          )}
+        </ConfirmDialog>
+      )}
 
       <SqueegeeWipe trigger={wipe} />
     </div>

@@ -6,7 +6,7 @@ import { ArrowLeft, ArrowRight, Check, Plus, TriangleAlert, X } from "lucide-rea
 import { toast } from "sonner";
 import { format, isSunday, parseISO } from "date-fns";
 import { cn } from "@/lib/utils";
-import { useAppStore, useLookups, useOrderBundle } from "@/lib/hooks";
+import { useAppStore, useLookups, useOrderBundle, useScopedData } from "@/lib/hooks";
 import { useUi } from "@/lib/ui-store";
 import { fmtDay, fmtDuration, plural } from "@/lib/format";
 import { CrewPicker } from "@/components/pk/crew-picker";
@@ -109,6 +109,7 @@ function ScheduleBody({
   const assignCrew = useAppStore((s) => s.assignCrew);
   const allJornadas = useAppStore((s) => s.jornadas);
   const allOrders = useAppStore((s) => s.orders);
+  const { orderIds: visibleOrderIds } = useScopedData();
 
   const [step, setStep] = useState(0);
   const [dir, setDir] = useState(1);
@@ -128,7 +129,8 @@ function ScheduleBody({
     });
   }, [rows, todayKey]);
 
-  // Workers already booked on these dates in other open jornadas (for the summary warning).
+  // Workers already booked on these dates in other open jornadas (for the summary warning). The conflict is always flagged;
+  // the folio is only named for orders in the role's scope (doc §2), otherwise "Otra cuadrilla".
   const busy = useMemo(() => {
     const dates = new Set(rows.map((r) => r.date));
     const folios = new Map(allOrders.map((o) => [o.id, o] as const));
@@ -137,13 +139,14 @@ function ScheduleBody({
       if (j.orderId === orderId || j.status === "cerrada" || !dates.has(j.date)) return;
       const o = folios.get(j.orderId);
       if (!o || o.status === "cancelada") return;
+      const where = visibleOrderIds.has(o.id) ? o.folio : "Otra cuadrilla";
       j.workerIds.forEach((w) => {
         if (!crew.includes(w)) return;
-        out.set(w, [...(out.get(w) ?? []), `${o.folio} · ${fmtDay(j.date)}`]);
+        out.set(w, [...(out.get(w) ?? []), `${where} · ${fmtDay(j.date)}`]);
       });
     });
     return out;
-  }, [rows, crew, allJornadas, allOrders, orderId]);
+  }, [rows, crew, allJornadas, allOrders, visibleOrderIds, orderId]);
 
   if (!b) {
     return (

@@ -28,7 +28,7 @@ const ACTION_RULES: Record<string, { action: Action; who: string }> = {
   Resolver: { action: "field.capture", who: "Las incidencias las resuelve el supervisor." },
   Encuesta: { action: "postventa.manage", who: "Las encuestas las gestionan Administración y supervisores." },
   Atender: { action: "postventa.manage", who: "Los casos los atienden Administración y supervisores." },
-  Confirmar: { action: "crew.assign", who: "Las fechas las confirma el supervisor." },
+  Confirmar: { action: "order.reschedule", who: "Las fechas las confirma el supervisor." },
 };
 
 export function NextActionButton({ row, role, className }: { row: OrderRow; role: Role; className?: string }) {

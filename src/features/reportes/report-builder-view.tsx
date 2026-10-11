@@ -1,13 +1,11 @@
 "use client";
 
-import Link from "next/link";
 import { use } from "react";
-import { FileText, Lock } from "lucide-react";
 import { useCan, useOrderBundle, useScopedData } from "@/lib/hooks";
 import { PageHeader } from "@/components/pk/page";
-import { EmptyState, Shimmer } from "@/components/pk/feedback";
+import { Shimmer } from "@/components/pk/feedback";
+import { NotFoundOrOutOfScope } from "@/components/shell/out-of-scope";
 import { OrderStatusPill } from "@/components/pk/status";
-import { Button } from "@/components/ui/button";
 import { ClosureGate } from "./closure-gate";
 import { ReportWorkspace } from "./report-workspace";
 
@@ -23,58 +21,41 @@ function ReportBuilder({ folio }: { folio: string }) {
   const { orderIds } = useScopedData();
   const canClose = useCan("closure.authorize");
 
-  const crumbs = [{ label: "Órdenes", href: "/ordenes" }, { label: bundle?.order.folio ?? folio, href: bundle ? `/ordenes/${bundle.order.folio}` : undefined }, { label: "Reporte" }];
-
-  if (!bundle)
+  // One state for "doesn't exist" and "outside your scope" (doc §2): never which of the two, never the folio typed in the URL.
+  if (!bundle || !orderIds.has(bundle.order.id))
     return (
       <div>
-        <PageHeader breadcrumb={crumbs} title="Reporte final" />
-        <EmptyState
-          icon={<FileText />}
-          title="No encontramos la orden"
-          action={
-            <Button asChild className="h-10 rounded-[12px] px-4 font-semibold">
-              <Link href="/ordenes">Ir a órdenes</Link>
-            </Button>
-          }
-        >
-          El folio <b className="font-semibold text-ink">{folio}</b> no existe en este dispositivo.
-        </EmptyState>
+        <PageHeader breadcrumb={[{ label: "Órdenes", href: "/ordenes" }, { label: "Reporte" }]} title="Reporte final" />
+        <NotFoundOrOutOfScope subject="Esta orden" backHref="/reportes" backLabel="Ver reportes" />
       </div>
     );
 
-  if (!orderIds.has(bundle.order.id))
-    return (
-      <div>
-        <PageHeader breadcrumb={crumbs} title="Reporte final" />
-        <EmptyState
-          icon={<Lock />}
-          title="Sin acceso a esta orden"
-          action={
-            <Button asChild variant="outline" className="h-10 rounded-[12px] px-4 font-semibold">
-              <Link href="/reportes">Ver mis reportes</Link>
-            </Button>
-          }
-        >
-          Su rol solo consulta las órdenes asignadas o de su unidad.
-        </EmptyState>
-      </div>
-    );
+  const crumbs = [{ label: "Órdenes", href: "/ordenes" }, { label: bundle.order.folio, href: `/ordenes/${bundle.order.folio}` }, { label: "Reporte" }];
 
-  if (!bundle.order.closure)
+  // Same rule as store.generateReport: a reopened order keeps its old closure, but a new version needs the closure validated again.
+  const { order } = bundle;
+  const revalidate = !!order.closure && (order.status === "reabierta" || (!!order.reopenedAt && order.closure.validatedAt < order.reopenedAt));
+
+  if (!order.closure || revalidate)
     return (
       <div>
         <PageHeader
           breadcrumb={crumbs}
           title="Reporte final"
-          titleAddon={<OrderStatusPill status={bundle.order.status} />}
+          titleAddon={<OrderStatusPill status={order.status} />}
           description={
-            <>
-              <b>{bundle.client.shortName}</b> · {bundle.site.name}. El reporte se habilita al <b>validar el cierre</b> del servicio.
-            </>
+            revalidate ? (
+              <>
+                <b>{bundle.client.shortName}</b> · {bundle.site.name}. La orden se reabrió: <b>valide el cierre otra vez</b> para generar la nueva versión del reporte.
+              </>
+            ) : (
+              <>
+                <b>{bundle.client.shortName}</b> · {bundle.site.name}. El reporte se habilita al <b>validar el cierre</b> del servicio.
+              </>
+            )
           }
         />
-        <ClosureGate bundle={bundle} canClose={canClose} />
+        <ClosureGate bundle={bundle} canClose={canClose} revalidate={revalidate} />
       </div>
     );
 

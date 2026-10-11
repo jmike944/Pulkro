@@ -9,11 +9,15 @@ import { toneDot, type Tone } from "@/lib/status";
 import { AnimatedNumber, BarList, CornerLink, Insight } from "@/components/pk/bits";
 import { EmptyState } from "@/components/pk/feedback";
 import { EASE, rowVariants, staggerContainer } from "@/components/pk/motion";
+import { useCanSeeRoute } from "@/components/shell/use-can-see-route";
 import type { Indicators } from "./compute";
 import type { PeriodWindow } from "./period";
 
 /** §5 "Cumplimiento fotográfico": closures with ANTES and DESPUÉS on every executed jornada. */
 export function ComplianceBlock({ ind, clientName }: { ind: Indicators; clientName: (id: string) => string }) {
+  const canSee = useCanSeeRoute();
+  // /evidencias is the supervisor's screen; the others read the same photos in the order's Evidencia tab.
+  const gapHref = (folio: string) => (canSee("/evidencias") ? `/evidencias?orden=${folio}` : `/ordenes/${folio}?tab=evidencia`);
   const c = ind.compliance;
   const gaps = c.rows
     .filter((r) => !r.ev.complete)
@@ -32,7 +36,7 @@ export function ComplianceBlock({ ind, clientName }: { ind: Indicators; clientNa
     <div>
       <div className="mb-1 flex items-start justify-between gap-4">
         <h2 className="text-[19px] font-medium tracking-[-0.01em] text-ink">Cumplimiento fotográfico</h2>
-        <CornerLink href="/evidencias" label="Ver evidencias" />
+        {canSee("/evidencias") && <CornerLink href="/evidencias" label="Ver evidencias" />}
       </div>
       <p className="mb-6 text-[13.5px] text-subtle">Cierres del periodo con ANTES y DESPUÉS en cada jornada</p>
       {c.total === 0 ? (
@@ -54,7 +58,7 @@ export function ComplianceBlock({ ind, clientName }: { ind: Indicators; clientNa
             <motion.ul variants={staggerContainer(0.05, 0.3)} initial="hidden" animate="show" className="mt-6 border-t border-hairline">
               {gaps.map((g) => (
                 <motion.li key={g.order.id} variants={rowVariants} className="border-b border-hairline">
-                  <Link href={`/evidencias?orden=${g.order.folio}`} className="group flex min-h-[56px] items-center gap-3 py-3">
+                  <Link href={gapHref(g.order.folio)} className="group flex min-h-[56px] items-center gap-3 py-3">
                     <span className={cn("size-2 shrink-0 rounded-full", g.exception ? "bg-st-violet" : "bg-st-amber")} />
                     <span className="min-w-0 flex-1">
                       <span className="block truncate text-[14px] font-medium text-ink group-hover:text-link">

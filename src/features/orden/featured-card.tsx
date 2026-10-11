@@ -86,7 +86,7 @@ function resolveCta(d: OrderDetail, ui: OrderUi): Cta | null {
       return {
         label: "Confirmar fechas",
         icon: CalendarCheck,
-        gate: d.gates.reschedule,
+        gate: d.gates.confirm,
         onClick: ui.confirmDates,
         secondary: { label: "Cambiar fechas", gate: d.gates.reschedule, onClick: () => ui.openSchedule("reprogramar") },
       };
@@ -234,13 +234,16 @@ export function FeaturedCard() {
         </div>
       )}
 
-      <Link
-        href={`/ordenes/${order.folio}/reporte`}
-        className="group mx-auto mt-5 flex w-fit items-center justify-center gap-1.5 rounded-md py-1 text-[14px] font-semibold text-link"
-      >
-        Vista previa del reporte
-        <ArrowRight className="size-4 transition-transform group-hover:translate-x-0.5" />
-      </Link>
+      {/* the report workspace is the supervisor's: the others download the order PDF from the "⋯" menu */}
+      {d.perms.share && (
+        <Link
+          href={`/ordenes/${order.folio}/reporte`}
+          className="group mx-auto mt-5 flex w-fit items-center justify-center gap-1.5 rounded-md py-1 text-[14px] font-semibold text-link"
+        >
+          Vista previa del reporte
+          <ArrowRight className="size-4 transition-transform group-hover:translate-x-0.5" />
+        </Link>
+      )}
     </AuroraFrame>
   );
 }

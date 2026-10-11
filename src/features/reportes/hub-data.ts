@@ -24,6 +24,8 @@ export type HubRow = {
   lastShare?: ShareAttempt & { version: number };
   shareCount: number;
   stage: HubStage;
+  /** reopened after a closure: the closure must be validated again before a new version can be generated */
+  revalidate: boolean;
   /** closure date (falls back to the scheduled end) */
   date: string;
 };
@@ -37,9 +39,11 @@ export function buildHubRows(orders: Order[], reports: Report[]): HubRow[] {
       const reps = [...(byOrder.get(o.id) ?? [])].sort((a, b) => b.version - a.version);
       const latest = reps[0];
       const shares = reps.flatMap((r) => r.shares.map((s) => ({ ...s, version: r.version }))).sort((a, b) => b.at.localeCompare(a.at));
-      // Reopened after closure → the latest PDF is outdated and a new version is due (doc §8).
-      const stage: HubStage = !latest || o.status === "reabierta" ? "por_generar" : latest.shares.length ? "enviados" : "por_compartir";
-      return { order: o, latest, versions: reps.length, lastShare: shares[0], shareCount: shares.length, stage, date: o.closure?.validatedAt ?? o.scheduledEnd };
+      // Reopened after closure → the latest PDF is outdated and a new version is due (doc §8), but only after the closure is validated
+      // again (same rule as store.generateReport).
+      const revalidate = o.status === "reabierta" || (!!o.reopenedAt && (!o.closure || o.closure.validatedAt < o.reopenedAt));
+      const stage: HubStage = !latest || revalidate ? "por_generar" : latest.shares.length ? "enviados" : "por_compartir";
+      return { order: o, latest, versions: reps.length, lastShare: shares[0], shareCount: shares.length, stage, revalidate, date: o.closure?.validatedAt ?? o.scheduledEnd };
     });
 }
 

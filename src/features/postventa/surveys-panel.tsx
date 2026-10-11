@@ -216,7 +216,7 @@ export function SurveysPanel({
         </>
       )}
 
-      <SurveyQrDialog target={qr} onOpenChange={(v) => !v && setQr(null)} />
+      <SurveyQrDialog target={qr} canManage={canManage} onOpenChange={(v) => !v && setQr(null)} />
       <ManualSurveyDialog
         target={manual}
         onOpenChange={(v) => !v && setManual(null)}
@@ -304,7 +304,7 @@ function SurveyMenu({
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-64 rounded-[14px] p-1.5">
         <DropdownMenuLabel className="px-2.5 pb-1 pt-1.5 text-[11.5px] font-semibold uppercase tracking-[0.1em] text-subtle">{r.order.folio}</DropdownMenuLabel>
-        <DropdownMenuItem className={menuItemCls} onClick={() => void copySurveyLink(r.s.token)}>
+        <DropdownMenuItem className={menuItemCls} disabled={!canManage} onClick={() => void copySurveyLink(r.s.token)}>
           <Copy /> Copiar enlace
         </DropdownMenuItem>
         {pending && (
@@ -312,7 +312,7 @@ function SurveyMenu({
             <DropdownMenuItem className={menuItemCls} disabled={!canManage} onClick={() => shareSurveyWhatsapp(r)}>
               <MessageCircle /> Compartir por WhatsApp
             </DropdownMenuItem>
-            <DropdownMenuItem className={menuItemCls} onClick={() => actions.qr(r)}>
+            <DropdownMenuItem className={menuItemCls} disabled={!canManage} onClick={() => actions.qr(r)}>
               <QrCode /> Ver QR
             </DropdownMenuItem>
             <DropdownMenuItem className={menuItemCls} disabled={!canManage} onClick={() => actions.manual(r)}>

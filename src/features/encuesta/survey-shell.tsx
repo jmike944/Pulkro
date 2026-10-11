@@ -1,7 +1,7 @@
 "use client";
 
 import { motion } from "motion/react";
-import { PulkroMark } from "@/components/pk/brand";
+import { PulkroLetters, PulkroMark } from "@/components/pk/brand";
 import { Bubbles } from "@/components/pk/aurora";
 import { EASE } from "@/components/pk/motion";
 
@@ -21,7 +21,7 @@ export function SurveyShell({ children }: { children: React.ReactNode }) {
         >
           <PulkroMark className="size-10 rounded-[12px]" />
           <span className="flex flex-col leading-none">
-            <span className="font-brand text-[18px] font-extrabold tracking-[0.18em] text-brand-ink">PULKRO</span>
+            <PulkroLetters className="h-[14px] text-brand-ink" />
             <span className="mt-1 text-[11px] font-medium tracking-wide text-ink/60">Compañía de Servicios · desde 1985</span>
           </span>
         </motion.header>

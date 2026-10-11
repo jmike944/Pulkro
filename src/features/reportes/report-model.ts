@@ -56,10 +56,13 @@ export type ReportJornadaRow = {
   entrada?: string;
   salida?: string;
   minutes: number;
+  /** Precision of a real GPS/manual fix; undefined for a stamp recorded by Supervisión remota (its accuracy is the supervisor's phone, not the site's). */
   gpsIn?: number;
   gpsOut?: number;
   offline: boolean;
   manual: boolean;
+  /** An entrada or salida recorded by Supervisión remota (justified, not on site). */
+  remote: boolean;
   crew: number;
 };
 
@@ -120,6 +123,22 @@ export type ReportModel = {
   gps: ReportGpsPoint[];
 };
 
+/**
+ * Points that can be drawn on the site plot: real GPS or manual fixes. A Supervisión remota stamp is where the supervisor was (or
+ * the site's own coordinates as a stand-in), so it never appears as an entrada/salida pin and prints no coordinates or precision.
+ */
+export const sitePlotPoints = (points: ReportGpsPoint[]) => points.filter((p) => p.source !== "remota");
+
+/**
+ * The position printed under a photo in the client report. A gallery pick without its own GPS was stamped with the phone's
+ * position when it was attached, which may be nowhere near where the picture was taken: the report leaves it out.
+ */
+export function reportPhotoPosition(p: Pick<Photo, "lat" | "lng" | "origin" | "geoSource">): { lat: number; lng: number } | undefined {
+  if (p.lat === undefined || p.lng === undefined) return undefined;
+  if (p.origin === "gallery" && p.geoSource === "device") return undefined;
+  return { lat: p.lat, lng: p.lng };
+}
+
 export const isReportPhoto = (p: Photo) => p.kind === "antes" || p.kind === "despues";
 
 /** Group ANTES/DESPUÉS photos by area into side-by-side pairs, in capture order. */
@@ -167,10 +186,11 @@ export function buildReportModel(
     entrada: j.checkIn?.deviceAt,
     salida: j.checkOut?.deviceAt,
     minutes: j.checkOut ? jornadaMinutes(j) : 0,
-    gpsIn: j.checkIn ? Math.round(j.checkIn.accuracy) : undefined,
-    gpsOut: j.checkOut ? Math.round(j.checkOut.accuracy) : undefined,
+    gpsIn: j.checkIn && j.checkIn.source !== "remota" ? Math.round(j.checkIn.accuracy) : undefined,
+    gpsOut: j.checkOut && j.checkOut.source !== "remota" ? Math.round(j.checkOut.accuracy) : undefined,
     offline: !!(j.checkIn?.offline || j.checkOut?.offline),
     manual: j.checkIn?.source === "manual" || j.checkOut?.source === "manual",
+    remote: j.checkIn?.source === "remota" || j.checkOut?.source === "remota",
     crew: j.workerIds.length,
   }));
 

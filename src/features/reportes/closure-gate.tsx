@@ -7,7 +7,7 @@ import { ArrowRight, CircleAlert, FileText, Lock, ShieldCheck, Sparkles, Triangl
 import { cn } from "@/lib/utils";
 import { closureBlockers } from "@/lib/domain";
 import { plural } from "@/lib/format";
-import type { OrderBundle } from "@/lib/hooks";
+import { useCurrentUser, type OrderBundle } from "@/lib/hooks";
 import { AuroraFrame } from "@/components/pk/aurora";
 import { IconTile, Insight, SectionHeader } from "@/components/pk/bits";
 import { EmptyState } from "@/components/pk/feedback";
@@ -16,10 +16,15 @@ import { rowVariants, staggerContainer } from "@/components/pk/motion";
 import { Button } from "@/components/ui/button";
 import { REASON, WithReason } from "./guard";
 
-/** No validated closure yet: explain what blocks it and link to the closure dialog. Generating is not allowed. */
-export function ClosureGate({ bundle, canClose }: { bundle: OrderBundle; canClose: boolean }) {
+/**
+ * No validated closure yet: explain what blocks it and link to the closure dialog. Generating is not allowed.
+ * `revalidate` = the order was reopened after a closure: the old closure no longer counts and a new version needs it validated again.
+ */
+export function ClosureGate({ bundle, canClose, revalidate }: { bundle: OrderBundle; canClose: boolean; revalidate?: boolean }) {
   const { order, jornadas, photos, incidents, pendingSync } = bundle;
-  const blockers = useMemo(() => closureBlockers(order, jornadas, photos, incidents, pendingSync.length), [order, jornadas, photos, incidents, pendingSync.length]);
+  const role = useCurrentUser().role;
+  // With the role, "Resolver" points managers at the order tabs instead of the supervisor-only field screens.
+  const blockers = useMemo(() => closureBlockers(order, jornadas, photos, incidents, pendingSync.length, role), [order, jornadas, photos, incidents, pendingSync.length, role]);
   const hard = blockers.filter((b) => b.severity === "block");
   const cancelled = order.status === "cancelada";
   const closeHref = `/ordenes/${order.folio}?cerrar=1`;
@@ -28,16 +33,21 @@ export function ClosureGate({ bundle, canClose }: { bundle: OrderBundle; canClos
     <div className="grid gap-8 lg:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)] lg:gap-0">
       <section className="min-w-0 lg:border-r lg:border-hairline lg:pr-10">
         <SectionHeader
-          title="Antes de generar el reporte"
-          subtitle="El reporte final se emite una sola vez por servicio, después de validar el cierre definitivo."
+          title={revalidate ? "Antes de generar la nueva versión" : "Antes de generar el reporte"}
+          subtitle={
+            revalidate
+              ? "La orden se reabrió después del cierre. Las versiones ya emitidas no cambian: la nueva se genera al validar el cierre otra vez."
+              : "El reporte final se emite una sola vez por servicio, después de validar el cierre definitivo."
+          }
         />
         {cancelled ? (
           <EmptyState icon={<FileText />} title="Orden cancelada">
             Una orden cancelada no genera reporte para el cliente.
           </EmptyState>
         ) : blockers.length === 0 ? (
-          <Insight icon={<Sparkles />} href={closeHref} linkLabel="Validar cierre">
-            Jornadas cerradas y evidencia completa. Solo falta <b className="font-semibold">validar el cierre</b> con la conformidad del cliente para habilitar el reporte.
+          <Insight icon={<Sparkles />} href={closeHref} linkLabel={revalidate ? "Validar cierre otra vez" : "Validar cierre"}>
+            Jornadas cerradas y evidencia completa. Solo falta <b className="font-semibold">{revalidate ? "validar el cierre otra vez" : "validar el cierre"}</b>{" "}
+            con la conformidad del cliente para habilitar {revalidate ? "la nueva versión del reporte" : "el reporte"}.
           </Insight>
         ) : (
           <motion.ul variants={staggerContainer(0.05, 0.15)} initial="hidden" animate="show" className="rounded-[22px] border border-hairline px-4 sm:px-5">
@@ -75,25 +85,27 @@ export function ClosureGate({ bundle, canClose }: { bundle: OrderBundle; canClos
           </div>
           <div className="mt-4 flex flex-wrap items-center gap-2">
             <OrderStatusPill status={order.status} />
-            <span className="text-[13px] text-subtle">sin cierre validado</span>
+            <span className="text-[13px] text-subtle">{revalidate ? "cierre por validar otra vez" : "sin cierre validado"}</span>
           </div>
           <p className="mt-4 text-[14.5px] leading-relaxed text-ink">
             {cancelled
               ? "Esta orden fue cancelada."
               : hard.length
-                ? `Resuelva ${plural(hard.length, "pendiente", "pendientes")} y valide el cierre para seleccionar fotos y generar el PDF.`
-                : "Valide el cierre definitivo para seleccionar fotos y generar el PDF."}
+                ? `Resuelva ${plural(hard.length, "pendiente", "pendientes")} y valide el cierre${revalidate ? " otra vez" : ""} para seleccionar fotos y generar el PDF.`
+                : revalidate
+                  ? "Valide el cierre otra vez para seleccionar fotos y generar la nueva versión del PDF."
+                  : "Valide el cierre definitivo para seleccionar fotos y generar el PDF."}
           </p>
           <div className="mt-5 grid gap-2.5">
             <WithReason reason={canClose ? null : REASON.close} className="w-full">
               <Button asChild={canClose && !cancelled} disabled={!canClose || cancelled} className="h-12 w-full rounded-[14px] text-[15px] font-semibold">
                 {canClose && !cancelled ? (
                   <Link href={closeHref}>
-                    <ShieldCheck /> Validar cierre <ArrowRight />
+                    <ShieldCheck /> {revalidate ? "Validar cierre otra vez" : "Validar cierre"} <ArrowRight />
                   </Link>
                 ) : (
                   <span>
-                    <ShieldCheck /> Validar cierre
+                    <ShieldCheck /> {revalidate ? "Validar cierre otra vez" : "Validar cierre"}
                   </span>
                 )}
               </Button>
@@ -104,7 +116,9 @@ export function ClosureGate({ bundle, canClose }: { bundle: OrderBundle; canClos
           </div>
           <p className="mt-4 flex items-start gap-2 text-[12.5px] leading-snug text-subtle">
             <Lock className="mt-0.5 size-3.5 shrink-0" />
-            Sin cierre no se puede generar el reporte: las fotos ANTES y DESPUÉS son obligatorias salvo excepción autorizada.
+            {revalidate
+              ? "Tras una reapertura no se genera una nueva versión sin validar el cierre: las fotos ANTES y DESPUÉS siguen siendo obligatorias salvo excepción autorizada."
+              : "Sin cierre no se puede generar el reporte: las fotos ANTES y DESPUÉS son obligatorias salvo excepción autorizada."}
           </p>
         </AuroraFrame>
       </aside>

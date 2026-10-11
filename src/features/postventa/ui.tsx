@@ -6,7 +6,7 @@ import { DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/c
 
 /** Copy for actions a role can't perform (doc §2 "Gestionar quejas/encuestas"). */
 export const REASON_POSTVENTA = "Solo Administración y Supervisores gestionan quejas y encuestas.";
-export const REASON_ORDER_CREATE = "Solo Administración y Supervisores dan de alta órdenes.";
+export const REASON_ORDER_CREATE = "Solo Administración da de alta órdenes.";
 export const REASON_EXPORT = "Exportar a Excel está disponible para Dirección y Administración.";
 
 /** Shared field styles (taller than shadcn defaults: ≥ 44px tap targets on phones). */

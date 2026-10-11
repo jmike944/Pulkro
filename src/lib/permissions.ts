@@ -159,7 +159,7 @@ export const PERMISSION_ROWS: PermissionRow[] = [
     action: "users.admin",
     label: "Administrar usuarios y permisos",
     status: "pendiente",
-    note: "Pendiente de decisión (§2): en el prototipo solo Dirección da de alta, edita y desactiva usuarios. Cada quien edita su teléfono y correo.",
+    note: "Pendiente de decisión (§2): en el prototipo solo Dirección da de alta, edita y desactiva usuarios. Cada quien edita su propio teléfono.",
   },
   {
     action: "catalogs.admin",
@@ -221,8 +221,10 @@ export function canSeeWorker(user: User, worker: Worker, unitFilter: string | "a
 }
 
 /**
- * Audit entries (Bitácora): entries of visible orders; entries without an order only when the actor or the touched record
- * is in scope (supervisor: only their own actions). `entityUnit` resolves the unit of a catalog / user record when known.
+ * Audit entries (Bitácora): entries of visible orders; entries without an order follow the unit of the touched record
+ * (`entityUnit`: a catalog / user record) and only fall back to the actor's unit when the record's unit is unknown
+ * (company-wide catalogs). A Dirección actor belongs to one unit, so deciding by the actor first would leak or hide
+ * other units' catalog and user edits. Supervisors only see their own actions.
  */
 export function canSeeAuditEntry(
   user: User,
@@ -233,7 +235,8 @@ export function canSeeAuditEntry(
   if (user.role === "supervisor") return entry.by === user.id;
   const units = scopedUnitIds(user, ctx.unitFilter);
   if (!units) return true;
-  const actorUnit = ctx.users.get(entry.by)?.unitId;
   const recordUnit = ctx.entityUnit?.(entry);
-  return (!!actorUnit && units.has(actorUnit)) || (!!recordUnit && units.has(recordUnit));
+  if (recordUnit) return units.has(recordUnit);
+  const actorUnit = ctx.users.get(entry.by)?.unitId;
+  return !!actorUnit && units.has(actorUnit);
 }

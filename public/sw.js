@@ -5,8 +5,11 @@
  *    template of the route with the requested id written in, so the client view renders that record from IndexedDB even
  *    if it was never opened online; else /offline
  *  - RSC payloads: network-first, else cache; a miss answers 503 so the router falls back to a full page load (above)
- *  - /_next/static: cache-first (content-hashed, immutable); the scripts of every precached page are precached too
+ *  - /_next/static: cache-first (content-hashed, immutable); the scripts of every precached page are precached too, and the
+ *    hashed files no cached page references any more are dropped when a new build is precached
  *  - map tiles: cache-first with a size cap, so sites already viewed render without signal
+ *  - build change: the worker fingerprints the build itself (the scripts of "/"), so the pages are re-precached once per deploy,
+ *    whatever route the page that woke it was on
  */
 const VERSION = "pk-v3";
 const SHELL = `${VERSION}-shell`;
@@ -31,7 +34,9 @@ const PAGES = [
   "/reportes", "/postventa", "/clientes", "/indicadores", "/equipo", "/configuracion", "/ayuda",
   ...TEMPLATES.map((t) => t.url),
 ];
-const ASSETS = ["/manifest.webmanifest", "/icons/icon-192.png"];
+// The logo is drawn with CSS masks of these two SVGs (brand.tsx): without them an installed app that goes offline before one
+// controlled online load shows no logo at all.
+const ASSETS = ["/manifest.webmanifest", "/icons/icon-192.png", "/brand/pulkro-emblem.svg", "/brand/pulkro-letters.svg"];
 
 /** Script / style / font URLs a page needs to boot (from its HTML and its inline RSC payload). */
 function assetsOf(html) {
@@ -41,29 +46,79 @@ function assetsOf(html) {
   return [...out];
 }
 
-/** Fetches every page (fresh) and the static assets it references, so a page that was never opened can still boot offline. */
+/**
+ * Fingerprint of a build: a hash of the hashed script/style URLs of its "/" page. The URLs are content-hashed, so they change
+ * with every deploy, and the worker always reads the same page, so the key does not depend on the route that triggered the check.
+ */
+function buildKeyOf(html) {
+  const assets = assetsOf(html).sort().join("|");
+  if (!assets) return "";
+  let h = 0;
+  for (let i = 0; i < assets.length; i++) h = (Math.imul(31, h) + assets.charCodeAt(i)) | 0;
+  return String(h >>> 0);
+}
+
+/**
+ * Fetches every page (fresh) and the static assets it references, so a page that was never opened can still boot offline.
+ * Returns the build key read from "/" ("" when it could not be fetched).
+ */
 async function precache() {
   const shell = await caches.open(SHELL);
   const statics = await caches.open(STATIC);
+  let key = "";
   await Promise.allSettled(ASSETS.map((u) => statics.add(new Request(u, { cache: "reload" }))));
   await Promise.allSettled(
     PAGES.map(async (url) => {
       const res = await fetch(new Request(url, { cache: "reload", credentials: "same-origin" }));
       if (!res.ok) return;
       await shell.put(url, res.clone());
-      const assets = assetsOf(await res.text());
+      const html = await res.text();
+      if (url === "/") key = buildKeyOf(html);
+      const assets = assetsOf(html);
       await Promise.allSettled(assets.map(async (a) => ((await statics.match(a)) ? undefined : statics.add(a))));
     }),
   );
+  return key;
 }
 
 const META = `${VERSION}-meta`;
+/** Hashed static files are only dropped once they are this old, so a chunk fetched lazily by the running build is never lost. */
+const STATIC_MIN_AGE_MS = 24 * 60 * 60_000;
+/** The page asks for a build check on every full load; the worker looks at most this often. */
+const CHECK_EVERY_MS = 10 * 60_000;
+
+/**
+ * Drops the content-hashed /_next/static files that no cached page or RSC payload references any more (left behind by earlier
+ * deploys). Icons, brand SVGs and vendor files are never touched.
+ */
+async function pruneStatic() {
+  const shell = await caches.open(SHELL);
+  const statics = await caches.open(STATIC);
+  const keep = new Set();
+  for (const req of await shell.keys()) {
+    const res = await shell.match(req);
+    // Compare by pathname: the URLs found in a page may carry a query (?dpl=…) that the cache keys keep apart.
+    if (res) assetsOf(await res.text()).forEach((a) => keep.add(new URL(a, self.location.origin).pathname));
+  }
+  const now = Date.now();
+  for (const req of await statics.keys()) {
+    const { pathname } = new URL(req.url);
+    if (!pathname.startsWith("/_next/static/") || keep.has(pathname)) continue;
+    const res = await statics.match(req);
+    const at = Date.parse((res && res.headers.get("date")) || "");
+    if (Number.isFinite(at) && now - at > STATIC_MIN_AGE_MS) await statics.delete(req);
+  }
+}
 
 self.addEventListener("install", (event) => {
   event.waitUntil(
     precache()
-      .then(() => caches.open(META))
-      .then((meta) => meta.put("/__pk-installed", new Response(String(Date.now()))))
+      .then(async (key) => {
+        const meta = await caches.open(META);
+        // Remember the build these pages came from, so the first check after install does not precache them again.
+        if (key) await meta.put("/__pk-build", new Response(key));
+        await meta.put("/__pk-checked", new Response(String(Date.now())));
+      })
       .then(() => self.skipWaiting()),
   );
 });
@@ -204,18 +259,26 @@ self.addEventListener("fetch", (event) => {
 
 self.addEventListener("message", (event) => {
   if (event.data === "SKIP_WAITING") self.skipWaiting();
-  // The page asks for a refresh of the precached pages after a deploy (pwa.tsx), so templates match the running build.
-  if (event.data && event.data.type === "WARM") event.waitUntil(warm(event.data.build));
+  // The page asks for a build check after a full load (pwa.tsx). Its own `build` hint is ignored: the worker fingerprints the build.
+  if (event.data && event.data.type === "WARM") event.waitUntil(warm());
 });
 
-async function warm(build) {
-  if (!build) return;
+/** Re-precaches the pages (and prunes old hashed files) once per deploy so the offline templates match the running build. */
+async function warm() {
   const meta = await caches.open(META);
+  const checked = await meta.match("/__pk-checked");
+  if (checked && Date.now() - Number(await checked.text()) < CHECK_EVERY_MS) return;
+  await meta.put("/__pk-checked", new Response(String(Date.now())));
+  let key = "";
+  try {
+    key = buildKeyOf(await (await fetch(new Request("/", { cache: "reload", credentials: "same-origin" }))).text());
+  } catch {
+    return; // no signal: try again on a later load
+  }
+  if (!key) return;
   const last = await meta.match("/__pk-build");
-  if (last && (await last.text()) === build) return;
-  // Right after install the pages were just precached from this same build: only remember it.
-  const installed = await meta.match("/__pk-installed");
-  const fresh = !last && installed && Date.now() - Number(await installed.text()) < 5 * 60_000;
-  if (!fresh) await precache();
-  await meta.put("/__pk-build", new Response(build));
+  if (last && (await last.text()) === key) return;
+  const precached = await precache();
+  await meta.put("/__pk-build", new Response(precached || key));
+  await pruneStatic();
 }

@@ -6,7 +6,7 @@ import { AnimatePresence, motion } from "motion/react";
 import { ChevronDown, Copy, Link2, Mail, MessageCircle, NotebookPen, QrCode, Send, Sparkles } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
-import { useAppStore } from "@/lib/store";
+import { attempt, useAppStore } from "@/lib/store";
 import { fmtAgo, plural } from "@/lib/format";
 import { SHARE_CHANNEL } from "@/lib/status";
 import type { ShareChannel } from "@/lib/types";
@@ -57,7 +57,8 @@ export function FollowUpPanel({
 
   const generate = (r: FollowUpRow, mode: GenerateMode) => {
     if (!canManage) return;
-    const s = createSurvey(r.order.id, MODE_CHANNEL[mode]);
+    const s = attempt(() => createSurvey(r.order.id, MODE_CHANNEL[mode]));
+    if (!s) return; // refused: the store already told the user why
     setGenerated((g) => [...g, r.order.id]);
     const target: SurveyTarget = { s, order: r.order, client: r.client };
     if (mode === "whatsapp") shareSurveyWhatsapp(target);
@@ -190,7 +191,7 @@ export function FollowUpPanel({
         </ul>
       )}
 
-      <SurveyQrDialog target={qr} onOpenChange={(v) => !v && setQr(null)} />
+      <SurveyQrDialog target={qr} canManage={canManage} onOpenChange={(v) => !v && setQr(null)} />
       <ManualSurveyDialog target={manual} onOpenChange={(v) => !v && setManual(null)} />
     </div>
   );

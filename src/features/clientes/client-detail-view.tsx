@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { use, useMemo, useState } from "react";
 import { getYear, parseISO } from "date-fns";
-import { Building, ChevronDown, MessageCircle, Phone, Plus, SearchX } from "lucide-react";
+import { Building, ChevronDown, MessageCircle, Phone, Plus } from "lucide-react";
 import { toast } from "sonner";
 import { useAppStore } from "@/lib/store";
 import { useCan, useLookups, useNow, useScopedData } from "@/lib/hooks";
@@ -13,13 +13,13 @@ import type { Client } from "@/lib/types";
 import { AuroraPanel, GlassCard } from "@/components/pk/aurora";
 import { AnimatedNumber, IconTile, MiniStat } from "@/components/pk/bits";
 import { ClientMark } from "@/components/pk/client-mark";
-import { EmptyState } from "@/components/pk/feedback";
 import { MetaList, PageHeader } from "@/components/pk/page";
 import { PillBars } from "@/components/pk/pill-bars";
+import { NotFoundOrOutOfScope } from "@/components/shell/out-of-scope";
 import { Button } from "@/components/ui/button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { MONTHS_LONG } from "@/features/postventa/lib";
-import { Gate, REASON_ORDER_CREATE, menuItemCls, outlineBtnCls } from "@/features/postventa/ui";
+import { menuItemCls, outlineBtnCls } from "@/features/postventa/ui";
 import { ClientAside } from "./client-aside";
 import { ClientHistory, ClientOpenOrders } from "./client-history";
 import { computeClientStats, periodRange, servicesPerMonth, visibleClients, type ClientPeriod } from "./use-clients";
@@ -36,20 +36,11 @@ export function ClientDetailView({ params }: { params: Promise<{ clientId: strin
   const visible = client ? visibleClients([client], scoped.user, scoped.unitFilter, scoped.orders).length > 0 : false;
 
   if (!client || !visible) {
+    // One state for "doesn't exist" and "outside your scope": never the client's name, never which of the two it is.
     return (
       <div>
-        <PageHeader title="Cliente" breadcrumb={[{ label: "Clientes", href: "/clientes" }, { label: client?.shortName ?? "No encontrado" }]} />
-        <EmptyState
-          icon={<SearchX />}
-          title={client ? "Cliente fuera de su alcance" : "No encontramos el cliente"}
-          action={
-            <Button asChild variant="outline" className={outlineBtnCls}>
-              <Link href="/clientes">Ver clientes</Link>
-            </Button>
-          }
-        >
-          {client ? "Su rol solo consulta clientes de su unidad o de sus órdenes asignadas." : "Puede que el catálogo haya cambiado en este dispositivo."}
-        </EmptyState>
+        <PageHeader title="Cliente" breadcrumb={[{ label: "Clientes", href: "/clientes" }, { label: "Cliente" }]} />
+        <NotFoundOrOutOfScope subject="Este cliente" backHref="/clientes" backLabel="Ver clientes" />
       </div>
     );
   }
@@ -115,19 +106,14 @@ function ClientDetail({ client }: { client: Client }) {
                 <Phone /> Llamar
               </a>
             </Button>
-            <Gate allowed={canCreate} reason={REASON_ORDER_CREATE}>
-              {canCreate ? (
-                <Button asChild className="h-10 rounded-[12px] px-4 text-[14px] font-semibold">
-                  <Link href={`/ordenes/nueva?cliente=${client.id}`}>
-                    <Plus /> Nueva orden
-                  </Link>
-                </Button>
-              ) : (
-                <Button disabled className="h-10 rounded-[12px] px-4 text-[14px] font-semibold">
+            {/* only Administración creates orders: no disabled ghost button for the other roles */}
+            {canCreate && (
+              <Button asChild className="h-10 rounded-[12px] px-4 text-[14px] font-semibold">
+                <Link href={`/ordenes/nueva?cliente=${client.id}`}>
                   <Plus /> Nueva orden
-                </Button>
-              )}
-            </Gate>
+                </Link>
+              </Button>
+            )}
           </>
         }
       />

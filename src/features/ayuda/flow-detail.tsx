@@ -6,11 +6,17 @@ import { ArrowRight, ChevronLeft, ChevronRight, Gavel, MapPinned, UserRound } fr
 import { cn } from "@/lib/utils";
 import { toneDot } from "@/lib/status";
 import { EASE } from "@/components/pk/motion";
+import { useCanSeeRoute } from "@/components/shell/use-can-see-route";
 import { FLOW_ROLE_TONE, FLOW_STEPS, pad2, type FlowStep } from "./flow-data";
 
 /** Explains one flow step: who does it, where in the app, and the governing rule. */
 export function FlowDetail({ step, onSelect, compact }: { step: FlowStep; onSelect: (n: number) => void; compact?: boolean }) {
   const decision = !!step.branches;
+  // Only the screens the current role may open (field screens are the supervisor's, Indicadores / Equipo are management's);
+  // a step none of whose screens is reachable points to the orders list, where the detail tabs carry the same information.
+  const canSee = useCanSeeRoute();
+  const reachable = step.where.filter((w) => canSee(w.href));
+  const where = reachable.length ? reachable : [{ label: "Órdenes", href: "/ordenes" }];
   return (
     <div className="@container">
       <AnimatePresence mode="wait" initial={false}>
@@ -92,7 +98,7 @@ export function FlowDetail({ step, onSelect, compact }: { step: FlowStep; onSele
                 </ul>
               ) : (
                 <ul className="mt-2 flex flex-wrap gap-2">
-                  {step.where.map((w) => (
+                  {where.map((w) => (
                     <li key={w.href}>
                       <Link
                         href={w.href}
@@ -112,9 +118,9 @@ export function FlowDetail({ step, onSelect, compact }: { step: FlowStep; onSele
                 <Gavel className="size-3.5" /> Regla de negocio
               </p>
               <p className="mt-2 rounded-[14px] bg-blue-wash px-3.5 py-3 text-[13.5px] leading-relaxed text-ink">{step.rule}</p>
-              {decision && step.where[0] && (
-                <Link href={step.where[0].href} className="group mt-2 inline-flex items-center gap-1.5 text-[13px] font-semibold text-link">
-                  Ver en {step.where[0].label} <ArrowRight className="size-3.5 transition-transform group-hover:translate-x-0.5" />
+              {decision && where[0] && (
+                <Link href={where[0].href} className="group mt-2 inline-flex items-center gap-1.5 text-[13px] font-semibold text-link">
+                  Ver en {where[0].label} <ArrowRight className="size-3.5 transition-transform group-hover:translate-x-0.5" />
                 </Link>
               )}
             </section>

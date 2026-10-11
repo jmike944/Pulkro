@@ -57,7 +57,9 @@ export function SurveyWizard({ token, onSubmitted }: { token: string; onSubmitte
     const ok = submitSurvey(token, answers, name.trim() || undefined);
     if (!ok) {
       setSending(false);
-      toast.error("Esta encuesta ya fue respondida", { description: "Gracias, ya tenemos su calificación." });
+      // Only claim "already answered" when it is: a refusal for another reason (open staff session) was explained by the store.
+      if (useAppStore.getState().surveys.some((x) => x.token === token && x.respondedAt))
+        toast.error("Esta encuesta ya fue respondida", { description: "Gracias, ya tenemos su calificación." });
       return;
     }
     useUi.getState().fireCelebrate();

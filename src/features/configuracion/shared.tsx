@@ -251,6 +251,7 @@ export function ConfirmDialog({
   rows,
   checkboxLabel,
   confirmLabel,
+  confirmDisabled,
   destructive,
   onConfirm,
   children,
@@ -264,6 +265,8 @@ export function ConfirmDialog({
   rows: { k: React.ReactNode; v: React.ReactNode }[];
   checkboxLabel: string;
   confirmLabel: string;
+  /** Keeps the confirm button off whatever the checkbox says (a precondition the dialog explains in its children). */
+  confirmDisabled?: boolean;
   destructive?: boolean;
   onConfirm: () => void;
   children?: React.ReactNode;
@@ -279,6 +282,7 @@ export function ConfirmDialog({
           rows={rows}
           checkboxLabel={checkboxLabel}
           confirmLabel={confirmLabel}
+          confirmDisabled={confirmDisabled}
           destructive={destructive}
           onConfirm={() => {
             onConfirm();
@@ -301,6 +305,7 @@ function ConfirmBody({
   rows,
   checkboxLabel,
   confirmLabel,
+  confirmDisabled,
   destructive,
   onConfirm,
   children,
@@ -351,7 +356,7 @@ function ConfirmBody({
         </DialogClose>
         <Button
           type="button"
-          disabled={!checked}
+          disabled={!checked || confirmDisabled}
           onClick={onConfirm}
           className={cn("h-11 rounded-[12px] px-5 text-[14px] font-semibold", destructive && "bg-st-red text-white hover:bg-st-red/90")}
         >

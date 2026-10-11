@@ -5,7 +5,7 @@ import { useMemo } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { AnimatePresence, motion } from "motion/react";
 import { CircleHelp } from "lucide-react";
-import { useAppStore, useCan, useCurrentUser, useScopedData, useShallow, useSyncSummary } from "@/lib/hooks";
+import { useCan, useCurrentUser, useScopedAudit, useScopedCatalog, useScopedData, useSyncSummary } from "@/lib/hooks";
 import { plural } from "@/lib/format";
 import { PageHeader, UnderlineTabs, type TabItem } from "@/components/pk/page";
 import { EASE } from "@/components/pk/motion";
@@ -16,7 +16,6 @@ import { CatalogsTab } from "./catalogs-tab";
 import { SyncTab } from "./sync-tab";
 import { AuditTab } from "./audit-tab";
 import { PrivacyTab } from "./privacy-tab";
-import { useVisibleAudit } from "./use-visible-audit";
 import { useCatalogUnit } from "./use-catalog-unit";
 
 export type SettingsTab = "usuarios" | "catalogos" | "sincronizacion" | "auditoria" | "privacidad";
@@ -29,12 +28,11 @@ export function SettingsView() {
   const params = useSearchParams();
   const router = useRouter();
   const pathname = usePathname();
-  const { users, units, clients, sites } = useAppStore(
-    useShallow((s) => ({ users: s.users, units: s.units, clients: s.clients, sites: s.sites })),
-  );
+  // Counts come from what the role may see (doc §2): never the whole company's users, units or clients.
+  const { users, units, clients, sites } = useScopedCatalog();
   const { pending } = useSyncSummary();
   const { orders } = useScopedData();
-  const audit = useVisibleAudit();
+  const audit = useScopedAudit();
 
   const tabs = useMemo(() => {
     const out: (TabItem & { value: SettingsTab })[] = [];
@@ -57,9 +55,6 @@ export function SettingsView() {
   };
 
   const catalogUnit = useCatalogUnit();
-  const scopedClients = clients.filter((c) => catalogUnit === "all" || c.unitId === catalogUnit);
-  const scopedClientIds = new Set(scopedClients.map((c) => c.id));
-  const scopedSites = sites.filter((x) => scopedClientIds.has(x.clientId)).length;
   const activeUsers = users.filter((u) => u.active).length;
   const description =
     user.role === "supervisor" ? (
@@ -77,7 +72,7 @@ export function SettingsView() {
     ) : (
       <>
         <b>{plural(activeUsers, "usuario activo", "usuarios activos")}</b> en <b>{plural(units.length, "unidad", "unidades")}</b>,{" "}
-        <b>{plural(scopedClients.length, "cliente", "clientes")}</b> con <b>{plural(scopedSites, "sitio", "sitios")}</b> en catálogo
+        <b>{plural(clients.length, "cliente", "clientes")}</b> con <b>{plural(sites.length, "sitio", "sitios")}</b> en catálogo
         {catalogUnit !== "all" && <> de {units.find((u) => u.id === catalogUnit)?.name ?? "tu unidad"}</>}.
         {pending.length > 0 && (
           <>

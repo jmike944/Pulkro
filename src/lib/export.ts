@@ -31,6 +31,40 @@ export function toBusinessWallClock(date: Date): Date {
   return new Date(Date.UTC(+p.year, +p.month - 1, +p.day, +p.hour % 24, +p.minute, +p.second));
 }
 
+const MONTHS_ES = ["ene", "feb", "mar", "abr", "may", "jun", "jul", "ago", "sep", "oct", "nov", "dic"];
+
+/** Monterrey wall-clock fields of an instant (the same ones `toBusinessWallClock` writes into a Date cell). */
+function businessFields(value: string | Date) {
+  const date = typeof value === "string" ? new Date(value) : value;
+  if (Number.isNaN(date.getTime())) return null;
+  const p = Object.fromEntries(tzParts.formatToParts(date).map((x) => [x.type, x.value]));
+  return { year: p.year, month: +p.month, day: +p.day, hour: String(+p.hour % 24).padStart(2, "0"), minute: p.minute };
+}
+
+/** "9 oct 2026" in Monterrey time: for TEXT cells of an export (a Date cell is already converted by `exportToExcel`). */
+export function fmtBusinessDate(value: string | Date): string {
+  const f = businessFields(value);
+  return f ? `${f.day} ${MONTHS_ES[f.month - 1]} ${f.year}` : "";
+}
+
+/** "9 oct 2026, 08:14" in Monterrey time, whatever the device's time zone is. */
+export function fmtBusinessDateTime(value: string | Date): string {
+  const f = businessFields(value);
+  return f ? `${f.day} ${MONTHS_ES[f.month - 1]} ${f.year}, ${f.hour}:${f.minute}` : "";
+}
+
+/** "08:14" in Monterrey time (24 h). */
+export function fmtBusinessTime(value: string | Date): string {
+  const f = businessFields(value);
+  return f ? `${f.hour}:${f.minute}` : "";
+}
+
+/** "2026-10-09" in Monterrey time, for file names (`toISOString()` would give the UTC day, which flips at 6 or 7 p. m.). */
+export function businessDateStamp(value: string | Date = new Date()): string {
+  const f = businessFields(value);
+  return f ? `${f.year}-${String(f.month).padStart(2, "0")}-${String(f.day).padStart(2, "0")}` : "";
+}
+
 export async function exportToExcel(filename: string, sheets: SheetSpec[]) {
   const ExcelJS = (await import("exceljs")).default;
   const wb = new ExcelJS.Workbook();

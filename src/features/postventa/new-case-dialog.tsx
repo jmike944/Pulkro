@@ -7,7 +7,7 @@ import { addDays, format } from "date-fns";
 import { Check, Search, X } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
-import { useAppStore } from "@/lib/store";
+import { attempt, useAppStore } from "@/lib/store";
 import { useLookups, useNow, useScopedData } from "@/lib/hooks";
 import { firstName, fmtDate, fmtDay } from "@/lib/format";
 import { CASE_CATEGORY, CASE_CHANNEL, ROLE_LABEL, SEVERITY } from "@/lib/status";
@@ -130,17 +130,21 @@ function NewCaseForm({
       toast.error(`Falta ${problems.join(", ")}`);
       return;
     }
-    const c = createCase({
-      orderId: order.id,
-      clientId: order.clientId,
-      category,
-      severity,
-      channel,
-      description: description.trim(),
-      ownerId,
-      dueDate: new Date(`${due}T18:00:00`).toISOString(),
-      photoIds,
-    });
+    // A refusal was already toasted by the store: keep the dialog open with the draft.
+    const c = attempt(() =>
+      createCase({
+        orderId: order.id,
+        clientId: order.clientId,
+        category,
+        severity,
+        channel,
+        description: description.trim(),
+        ownerId,
+        dueDate: new Date(`${due}T18:00:00`).toISOString(),
+        photoIds,
+      }),
+    );
+    if (!c) return;
     photoIds.forEach((pid) => updatePhoto(pid, { caseId: c.id }));
     const owner = lk.users.get(ownerId);
     toast.success(`Caso ${c.folio} registrado`, {

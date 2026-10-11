@@ -4,7 +4,7 @@ import { useEffect } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { motion } from "motion/react";
 import { useAppStore, useCurrentUser } from "@/lib/hooks";
-import { PulkroMark } from "@/components/pk/brand";
+import { PulkroEmblem, PulkroLetters } from "@/components/pk/brand";
 import { Shimmer } from "@/components/pk/feedback";
 import { Sidebar } from "./sidebar";
 import { MobileNav } from "./mobile-nav";
@@ -67,9 +67,10 @@ function ShellSkeleton() {
   return (
     <div className="flex min-h-dvh bg-canvas">
       <div className="hidden w-[272px] shrink-0 flex-col gap-4 px-5 pt-6 lg:flex">
+        {/* same lockup as the sidebar: emblem + lettering in the theme's navy ink */}
         <div className="flex items-center gap-3">
-          <PulkroMark animated />
-          <span className="font-brand text-[19px] font-extrabold tracking-[0.16em] text-brand-ink">PULKRO</span>
+          <PulkroEmblem className="text-brand-ink" />
+          <PulkroLetters className="text-brand-ink" />
         </div>
         <Shimmer className="mt-4 h-16" />
         <Shimmer className="h-11" />
@@ -80,7 +81,7 @@ function ShellSkeleton() {
       <div className="flex-1 p-3">
         <div className="flex h-full min-h-[96dvh] flex-col items-center justify-center rounded-[28px] bg-surface">
           <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} className="flex flex-col items-center gap-4">
-            <PulkroMark animated className="size-14 rounded-[16px]" />
+            <PulkroEmblem className="size-14 text-brand-ink motion-safe:animate-[spin_9s_linear_infinite]" />
             <p className="text-[13px] text-subtle">Cargando datos del dispositivo…</p>
           </motion.div>
         </div>

@@ -12,6 +12,7 @@ import { INCIDENT_TYPE, SEVERITY, toneSoftBg, toneText } from "@/lib/status";
 import type { Incident } from "@/lib/types";
 import { INCIDENT_ICONS } from "@/components/pk/incident-sheet";
 import { PhotoThumb } from "@/components/pk/scene-photo";
+import { useCanSeeRoute } from "@/components/shell/use-can-see-route";
 import { EmptyState } from "@/components/pk/feedback";
 import { EASE, rowVariants, staggerContainer } from "@/components/pk/motion";
 import { SoftBadge, TonePill } from "@/components/pk/status";
@@ -68,6 +69,7 @@ function IncidentCard({ inc }: { inc: Incident }) {
   const { d, ui } = useOrder();
   const { lk, photos, jornadas } = d;
   const resolveIncident = useAppStore((s) => s.resolveIncident);
+  const canSee = useCanSeeRoute();
   const [resolving, setResolving] = useState(false);
   const [text, setText] = useState("");
   const meta = INCIDENT_TYPE[inc.type];
@@ -117,13 +119,16 @@ function IncidentCard({ inc }: { inc: Incident }) {
             )}
           </div>
         </div>
-        <Link
-          href={`/incidencias?i=${inc.id}`}
-          aria-label={`Ver ${inc.folio} en incidencias`}
-          className="inline-flex size-10 shrink-0 items-center justify-center rounded-full bg-tile text-ink transition hover:bg-brand-deep hover:text-white"
-        >
-          <ArrowUpRight className="size-4" />
-        </Link>
+        {/* /incidencias is the supervisor's screen: Dirección and Administración read the incident here, so no link */}
+        {canSee("/incidencias") && (
+          <Link
+            href={`/incidencias?i=${inc.id}`}
+            aria-label={`Ver ${inc.folio} en incidencias`}
+            className="inline-flex size-10 shrink-0 items-center justify-center rounded-full bg-tile text-ink transition hover:bg-brand-deep hover:text-white"
+          >
+            <ArrowUpRight className="size-4" />
+          </Link>
+        )}
       </div>
 
       <p className="mt-4 text-[14.5px] leading-relaxed text-ink">{inc.description}</p>

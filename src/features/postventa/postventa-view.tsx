@@ -6,8 +6,8 @@ import { AnimatePresence, motion } from "motion/react";
 import { Download, Plus, X } from "lucide-react";
 import { toast } from "sonner";
 import { useCan, useLookups, useNow } from "@/lib/hooks";
-import { daysUntil, fmtDate, plural } from "@/lib/format";
-import { exportToExcel } from "@/lib/export";
+import { daysUntil, plural } from "@/lib/format";
+import { businessDateStamp, exportToExcel, fmtBusinessDate } from "@/lib/export";
 import { CASE_CATEGORY, CASE_CHANNEL, CASE_STATUS, SEVERITY } from "@/lib/status";
 import type { CaseChannel, PostSaleCase } from "@/lib/types";
 import { PageHeader, UnderlineTabs } from "@/components/pk/page";
@@ -88,7 +88,7 @@ function PostventaInner({ folio }: { folio: string | null }) {
 
   const exportAll = async () => {
     const byId = new Map(orders.map((o) => [o.id, o] as const));
-    await exportToExcel(`postventa-${now.toISOString().slice(0, 10)}`, [
+    await exportToExcel(`postventa-${businessDateStamp(now)}`, [
       {
         name: "Casos",
         columns: [
@@ -113,7 +113,7 @@ function PostventaInner({ folio }: { folio: string | null }) {
           canal: CASE_CHANNEL[r.c.channel],
           estado: CASE_STATUS[r.c.status].label,
           responsable: r.owner?.name,
-          compromiso: fmtDate(r.c.dueDate),
+          compromiso: fmtBusinessDate(r.c.dueDate),
           descripcion: r.c.description,
           resolucion: r.c.resolution ?? "",
         })),
@@ -137,7 +137,7 @@ function PostventaInner({ folio }: { folio: string | null }) {
         rows: surveyRows.map((r) => ({
           orden: byId.get(r.s.orderId)?.folio,
           cliente: r.client?.name,
-          enviada: fmtDate(r.s.sentAt),
+          enviada: fmtBusinessDate(r.s.sentAt),
           canal: SURVEY_CHANNEL_LABEL[r.s.channel],
           estado: r.s.respondedAt ? (r.s.manual ? "Respondida (manual)" : "Respondida") : "Pendiente",
           general: r.s.answers?.overall,

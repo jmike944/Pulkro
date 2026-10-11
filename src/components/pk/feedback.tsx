@@ -50,9 +50,14 @@ const SPARK_COLORS = ["#7ad1f4", "var(--brand)", "#b9c7ff", "#ffffff", "var(--st
  */
 export function Celebrate({ trigger, className }: { trigger: number; className?: string }) {
   const [bursts, setBursts] = useState<number[]>([]);
+  // A new trigger value adds a burst while rendering (adjusting state to a prop, not in an effect); the effect only removes it.
+  const [seen, setSeen] = useState(trigger);
+  if (trigger !== seen) {
+    setSeen(trigger);
+    if (trigger) setBursts((b) => [...b, trigger]);
+  }
   useEffect(() => {
     if (!trigger) return;
-    setBursts((b) => [...b, trigger]);
     const t = setTimeout(() => setBursts((b) => b.filter((x) => x !== trigger)), 1800);
     return () => clearTimeout(t);
   }, [trigger]);

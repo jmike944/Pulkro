@@ -6,14 +6,13 @@ import { Building2, Check, Eye, KeyRound, Mail, Minus, Pencil, Phone, UserRound 
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { useAppStore, useCurrentUser, useLookups } from "@/lib/hooks";
-import { PERMISSION_ROWS, can } from "@/lib/permissions";
+import { PERMISSION_ROWS, can, cellStatus } from "@/lib/permissions";
 import { ROLE_LABEL } from "@/lib/status";
 import { PersonAvatar } from "@/components/pk/bits";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Field, FormDialog, RoleBadge, inputCls, phoneDigits } from "./shared";
-import { consultaFor } from "./permission-matrix";
 
 /** "Mi perfil": who you are in the app, what your role may do, and your own contact phone. */
 export function ProfileCard() {
@@ -106,7 +105,10 @@ function PermissionsPopover({ allowed }: { allowed: number }) {
         <ul className="max-h-[360px] overflow-y-auto p-2">
           {PERMISSION_ROWS.map((r, i) => {
             const yes = can(user.role, r.action);
-            const consulta = !yes && consultaFor(r.action, user.role);
+            // The scope qualifier comes from the same rows as the matrix: "Su unidad", "Solo propias", "Consulta"…
+            const scope = r.scope?.[user.role];
+            const consulta = !yes && !!scope;
+            const pending = cellStatus(r, user.role) === "pendiente";
             return (
               <motion.li
                 key={r.action}
@@ -124,7 +126,8 @@ function PermissionsPopover({ allowed }: { allowed: number }) {
                   {yes ? <Check className="size-3.5" strokeWidth={3} /> : consulta ? <Eye className="size-3.5" /> : <Minus className="size-3.5" />}
                 </span>
                 <span className={cn("min-w-0 flex-1", yes ? "text-ink" : "text-subtle")}>{r.label}</span>
-                {consulta && <span className="text-[11.5px] text-link">{consulta}</span>}
+                {scope && <span className="text-[11.5px] text-link">{scope}</span>}
+                {pending && <span className="rounded-md bg-amber-soft px-1.5 text-[10.5px] font-semibold tracking-[0.06em] text-amber-fg">PENDIENTE</span>}
               </motion.li>
             );
           })}
@@ -136,7 +139,7 @@ function PermissionsPopover({ allowed }: { allowed: number }) {
 
 function EditMyPhoneDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (v: boolean) => void }) {
   const user = useCurrentUser();
-  const upsertUser = useAppStore((s) => s.upsertUser);
+  const updateMyContact = useAppStore((s) => s.updateMyContact);
   const [phone, setPhone] = useState(user.phone);
   const [touched, setTouched] = useState(false);
   const error = phoneDigits(phone) < 10 ? "Captura un teléfono de al menos 10 dígitos." : null;
@@ -153,7 +156,7 @@ function EditMyPhoneDialog({ open, onOpenChange }: { open: boolean; onOpenChange
       onSubmit={() => {
         setTouched(true);
         if (error) return;
-        upsertUser({ ...user, phone: phone.trim() });
+        updateMyContact({ phone });
         toast.success("Teléfono actualizado", { description: "El cambio quedó en la bitácora." });
         onOpenChange(false);
       }}

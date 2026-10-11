@@ -23,7 +23,7 @@ import {
 import type { ReactNode } from "react";
 import { fmtCoords, fmtDate, fmtDateTime, fmtDay, fmtHours, fmtTime } from "@/lib/format";
 import { mapsLink } from "@/lib/domain";
-import { CONFIDENTIAL_NOTE, paragraphs, type ReportModel, type ReportPhotoPair } from "./report-model";
+import { CONFIDENTIAL_NOTE, paragraphs, reportPhotoPosition, sitePlotPoints, type ReportModel, type ReportPhotoPair } from "./report-model";
 import { gpsLayout } from "./gps-layout";
 
 // Spanish words must not be hyphenated with the default (English) rules.
@@ -65,7 +65,6 @@ const s = StyleSheet.create({
 
   header: { flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start" },
   brand: { flexDirection: "row", alignItems: "center" },
-  wordmark: { fontFamily: "Helvetica-Bold", fontSize: 15, letterSpacing: 2.8, color: C.deep },
   brandSub: { fontSize: 7.6, color: C.subtle, marginTop: 3 },
   headerRight: { alignItems: "flex-end" },
   eyebrow: { fontFamily: "Helvetica-Bold", fontSize: 6.8, letterSpacing: 1.3, color: C.subtle },
@@ -125,14 +124,37 @@ const s = StyleSheet.create({
   closing: { marginTop: 18, paddingTop: 9, borderTopWidth: 0.6, borderTopColor: C.hairline, flexDirection: "row", justifyContent: "space-between" },
 });
 
-/** Pulkro mark: navy tile + sky swirl. The 32-unit swirl sits at 68% of the tile (no SVG transforms). */
-function Mark({ size = 30 }: { size?: number }) {
+/** Official Pulkro emblem (public/brand/pulkro-emblem.svg, 300 × 300 units, even-odd): a disc with the letterform cut out of it. */
+const EMBLEM_D =
+  "M3.7 150.1A146.8 146.8 0 1 0 297.3 150.1A146.8 146.8 0 1 0 3.7 150.1Z M202.9 30.6L116.5 117A10 10 0 0 0 113.6 124L113.6 179.1A7 7 0 0 0 120.6 186.1L125.7 186.1A25.5 25.5 0 0 0 148.5 172L168.8 131.4A1.5 1.5 0 0 1 171.6 132.2L171.6 173.3A7 7 0 0 1 169.5 178.3L82.9 264.9A132.8 132.8 0 0 1 94.9 29.1A1.2 1.2 0 0 1 96.3 31L35.5 91.8A10 10 0 0 0 32.6 98.8L32.6 130A4.5 4.5 0 0 0 33.9 133.2L38 137.3A5.5 5.5 0 0 0 47.4 133.4L47.4 102.6A7 7 0 0 1 49.5 97.6L129 18.1A132.8 132.8 0 0 1 142.5 16.7A2 2 0 0 1 144 20.1L57.8 106.3A10 10 0 0 0 54.9 113.3L54.9 143.2A4.5 4.5 0 0 0 56.2 146.4L60.3 150.5A5.5 5.5 0 0 0 69.7 146.6L69.7 117.1A7 7 0 0 1 71.8 112.1L166.3 17.6A132.8 132.8 0 0 1 177.3 19.4A2 2 0 0 1 178.3 22.8L81.1 120A10 10 0 0 0 78.2 127L78.2 158.5A4.5 4.5 0 0 0 79.5 161.7L83.6 165.8A5.5 5.5 0 0 0 93 161.9L93 130.8A7 7 0 0 1 95.1 125.8L196 24.9A132.8 132.8 0 0 1 202.2 27.4A2 2 0 0 1 202.9 30.6Z M100.1 269.5L185.3 184.3A10 10 0 0 0 188.2 177.3L188.2 119A7 7 0 0 0 181.2 112L170.3 112A18 18 0 0 0 154.2 122L133 164.4A1.5 1.5 0 0 1 130.2 163.6L130.2 128A7 7 0 0 1 132.3 123L218.6 36.7A132.8 132.8 0 0 1 211.8 267.4A1.2 1.2 0 0 1 210.4 265.5L267 208.9A10 10 0 0 0 269.9 201.9L269.9 170.1A5.5 5.5 0 0 0 268.3 166.2L263.2 161.1A6.5 6.5 0 0 0 252.1 165.7L252.1 196.9A7 7 0 0 1 250 201.9L171.6 280.3A132.8 132.8 0 0 1 162.7 281.5A2 2 0 0 1 161 278.1L244.7 194.4A10 10 0 0 0 247.6 187.4L247.6 156.9A5.5 5.5 0 0 0 246 153L240.9 147.9A6.5 6.5 0 0 0 229.8 152.5L229.8 182.4A7 7 0 0 1 227.7 187.4L133.9 281.2A132.8 132.8 0 0 1 126.5 280.1A2 2 0 0 1 125.4 276.7L221.4 180.7A10 10 0 0 0 224.3 173.7L224.3 141.6A5.5 5.5 0 0 0 222.7 137.7L217.6 132.6A6.5 6.5 0 0 0 206.5 137.2L206.5 168.7A7 7 0 0 1 204.4 173.7L104.1 274A132.8 132.8 0 0 1 100.8 272.8A2 2 0 0 1 100.1 269.5Z";
+
+/** Official "PULKRO" lettering (public/brand/pulkro-letters.svg, 309 × 44 units): filled strokes plus 1.6-unit outlines. */
+const LETTERS_FILL =
+  "M0.1 1.5H17.4V42.3H0.1Z M55.6 1.5H72.9V43.5C60.8 43.5 55.6 38.9 55.6 28.3Z M111.3 1.5H128.6V42.3H111.3Z M160.3 1.5H177.6V42.3H160.3Z M212.7 1.5H230V42.3H212.7Z M285.8 1A20.2 21 0 0 0 267.8 21.9A20.2 21 0 0 0 285.8 42.8Z";
+const LETTERS_STROKE =
+  "M16.4 2.3H24A16.2 16.2 0 0 1 24 34.7H16.4 M94.1 1.5V27.7A15 15 0 0 1 79.1 42.7H71.9 M127.6 41.5H147.7 M176.6 13.5L197.4 1.5 M183.8 9.4L199.9 42 M229 2.3H236.6A16.2 16.2 0 0 1 236.6 34.7H234.5 M229 30.3A42.3 42.3 0 0 0 251.2 42.2 M288 0.9A20.2 21 0 0 1 288 42.9A20.2 21 0 0 1 288 0.9Z";
+
+/** The vector lettering of the logo (same as the app's `PulkroLetters`), `height` in points. */
+function Letters({ height = 11 }: { height?: number }) {
   return (
-    <Svg width={size} height={size} viewBox="-7.53 -7.53 47.06 47.06">
-      <Rect x={-7.53} y={-7.53} width={47.06} height={47.06} rx={11.8} ry={11.8} fill={C.deep} />
-      <Path d="M16 4.5a11.5 11.5 0 1 0 11.5 11.5" fill="none" stroke={C.sky} strokeWidth={3.2} strokeLinecap="round" />
-      <Path d="M16 10.2a5.8 5.8 0 1 1-5.8 5.8" fill="none" stroke="#FFFFFF" strokeWidth={3} strokeLinecap="round" />
-      <Circle cx={16} cy={16} r={1.9} fill={C.sky} />
+    <Svg width={(height * 309) / 44} height={height} viewBox="0 0 309 44">
+      <Path d={LETTERS_FILL} fill={C.deep} />
+      <Path d={LETTERS_STROKE} fill="none" stroke={C.deep} strokeWidth={1.6} />
+    </Svg>
+  );
+}
+
+/**
+ * Pulkro mark, the same one the paper preview draws (`PulkroMark`): the white emblem at 78% of a navy tile with 30.6% corners.
+ * The viewBox is the emblem box grown by 1/0.78, so the tile fills the SVG and the emblem sits centred (no SVG transforms needed).
+ */
+function Mark({ size = 30 }: { size?: number }) {
+  const box = 300 / 0.78;
+  const origin = -(box - 300) / 2;
+  return (
+    <Svg width={size} height={size} viewBox={`${origin} ${origin} ${box} ${box}`}>
+      <Rect x={origin} y={origin} width={box} height={box} rx={box * 0.3056} ry={box * 0.3056} fill={C.deep} />
+      <Path d={EMBLEM_D} fill="#FFFFFF" fillRule="evenodd" />
     </Svg>
   );
 }
@@ -161,6 +183,7 @@ function Section({ title, items, empty }: { title: string; items: ReactNode[]; e
 }
 
 function PhotoCell({ photo, kind, src }: { photo?: ReportPhotoPair["antes"]; kind: "ANTES" | "DESPUÉS"; src?: string }) {
+  const pos = photo ? reportPhotoPosition(photo) : undefined;
   if (!photo || !src)
     return (
       <View style={s.photoCell}>
@@ -179,7 +202,7 @@ function PhotoCell({ photo, kind, src }: { photo?: ReportPhotoPair["antes"]; kin
       </View>
       <Text style={s.photoCaption}>
         {fmtDay(photo.takenAt)} · {fmtTime(photo.takenAt)}
-        {photo.lat !== undefined && photo.lng !== undefined ? ` · ${fmtCoords(photo.lat, photo.lng)}` : ""}
+        {pos ? ` · ${fmtCoords(pos.lat, pos.lng)}` : ""}
       </Text>
     </View>
   );
@@ -188,7 +211,7 @@ function PhotoCell({ photo, kind, src }: { photo?: ReportPhotoPair["antes"]; kin
 function GpsPlot({ m }: { m: ReportModel }) {
   const W = 150;
   const H = 112;
-  const g = gpsLayout(m.site, m.gps, W, H);
+  const g = gpsLayout(m.site, sitePlotPoints(m.gps), W, H);
   return (
     <Svg width={W} height={H} viewBox={`0 0 ${W} ${H}`}>
       <Rect x={0} y={0} width={W} height={H} rx={8} ry={8} fill={C.soft} />
@@ -246,6 +269,7 @@ export function buildReportDocument(m: ReportModel, images: Record<string, strin
         {j.gpsIn !== undefined ? `±${j.gpsIn} m` : "—"}
         {j.gpsOut !== undefined ? ` / ±${j.gpsOut} m` : ""}
         {j.manual ? " · manual" : ""}
+        {j.remote ? " · supervisión remota" : ""}
         {j.offline ? " · sin conexión" : ""}
       </Text>
     </View>
@@ -288,7 +312,7 @@ export function buildReportDocument(m: ReportModel, images: Record<string, strin
           <View style={s.brand}>
             <Mark />
             <View style={{ marginLeft: 9 }}>
-              <Text style={s.wordmark}>PULKRO</Text>
+              <Letters height={11} />
               <Text style={s.brandSub}>Compañía de Servicios · desde 1985</Text>
             </View>
           </View>
@@ -466,7 +490,7 @@ export function buildReportDocument(m: ReportModel, images: Record<string, strin
             <View key="gps" style={s.gpsRow}>
               <View>
                 <GpsPlot m={m} />
-                <Text style={{ fontSize: 6.6, color: C.subtle, marginTop: 3 }}>Escala: {gpsLayout(m.site, m.gps, 150, 112).scaleBar.meters} m · centro = sitio</Text>
+                <Text style={{ fontSize: 6.6, color: C.subtle, marginTop: 3 }}>Escala: {gpsLayout(m.site, sitePlotPoints(m.gps), 150, 112).scaleBar.meters} m · centro = sitio</Text>
               </View>
               <View style={s.gpsTable}>
                 <View style={s.gpsLine}>
@@ -480,7 +504,9 @@ export function buildReportDocument(m: ReportModel, images: Record<string, strin
                   <View key={p.key} style={s.gpsLine}>
                     <Text style={{ width: 82, fontSize: 7.8, color: p.kind === "entrada" ? C.teal : C.blue }}>{p.label}</Text>
                     <Text style={{ flex: 1, fontSize: 7.8 }}>
-                      {fmtCoords(p.lat, p.lng)} · ±{Math.round(p.accuracy)} m{p.source === "manual" ? " · manual" : ""}
+                      {p.source === "remota"
+                        ? "Supervisión remota · sin ubicación en el sitio"
+                        : `${fmtCoords(p.lat, p.lng)} · ±${Math.round(p.accuracy)} m${p.source === "manual" ? " · manual" : ""}`}
                     </Text>
                     <Text style={{ fontSize: 7.6, color: C.subtle }}>{fmtDateTime(p.at)}</Text>
                   </View>

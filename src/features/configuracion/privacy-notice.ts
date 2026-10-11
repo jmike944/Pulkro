@@ -26,8 +26,8 @@ export const PRIVACY_NOTICE: NoticeSection[] = [
     list: [
       "De clientes y sus contactos: nombre, puesto, teléfono, correo electrónico y domicilio de los sitios de servicio.",
       "De quien otorga la conformidad en sitio: nombre, cargo y, en su caso, firma trazada en el dispositivo del supervisor.",
-      "Del personal de Pulkro: nombre, teléfono, unidad y la ubicación GPS del dispositivo del supervisor al registrar entrada y salida.",
-      "Fotografías de las instalaciones antes y después del servicio, de incidencias y de seguimiento postventa, con fecha, hora y coordenadas.",
+      "Del personal de Pulkro: nombre, teléfono, unidad y la ubicación GPS del dispositivo del supervisor al registrar entrada y salida y al adjuntar fotografías.",
+      "Fotografías de las instalaciones antes y después del servicio, de incidencias y de seguimiento postventa. Con cada una se guarda la hora real de la toma, si proviene de la cámara o de la galería del dispositivo y su ubicación: la que trae la propia foto o, si no la trae, la del teléfono al adjuntarla.",
     ],
   },
   {
@@ -55,7 +55,8 @@ export const PRIVACY_NOTICE: NoticeSection[] = [
   {
     title: "Ubicación GPS",
     body: [
-      "La aplicación registra la ubicación únicamente en el momento de marcar entrada y salida de cada jornada, junto con la precisión y la hora. No realiza rastreo continuo. Si el GPS no está disponible, se registra una justificación escrita.",
+      "La aplicación registra la ubicación al marcar entrada y salida de cada jornada, junto con la precisión y la hora, y al adjuntar cada fotografía: la que guarda la propia foto o, si no la trae, la del teléfono en ese momento. En una foto elegida de la galería, esa ubicación puede no ser la de la toma y así se identifica en la aplicación. No realiza rastreo continuo.",
+      "Si el GPS no está disponible, se registra una justificación escrita. Si el supervisor registra una entrada o salida sin estar en el sitio (supervisión remota), se guarda su justificación y, si el teléfono la entrega, la ubicación del supervisor: nunca se presenta como una posición en el sitio, y el reporte al cliente lo indica sin mostrar coordenadas.",
     ],
   },
   {

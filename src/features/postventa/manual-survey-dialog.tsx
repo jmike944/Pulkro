@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { AnimatePresence, motion } from "motion/react";
 import { toast } from "sonner";
-import { useAppStore } from "@/lib/store";
+import { attempt, useAppStore } from "@/lib/store";
 import type { Client, Order, Survey, SurveyAnswers } from "@/lib/types";
 import { Button } from "@/components/ui/button";
 import { Dialog } from "@/components/ui/dialog";
@@ -73,7 +73,8 @@ function ManualForm({ target, onDone }: { target: ManualTarget; onDone: (sv?: Su
       nps: nps!,
       comment: comment.trim() || undefined,
     };
-    const sv = recordManualSurvey(order.id, answers, name.trim());
+    const sv = attempt(() => recordManualSurvey(order.id, answers, name.trim()));
+    if (!sv) return; // refused: the store already told the user why
     toast.success("Respuesta registrada", { description: `${order.folio} · ${overall}/5 · capturada manualmente` });
     onDone(sv);
   };

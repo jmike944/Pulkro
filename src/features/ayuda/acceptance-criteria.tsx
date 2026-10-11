@@ -10,6 +10,7 @@ import { fmtNum } from "@/lib/format";
 import { ROLE_LABEL } from "@/lib/status";
 import { AnimatedNumber } from "@/components/pk/bits";
 import { EASE } from "@/components/pk/motion";
+import { useCanSeeRoute } from "@/components/shell/use-can-see-route";
 
 type Criterion = {
   text: string;
@@ -22,10 +23,20 @@ type Criterion = {
 export function AcceptanceCriteria() {
   const user = useCurrentUser();
   const { orders, jornadas, incidents, reports, cases, surveys } = useScopedData();
+  // The company-wide total is only shown to Dirección (it is the one role that sees the whole company).
   const totalOrders = useAppStore((s) => s.orders.length);
+  const canSee = useCanSeeRoute();
 
   const items: Criterion[] = useMemo(() => {
     const folio = new Map(orders.map((o) => [o.id, o.folio]));
+    // Field screens are the supervisor's; Dirección and Administración read the same record inside the order (tabs).
+    const reach = (links: { label: string; href: string }[]) => {
+      const ok = links.filter((l) => canSee(l.href));
+      return ok.length ? ok : [{ label: "Órdenes", href: "/ordenes" }];
+    };
+    const jornadaHref = (j: { id: string; orderId: string }) => (canSee("/jornada/x") ? `/jornada/${j.id}` : `/ordenes/${folio.get(j.orderId)}?tab=jornadas`);
+    const incidentHref = (i: { id: string; orderId: string }) => (canSee("/incidencias") ? `/incidencias?i=${i.id}` : `/ordenes/${folio.get(i.orderId)}?tab=incidencias`);
+    const reportHref = (orderId: string) => (canSee("/reportes") ? `/ordenes/${folio.get(orderId)}/reporte` : `/ordenes/${folio.get(orderId)}`);
     const programmed = orders.find((o) => o.status === "programada" && o.crewHistory.length);
     const offlineJ = jornadas.find((j) => j.checkIn?.offline) ?? jornadas.find((j) => j.status === "en_curso");
     const exception = orders.find((o) => o.closure?.exception);
@@ -39,58 +50,61 @@ export function AcceptanceCriteria() {
     return [
       {
         text: "Un supervisor puede crear o recibir una orden manual, asignar trabajadores y fechas y consultar el detalle desde la app.",
-        screens: [
+        screens: reach([
           { label: "Nueva orden", href: "/ordenes/nueva" },
           { label: "Agenda", href: "/agenda" },
-        ],
+        ]),
         example: programmed ? { label: `${programmed.folio} · programada con cuadrilla`, href: `/ordenes/${programmed.folio}` } : null,
       },
       {
         text: "Puede registrar entrada, salida y GPS de una jornada, con o sin conexión; la app indica claramente el estado de sincronización.",
-        screens: [
+        screens: reach([
           { label: "Agenda", href: "/agenda" },
           { label: "Sincronización", href: "/configuracion?tab=sincronizacion" },
-        ],
+        ]),
         example: offlineJ
-          ? { label: `${folio.get(offlineJ.orderId) ?? "Jornada"} · J${offlineJ.dayIndex}${offlineJ.checkIn?.offline ? " capturada sin conexión" : " en curso"}`, href: `/jornada/${offlineJ.id}` }
+          ? { label: `${folio.get(offlineJ.orderId) ?? "Jornada"} · J${offlineJ.dayIndex}${offlineJ.checkIn?.offline ? " capturada sin conexión" : " en curso"}`, href: jornadaHref(offlineJ) }
           : null,
       },
       {
         text: "Puede adjuntar fotos ANTES y DESPUÉS; no cierra sin ambas categorías, salvo excepción autorizada.",
-        screens: [{ label: "Evidencias", href: "/evidencias" }],
+        screens: reach([{ label: "Evidencias", href: "/evidencias" }]),
         example: exception ? { label: `${exception.folio} · cierre con excepción`, href: `/ordenes/${exception.folio}?tab=evidencia` } : null,
       },
       {
         text: "Una orden de tres días guarda tres jornadas y emite un único reporte final con datos agregados.",
-        screens: [{ label: "Reportes", href: "/reportes" }],
+        screens: reach([{ label: "Reportes", href: "/reportes" }]),
         example: multi
-          ? { label: `${multi.folio} · ${multi.plannedDays} jornadas · ${repCount.get(multi.id) ? "1 reporte" : "sin reporte aún"}`, href: repCount.get(multi.id) ? `/ordenes/${multi.folio}/reporte` : `/ordenes/${multi.folio}?tab=jornadas` }
+          ? { label: `${multi.folio} · ${multi.plannedDays} jornadas · ${repCount.get(multi.id) ? "1 reporte" : "sin reporte aún"}`, href: repCount.get(multi.id) ? reportHref(multi.id) : `/ordenes/${multi.folio}?tab=jornadas` }
           : null,
       },
       {
         text: "Puede registrar una incidencia con tipo, descripción y fotos y verla en el historial.",
-        screens: [{ label: "Incidencias", href: "/incidencias" }],
-        example: incident ? { label: `${incident.folio} · ${photoCount(incident.photoIds.length)}`, href: `/incidencias?i=${incident.id}` } : null,
+        screens: reach([{ label: "Incidencias", href: "/incidencias" }]),
+        example: incident ? { label: `${incident.folio} · ${photoCount(incident.photoIds.length)}`, href: incidentHref(incident) } : null,
       },
       {
         text: "Puede revisar un PDF, seleccionar fotos y abrir WhatsApp o email para compartirlo manualmente.",
-        screens: [{ label: "Reportes", href: "/reportes" }],
-        example: shared ? { label: `${folio.get(shared.orderId) ?? "Reporte"} · v${shared.version} · ${shared.shares.length} envío(s)`, href: `/ordenes/${folio.get(shared.orderId)}/reporte` } : null,
+        screens: reach([{ label: "Reportes", href: "/reportes" }]),
+        example: shared ? { label: `${folio.get(shared.orderId) ?? "Reporte"} · v${shared.version} · ${shared.shares.length} envío(s)`, href: reportHref(shared.orderId) } : null,
       },
       {
         text: "Dirección consulta órdenes e indicadores autorizados; el supervisor no ve información restringida.",
-        screens: [
+        screens: reach([
           { label: "Indicadores", href: "/indicadores" },
           { label: "Mis permisos", href: "/configuracion" },
-        ],
-        note: `Como ${ROLE_LABEL[user.role]} ves ${fmtNum(orders.length)} de ${fmtNum(totalOrders)} órdenes.`,
+        ]),
+        note:
+          user.role === "direccion"
+            ? `Como ${ROLE_LABEL[user.role]} ves ${fmtNum(orders.length)} de ${fmtNum(totalOrders)} órdenes.`
+            : `Como ${ROLE_LABEL[user.role]} ves ${fmtNum(orders.length)} ${orders.length === 1 ? "orden" : "órdenes"}: ${user.role === "supervisor" ? "las asignadas a ti" : "las de tu unidad"}.`,
       },
       {
         text: "Se pueden exportar PDF de orden y Excel de indicadores habilitados.",
-        screens: [
+        screens: reach([
           { label: "Indicadores", href: "/indicadores" },
           { label: "Reportes", href: "/reportes" },
-        ],
+        ]),
         note: can(user.role, "export.excel") ? `Tu rol exporta PDF y Excel.` : `Tu rol exporta PDF; Excel es para Dirección y Administración.`,
       },
       {
@@ -102,7 +116,7 @@ export function AcceptanceCriteria() {
         example: kase ? { label: `${kase.folio} · ligado a ${folio.get(kase.orderId) ?? "su orden"}`, href: `/postventa/${kase.folio}` } : answered ? { label: `Encuesta de ${folio.get(answered.orderId)}`, href: `/postventa?orden=${folio.get(answered.orderId)}` } : null,
       },
     ];
-  }, [orders, jornadas, incidents, reports, cases, surveys, user.role, totalOrders]);
+  }, [orders, jornadas, incidents, reports, cases, surveys, user.role, totalOrders, canSee]);
 
   const withExample = items.filter((i) => i.example || i.note).length;
 

@@ -1,20 +1,17 @@
 "use client";
 
 import { use, useCallback, useEffect, useRef, useState } from "react";
-import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
 import { AnimatePresence, motion } from "motion/react";
-import { FileSearch } from "lucide-react";
 import { toast } from "sonner";
 import { useAppStore } from "@/lib/store";
 import { ORDER_STATUS } from "@/lib/status";
 import type { OrderStatus } from "@/lib/types";
 import type { TabItem } from "@/components/pk/page";
 import { UnderlineTabs } from "@/components/pk/page";
-import { EmptyState } from "@/components/pk/feedback";
 import { EASE } from "@/components/pk/motion";
 import { IncidentSheet } from "@/components/pk/incident-sheet";
-import { Button } from "@/components/ui/button";
+import { NotFoundOrOutOfScope } from "@/components/shell/out-of-scope";
 import { ORDER_TABS, OrderProvider, useOrderDetailData, type OrderDetail, type OrderTab, type OrderUi } from "./order-context";
 import { OrderHeader } from "./order-header";
 import { SummaryTab } from "./summary-tab";
@@ -38,28 +35,9 @@ export function OrderDetailView({ params }: { params: Promise<{ folio: string }>
   const { folio: raw } = use(params);
   const folio = decodeURIComponent(raw);
   const d = useOrderDetailData(folio);
-  if (!d) return <OrderNotFound folio={folio} />;
+  // One state for "doesn't exist" and "outside your scope" (doc §2): never the folio, never which of the two it is.
+  if (!d) return <NotFoundOrOutOfScope subject="Esta orden" backHref="/ordenes" backLabel="Volver a órdenes" />;
   return <OrderDetailScreen d={d} />;
-}
-
-function OrderNotFound({ folio }: { folio: string }) {
-  return (
-    <div className="flex min-h-[60dvh] items-center justify-center">
-      <EmptyState
-        icon={<FileSearch />}
-        title="No encontramos esta orden"
-        className="w-full max-w-lg border-none"
-        action={
-          <Button asChild className="h-10 rounded-[12px] px-5 font-semibold">
-            <Link href="/ordenes">Volver a órdenes</Link>
-          </Button>
-        }
-      >
-        La orden <b className="font-semibold text-ink">{folio}</b> no existe o no está dentro de su alcance. Los supervisores ven sus órdenes asignadas y Administración las de su
-        unidad.
-      </EmptyState>
-    </div>
-  );
 }
 
 function OrderDetailScreen({ d }: { d: OrderDetail }) {

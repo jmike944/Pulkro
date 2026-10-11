@@ -20,8 +20,8 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
-import { useAppStore, useCan, useCurrentUser, useLookups } from "@/lib/hooks";
-import { exportToExcel } from "@/lib/export";
+import { useAppStore, useCan, useCurrentUser, useLookups, useScopedAudit } from "@/lib/hooks";
+import { businessDateStamp, exportToExcel, fmtBusinessTime } from "@/lib/export";
 import { fmtLongDay, fmtNum, fmtRelativeDay, fmtTime, plural } from "@/lib/format";
 import { ROLE_LABEL, type Tone } from "@/lib/status";
 import type { AuditEntity, AuditEntry } from "@/lib/types";
@@ -33,7 +33,6 @@ import { EASE } from "@/components/pk/motion";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { GatedButton, NO_EXCEL, SearchField, norm, selectTriggerCls } from "./shared";
-import { useVisibleAudit } from "./use-visible-audit";
 
 export const ENTITY_META: Record<AuditEntity, { label: string; tone: Tone; icon: React.ReactNode }> = {
   orden: { label: "Orden", tone: "navy", icon: <ClipboardList /> },
@@ -51,7 +50,7 @@ type Range = "hoy" | "7d" | "30d" | "todo";
 const PAGE = 60;
 
 export function AuditTab() {
-  const audit = useVisibleAudit();
+  const audit = useScopedAudit();
   const me = useCurrentUser();
   const lk = useLookups();
   const orders = useAppStore((s) => s.orders);
@@ -133,7 +132,7 @@ export function AuditTab() {
   };
 
   const exportExcel = async () => {
-    await exportToExcel(`bitacora-pulkro-${format(new Date(), "yyyy-MM-dd")}`, [
+    await exportToExcel(`bitacora-pulkro-${businessDateStamp()}`, [
       {
         name: "Bitácora",
         columns: [
@@ -149,8 +148,8 @@ export function AuditTab() {
         rows: filtered.map((a) => {
           const u = lk.users.get(a.by);
           return {
-            fecha: format(parseISO(a.at), "yyyy-MM-dd"),
-            hora: fmtTime(a.at),
+            fecha: businessDateStamp(a.at),
+            hora: fmtBusinessTime(a.at),
             usuario: nameOf(a.by),
             rol: u ? ROLE_LABEL[u.role] : a.by === "cliente" ? "Cliente" : "",
             entidad: ENTITY_META[a.entity].label,

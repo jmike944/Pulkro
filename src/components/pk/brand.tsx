@@ -30,15 +30,6 @@ export function PulkroLetters({ className }: { className?: string }) {
   );
 }
 
-export function PulkroWordmark({ className, sub = true }: { className?: string; sub?: boolean }) {
-  return (
-    <span className={cn("flex flex-col leading-none", className)}>
-      <span className="font-brand text-[19px] font-extrabold tracking-[0.18em] text-brand-ink">PULKRO</span>
-      {sub && <span className="mt-1 text-[10.5px] font-medium tracking-wide text-subtle">Cuadrillas · Operación y postventa</span>}
-    </span>
-  );
-}
-
 /** Full official logo: emblem and original vector lettering, in one theme-aware colour. */
 export function PulkroLogo({ className }: { className?: string }) {
   return (

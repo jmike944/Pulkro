@@ -12,6 +12,7 @@ import { Segmented } from "@/components/pk/page";
 import { EmptyState } from "@/components/pk/feedback";
 import { MobileRow } from "@/components/pk/mobile";
 import { EASE } from "@/components/pk/motion";
+import { useCanSeeRoute } from "@/components/shell/use-can-see-route";
 import type { Indicators } from "./compute";
 import type { PeriodWindow } from "./period";
 import { Stars } from "./bits";
@@ -40,6 +41,7 @@ export function PersonalTab({
   units: Map<string, Unit>;
   onDrill: (d: Drill) => void;
 }) {
+  const canSee = useCanSeeRoute();
   const [sort, setSort] = useState<SortKey>("closed");
   const rows = useMemo(() => {
     const xs = [...ind.productivity];
@@ -222,7 +224,8 @@ export function PersonalTab({
           </EmptyState>
         )}
         {busiest && busiest.open > 0 && totals.open > 0 && role !== "supervisor" && (
-          <Insight icon={<CalendarDays />} href="/agenda" linkLabel="Revisar agenda">
+          // Supervisors' own agenda is theirs: Dirección and Administración review the load in Equipo.
+          <Insight icon={<CalendarDays />} href={canSee("/agenda") ? "/agenda" : "/equipo"} linkLabel={canSee("/agenda") ? "Revisar agenda" : "Ver equipo"}>
             <b className="font-semibold">{busiest.user.name.split(" ")[0]}</b> tiene {plural(busiest.open, "orden abierta", "órdenes abiertas")}: el{" "}
             {Math.round((busiest.open / totals.open) * 100)}% de la carga pendiente del equipo.
           </Insight>

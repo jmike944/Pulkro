@@ -4,10 +4,12 @@ import { motion } from "motion/react";
 import { cn } from "@/lib/utils";
 import { AnimatedNumber, CornerLink } from "@/components/pk/bits";
 import { EASE } from "@/components/pk/motion";
+import { useCanSeeRoute } from "@/components/shell/use-can-see-route";
 import { fmtDays, stageInsight, type Indicators } from "./compute";
 
 /** "Cómo avanza el trabajo" — average elapsed days between lifecycle milestones; slowest stage = bottleneck. */
 export function StageFlow({ ind }: { ind: Indicators }) {
+  const canSee = useCanSeeRoute();
   const { stages, totalDays, sum, bottleneck } = ind.stages;
   const max = Math.max(0.0001, ...stages.map((s) => s.days));
   const insight = stageInsight(stages, sum);
@@ -17,7 +19,8 @@ export function StageFlow({ ind }: { ind: Indicators }) {
     <div>
       <div className="mb-1 flex items-start justify-between gap-4">
         <h2 className="text-[19px] font-medium tracking-[-0.01em] text-ink">Cómo avanza el trabajo</h2>
-        <CornerLink href="/agenda" label="Abrir agenda" />
+        {/* the agenda is the supervisor's screen: Dirección and Administración go to the orders list */}
+        {canSee("/agenda") ? <CornerLink href="/agenda" label="Abrir agenda" /> : <CornerLink href="/ordenes" label="Ver órdenes" />}
       </div>
       <p className="mb-6 text-[13.5px] text-subtle">Tiempo promedio entre etapas · órdenes del periodo</p>
 

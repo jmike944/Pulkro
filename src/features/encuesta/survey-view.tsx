@@ -10,7 +10,7 @@ import { ClientMark } from "@/components/pk/client-mark";
 import { EASE } from "@/components/pk/motion";
 import { SurveyLoader, SurveyShell } from "./survey-shell";
 import { SurveyWizard } from "./survey-wizard";
-import { SurveyMissing, SurveyThanks } from "./survey-states";
+import { SurveyMissing, SurveyStaffSession, SurveyThanks } from "./survey-states";
 
 /**
  * /encuesta/[token] — PUBLIC client survey (doc §4.4 "encuesta mediante enlace externo sin instalar app").
@@ -33,8 +33,12 @@ function SurveyContent({ token }: { token: string }) {
   const client = useAppStore((s) => (survey ? s.clients.find((c) => c.id === survey.clientId) : undefined));
   const serviceType = useAppStore((s) => (order ? s.serviceTypes.find((t) => t.id === order.serviceTypeId) : undefined));
   const supervisor = useAppStore((s) => (order ? s.users.find((u) => u.id === order.supervisorId) : undefined));
+  const staffSession = useAppStore((s) => s.session.signedIn);
+  const signOut = useAppStore((s) => s.signOut);
   const [submitted, setSubmitted] = useState<{ answers: SurveyAnswers; name?: string } | null>(null);
 
+  // Never answer (or read answers) as the client from a staff session: close it first (see store.submitSurvey).
+  if (staffSession && !submitted) return <SurveyStaffSession onSignOut={signOut} />;
   if (!survey || !order) return <SurveyMissing token={token} />;
 
   const serviceDate = order.closure?.validatedAt ?? order.scheduledEnd;

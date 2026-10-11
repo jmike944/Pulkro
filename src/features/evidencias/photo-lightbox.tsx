@@ -13,6 +13,7 @@ import type { Photo } from "@/lib/types";
 import { Dialog, DialogClose, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { BeforeAfter, PhotoImage } from "@/components/pk/scene-photo";
+import { photoGeoLabel, photoOriginLabel, photoTimeLabel } from "@/components/pk/photo-flags";
 import { KeyValues, PersonAvatar } from "@/components/pk/bits";
 import { SoftBadge } from "@/components/pk/status";
 import { Segmented } from "@/components/pk/page";
@@ -162,20 +163,32 @@ function LightboxBody({
         "—"
       ),
     },
-    { k: "Hora", v: <span className="tabular">{fmtDateTime(photo.takenAt)}</span> },
+    {
+      k: "Hora",
+      v: (
+        <span className="block">
+          <span className="tabular">{fmtDateTime(photo.takenAt)}</span>
+          {photoTimeLabel(photo) && <span className="block text-[12px] leading-snug text-subtle">{photoTimeLabel(photo)}</span>}
+        </span>
+      ),
+    },
+    photoOriginLabel(photo) && { k: "Origen", v: photoOriginLabel(photo) },
     {
       k: "GPS",
       v:
         photo.lat != null && photo.lng != null ? (
-          <a
-            href={mapsLink(photo.lat, photo.lng)}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="inline-flex items-center gap-1 text-link tabular hover:underline"
-          >
-            <MapPin className="size-3.5" />
-            {fmtCoords(photo.lat, photo.lng)}
-          </a>
+          <span className="block">
+            <a
+              href={mapsLink(photo.lat, photo.lng)}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1 text-link tabular hover:underline"
+            >
+              <MapPin className="size-3.5" />
+              {fmtCoords(photo.lat, photo.lng)}
+            </a>
+            {photoGeoLabel(photo) && <span className="block text-[12px] leading-snug text-subtle">{photoGeoLabel(photo)}</span>}
+          </span>
         ) : (
           <span className="text-subtle">Sin coordenadas</span>
         ),

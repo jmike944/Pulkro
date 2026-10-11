@@ -4,6 +4,7 @@ import { useAppStore } from "@/lib/store";
 import { fmtCoords, fmtDateTime } from "@/lib/format";
 import { PHOTO_KIND } from "@/lib/status";
 import { PhotoImage } from "@/components/pk/scene-photo";
+import { photoProvenanceRows } from "@/components/pk/photo-flags";
 import { SoftBadge } from "@/components/pk/status";
 import { Switch } from "@/components/ui/switch";
 import { useOrder } from "./order-context";
@@ -41,6 +42,8 @@ export function PhotoDialog({ photoId, onOpenChange }: { photoId: string | null;
               { k: "Tomada", v: fmtDateTime(photo.takenAt) },
               { k: "Capturó", v: d.lk.users.get(photo.by)?.name ?? "Usuario" },
               { k: "Ubicación", v: photo.lat != null && photo.lng != null ? fmtCoords(photo.lat, photo.lng) : "Sin coordenadas" },
+              // Evidence provenance (real captures only): camera or gallery, where the time and the position come from.
+              ...photoProvenanceRows(photo),
               ...(inc ? [{ k: "Incidencia", v: inc.folio }] : []),
               { k: "Sincronización", v: d.pendingIds.has(photo.id) ? "Pendiente" : "Sincronizada", tone: d.pendingIds.has(photo.id) ? ("warn" as const) : ("ok" as const) },
             ]}

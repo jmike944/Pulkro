@@ -129,8 +129,9 @@ export function useScopedCatalog() {
 }
 
 /**
- * The Bitácora the current role may read (and export): entries of visible orders, plus entries without an order only when
- * the actor or the touched catalog / user record is in scope (supervisor: only their own). Newest first, like the store.
+ * The Bitácora the current role may read (and export): entries of visible orders, plus entries without an order when the
+ * touched catalog / user record is in scope (the actor's unit only decides when the record's unit is unknown; supervisor: only
+ * their own). The single definition used by Configuración (Bitácora, Sincronización, respaldo). Newest first, like the store.
  */
 export function useScopedAudit(): AuditEntry[] {
   const { user, unitFilter, orderIds } = useScopedData();

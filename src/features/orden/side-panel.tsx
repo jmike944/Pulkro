@@ -74,14 +74,17 @@ export function SitePanel() {
 
   // Map the jornada in progress, or the latest one with GPS stamps.
   const stamped = d.live ?? [...jornadas].reverse().find((j) => j.checkIn);
+  // Supervisión remota is where the supervisor was (or the site's own coordinates as a stand-in): never a pin, a distance or a
+  // precision at the site (same rule as the jornada map and the client report).
+  const inFix = stamped?.checkIn && stamped.checkIn.source !== "remota" ? stamped.checkIn : undefined;
+  const outFix = stamped?.checkOut && stamped.checkOut.source !== "remota" ? stamped.checkOut : undefined;
   const markers = useMemo(() => {
     const m: GeoMarker[] = [{ lat: site.lat, lng: site.lng, kind: "site", label: "Sitio", tooltip: site.name }];
-    if (stamped?.checkIn)
-      m.push({ lat: stamped.checkIn.lat, lng: stamped.checkIn.lng, kind: stamped.checkOut ? "checkin" : "live", label: "Entrada", tooltip: `Jornada ${stamped.dayIndex}` });
-    if (stamped?.checkOut) m.push({ lat: stamped.checkOut.lat, lng: stamped.checkOut.lng, kind: "checkout", label: "Salida", tooltip: `Jornada ${stamped.dayIndex}` });
+    if (stamped && inFix) m.push({ lat: inFix.lat, lng: inFix.lng, kind: stamped.checkOut ? "checkin" : "live", label: "Entrada", tooltip: `Jornada ${stamped.dayIndex}` });
+    if (stamped && outFix) m.push({ lat: outFix.lat, lng: outFix.lng, kind: "checkout", label: "Salida", tooltip: `Jornada ${stamped.dayIndex}` });
     return m;
-  }, [site, stamped]);
-  const dist = stamped?.checkIn ? Math.round(distanceMeters(site, stamped.checkIn)) : null;
+  }, [site, stamped, inFix, outFix]);
+  const dist = inFix ? Math.round(distanceMeters(site, inFix)) : null;
 
   return (
     <section>
@@ -105,10 +108,14 @@ export function SitePanel() {
           },
         ]}
       />
-      <GeoMap markers={markers} connect accuracy={stamped?.checkIn ? { lat: stamped.checkIn.lat, lng: stamped.checkIn.lng, radius: stamped.checkIn.accuracy } : undefined} className="mt-5 h-[210px]" />
+      <GeoMap markers={markers} connect accuracy={inFix ? { lat: inFix.lat, lng: inFix.lng, radius: inFix.accuracy } : undefined} className="mt-5 h-[210px]" />
       <div className="mt-2.5 flex items-center justify-between gap-3 text-[12.5px] text-subtle">
         <span className="min-w-0 truncate">
-          {stamped?.checkIn && dist !== null ? `Entrada J${stamped.dayIndex} a ${dist} m del sitio · ±${Math.round(stamped.checkIn.accuracy)} m` : "Sin registros GPS todavía"}
+          {stamped?.checkIn?.source === "remota"
+            ? `Entrada J${stamped.dayIndex} por supervisión remota`
+            : stamped && inFix && dist !== null
+              ? `Entrada J${stamped.dayIndex} a ${dist} m del sitio · ${inFix.source === "manual" ? "ubicación manual" : `±${Math.round(inFix.accuracy)} m`}`
+              : "Sin registros GPS todavía"}
         </span>
         <a href={mapsLink(site.lat, site.lng)} target="_blank" rel="noreferrer" className="inline-flex min-h-11 shrink-0 items-center gap-1 font-semibold text-link lg:min-h-0">
           Abrir en Maps <ArrowUpRight className="size-3.5" />

@@ -4,10 +4,10 @@ import { useLayoutEffect, useRef, type ReactNode, type RefObject } from "react";
 import { cn } from "@/lib/utils";
 import { fmtCoords, fmtDate, fmtDateTime, fmtDay, fmtHours, fmtTime } from "@/lib/format";
 import { mapsLink } from "@/lib/domain";
-import { PulkroMark } from "@/components/pk/brand";
+import { PulkroLetters, PulkroMark } from "@/components/pk/brand";
 import { PersonAvatar } from "@/components/pk/bits";
 import { PhotoImage } from "@/components/pk/scene-photo";
-import { CONFIDENTIAL_NOTE, paragraphs, type ReportModel, type ReportPhotoPair } from "./report-model";
+import { CONFIDENTIAL_NOTE, paragraphs, reportPhotoPosition, sitePlotPoints, type ReportModel, type ReportPhotoPair } from "./report-model";
 import { gpsLayout } from "./gps-layout";
 
 /**
@@ -48,7 +48,7 @@ function PaperHeader({ m }: { m: ReportModel }) {
         <div className="flex items-center gap-3">
           <PulkroMark className="size-[44px] rounded-[12px]" />
           <div className="leading-none">
-            <p className="font-brand text-[21px] font-extrabold tracking-[0.2em] text-brand-deep">PULKRO</p>
+            <PulkroLetters className="h-[16px] text-brand-ink" />
             <p className="mt-1.5 text-[10.5px] text-subtle">Compañía de Servicios · desde 1985</p>
           </div>
         </div>
@@ -121,6 +121,7 @@ function JornadasTable({ m }: { m: ReportModel }) {
             {j.gpsIn !== undefined ? `±${j.gpsIn} m` : "—"}
             {j.gpsOut !== undefined && ` / ±${j.gpsOut} m`}
             {j.manual && <Tag tone="amber">manual</Tag>}
+            {j.remote && <Tag tone="amber">supervisión remota</Tag>}
             {j.offline && <Tag>sin conexión</Tag>}
           </span>
         </div>
@@ -140,6 +141,7 @@ function JornadasTable({ m }: { m: ReportModel }) {
 
 function PhotoCell({ photo, kind, mode }: { photo?: ReportPhotoPair["antes"]; kind: "antes" | "despues"; mode: BlockMode }) {
   const label = kind === "antes" ? "ANTES" : "DESPUÉS";
+  const pos = photo ? reportPhotoPosition(photo) : undefined;
   return (
     <div className="min-w-0">
       <div className="relative aspect-[4/3] overflow-hidden rounded-[8px] bg-[#eef1f5]" data-raster={photo && mode === "page" ? photo.id : undefined}>
@@ -160,7 +162,7 @@ function PhotoCell({ photo, kind, mode }: { photo?: ReportPhotoPair["antes"]; ki
         {photo ? (
           <>
             {fmtDay(photo.takenAt)} · {fmtTime(photo.takenAt)}
-            {photo.lat !== undefined && photo.lng !== undefined && ` · ${fmtCoords(photo.lat, photo.lng)}`}
+            {pos && ` · ${fmtCoords(pos.lat, pos.lng)}`}
           </>
         ) : (
           " "
@@ -264,7 +266,7 @@ function ConformityBlock({ m }: { m: ReportModel }) {
 function GpsMiniMap({ m }: { m: ReportModel }) {
   const W = 200;
   const H = 150;
-  const g = gpsLayout(m.site, m.gps, W, H, 16);
+  const g = gpsLayout(m.site, sitePlotPoints(m.gps), W, H, 16);
   return (
     <svg viewBox={`0 0 ${W} ${H}`} className="h-[150px] w-[200px] shrink-0" role="img" aria-label="Mapa esquemático de registros GPS">
       <rect width={W} height={H} rx="10" fill="#f4f7fa" />
@@ -313,7 +315,13 @@ function GpsBlock({ m }: { m: ReportModel }) {
             <div key={p.key} className="flex items-center gap-2 border-b border-hairline py-1.5">
               <span className={cn("w-[88px] shrink-0 font-medium", p.kind === "entrada" ? "text-st-teal" : "text-link")}>{p.label}</span>
               <span className="min-w-0 flex-1 truncate text-ink tabular">
-                {fmtCoords(p.lat, p.lng)} · ±{Math.round(p.accuracy)} m{p.source === "manual" && " · manual"}
+                {p.source === "remota" ? (
+                  "Supervisión remota · sin ubicación en el sitio"
+                ) : (
+                  <>
+                    {fmtCoords(p.lat, p.lng)} · ±{Math.round(p.accuracy)} m{p.source === "manual" && " · manual"}
+                  </>
+                )}
               </span>
               <span className="shrink-0 text-subtle tabular">{fmtDateTime(p.at)}</span>
             </div>

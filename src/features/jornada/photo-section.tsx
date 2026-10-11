@@ -7,7 +7,7 @@ import { toast } from "sonner";
 import { SCENE_AREAS } from "@/lib/seed";
 import type { Photo, SceneKind } from "@/lib/types";
 import { useEdgeFade } from "@/components/pk/edge-fade";
-import { areaSuggestions, usePhotoCapture, type CaptureMeta } from "@/components/pk/photo-capture";
+import { CAPTURE_HELP, areaSuggestions, usePhotoCapture, type CaptureMeta } from "@/components/pk/photo-capture";
 import { PhotoThumb } from "@/components/pk/scene-photo";
 import { SoftBadge } from "@/components/pk/status";
 import { EASE, rowVariants, staggerContainer } from "@/components/pk/motion";
@@ -156,6 +156,7 @@ function FieldCaptureButtons({
           <Wand2 /> <span className="hidden min-[420px]:inline">Simular</span>
         </Button>
       </div>
+      <p className="mt-2.5 text-[12.5px] leading-snug text-subtle">{CAPTURE_HELP}</p>
     </div>
   );
 }

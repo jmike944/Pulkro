@@ -1,14 +1,14 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useState } from "react";
 import { AnimatePresence, motion } from "motion/react";
 import { CircleHelp, Clock, Hammer, MessageSquareWarning, PackageX, PlusCircle, UserX, type LucideIcon } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
-import { useAppStore } from "@/lib/store";
-import { useMediaQuery } from "@/lib/hooks";
+import { attempt, useAppStore } from "@/lib/store";
+import { useMediaQuery, useOrderBundle } from "@/lib/hooks";
 import { INCIDENT_TYPE, SEVERITY, toneSoftBg, toneText } from "@/lib/status";
-import type { IncidentType, Severity } from "@/lib/types";
+import type { IncidentType, Jornada, Severity } from "@/lib/types";
 import { Sheet, SheetContent, SheetDescription, SheetFooter, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -17,6 +17,8 @@ import { Label } from "@/components/ui/label";
 import { Segmented } from "./page";
 import { PhotoCaptureButtons } from "./photo-capture";
 import { PhotoThumb } from "./scene-photo";
+
+const NO_JORNADAS: Jornada[] = [];
 
 export const INCIDENT_ICONS: Record<IncidentType, LucideIcon> = {
   danos: Hammer,
@@ -45,25 +47,28 @@ export function IncidentSheet({
   onOpenChange: (v: boolean) => void;
   onCreated?: (incidentId: string) => void;
 }) {
-  const order = useAppStore((s) => s.orders.find((o) => o.id === orderId));
-  const allJornadas = useAppStore((s) => s.jornadas);
-  const allPhotos = useAppStore((s) => s.photos);
+  // Scoped read (doc §2): an order outside the role's scope resolves to null and the sheet renders nothing, whoever mounts it.
+  const bundle = useOrderBundle(orderId);
+  const order = bundle?.order;
   const addIncident = useAppStore((s) => s.addIncident);
   const updateIncident = useAppStore((s) => s.updateIncident);
   const updatePhoto = useAppStore((s) => s.updatePhoto);
   const deletePhoto = useAppStore((s) => s.deletePhoto);
   const isDesktop = useMediaQuery("(min-width: 768px)");
 
-  const jornadas = useMemo(() => allJornadas.filter((j) => j.orderId === orderId).sort((a, b) => a.dayIndex - b.dayIndex), [allJornadas, orderId]);
+  const jornadas = bundle?.jornadas ?? NO_JORNADAS;
   const [type, setType] = useState<IncidentType>("faltante_material");
   const [severity, setSeverity] = useState<Severity>("media");
   const [description, setDescription] = useState("");
   const [blocks, setBlocks] = useState(false);
   const [jId, setJId] = useState<string | undefined>(jornadaId);
   const [photoIds, setPhotoIds] = useState<string[]>([]);
-  const photos = allPhotos.filter((p) => photoIds.includes(p.id));
+  const photos = (bundle?.photos ?? []).filter((p) => photoIds.includes(p.id));
 
-  useEffect(() => {
+  // Every time the sheet opens it starts from a clean draft (state adjusted during render, not in an effect).
+  const [wasOpen, setWasOpen] = useState(open);
+  if (open !== wasOpen) {
+    setWasOpen(open);
     if (open) {
       setType("faltante_material");
       setSeverity("media");
@@ -72,8 +77,7 @@ export function IncidentSheet({
       setPhotoIds([]);
       setJId(jornadaId ?? jornadas.find((j) => j.status === "en_curso")?.id ?? jornadas.at(-1)?.id);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open]);
+  }
 
   if (!order) return null;
 
@@ -87,7 +91,9 @@ export function IncidentSheet({
       toast.error("Describe la incidencia (mínimo 6 caracteres)");
       return;
     }
-    const inc = addIncident({ orderId, jornadaId: jId, type, severity, description: description.trim(), photoIds, blocksClosure: blocks });
+    // A refusal was already toasted by the store: keep the sheet open with the draft.
+    const inc = attempt(() => addIncident({ orderId, jornadaId: jId, type, severity, description: description.trim(), photoIds, blocksClosure: blocks }));
+    if (!inc) return;
     photoIds.forEach((pid) => updatePhoto(pid, { incidentId: inc.id }));
     if (photoIds.length) updateIncident(inc.id, { photoIds });
     toast.success(`Incidencia ${inc.folio} registrada`, { description: blocks ? "La orden quedó marcada “Con incidencia”." : undefined });

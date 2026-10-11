@@ -50,7 +50,7 @@ export type NavItem = {
 
 /** Field screens are the supervisor's: Dirección and Administración see jornadas, evidence and incidents inside the order. */
 const FIELD: Role[] = ["supervisor"];
-/** Indicadores (and their exports) are for Dirección and Administración; supervisors see their own figures on Hoy. */
+/** Indicadores (and their exports) and the Equipo directory are for Dirección and Administración; supervisors see their own figures on Hoy. */
 const MANAGEMENT: Role[] = ["direccion", "administracion"];
 
 export type NavBadgeKey = NonNullable<NavItem["badge"]>;
@@ -95,7 +95,8 @@ export const NAV_GROUPS: NavGroup[] = [
     icon: ChartColumn,
     items: [
       { key: "indicadores", href: "/indicadores", label: "Indicadores", icon: ChartColumn, roles: MANAGEMENT },
-      { key: "equipo", href: "/equipo", label: "Equipo", icon: Users },
+      // The staff directory (phones, WhatsApp, workload of every supervisor) is for Dirección and Administración; supervisors plan with the crew picker.
+      { key: "equipo", href: "/equipo", label: "Equipo", icon: Users, roles: MANAGEMENT },
     ],
   },
 ];

@@ -15,6 +15,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Calendar } from "@/components/ui/calendar";
 import { Button } from "@/components/ui/button";
 import { PhotoImage } from "@/components/pk/scene-photo";
+import { PhotoFlags } from "@/components/pk/photo-flags";
 import { PersonAvatar } from "@/components/pk/bits";
 import { ClientMark } from "@/components/pk/client-mark";
 import { EmptyState } from "@/components/pk/feedback";
@@ -244,6 +245,7 @@ function GalleryTile({
         <span className={cn("size-1.5 rounded-full", toneDot[k.tone])} />
         {k.label.toUpperCase()}
       </span>
+      <PhotoFlags photo={photo} />
       {pending ? (
         <span className="absolute right-2.5 top-2.5 inline-flex items-center gap-1 rounded-full bg-amber-soft px-2 py-0.5 text-[10.5px] font-semibold text-amber-fg">
           <CloudOff className="size-3" /> Pendiente

@@ -22,6 +22,7 @@ import {
 import { cn } from "@/lib/utils";
 import { IconTile } from "@/components/pk/bits";
 import { EASE } from "@/components/pk/motion";
+import { useCanSeeRoute } from "@/components/shell/use-can-see-route";
 import { Button } from "@/components/ui/button";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { DocTag, SearchField, norm } from "@/features/configuracion/shared";
@@ -41,6 +42,8 @@ const RULE_ICON: Record<RuleIcon, { icon: React.ReactNode; tone: React.Component
 /* ───────────── §8 business rules ───────────── */
 
 export function BusinessRules() {
+  // Links go only to screens the current role may open (field screens: supervisor · Indicadores / Equipo: management).
+  const canSee = useCanSeeRoute();
   return (
     <motion.ul
       initial="hidden"
@@ -80,10 +83,12 @@ export function BusinessRules() {
                 <span className="font-semibold">En el prototipo: </span>
                 {r.how}
               </p>
-              <Link href={r.href} className="group/link mt-auto inline-flex w-fit items-center gap-1.5 pt-4 text-[13.5px] font-semibold text-link">
-                {r.linkLabel}
-                <ArrowRight className="size-4 transition-transform group-hover/link:translate-x-0.5" />
-              </Link>
+              {canSee(r.href) && (
+                <Link href={r.href} className="group/link mt-auto inline-flex w-fit items-center gap-1.5 pt-4 text-[13.5px] font-semibold text-link">
+                  {r.linkLabel}
+                  <ArrowRight className="size-4 transition-transform group-hover/link:translate-x-0.5" />
+                </Link>
+              )}
             </div>
           </motion.li>
         );
@@ -95,6 +100,7 @@ export function BusinessRules() {
 /* ───────────── §11 pending decisions ───────────── */
 
 export function PendingQuestions() {
+  const canSee = useCanSeeRoute();
   return (
     <motion.ul
       initial="hidden"
@@ -123,7 +129,7 @@ export function PendingQuestions() {
             <span className="font-semibold text-ink/85">Supuesto del prototipo: </span>
             {p.now}
           </p>
-          {p.href && (
+          {p.href && canSee(p.href) && (
             <Link href={p.href} className="group relative mt-auto inline-flex w-fit items-center gap-1.5 pt-3 text-[13px] font-semibold text-amber-ink hover:text-ink">
               {p.linkLabel}
               <ArrowRight className="size-3.5 transition-transform group-hover:translate-x-0.5" />
@@ -138,6 +144,7 @@ export function PendingQuestions() {
 /* ───────────── FAQ ───────────── */
 
 export function Faq() {
+  const canSee = useCanSeeRoute();
   const [q, setQ] = useState("");
   const [open, setOpen] = useState<string | null>(FAQ[0].q);
   const list = useMemo(() => {
@@ -169,7 +176,7 @@ export function Faq() {
                   <CollapsibleContent className="overflow-hidden data-closed:animate-collapsible-up data-open:animate-collapsible-down">
                     <div className="pb-5 pl-[68px] pr-5 text-[14.5px] leading-relaxed text-ink/80 sm:pl-[72px] sm:pr-8">
                       <p>{f.a}</p>
-                      {f.href && (
+                      {f.href && canSee(f.href) && (
                         <Link href={f.href} className="group mt-2 inline-flex items-center gap-1.5 text-[13.5px] font-semibold text-link">
                           {f.linkLabel}
                           <ArrowRight className="size-4 transition-transform group-hover:translate-x-0.5" />

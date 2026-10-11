@@ -1,10 +1,12 @@
 "use client";
 
+import Link from "next/link";
 import { motion } from "motion/react";
-import { Check, Smartphone, Sparkles } from "lucide-react";
+import { Check, ShieldAlert, Smartphone, Sparkles } from "lucide-react";
 import { firstName, fmtDate } from "@/lib/format";
 import type { SurveyAnswers } from "@/lib/types";
 import { EASE } from "@/components/pk/motion";
+import { Button } from "@/components/ui/button";
 import { NpsValue, Stars } from "@/features/postventa/rating";
 import { RATING_LABELS } from "@/features/postventa/lib";
 
@@ -122,6 +124,39 @@ export function SurveyMissing({ token }: { token: string }) {
           Código <span className="font-semibold text-ink tabular">{token}</span>
         </p>
         <p className="mt-8 font-serif text-[20px] italic text-brand-ink">Si piensas en limpio… ¡piensa en Pulkro!</p>
+      </motion.section>
+    </div>
+  );
+}
+
+/**
+ * A Pulkro session is open on this device. The public survey is answered by the client, never from a staff session (the
+ * answer would be recorded as the client's), so it shows neither the form nor stored answers until the session is closed.
+ */
+export function SurveyStaffSession({ onSignOut }: { onSignOut: () => void }) {
+  return (
+    <div className="flex flex-1 flex-col justify-center py-10">
+      <motion.section
+        initial={{ opacity: 0, y: 18 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.6, ease: EASE }}
+        className="glass-card rounded-[30px] px-6 py-9 text-center sm:px-10"
+      >
+        <span className="mx-auto inline-flex size-16 items-center justify-center rounded-[20px] bg-amber-soft text-amber-fg">
+          <ShieldAlert className="size-7" />
+        </span>
+        <h1 className="mt-6 font-serif text-[30px] font-medium leading-tight text-ink">Hay una sesión de Pulkro abierta</h1>
+        <p className="mx-auto mt-3 max-w-sm text-[15px] leading-relaxed text-ink/70">
+          La encuesta la responde el cliente, no el equipo de Pulkro. Para verla como la ve el cliente, cierre la sesión en este dispositivo; para consultar las respuestas, use Postventa.
+        </p>
+        <div className="mx-auto mt-7 flex w-full max-w-xs flex-col gap-2.5">
+          <Button onClick={onSignOut} className="h-12 rounded-[14px] text-[15px] font-semibold">
+            Cerrar sesión y abrir como cliente
+          </Button>
+          <Button asChild variant="outline" className="h-12 rounded-[14px] border-line text-[15px] font-semibold">
+            <Link href="/postventa">Volver a Postventa</Link>
+          </Button>
+        </div>
       </motion.section>
     </div>
   );
