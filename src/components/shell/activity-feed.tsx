@@ -56,6 +56,8 @@ type Ctx = {
   reassignedCases: Set<string>;
   /** Latest "Reasignó el caso" audit entry id per case: only that one can notify the current owner. */
   lastCaseReassignment: Map<string, string>;
+  /** Latest "Reasignó la orden" audit entry id per order: only that one can notify the current supervisor. */
+  lastOrderReassignment: Map<string, string>;
 };
 
 const WINDOW_DAYS = 30;
@@ -83,7 +85,9 @@ function toNotice(a: AuditEntry, c: Ctx): Omit<Notice, "unread" | "id" | "at" | 
         body: order?.status === "borrador" ? `${actor} le asignó ${ref}. Programe las jornadas.` : `${actor} le asignó ${ref}.`,
         href: orderHref,
       };
-    if (t.startsWith("Reasignó la orden") && t.endsWith(`a ${c.me.name}`))
+    // Match the assignee by id (the order's current supervisor), not by the name in the audit text, and only on the
+    // order's latest reassignment.
+    if (t.startsWith("Reasignó la orden") && role === "supervisor" && mine && order && c.lastOrderReassignment.get(order.id) === a.id)
       return { icon: UserRoundCheck, tone: "navy", title: "Le reasignaron una orden", body: `${actor} le asignó ${ref}.`, href: orderHref };
     if ((t === "Cambió estado a Reprogramada" || /^Programó \d+ jornada/.test(t)) && role !== "direccion")
       return { icon: CalendarClock, tone: "amber", title: "Cambiaron las fechas", body: `${actor} reprogramó ${ref}.`, href: `${orderHref}?tab=jornadas` };
@@ -206,7 +210,10 @@ function useNotifications() {
     const caseById = new Map(cases.map((x) => [x.id, x]));
     const surveyed = new Set(surveys.map((x) => x.orderId));
     const surveyById = new Map(surveys.map((x) => [x.id, x]));
-    const reassignedOrders = new Set(audit.filter((x) => x.entity === "orden" && x.action.startsWith("Reasignó la orden")).map((x) => x.entityId));
+    const orderReassignments = audit.filter((x) => x.entity === "orden" && x.action.startsWith("Reasignó la orden"));
+    const reassignedOrders = new Set(orderReassignments.map((x) => x.entityId));
+    const lastOrderReassignment = new Map<string, string>();
+    for (const x of [...orderReassignments].sort((p, q) => (p.at < q.at ? -1 : 1))) lastOrderReassignment.set(x.entityId, x.id);
     const caseReassignments = audit.filter((x) => x.entity === "caso" && x.action.startsWith("Reasignó el caso"));
     const reassignedCases = new Set(caseReassignments.map((x) => x.entityId));
     const lastCaseReassignment = new Map<string, string>();
@@ -231,6 +238,7 @@ function useNotifications() {
         reassignedOrders,
         reassignedCases,
         lastCaseReassignment,
+        lastOrderReassignment,
       });
       if (!n) continue;
       // One notice per kind per order (a report sent by WhatsApp and by email is one "Reporte enviado").
