@@ -3,6 +3,11 @@
 Account administration for **Dirección** (Pulkro Cuadrillas, `docs/backend/architecture.md` §2 and decision 11). The app's
 users screen (Configuración → Usuarios) calls it in account sessions; the demo never does.
 
+**Status (2026-10-11):** deployed to Pulkro (`cbdzndpdpwtxbhshidyi`), version 1, `verify_jwt` on; migration
+`admin_users_email_sync` applied; secrets `APP_URL=http://localhost:3000` and
+`APP_ORIGINS=http://localhost:3000,http://localhost:3100` until the app has its own URL. Checked from outside: no JWT → 401,
+preflight from an allowed origin → 204, from any other origin → 403.
+
 | Action | Body | What it does |
 |---|---|---|
 | `invite` | `{ action, opId, email, name, role, unitId, title?, phone?, hue? }` | `inviteUserByEmail` (`redirectTo` = `APP_URL` + `/acceso/definir-contrasena`), then `provision_profile` **with the caller's JWT**. If the profile fails, the auth user this call created is deleted again. |

@@ -1,7 +1,7 @@
 # Pulkro Cuadrillas — backend architecture (Supabase)
 
 Status (2026-10-11, after the PR #9 review): schema, RLS, business-rule RPCs, Storage and the auth hook function are
-**applied** to the Supabase project "Pulkro" (ref `cbdzndpdpwtxbhshidyi`, us-east-1, Postgres 17.11) — the 19 migrations
+**applied** to the Supabase project "Pulkro" (ref `cbdzndpdpwtxbhshidyi`, us-east-1, Postgres 17.11) — the 20 migrations
 below. The project holds the **demo dataset** (302 orders and their history, 11 password-less demo accounts; every row
 registered in `private.demo_rows`, removed in one call by `select private.drop_demo_data();`, see `supabase/seed/README.md`);
 no real accounts or data yet, no Storage objects. The app still runs on the on-device zustand store; wiring it to this
@@ -28,14 +28,16 @@ backend is the phased plan in §12.
 | `20261011063116_review_pr9_cubic_round2` | PR #9 review (cubic, round 2): `update_incident` refuses an empty patch and never detaches an incident from its jornada (`jornada_required`); `drop_demo_data` refuses while a surviving order names a demo material or demo worker; check-in/out and rescheduling under an open blocking incident update the status the order resumes; a supervisor owns a case only inside the order's unit; `upsert_site` locks clients before the site |
 | `20261011065308_review_pr9_cubic_round3` | PR #9 review (cubic, round 3): `referenced_profile_ids` reads every profile reference of a visible order and its records (field capture, incidents, photos, closures, reports, shares, surveys, cases) |
 | `20261011125657_decision_closed_order_reassign` | owner decision 19 (§14): Administración reassigns the supervisor of a closed order (only that field) without reopening it |
+| `20261011144326_admin_users_email_sync` | account administration (§2, decision 11): `sync_profile_email`, the RPC the `admin-users` Edge Function calls after changing a login e-mail |
 
-Written, **not applied yet** (the owner applies it): `20261011144326_admin_users_email_sync` — `sync_profile_email`, the RPC
-the `admin-users` Edge Function calls after changing a login e-mail (§2, decision 11); suite `18_admin_users`.
+Edge Function `admin-users` **deployed** (version 1, `verify_jwt` on; secrets `APP_URL` / `APP_ORIGINS` point at local
+development until the app has its own URL). Auth settings applied: sign-ups off, the password policy, the access-token hook
+(enabled), redirect URLs `http://localhost:3000/**` and `http://localhost:3100/**` (Site URL `http://localhost:3000`).
 
 Sources of truth mirrored here: `docs/requisitos.md`, `src/lib/types.ts`, `src/lib/permissions.ts`, `src/lib/hooks.ts`,
-`src/lib/store.ts`, `src/lib/domain.ts`. Tests: `supabase/tests/` (all 18 files pass, including the review regression suites
-`09` to `16` and the owner-decision suite `17`; they ignore the rows of the demo dataset; `00` — which now lists
-`sync_profile_email` — and the new `18_admin_users` need the migration `admin_users_email_sync` applied first). Types: `src/lib/supabase/database.types.ts` (regenerated after migration `20261011043034`).
+`src/lib/store.ts`, `src/lib/domain.ts`. Tests: `supabase/tests/` (all 19 files pass, including the review regression suites
+`09` to `16`, the owner-decision suite `17` and the account-administration suite `18`; they ignore the rows of the demo
+dataset). Types: `src/lib/supabase/database.types.ts` (regenerated after migration `20261011043034`).
 
 ---
 
@@ -48,7 +50,7 @@ PWA (Next.js 16, zustand + IndexedDB, works offline)
  │          re-checks role, scope and every business rule against server state, writes rows + audit, idempotent
  ├─ files:  Storage bucket `evidencias` (private): upload → then RPC add_photo links the metadata
  └─ auth:   Supabase Auth, e-mail + password; JWT carries role/unit hints from the hook (UI only)
-Edge Function `admin-users` (built, not deployed): invites/bans accounts with the secret key; profiles via RPC
+Edge Function `admin-users` (deployed): invites/bans accounts with the secret key; profiles via RPC
 Public survey page (/encuesta/[token]): anon → public.get_survey / public.submit_survey only
 ```
 
@@ -83,7 +85,7 @@ change or deactivation is effective **immediately** for data. The client calls `
 `PT401`/`PT403` or when it pulls a changed own profile, so menus catch up (and runs a full re-sync, §8).
 
 **Account lifecycle (Dirección = `users.admin`)** — Edge Function `admin-users` (`supabase/functions/admin-users/`,
-built, **not deployed yet**; contract, secrets, deploy and test steps in its `README.md`). `verify_jwt` on; the function
+**deployed**; contract, secrets, deploy and test steps in its `README.md`). `verify_jwt` on; the function
 re-verifies the JWT with `@supabase/server` (`createSupabaseContext`, project JWKS), requires an **active Dirección**
 profile before any Auth admin call, and writes every profile change **with the caller's JWT** so the database re-checks
 `users.admin` and audits who did it. The secret key only reaches `auth.admin` (and the caller's own profile row).
@@ -258,7 +260,7 @@ RPCs take the token instead of an op id.
 | `upsert_client`, `upsert_site`, `upsert_worker` | catalogs.admin (Administración own unit; Dirección all) | previous and new unit both checked; a client with orders cannot change unit (`client_in_use`), a client without orders that moves touches its sites; a site with orders cannot change client |
 | `upsert_service_type`, `upsert_material` | catalogs.admin | company-wide (as coded in `store.ts`) |
 | `provision_profile`, `update_profile` | users.admin | auth user must exist; no self role/unit/status change; no unit/role change with open orders or open cases; deactivation revokes sessions and returns `open_orders` |
-| `sync_profile_email` | users.admin | after `admin-users` changed the login e-mail: copies `lower(auth.users.email)` into `profiles.email`, audited (old → new); an address another profile uses → `email_taken`; already in sync → `changed: false` (migration `admin_users_email_sync`, not applied yet) |
+| `sync_profile_email` | users.admin | after `admin-users` changed the login e-mail: copies `lower(auth.users.email)` into `profiles.email`, audited (old → new); an address another profile uses → `email_taken`; already in sync → `changed: false` (migration `admin_users_email_sync`) |
 | `update_my_contact` | any active account | own phone only |
 | `sync_reconcile` (read) | any active account (SECURITY INVOKER, plain RLS) | returns the subset of ids still visible |
 
