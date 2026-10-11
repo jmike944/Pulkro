@@ -193,7 +193,7 @@ async function burst(store: Store) {
     return;
   }
   if (auth.state !== "ok") {
-    flagReauth(store);
+    flagReauth(store, { userId });
     return;
   }
   // …and every request of the burst carries that session's token, even if another account's session lands in the cookies
@@ -233,7 +233,7 @@ async function send(store: Store, client: SupabaseBrowserClient, item: SyncItem,
       const blob = await getPhotoBlob(op.upload.blobKey);
       if (blob) {
         const outcome = await upload(client, op.upload, blob);
-        if (outcome.kind !== "ok") return await settle(store, item, outcome);
+        if (outcome.kind !== "ok") return await settle(store, item, userId, outcome);
         patchItem(store, item.id, (q) => (q.op?.upload ? { op: { ...q.op, upload: { ...q.op.upload, uploaded: true } } } : {}));
       } else {
         // The device copy is gone (another tab of this account sent the photo and freed it): the RPC tells. Applied before
@@ -258,8 +258,8 @@ async function send(store: Store, client: SupabaseBrowserClient, item: SyncItem,
     const lost = lostAnswer(outcome);
     if (lost !== undefined) patchItem(store, item.id, { maybeApplied: lost || undefined });
     if (noPicture && outcome.kind === "retry" && outcome.reupload)
-      return await settle(store, item, { kind: "error", problem: { kind: "error", message: LOST_PHOTO_MESSAGE, code: outcome.problem.code, hint: "photo_lost" } });
-    return await settle(store, item, outcome, { sent, got: Date.now() });
+      return await settle(store, item, userId, { kind: "error", problem: { kind: "error", message: LOST_PHOTO_MESSAGE, code: outcome.problem.code, hint: "photo_lost" } });
+    return await settle(store, item, userId, outcome, { sent, got: Date.now() });
   } catch (e) {
     // Never leave an item "sincronizando" (it would hold its order until a reload): back in line, retried with backoff.
     console.warn("[push]", op.rpc, e instanceof Error ? e.message : e);
@@ -308,8 +308,11 @@ async function upload(client: SupabaseBrowserClient, u: NonNullable<NonNullable<
 /** When the RPC went out and when its answer arrived (device ms): a server time in the answer reads the server's clock. */
 type Timing = { sent: number; got: number };
 
-/** Records what happened to the item; tells the burst whether to go on. */
-async function settle(store: Store, item: SyncItem, outcome: Outcome, timing?: Timing): Promise<Step> {
+/**
+ * Records what happened to the item; tells the burst whether to go on. `userId`: the account the burst sends for — an
+ * answer about it (no access, a dead session) touches nothing once the store holds another account.
+ */
+async function settle(store: Store, item: SyncItem, userId: string, outcome: Outcome, timing?: Timing): Promise<Step> {
   switch (outcome.kind) {
     case "ok": {
       const at = nowIso();
@@ -330,7 +333,7 @@ async function settle(store: Store, item: SyncItem, outcome: Outcome, timing?: T
       return "next";
     case "inactive":
       patchItem(store, item.id, { state: "pendiente" });
-      await endInactive(store);
+      await endInactive(store, userId);
       return "stop";
     case "auth": {
       patchItem(store, item.id, { state: "pendiente" });
@@ -341,9 +344,9 @@ async function settle(store: Store, item: SyncItem, outcome: Outcome, timing?: T
         again = true;
         return "stop";
       }
-      if (refreshed === "inactive") await endInactive(store);
+      if (refreshed === "inactive") await endInactive(store, userId);
       else if (refreshed === "offline") retryLater(store, item, { kind: "reintento", message: NETWORK_MESSAGE, code: "network" });
-      else flagReauth(store);
+      else flagReauth(store, { userId });
       return "stop";
     }
   }

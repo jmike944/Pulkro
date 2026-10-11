@@ -557,13 +557,13 @@ async function refetchRecords(ctx: Ctx) {
   });
 }
 
-async function cycle(store: PullStore, opts: { full?: boolean }) {
+async function cycle(store: PullStore, opts: { full?: boolean; userId: string }) {
   // Another tab may hold the device now (lib/device-storage): this one reads nothing more for it.
   if (!(await stillWriter())) throw new PullError("aborted", "Otra ventana usa los datos de este dispositivo.");
   const startedAt = new Date().toISOString();
   const st0 = store.getState();
   const client = getSupabaseBrowserClient();
-  const ctx: Ctx = { store, client, data: client, db: client as unknown as LooseClient, userId: st0.session.userId };
+  const ctx: Ctx = { store, client, data: client, db: client as unknown as LooseClient, userId: opts.userId };
   if (missesOf !== ctx.userId) {
     misses.clear();
     missesOf = ctx.userId;
@@ -677,17 +677,20 @@ export function requestPull(store: PullStore, req: PullRequest = {}): Promise<vo
 }
 
 async function once(store: PullStore, full: boolean) {
+  // The account this cycle reads for. What its requests find (no access, another session) concerns that account only: by
+  // the time a stalled answer arrives, the store may hold the next person's.
+  const userId = store.getState().session.userId;
   const loaded = !!store.getState().session.pull?.loadedAt;
   usePullStatus.setState({ running: true, initial: full || !loaded });
   try {
-    await cycle(store, { full });
+    await cycle(store, { full, userId });
     usePullStatus.setState({ running: false, initial: false, error: undefined, errorAt: undefined, failures: 0, retryAt: 0 });
   } catch (e) {
     const err = e instanceof PullError ? e : new PullError("server", SERVER_TEXT, e instanceof Error ? e.message : String(e));
     if (err.kind === "server") console.warn("[pull]", err.detail ?? err.message);
     if (err.kind === "reauth" || err.kind === "inactive") {
-      if (err.kind === "inactive") await endInactive(store);
-      else flagReauth(store);
+      if (err.kind === "inactive") await endInactive(store, userId);
+      else flagReauth(store, { userId });
       usePullStatus.setState({ running: false, initial: false });
       return;
     }
@@ -700,11 +703,11 @@ async function once(store: PullStore, full: boolean) {
         return;
       }
       if (refreshed === "inactive") {
-        await endInactive(store);
+        await endInactive(store, userId);
         usePullStatus.setState({ running: false, initial: false });
         return;
       }
-      if (refreshed === "dead") flagReauth(store);
+      if (refreshed === "dead") flagReauth(store, { userId });
     }
     if (err.kind === "aborted") {
       usePullStatus.setState({ running: false, initial: false });
@@ -754,30 +757,28 @@ export async function tryRefresh(store: PullStore): Promise<"ok" | "dead" | "ina
 /**
  * The account's Supabase session is gone (or belongs to someone else): keep the data, stop pulling, let the shell offer to
  * sign in again ("Vuelva a entrar"). `noAccess`: the profile is no longer active — the shell blocks the app as well.
+ * `userId`: the account a request found this for — nothing happens when the store holds another one by now.
  */
-export function flagReauth(store: PullStore, { noAccess = false }: { noAccess?: boolean } = {}) {
+export function flagReauth(store: PullStore, { noAccess = false, userId }: { noAccess?: boolean; userId?: string } = {}) {
   store.setState((st) => {
     if (st.session.mode !== "supabase" || !st.session.signedIn) return st;
+    if (userId !== undefined && st.session.userId !== userId) return st;
     if (st.session.needsReauth && (st.session.noAccess || !noAccess)) return st;
     return { session: { ...st.session, needsReauth: true, ...(noAccess ? { noAccess: true } : {}) } };
   });
 }
 
 /**
- * A deactivated (or deleted) profile: block the app first, then end the Supabase session on this device — this account's
- * only: by now the browser may hold another account's (signed in, or an e-mail link opened, in another tab), and that one
- * stays.
+ * `userId`'s profile is deactivated (or deleted) — what a request made for that account found. When the store still holds
+ * that account: block the app first, then end the Supabase session on this device — this account's only: by now the
+ * browser may hold another account's (signed in, or an e-mail link opened, in another tab), and that one stays
+ * (endSessionOnDevice compares the cookies' owner, and the session it would revoke, with `userId`). When the store holds
+ * another account by now (the next person signed in while the request stalled): nothing.
  */
-export async function endInactive(store: PullStore) {
-  const userId = store.getState().session.userId;
-  flagReauth(store, { noAccess: true });
-  try {
-    const { data } = await getSupabaseBrowserClient().auth.getSession();
-    if (data.session && data.session.user.id !== userId) return;
-  } catch {
-    // cannot tell: end it (the cookies are this device's, and the account on the device has no access)
-  }
-  // Only this account's session (another may have landed in the cookies since the check above: it stays).
+export async function endInactive(store: PullStore, userId: string) {
+  const st = store.getState();
+  if (st.session.mode !== "supabase" || !st.session.signedIn || st.session.userId !== userId) return;
+  flagReauth(store, { noAccess: true, userId });
   await endSessionOnDevice({ timeoutMs: 5000, userId });
 }
 

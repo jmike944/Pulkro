@@ -166,8 +166,14 @@ export async function endSessionOnDevice({ revoke = true, timeoutMs = 8000, user
           .catch(() => null),
         expired,
       ]);
-      // The session the sign-out started with (a cookie this code cannot read: whatever auth-js read), still valid.
-      if (session && (owner === undefined || session.user.id === owner) && (session.expires_at ?? 0) * 1000 > Date.now()) {
+      // The session the sign-out started with (a cookie this code cannot read: whatever auth-js read), still valid — and, for
+      // `userId`, that account's (never another account's, even when the cookie could not be read).
+      if (
+        session &&
+        (owner === undefined || session.user.id === owner) &&
+        (!userId || session.user.id === userId) &&
+        (session.expires_at ?? 0) * 1000 > Date.now()
+      ) {
         await fetch(`${SUPABASE_URL}/auth/v1/logout?scope=local`, {
           method: "POST",
           headers: { apikey: SUPABASE_PUBLISHABLE_KEY, Authorization: `Bearer ${session.access_token}` },
