@@ -12,10 +12,16 @@
  *   { action: "change_email", opId, userId, email }
  *       admin updateUserById {email, email_confirm:true}, then sync_profile_email (caller's JWT); if the database refuses the
  *       sync (any 4xx), the auth e-mail goes back to the previous one; an unknown outcome (no answer, 5xx) leaves it, and the
- *       same request again completes it; email_changed (another change of the same account won the race) leaves it too.
+ *       same request again completes it; email_changed (another change of the same account won the race) leaves it too. The
+ *       sync ends the person's sessions when it changes the address: they sign in again with the new one.
+ *   { action: "resend_invite", opId, userId }
+ *       the invitation e-mail again (inviteUserByEmail on the same address), only for an active profile whose auth account
+ *       was invited and never signed in; otherwise 409 already_active («¿Olvidó su contraseña?» is the way in). Nothing is
+ *       written in the database: opId is accepted for symmetry and not stored.
  *
  * 200 → { ok: true, action, duplicate, user_id, profile, open_orders?, invite_pending? }   (`profile` = the public.profiles
  *       row as the caller reads it after the change, or null if that read failed: the next pull brings it)
+ *       resend_invite → { ok: true, action, resent: true, user_id }
  * 4xx/5xx → { ok: false, code, message }: `code` is stable (the database hint for RPC refusals, e.g. "self_change",
  *       "forbidden:users.admin", "op_id_reused"; otherwise one of the codes below), `message` is Spanish for the person.
  *
@@ -104,6 +110,8 @@ const MSG = {
   emailTaken: "Ese correo ya pertenece a otra cuenta de Pulkro Cuadrillas: use uno distinto.",
   emailInvalid: "Escriba un correo completo, como nombre@empresa.com.",
   outOfScope: "No encontrado o fuera de su alcance.",
+  alreadyActive:
+    "Esta persona ya no tiene una invitación pendiente: ya entró a Pulkro Cuadrillas o su cuenta ya está confirmada. Si no recuerda su contraseña, pídale que use «¿Olvidó su contraseña?» en la pantalla de inicio de sesión.",
   emailChanged: "Otra persona de Dirección cambió el correo de esta cuenta al mismo tiempo. Actualice la pantalla y revise el correo actual.",
 } as const;
 
@@ -196,7 +204,9 @@ type InviteRequest = {
 };
 type ActiveRequest = { action: "deactivate" | "reactivate"; opId: string; userId: string };
 type EmailRequest = { action: "change_email"; opId: string; userId: string; email: string };
-type AdminRequest = InviteRequest | ActiveRequest | EmailRequest;
+/** opId: accepted for symmetry with the other actions; nothing is written in the database, so nothing stores it. */
+type ResendRequest = { action: "resend_invite"; opId: string; userId: string };
+type AdminRequest = InviteRequest | ActiveRequest | EmailRequest | ResendRequest;
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const EMAIL_RE = /^[^@\s]+@[^@\s]+\.[^@\s]{2,}$/;
@@ -256,8 +266,10 @@ function parseRequest(raw: unknown): AdminRequest {
       return { action: body.action, opId, userId: uuidField(body, "userId", "Indique la cuenta (userId).") };
     case "change_email":
       return { action: "change_email", opId, userId: uuidField(body, "userId", "Indique la cuenta (userId)."), email: emailField(body) };
+    case "resend_invite":
+      return { action: "resend_invite", opId, userId: uuidField(body, "userId", "Indique la cuenta (userId).") };
     default:
-      return fail(400, "unknown_action", "Acción desconocida. Use invite, deactivate, reactivate o change_email.");
+      return fail(400, "unknown_action", "Acción desconocida. Use invite, deactivate, reactivate, change_email o resend_invite.");
   }
 }
 
@@ -354,10 +366,15 @@ async function invite(ctx: Ctx, req: InviteRequest) {
     const replay = await provision(ctx, req, existingId);
     if (replay.error) {
       if (replay.error.hint === "already_provisioned") {
+        // Another op id for an address that already has an account: say what to do with THAT account (an active one is not
+        // "reactivated"; its pending invitation is re-sent from its row).
+        const existing = await readProfile(ctx, existingId);
         fail(
           409,
           "email_taken",
-          "Ese correo ya pertenece a una cuenta de Pulkro Cuadrillas. Si es la misma persona, búsquela en la lista y, si está desactivada, reactívela. Si aún no ha aceptado su invitación, no se puede reenviar: pídale que use «¿Olvidó su contraseña?» con ese correo para definir su contraseña.",
+          existing && !existing.active
+            ? "Ese correo ya pertenece a una cuenta de Pulkro Cuadrillas que está desactivada. Si es la misma persona, búsquela en la lista y reactívela con el interruptor «Activo»."
+            : "Ese correo ya pertenece a una cuenta de Pulkro Cuadrillas. Si es la misma persona y aún no ha aceptado su invitación, búsquela en la lista, abra «Editar» en su fila y use «Reenviar invitación».",
         );
       }
       throw dbFailure(replay.error, replay.status);
@@ -502,6 +519,42 @@ async function changeEmail(ctx: Ctx, req: EmailRequest) {
   return done(now, !!result?.duplicate);
 }
 
+/**
+ * The invitation e-mail again, to the address of the auth account (the login). Only while the invitation is pending — the
+ * account was invited and never signed in (accepting an invitation always signs the person in), the same rule as
+ * change_email's invite_pending — and only for an active profile. GoTrue re-sends to an invited account that is not
+ * confirmed yet (a new link: the latest e-mail is the one to use); a confirmed one — e.g. after a change_email, which
+ * confirms the new address — is refused (email_exists) and answered as already_active, like an account in use: its way in is
+ * «¿Olvidó su contraseña?». Nothing is written in the database, so nothing is audited and no op is stored.
+ */
+async function resendInvite(ctx: Ctx, req: ResendRequest) {
+  if (!APP_URL) {
+    console.error("admin-users: APP_URL is not set (or not an http(s) URL)");
+    fail(500, "server_misconfigured", MSG.misconfigured);
+  }
+  const target = await ctx.db.from("profiles").select("id, active").eq("id", req.userId).maybeSingle();
+  if (target.error) throw dbFailure(target.error, target.status);
+  const profile = target.data as { id: string; active: boolean } | null;
+  if (!profile) fail(404, "out_of_scope", MSG.outOfScope);
+  if (!profile.active) {
+    fail(409, "account_inactive", "La cuenta está desactivada: reactívela antes de reenviar la invitación.");
+  }
+
+  const found = await ctx.admin.auth.admin.getUserById(req.userId);
+  if (found.error || !found.data?.user) throw authFailure(found.error, "lookup");
+  const authUser = found.data.user;
+  if (!authUser.invited_at || authUser.last_sign_in_at) fail(409, "already_active", MSG.alreadyActive);
+  if (!authUser.email) fail(404, "auth_user_missing", "La cuenta de acceso no tiene correo.");
+
+  const invited = await ctx.admin.auth.admin.inviteUserByEmail(authUser.email, { redirectTo: `${APP_URL}${INVITE_PATH}` });
+  if (invited.error) {
+    const code = invited.error.code;
+    if (code === "email_exists" || code === "user_already_exists") fail(409, "already_active", MSG.alreadyActive);
+    throw authFailure(invited.error, "invite");
+  }
+  return { ok: true, action: req.action, resent: true, user_id: req.userId };
+}
+
 function run(ctx: Ctx, req: AdminRequest) {
   switch (req.action) {
     case "invite":
@@ -511,6 +564,8 @@ function run(ctx: Ctx, req: AdminRequest) {
       return setActive(ctx, req);
     case "change_email":
       return changeEmail(ctx, req);
+    case "resend_invite":
+      return resendInvite(ctx, req);
   }
 }
 
