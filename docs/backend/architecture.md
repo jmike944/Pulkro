@@ -108,8 +108,10 @@ unit or status. **Unit or role changes are refused (`PT409 has_open_orders` / `h
 the person supervises open orders or owns open post-sale cases**: reassign first. Auth users with a profile cannot be
 deleted (`on delete restrict`): accounts are deactivated, history keeps names.
 
-**Bootstrap of the first Dirección account** (once, by the owner, SQL editor as `postgres`): invite the e-mail from
-Dashboard → Authentication → Users → Invite, then
+**Bootstrap of the first Dirección account** (once, by the owner, SQL editor as `postgres`). The pilot starts on a
+clean project (owner decision, 2026-10-11): the demo dataset holds the unit codes `MTY`, `APO` and `SAL`, so first remove
+it with `select private.drop_demo_data();` (and confirm `select count(*) from private.demo_rows` is 0). Then invite the
+e-mail from Dashboard → Authentication → Users → Invite, and
 `insert into public.units (id, name, code, city) values (gen_random_uuid(), 'Matriz Monterrey', 'MTY', 'Monterrey, N.L.');`
 and `insert into public.profiles (id, name, initials, role, unit_id, email) select u.id, '<Nombre>', '<IN>', 'direccion', (select id from public.units where code = 'MTY'), lower(u.email) from auth.users u where u.email = '<correo>';`.
 After that every account goes through the app/Edge Function.
@@ -424,7 +426,12 @@ of the integration (phase 1 of §12); the app still runs on its local demo store
 
 1. **Project settings** (dashboard): disable sign-ups; Site URL + redirect URLs; enable the hook; custom SMTP + Spanish
    invite/recovery templates; JWT expiry (keep ≤ 1 h) and session limits; new API keys; asymmetric signing keys.
-   Bootstrap the first Dirección (§2). Create a **dev/staging project or branch** for everything that follows.
+   **Passwords** (Authentication → Providers → Email): minimum length 12, require lowercase, uppercase and digits (no
+   symbol requirement: supervisors type on phones). Leaked-password protection (HaveIBeenPwned) needs the **Pro plan**; the
+   organization is on Free today. Move the project to Pro before the pilot — Free projects pause after a week without
+   activity and have no daily backups — and turn leaked-password protection on then.
+   Drop the demo dataset and bootstrap the first Dirección (§2). Create a **dev/staging project or branch** for everything
+   that follows (the demo dataset can be loaded there instead).
 2. **Auth in the app**: Supabase clients, `proxy.ts`, login/invite pages, `session` from Auth instead of the demo
    switcher (keep the demo behind `NEXT_PUBLIC_DEMO`).
 3. **Read path**: sync engine pull (cursor + scope gain + reconcile, §8) into the existing store (replace `ensureSeeded`

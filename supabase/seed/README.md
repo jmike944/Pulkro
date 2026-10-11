@@ -117,10 +117,11 @@ the dataset and the fingerprints prove the loaded content equals it.
 
 ## Interactions to know
 
-- **Unit codes** `MTY`, `APO`, `SAL` belong to the demo units. The bootstrap snippet in `docs/backend/architecture.md` §2
-  inserts `MTY`: drop the demo first, or bootstrap the real Dirección in a unit with another code. A real account placed
-  in a demo unit blocks the drop (`demo_in_use`) until it is moved.
+- **Unit codes** `MTY`, `APO`, `SAL` belong to the demo units. Owner decision (2026-10-11): the pilot starts on a clean
+  project — drop the demo, then bootstrap the real Dirección with the §2 snippet of `docs/backend/architecture.md`. No
+  real account goes into a demo unit (it would block the drop with `demo_in_use` until moved).
+- **Client contact e-mails** stay on `@demo.pulkro.test` (owner decision, 2026-10-11): a report or survey sent from the
+  demo can never reach a real mailbox.
 - **Folios** of real orders created while the demo is loaded continue after the demo's (`OS-24423`…).
-- **Database tests**: `00_schema_and_grants` passes with the demo loaded; `01_rls_read_matrix` assumes an empty database
-  (its Dirección fixture sees the demo rows and every persona sees the demo service types and materials) — run it after
-  dropping the demo, or on a branch.
+- **Database tests**: all suites pass with the demo loaded — the shared prelude copies `private.demo_rows` into `t_demo`
+  and the visibility checks skip those rows. They still lock what they touch while they run (see `supabase/tests/README.md`).
