@@ -48,6 +48,7 @@ import type {
 const idb = typeof indexedDB !== "undefined" ? createIdbStore("pulkro-cuadrillas", "state") : undefined;
 let writeTimer: ReturnType<typeof setTimeout> | undefined;
 let pendingWrite: { name: string; value: string } | null = null;
+let pendingSince = 0;
 const flushWrite = () => {
   clearTimeout(writeTimer);
   if (!idb || !pendingWrite) return;
@@ -66,9 +67,13 @@ const idbStorage: StateStorage = {
   getItem: async (name) => (idb ? ((await get<string>(name, idb)) ?? null) : null),
   setItem: (name, value) => {
     if (!idb) return;
+    const waiting = pendingWrite !== null;
     pendingWrite = { name, value };
+    // Debounce 350 ms, but never let a stream of updates postpone the write by more than ~1 s (a sign-in or a capture
+    // followed by constant store activity used to stay unsaved until the stream stopped).
+    if (!waiting) pendingSince = Date.now();
     clearTimeout(writeTimer);
-    writeTimer = setTimeout(flushWrite, 350);
+    writeTimer = setTimeout(flushWrite, Date.now() - pendingSince >= 1000 ? 0 : 350);
   },
   removeItem: async (name) => {
     if (idb) await del(name, idb);
