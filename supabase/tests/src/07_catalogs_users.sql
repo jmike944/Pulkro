@@ -30,7 +30,7 @@ begin
   perform pg_temp.err('cannot move an own client out of the unit', format($q$ select public.upsert_client(gen_random_uuid(), '33333333-0000-4000-8000-000000000001', 'Cliente Uno SA', 'Uno', 'Industrial', %L) $q$, c_u2), 'PT403', 'other_unit');
   perform pg_temp.err('cannot edit another unit''s client', format($q$ select public.upsert_client(gen_random_uuid(), '33333333-0000-4000-8000-000000000003', 'Cliente Tres SA', 'Tres', 'Residencial', %L) $q$, c_u1), 'PT403', 'other_unit');
   perform pg_temp.err('unknown unit', $q$ select public.upsert_client(gen_random_uuid(), gen_random_uuid(), 'Sin unidad SA', 'Sin', 'Comercial', '11111111-0000-4000-8000-0000000000ff') $q$, 'PT422', 'invalid_unit');
-  perform pg_temp.err('invalid e-mail', format($q$ select public.upsert_client(gen_random_uuid(), gen_random_uuid(), 'Correo malo SA', 'Malo', 'Comercial', %L, p_contact_email => 'no-es-correo') $q$, c_u1), '23514');
+  perform pg_temp.err('invalid e-mail', format($q$ select public.upsert_client(gen_random_uuid(), gen_random_uuid(), 'Correo malo SA', 'Malo', 'Comercial', %L, p_contact_email => 'no-es-correo') $q$, c_u1), 'PT422', 'invalid_value');
   perform pg_temp.ok('site for an own client', $q$ select public.upsert_site(gen_random_uuid(), '33333333-1000-4000-8000-000000000011', '33333333-0000-4000-8000-000000000011', 'Planta Norte', 25.8, -100.2, 'Av. Norte 1', 'Escobedo') $q$);
   perform pg_temp.err('site for another unit''s client', $q$ select public.upsert_site(gen_random_uuid(), gen_random_uuid(), '33333333-0000-4000-8000-000000000003', 'Sitio ajeno', 25.8, -100.2) $q$, 'PT403', 'other_unit');
   perform pg_temp.err('site for an unknown client', $q$ select public.upsert_site(gen_random_uuid(), gen_random_uuid(), '33333333-0000-4000-8000-0000000000ff', 'Sitio huérfano', 25.8, -100.2) $q$, 'PT404', 'out_of_scope');
@@ -87,6 +87,13 @@ begin
   -- open work blocks unit/role changes (reassign first) but never a deactivation, which reports what is left to reassign
   perform pg_temp.err('no unit move with open orders', $q$ select public.update_profile(gen_random_uuid(), '22222222-0000-4000-8000-000000000004', '{"unit_id": "11111111-0000-4000-8000-000000000002"}') $q$, 'PT409', 'has_open_orders');
   perform pg_temp.err('no role change with open orders', $q$ select public.update_profile(gen_random_uuid(), '22222222-0000-4000-8000-000000000004', '{"role": "administracion"}') $q$, 'PT409', 'has_open_orders');
+  -- an owner of open post-sale cases (Administración supervises no order, so only the case guard can stop the move)
+  perform pg_temp.as_user(c_adm1);
+  perform pg_temp.ok('ADM1 owns an open case', format($q$ select public.create_case(gen_random_uuid(), 'abababab-7000-4000-8000-000000000001', '66666666-0000-4000-8000-000000000001', 'calidad', 'media', 'telefono', 'Polvo en ventanas', %L, current_date + 3) $q$, c_adm1));
+  perform pg_temp.as_user(c_dir);
+  perform pg_temp.err('no unit move with open cases', $q$ select public.update_profile(gen_random_uuid(), '22222222-0000-4000-8000-000000000002', '{"unit_id": "11111111-0000-4000-8000-000000000002"}') $q$, 'PT409', 'has_open_cases');
+  perform pg_temp.err('no role change with open cases', $q$ select public.update_profile(gen_random_uuid(), '22222222-0000-4000-8000-000000000002', '{"role": "supervisor"}') $q$, 'PT409', 'has_open_cases');
+  perform pg_temp.ok('other edits stay possible', $q$ select public.update_profile(gen_random_uuid(), '22222222-0000-4000-8000-000000000002', '{"title": "Coordinadora de cuentas"}') $q$);
   v := pg_temp.ok('deactivate', $q$ select public.update_profile(gen_random_uuid(), '22222222-0000-4000-8000-000000000004', '{"active": false}') $q$)::jsonb;
   perform pg_temp.eq('deactivate SUP1', v ->> 'active', 'false');
   perform pg_temp.eq('deactivation lists the open orders to reassign', (v -> 'open_orders')::text,

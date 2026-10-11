@@ -121,6 +121,28 @@ export const GEO_SOURCE_LABEL: Record<GeoSource, string> = {
 /** Minimum length of the note required for a manual location or a remote-supervision record. */
 export const GEO_NOTE_MIN = 8;
 
+/** Minimum length of a post-sale case resolution (required to mark it resuelto or cerrado; server: update_case). */
+export const CASE_RESOLUTION_MIN = 10;
+
+/**
+ * Survey link tokens the server accepts (private.check_token): 43–64 base64url characters, at least 16 distinct ones and
+ * no 6-character sequence repeated. A random 256-bit token fails the last rule with probability ~10⁻⁸ (then regenerate).
+ */
+export function isStrongSurveyToken(token: string) {
+  if (!/^[A-Za-z0-9_-]{43,64}$/.test(token) || new Set(token).size < 16) return false;
+  const seen = new Set<string>();
+  for (let i = 0; i + 6 <= token.length; i++) {
+    const gram = token.slice(i, i + 6);
+    if (seen.has(gram)) return false;
+    seen.add(gram);
+  }
+  return true;
+}
+
+/** Hours per day of a service type (server: upsert_service_type and the service_types check). */
+export const SERVICE_HOURS_MIN = 0.5;
+export const SERVICE_HOURS_MAX = 24;
+
 export type PhotoTimingIssue = { id: "antes_after_checkout" | "despues_before_checkin"; label: string };
 
 /**

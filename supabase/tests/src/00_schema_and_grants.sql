@@ -24,9 +24,10 @@ begin
   perform pg_temp.eq('public tables',
     (select string_agg(tablename, ',' order by tablename) from pg_tables where schemaname = 'public'),
     (select string_agg(t, ',' order by t) from unnest(v_tables) t));
-  for r in select c.relname, c.relrowsecurity from pg_class c join pg_namespace n on n.oid = c.relnamespace
+  for r in select c.relname, c.relrowsecurity, c.relforcerowsecurity from pg_class c join pg_namespace n on n.oid = c.relnamespace
            where n.nspname in ('public', 'private') and c.relkind = 'r' loop
     perform pg_temp.check('RLS enabled on ' || r.relname, r.relrowsecurity);
+    perform pg_temp.check('RLS not forced on ' || r.relname, not r.relforcerowsecurity);
   end loop;
 
   -- 2. grants: anon nothing, authenticated SELECT only, service_role full on mutable tables and read + append on
@@ -51,11 +52,16 @@ begin
         has_table_privilege('service_role', 'public.' || v_t, 'update') and has_table_privilege('service_role', 'public.' || v_t, 'delete'));
     end if;
   end loop;
-  perform pg_temp.check('private.sync_ops not readable by API roles',
-    not has_table_privilege('authenticated', 'private.sync_ops', 'select') and not has_table_privilege('anon', 'private.sync_ops', 'select'));
-  perform pg_temp.check('private.order_assignments not readable by API roles',
-    not has_table_privilege('authenticated', 'private.order_assignments', 'select,insert,update,delete')
-    and not has_table_privilege('service_role', 'private.order_assignments', 'select,insert,update,delete'));
+  -- private tables (sync_ops, order_assignments, …): no privilege at all for any API role, service_role included
+  for r in select c.oid, c.relname from pg_class c join pg_namespace n on n.oid = c.relnamespace
+           where n.nspname = 'private' and c.relkind = 'r' loop
+    perform pg_temp.check('private.' || r.relname || ' unreachable by API roles',
+      not has_table_privilege('anon', r.oid, 'select,insert,update,delete,truncate,references,trigger')
+      and not has_table_privilege('authenticated', r.oid, 'select,insert,update,delete,truncate,references,trigger')
+      and not has_table_privilege('service_role', r.oid, 'select,insert,update,delete,truncate,references,trigger'));
+  end loop;
+  perform pg_temp.check('private tables present (sync_ops, order_assignments)',
+    to_regclass('private.sync_ops') is not null and to_regclass('private.order_assignments') is not null);
   perform pg_temp.check('folio sequences not usable by API roles',
     not has_sequence_privilege('authenticated', 'private.order_folio_seq', 'usage,select,update'));
   -- default privileges: future tables/functions in public are not auto-granted to the API roles
@@ -86,7 +92,7 @@ begin
       perform pg_temp.check('anon cannot execute private.' || r.proname, not has_function_privilege('anon', r.oid, 'execute'));
     end if;
     if r.nspname = 'private' and r.proname not in (select unnest(v_rpcs)) and r.proname not in
-       ('my_role', 'my_unit', 'can', 'visible_order_ids', 'evidence_order_id', 'evidence_kind', 'can_upload_evidence') then
+       ('my_role', 'my_unit', 'can', 'visible_order_ids', 'crew_worker_ids', 'evidence_order_id', 'evidence_kind', 'can_upload_evidence') then
       perform pg_temp.check('authenticated cannot execute helper private.' || r.proname, not has_function_privilege('authenticated', r.oid, 'execute'));
     end if;
   end loop;

@@ -3,13 +3,25 @@
 // Usage: node scripts/build-db-tests.mjs   (then run the generated files, see supabase/tests/README.md)
 import fs from 'node:fs';
 import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 
-const root = path.resolve(path.dirname(new URL(import.meta.url).pathname), '..');
+const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const srcDir = path.join(root, 'supabase/tests/src');
 const outDir = path.join(root, 'supabase/tests');
 const prelude = fs.readFileSync(path.join(srcDir, '_prelude.sql'), 'utf8').trimEnd();
 
-for (const file of fs.readdirSync(srcDir).filter((f) => /^\d\d_.*\.sql$/.test(f)).sort()) {
+const isSuite = (f) => /^\d\d_.*\.sql$/.test(f);
+const sources = fs.readdirSync(srcDir).filter(isSuite).sort();
+
+// A generated suite whose source was removed or renamed would keep running (and failing) under its old name.
+for (const file of fs.readdirSync(outDir).filter(isSuite)) {
+  if (!sources.includes(file)) {
+    fs.rmSync(path.join(outDir, file));
+    console.log(`removed supabase/tests/${file} (no source)`);
+  }
+}
+
+for (const file of sources) {
   const name = file.replace(/\.sql$/, '');
   const body = fs.readFileSync(path.join(srcDir, file), 'utf8').trimEnd();
   const out = [

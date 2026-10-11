@@ -16,10 +16,14 @@ empty. The app still runs on the on-device zustand store; wiring it to this back
 | `20261011042704_review_history_and_defaults` | review F13: global default privilege (no `EXECUTE` to `PUBLIC` on new functions) · F12: append-only tables also reject DELETE/TRUNCATE (vetted purge path), `service_role` read + append only on them |
 | `20261011042743_review_sync_and_visibility` | review F07: op id bound to a digest of its arguments (`sync_ops.args_hash`, regenerated wrappers) · F03: `orders.scope_changed_at` · F04: `private.order_assignments` (previous supervisors) · F14: `private.visible_order_ids()` and index-friendly order/child policies |
 | `20261011043034_review_business_rules` | review F01, F02, F04–F06, F08–F11: closure needs an executed jornada, day numbering, conflict reasons (`order_reassigned`, `jornada_rescheduled`, `parent_missing`, `photo_deleted`), client/supervisor moves with open work, bounded device times, incidents frozen after closure, 256-bit survey tokens, status derived from the jornadas |
+| `20261011050659_review_pr9_codex` | PR #9 review: a closed jornada keeps its crew (`jornada_closed`), the blocking flag of an open incident moves the order in/out of `con_incidencia` on edits, photos/incidents/cases re-read under the order lock, resolved/closed cases need their resolution (`resolution_required` + table check), validated rows locked `FOR SHARE` until commit (client, supervisor, case owner, crew), workers readable wherever they are on a visible crew (`private.crew_worker_ids()`) |
+| `20261011052012_review_pr9_cubic` | PR #9 review (cubic): op ids fail closed when only one side carries the request digest, service hours 0.5–24 (RPC + table check), breakdown lines need numeric hours, survey tokens without repeated 6-character sequences, incident resolution fields all-or-nothing, a conformity method needs the client's name |
+| `20261011053107_review_pr9_cubic_wrappers` | PR #9 review (cubic): request digests use SHA-256, wrappers map invalid input values to `PT422 invalid_value`, check-out derives the order status from every live jornada (`derived_status`) |
+| `20261011054527_review_pr9_followups` | adversarial pass on the PR #9 fixes: `assign_crew` follows the reference contract (`parent_missing` / `jornada_order_mismatch` / `jornada_rescheduled`), an open incident carries no resolution text, reopening a case re-checks its owner, a supervisor of another unit cannot reopen an order (`supervisor_other_unit`), `crew_worker_ids` materializes the visible orders |
 
 Sources of truth mirrored here: `docs/requisitos.md`, `src/lib/types.ts`, `src/lib/permissions.ts`, `src/lib/hooks.ts`,
-`src/lib/store.ts`, `src/lib/domain.ts`. Tests: `supabase/tests/` (all 10 files pass, including the review regression suite
-`09`). Types: `src/lib/supabase/database.types.ts` (regenerated after migration `20261011043034`).
+`src/lib/store.ts`, `src/lib/domain.ts`. Tests: `supabase/tests/` (all 14 files pass, including the review regression suites
+`09` to `13`; they ignore the rows of the demo dataset). Types: `src/lib/supabase/database.types.ts` (regenerated after migration `20261011043034`).
 
 ---
 
@@ -168,7 +172,7 @@ the RPCs. One permissive SELECT policy per table, `to authenticated`. `R` = `(se
 | `survey_tokens` | none (consults only) | `R in (administracion, supervisor) and order_id = any(V)` | same |
 | `units` | all | `id = U` | `id = U` |
 | `profiles` | all | `unit_id = U or role = 'direccion'` | self, creators of visible orders, owners/creators of visible cases |
-| `workers` | all | `unit_id = U` | `unit_id = U` |
+| `workers` | all | `unit_id = U` or on a visible crew | `unit_id = U` or on a visible crew |
 | `clients` | all | `unit_id = U` | `id in (select client_id from orders)` |
 | `sites` | all | `client_id in (select id from clients)` | `id in (select site_id from orders)` |
 | `service_types`, `materials` | `R is not null` | same | same |
@@ -182,15 +186,24 @@ statement with the role's own index; the policies compare against that array, wh
 23–36 ms to 1.4–3.6 ms; Dirección's incremental photo pull from 132 ms to 21 ms). Dirección's array holds every order id:
 fine at Pulkro's scale (tens of thousands); revisit beyond ~100 000 orders (§14).
 
+**Workers on a visible crew** (PR #9 review): a worker moved to another unit or deactivated can still be booked on
+open jornadas of the old unit (the app allows it after a confirmation) and is named in closed jornadas and crew history.
+`private.crew_worker_ids()` (SECURITY DEFINER, once per statement) collects the worker ids of the caller's visible
+`jornadas` and `crew_changes`, so the old unit keeps reading those people; planning pickers still filter by unit and
+`active` in the app, and `assign_crew` only accepts active workers of the order's unit.
+
 Dirección's "unit filter" stays a UI filter (Dirección sees all units). Deactivated accounts and accounts without a
 profile see nothing. Scope follows the data: reassigning an order moves every child row with it (test 01).
 
 ## 5. Write API (RPCs)
 
-Every mutation is `public.<name>(p_op_id uuid, …) returns jsonb`, a SECURITY INVOKER SQL wrapper generated by
+Every mutation is `public.<name>(p_op_id uuid, …) returns jsonb`, a SECURITY INVOKER PL/pgSQL wrapper generated by
 `private.expose_rpc` around `private.<name>` (SECURITY DEFINER, `search_path = ''`). The wrapper first stores
-`<op id>:<md5 of every other argument>` in the transaction-local setting `pulkro.op_args` (timestamptz arguments as epoch
-seconds, jsonb in canonical form), then calls the implementation. The definer function: resolves the caller from
+`<op id>:<SHA-256 of every other argument>` in the transaction-local setting `pulkro.op_args` (timestamptz arguments as
+epoch seconds, jsonb in canonical form), then calls the implementation. It also turns the raw errors of a bad input value
+(NULL into a NOT NULL column, a CHECK, a malformed number/date/enum, an overflow) into `PT422 invalid_value` with the
+original message as `detail`; business errors (`PTnnn`), duplicate ids (`23505`) and missing references (`23503`) pass
+through unchanged. The definer function: resolves the caller from
 `profiles` (`PT401` if none/inactive) → `begin_op` (idempotency, request digest) → `private.require` (permission matrix =
 `permissions.ts`) → loads and **locks** the order (`FOR UPDATE`) → validates → writes → audits → `finish_op`. The two anon
 RPCs take the token instead of an op id.
@@ -201,18 +214,18 @@ RPCs take the token instead of an op id.
 | `update_order` | general fields: order.edit · operational: + order.editOperational (own) | whitelisted keys; closed/cancelled refused; supervisor reassignment within unit, audited "Reasignó la orden de A a B", recorded in `private.order_assignments`, `scope_changed_at` stamped |
 | `set_order_status` | order.reschedule | flag `reprogramada` (reason ≥ 5) or confirm dates: leaving `reprogramada` goes to the status the jornadas support (`derived_status`), or `con_incidencia` while a blocking incident is open — the requested target is not trusted |
 | `cancel_order` | order.edit | open orders only, reason ≥ 5 |
-| `reopen_order` | order.reopen (supervisor, own) | finalizada/reporte_enviado/seguimiento → `reabierta`, keeps `previous_status`, stamps `reopened_at` |
+| `reopen_order` | order.reopen (supervisor, own, still in the order's unit — `supervisor_other_unit`) | finalizada/reporte_enviado/seguimiento → `reabierta`, keeps `previous_status`, stamps `reopened_at` |
 | `archive_order` | order.archive | reporte_enviado/seguimiento and no open cases |
-| `assign_crew` | crew.assign | active workers of the order's unit; history row; borrador → programada |
+| `assign_crew` | crew.assign | active workers of the order's unit (rows locked `FOR SHARE`); a named jornada follows the reference contract (`parent_missing` / `jornada_order_mismatch` / `jornada_rescheduled`) and must be pending or in progress — a closed day's crew is the record of who worked (`jornada_closed`); history row; borrador → programada |
 | `schedule_jornadas` | order.reschedule / crew.assign | executed days kept with their numbers, pending ones tombstoned, new days numbered after the highest executed day; an empty list is refused while nothing was executed (`days_required`); execution states recomputed (`derived_status`) |
 | `check_in` / `check_out` | field.capture | see §6 |
-| `add_jornada_note`, `log_reminder`, `set_jornada_breakdown` | field.capture | breakdown ≤ 24 h; notes allowed until cancelled/archived |
+| `add_jornada_note`, `log_reminder`, `set_jornada_breakdown` | field.capture | breakdown: every line a named activity with numeric hours ≥ 0, ≤ 24 h in total; notes allowed until cancelled/archived |
 | `add_photo`, `update_photo`, `delete_photo`, `set_photo_selected` | field.capture (postventa photos: postventa.manage) | object must already exist in Storage at `orders/<order>/<kind>/<photo>.<ext>`; references checked (`parent_missing` / `*_order_mismatch` / `jornada_rescheduled`); field photos frozen on closed orders; soft delete (`photo_deleted` afterwards) |
-| `add_incident`, `update_incident`, `resolve_incident` | field.capture | blocking incident → `con_incidencia` (+ previous status); edits only on open orders; resolving the last blocking one recomputes the status (`derived_status`; previous `finalizada`/`reabierta`/`reprogramada` resume) |
+| `add_incident`, `update_incident`, `resolve_incident` | field.capture | blocking incident → `con_incidencia` (+ previous status); edits only on open orders; flagging an open incident as blocking enters `con_incidencia`, un-flagging or resolving the last blocking one recomputes the status (`derived_status`; previous `finalizada`/`reabierta`/`reprogramada` resume); the incident is re-read under the order lock, so a second resolution answers `already_resolved` |
 | `validate_closure` | closure.authorize | see §6; new closure version |
 | `generate_report`, `log_share` | report.share | see §6 |
-| `create_case`, `update_case`, `add_case_note` | postventa.manage | owner = active Administración of the unit or the order's supervisor; case on reporte_enviado/archivada → seguimiento |
-| `create_survey`, `record_manual_survey` | postventa.manage | token 256-bit (`^[A-Za-z0-9_-]{43,64}$`, ≥ 16 distinct characters), device-generated |
+| `create_case`, `update_case`, `add_case_note` | postventa.manage | owner = active Administración of the unit or the order's supervisor; new cases start `abierto`/`en_proceso`; `resuelto`/`cerrado` need a resolution ≥ 10 characters (`resolution_required`; table check `post_sale_cases_resolution_required` as backstop); reopening a resolved/closed case re-checks its owner (`invalid_case_owner` — reassign in the same patch); case on reporte_enviado/archivada → seguimiento |
+| `create_survey`, `record_manual_survey` | postventa.manage | token 256-bit (`^[A-Za-z0-9_-]{43,64}$`, ≥ 16 distinct characters, no repeated 6-character sequence — a broken generator's cycles are refused; a random token fails it with p ≈ 10⁻⁸ and the app regenerates), device-generated |
 | `get_survey`, `submit_survey` | **anon only** | see §9 |
 | `upsert_unit` | users.admin (Dirección) | code normalised, unique |
 | `upsert_client`, `upsert_site`, `upsert_worker` | catalogs.admin (Administración own unit; Dirección all) | previous and new unit both checked; a client with orders cannot change unit (`client_in_use`), a client without orders that moves touches its sites; a site with orders cannot change client |
@@ -228,8 +241,8 @@ RPCs take the token instead of an op id.
 `closure_required`, `open_cases`, `not_reopenable`, `not_archivable`, `not_rescheduled`, `already_resolved`,
 `already_provisioned`, `self_change`, `site_in_use`, `client_in_use`, `has_open_orders`, `has_open_cases`,
 `op_id_reused`, `object_missing`, `parent_missing`, `order_reassigned`, `jornada_rescheduled`, `photo_deleted`,
-`append_only`) · `PT422` (`invalid_*`, `device_time_*`, `location_*`, `reason_required`, `weak_token`, `op_id_required`,
-`days_required`, `jornada_required`, `*_order_mismatch`, …) · `23505` duplicate id · `42501` no privilege. Messages are
+`append_only`, `jornada_closed`, `supervisor_other_unit`) · `PT422` (`invalid_*`, `device_time_*`, `location_*`, `reason_required`, `weak_token`,
+`op_id_required`, `days_required`, `jornada_required`, `resolution_required`, `*_order_mismatch`, …) · `23505` duplicate id · `42501` no privilege. Messages are
 user-facing Spanish (the same texts as `DENIED_REASON`/store toasts).
 
 **Not found vs. not yours**: a missing or out-of-scope **order** answers `PT404 out_of_scope` (no existence leak), except
@@ -268,6 +281,12 @@ still be in the device's queue; this reveals only whether a random UUID exists.
 - **Sharing** never claims delivery; the first share moves `finalizada → reporte_enviado`.
 - **Organisation integrity**: a client with orders keeps its unit; a supervisor/owner with open orders/cases keeps unit
   and role (reassign first); open orders therefore always have an active-or-deactivated supervisor of their own unit.
+- **Concurrency** (PR #9 review): every RPC locks the order first, then re-reads the row it edits (photo, incident, case)
+  `FOR UPDATE`, so an edit or delete committed by another device while the call waited is seen. A row that a validation
+  relies on but another RPC can move is locked `FOR SHARE` until commit — the client and supervisor in `create_order`, the
+  new supervisor in `update_order`, the case owner, the crew in `assign_crew` — and the moving side (`upsert_client`,
+  `update_profile`, `upsert_worker`) takes `FOR UPDATE` before its own checks: either the move waits and then sees the new
+  order/case/crew, or the creation waits and validates against the moved row.
 - **Survey** by token without login, once (§9).
 - **Audit** is written by the RPCs (`private.audit`): server `at`, `device_at` when the action has one, `op_id`,
   actor snapshot, `unit_id` of the touched record (order unit; catalog/user record unit; company-wide catalogs → actor unit)
@@ -302,7 +321,8 @@ One RPC per queue item keeps generated TypeScript types for every argument (a ba
 - **Idempotency**: each queue item has a UUID `op_id` (= `p_op_id`) and **stores its exact arguments**; a retry resends the
   same payload. `private.begin_op` inserts the op into `private.sync_ops` (`on conflict do nothing`) with the request
   digest: a retry returns the stored result with `duplicate: true` and changes nothing; the same op id with **other
-  arguments**, another action or another user → `PT409 op_id_reused` (never a false "applied"); concurrent retries
+  arguments**, another action or another user → `PT409 op_id_reused` (never a false "applied"; the digests must match
+  NULL included, so a stored op without digest and a call without the wrapper's binding never vouch for each other); concurrent retries
   serialize on the PK; a failed op rolls back its row, so it can be retried after fixing input. New rows also carry
   client-generated ids (a different op reusing an entity id → `23505`).
 - **Ordering & dependencies**: FIFO per device; an item may depend on earlier items for the same order (e.g.
@@ -380,20 +400,25 @@ tokens → `PT404`. Tokens are 256-bit (32 random bytes, base64url, generated wi
 - Legacy `anon`/`service_role` keys are deprecated by end of 2026: create the new keys and disable the legacy ones once
   nothing uses them. Recommended: migrate to asymmetric JWT signing keys so `getClaims()` verifies locally.
 
-## 11. Next.js integration (Next 16, App Router, `@supabase/ssr`)
+## 11. Next.js integration (Next 16, App Router, `@supabase/ssr`) — design, not built yet
 
-- `src/lib/supabase/client.ts`: `createBrowserClient<Database>(url, publishableKey)` — used by the store/sync engine.
-- `src/lib/supabase/server.ts`: `createServerClient<Database>` with `cookies: { getAll, setAll }` (`setAll` in try/catch
-  in Server Components).
-- `src/proxy.ts` (Next 16 renamed Middleware to Proxy): refresh the session (return the response `setAll` built, copy its
-  cookies/cache headers if redirecting), redirect to `/login` without a session except `/encuesta/*`, `/offline`, static
-  assets; optional optimistic route gating with `app_metadata.pulkro_role` + `canSeeRoute` — the database still decides.
-  Use `supabase.auth.getClaims()` there and in server code, never `getSession()`.
-- Login (`/login`): `signInWithPassword`; invite landing (`/acceso/definir-contrasena`): verify the invite link, then
-  `updateUser({ password })`. Sign-out clears IndexedDB only after the queue is empty (or warns).
+**Status:** only `src/lib/supabase/database.types.ts` exists today. Everything else in this section is the planned shape
+of the integration (phase 1 of §12); the app still runs on its local demo store and its demo `/login`.
+
+- `src/lib/supabase/client.ts` (to create): `createBrowserClient<Database>(url, publishableKey)` — used by the store/sync
+  engine.
+- `src/lib/supabase/server.ts` (to create): `createServerClient<Database>` with `cookies: { getAll, setAll }` (`setAll` in
+  try/catch in Server Components).
+- `src/proxy.ts` (to create; Next 16 renamed Middleware to Proxy): refresh the session (return the response `setAll`
+  built, copy its cookies/cache headers if redirecting), redirect to `/login` without a session except `/encuesta/*`,
+  `/offline`, static assets; optional optimistic route gating with `app_metadata.pulkro_role` + `canSeeRoute` — the
+  database still decides. Use `supabase.auth.getClaims()` there and in server code, never `getSession()`.
+- Login (`/login`, to rewire from the demo role picker): `signInWithPassword`; invite landing
+  (`/acceso/definir-contrasena`, to create): verify the invite link, then `updateUser({ password })`. Sign-out clears
+  IndexedDB only after the queue is empty (or warns).
 - Do not use the deprecated `@supabase/server` framework adapters; `@supabase/server` (`withSupabase`) is for the Edge
   Function only.
-- `src/lib/supabase/database.types.ts` is generated; regenerate after every migration.
+- `src/lib/supabase/database.types.ts` (exists) is generated; regenerate after every migration.
 
 ## 12. Phased plan to wire the app
 

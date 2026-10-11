@@ -22,6 +22,10 @@ auth hook, sync guarantees). Every file:
 | `07_catalogs_users.sql` | Units, clients, sites, workers, service types, materials per role/unit; user provisioning, self-protection, unit moves (refused with open orders/cases), clients with orders keep their unit, deactivation (RLS + session revocation + hook + open orders reported) and reactivation; self-service phone; auth users with a profile cannot be deleted |
 | `08_sync_idempotency.sql` | Op-id idempotency, no hijacking, failed ops retryable, server time stamping, `row_version`, tombstones, `sync_reconcile` scope-loss reconciliation |
 | `09_review_findings.sql` | **Adversarial review (2026-10-11) — regression suite, passes since migrations `review_history_and_defaults`, `review_sync_and_visibility`, `review_business_rules`.** One isolated block per finding (F01–F14: closure of never-executed orders, reschedule `day_index` collision, scope gain in the incremental pull (`scope_changed_at`, references, client unit moves), sync conflicts told apart from scope loss (`jornada_rescheduled`, `order_reassigned`, `parent_missing`), client/supervisor unit moves with open work, op ids bound to their payload, bounded device times, post-closure incident edits, 256-bit survey tokens, status derived from the jornadas, append-only DELETE/TRUNCATE, no default `EXECUTE` to `PUBLIC`, index-friendly visibility policies). Each block runs in a subtransaction that is always rolled back; the file raises `FAIL [review findings still open]` listing any regression and prints `ok` otherwise. F03 uses `ALTER TABLE … DISABLE TRIGGER` (rolled back) to backdate rows, so it holds `ACCESS EXCLUSIVE` locks on `clients`, `sites`, `jornadas` and `orders` while it runs |
+| `10_review_round2.sql` | **PR #9 review (2026-10-11), migration `review_pr9_codex`.** A closed jornada keeps its crew (`jornada_closed`, in-progress days still editable); the blocking flag of an open incident moves the order in and out of `con_incidencia` (other blockers kept, resolved incidents ignored, change audited); deleted photos and resolved incidents refused on retry; cases resolved/closed only with a resolution ≥ 10 characters (new cases start open, reopening and notes unaffected, table check as backstop); a worker moved to another unit stays readable for the old unit's supervisor and Administración through the crew (not for other supervisors) and is no longer assignable there. The two-session races (re-read under the order lock, `FOR SHARE` on validated rows) cannot interleave inside one transaction, so those checks pin the code shape |
+| `11_review_round3.sql` | **PR #9 review, cubic (2026-10-11), migration `review_pr9_cubic`.** Op id ↔ request digest fails closed (a stored op without digest and a call without the wrapper's binding are refused against each other; two unbound calls stay idempotent); service hours 0.5–24 in the RPC and the table; breakdown lines need a named activity and numeric hours; survey tokens with a 16-character cycle or a 37-character period refused while 500 random 256-bit tokens pass; incident resolution fields all-or-nothing; a conformity method needs the client's name |
+| `12_review_round4.sql` | **PR #9 review, cubic (2026-10-11), migration `review_pr9_cubic_wrappers`.** Every binding wrapper digests with SHA-256 (stored digest is 64 hex characters); every RPC wrapper maps invalid input values (NULL into NOT NULL, CHECK, smallint overflow) to `PT422 invalid_value` while duplicates keep `23505` and business errors keep their hint; checking out one day while another is in progress keeps the order `en_ejecucion` |
+| `13_review_round5.sql` | **Adversarial pass on the PR #9 fixes, migration `review_pr9_followups`.** `assign_crew` on a named jornada answers `parent_missing` / `jornada_order_mismatch` / `jornada_rescheduled`; an open incident cannot carry resolution text; reopening a case whose owner moved unit is refused unless reassigned in the same patch; a supervisor moved to another unit cannot reopen their closed order; `crew_worker_ids` materializes the visible orders |
 
 ## Sources and generation
 
@@ -37,14 +41,14 @@ node scripts/build-db-tests.mjs
 
 **Today — Supabase MCP (`execute_sql`).** Paste the whole content of one generated file into a single `execute_sql`
 call against the project. The call returns `[{"result":"ok","test":"…"}]` or an error whose message starts with
-`FAIL [label]`. Run the files in order 00 → 09; each one is independent and must print `ok`.
+`FAIL [label]`. Run the files in order 00 → 13; each one is independent and must print `ok`.
 
 **Later — psql / Supabase CLI** (any of them works the same way, the files only need a Postgres connection with the
 `postgres` role):
 
 ```bash
 # against a local stack (supabase start) or a branch / staging project
-for f in supabase/tests/0*.sql; do
+for f in supabase/tests/[0-9][0-9]_*.sql; do
   psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -q -f "$f" || exit 1
 done
 ```
@@ -61,5 +65,10 @@ Notes:
   database you can reset them with `select setval('private.order_folio_seq', 1, false)` (same for
   `incident_folio_seq`, `case_folio_seq` and `public.audit_log_id_seq`) — the test runs on 2026-10-11 did exactly that
   (guarded so it only runs while `orders`, `incidents`, `post_sale_cases` and `audit_log` are empty).
-- Prefer running them against a branch or a staging project once one exists; they are safe on production because of
-  the rollback, but they still take row locks for their duration.
+- The demo dataset (`supabase/seed/`) may be loaded: every demo row is registered in `private.demo_rows`, and the prelude
+  copies that registry into `t_demo` so the visibility checks (`pg_temp.seen`, audit lists) look at the fixtures only.
+- Run them against a branch or a staging project. The rollback keeps fixtures out of the data, but the files still lock
+  what they touch for their whole duration — row locks everywhere, and `09` (F03) takes `ACCESS EXCLUSIVE` locks on
+  `clients`, `sites`, `jornadas` and `orders`, which blocks every read and write of those tables until it ends. Against a
+  production database run them only while nobody uses it (as on 2026-10-11, before the pilot); once real users are on
+  it, use staging.

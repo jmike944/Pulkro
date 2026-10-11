@@ -42,8 +42,12 @@ begin
   perform pg_temp.ok('take the case', $q$ select public.update_case(gen_random_uuid(), 'abababab-0000-4000-8000-000000000001', '{"status": "en_proceso", "owner_id": "22222222-0000-4000-8000-000000000004"}', 'Supervisora tomó el caso') $q$);
   perform pg_temp.err('empty note', $q$ select public.add_case_note(gen_random_uuid(), 'abababab-0000-4000-8000-000000000001', '  ') $q$, 'PT422', 'invalid_text');
   perform pg_temp.ok('note', $q$ select public.add_case_note(gen_random_uuid(), 'abababab-0000-4000-8000-000000000001', 'Visita programada') $q$);
-  perform pg_temp.eq('timeline', (select string_agg(text, ' → ' order by created_at, text) from public.case_events where case_id = 'abababab-0000-4000-8000-000000000001'),
-    'Caso registrado y asignado. → Supervisora tomó el caso → Visita programada');
+  -- every event of this test shares the transaction's now(): check what the timeline holds (sorted by text) and that each
+  -- event carries server time; their order comes from created_at, one RPC = one transaction in production
+  perform pg_temp.eq('timeline events', (select string_agg(text, ' | ' order by text) from public.case_events where case_id = 'abababab-0000-4000-8000-000000000001'),
+    'Caso registrado y asignado. | Supervisora tomó el caso | Visita programada');
+  perform pg_temp.check('timeline events stamped with server time',
+    (select bool_and(created_at = now()) from public.case_events where case_id = 'abababab-0000-4000-8000-000000000001'));
   perform pg_temp.as_user(c_dir);
   perform pg_temp.err('Dirección cannot update cases', $q$ select public.add_case_note(gen_random_uuid(), 'abababab-0000-4000-8000-000000000001', 'Nota') $q$, 'PT403', 'forbidden:postventa.manage');
   -- a case on an archived order brings it back to follow-up (store.createCase)
@@ -54,6 +58,7 @@ begin
   perform pg_temp.as_user(c_sup1);
   perform pg_temp.err('weak token', $q$ select public.create_survey(gen_random_uuid(), gen_random_uuid(), '66666666-0000-4000-8000-000000000001', 'whatsapp', 'abc123') $q$, 'PT422', 'weak_token');
   perform pg_temp.err('guessable token (long but low entropy)', $q$ select public.create_survey(gen_random_uuid(), gen_random_uuid(), '66666666-0000-4000-8000-000000000001', 'whatsapp', repeat('ab', 22)) $q$, 'PT422', 'weak_token');
+  perform pg_temp.err('guessable token (16-character cycle: enough distinct characters, repeated sequence)', $q$ select public.create_survey(gen_random_uuid(), gen_random_uuid(), '66666666-0000-4000-8000-000000000001', 'whatsapp', rpad('', 43, 'k3Vq9_xT2mZ8pLw-')) $q$, 'PT422', 'weak_token');
   perform pg_temp.err('128-bit tokens are no longer enough', $q$ select public.create_survey(gen_random_uuid(), gen_random_uuid(), '66666666-0000-4000-8000-000000000001', 'whatsapp', 'Q3v9_xT2mK8pLw4ZbN7cR1yH') $q$, 'PT422', 'weak_token');
   perform pg_temp.ok('survey link', format($q$ select public.create_survey(gen_random_uuid(), 'acacacac-0000-4000-8000-000000000001', '66666666-0000-4000-8000-000000000001', 'whatsapp', %L) $q$, c_tok));
   perform pg_temp.err('token unique', format($q$ select public.create_survey(gen_random_uuid(), gen_random_uuid(), '66666666-0000-4000-8000-000000000001', 'email', %L) $q$, c_tok), '23505');

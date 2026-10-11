@@ -124,7 +124,7 @@ begin
   perform pg_temp.ok('open a case', $q$ select public.create_case(gen_random_uuid(), 'f3f3f3f3-0000-4000-8000-000000000001', '66666666-0000-4000-8000-000000000001', 'calidad', 'media', 'telefono', 'Polvo en ventanas', '22222222-0000-4000-8000-000000000004', current_date + 2) $q$);
   perform pg_temp.as_user(c_adm1);
   perform pg_temp.err('no archive with open cases', $q$ select public.archive_order(gen_random_uuid(), '66666666-0000-4000-8000-000000000001') $q$, 'PT409', 'open_cases');
-  perform pg_temp.ok('resolve the case', $q$ select public.update_case(gen_random_uuid(), 'f3f3f3f3-0000-4000-8000-000000000001', '{"status": "cerrado", "resolution": "Se limpió"}', 'Cerrado con el cliente') $q$);
+  perform pg_temp.ok('resolve the case', $q$ select public.update_case(gen_random_uuid(), 'f3f3f3f3-0000-4000-8000-000000000001', '{"status": "cerrado", "resolution": "Se limpiaron las ventanas"}', 'Cerrado con el cliente') $q$);
   perform pg_temp.err('only post-sale orders archive', $q$ select public.archive_order(gen_random_uuid(), '66666666-0000-4000-8000-000000000003') $q$, 'PT409', 'not_archivable');
   perform pg_temp.as_user(c_dir);
   perform pg_temp.err('Dirección cannot archive', $q$ select public.archive_order(gen_random_uuid(), '66666666-0000-4000-8000-000000000001') $q$, 'PT403', 'forbidden:order.archive');
@@ -146,8 +146,14 @@ begin
   perform pg_temp.err('shares cannot be deleted', $q$ delete from public.report_shares $q$, 'PT409', 'append_only');
   perform pg_temp.err('audit cannot be deleted', $q$ delete from public.audit_log $q$, 'PT409', 'append_only');
   perform pg_temp.err('audit cannot be truncated', $q$ truncate public.audit_log $q$, 'PT409', 'append_only');
+  -- a real note, so the row-level reject_delete trigger fires (an empty table would make both checks vacuous)
+  insert into public.jornada_notes (id, jornada_id, order_id, text, created_by)
+  values ('f4f4f4f4-0000-4000-8000-000000000001', '66666666-1000-4000-8000-000000000001', '66666666-0000-4000-8000-000000000001',
+          'Nota para la retención', '22222222-0000-4000-8000-000000000004');
+  perform pg_temp.err('notes cannot be deleted', $q$ delete from public.jornada_notes where id = 'f4f4f4f4-0000-4000-8000-000000000001' $q$, 'PT409', 'append_only');
   -- the vetted retention path (server-side job, owner only) can still purge inside its own transaction
   perform set_config('pulkro.history_purge', 'on', true);
-  perform pg_temp.ok('retention job purges notes', $q$ with d as (delete from public.jornada_notes returning 1) select count(*)::text from d $q$);
+  perform pg_temp.eq('retention job purges the note',
+    pg_temp.ok('purge', $q$ with d as (delete from public.jornada_notes where id = 'f4f4f4f4-0000-4000-8000-000000000001' returning 1) select count(*)::text from d $q$), '1');
   perform set_config('pulkro.history_purge', '', true);
 end $$;

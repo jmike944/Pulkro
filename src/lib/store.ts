@@ -15,7 +15,16 @@ import { differenceInCalendarDays, format, parseISO, startOfDay } from "date-fns
 import { toast } from "sonner";
 import { DEMO_USER_BY_ROLE, SEED_VERSION, generateSeed, shiftSnapshotDates } from "./seed";
 import { can, canSeeOrder, canSeeUnit, type Action } from "./permissions";
-import { GEO_NOTE_MIN, closureBlockers, derivedExecutionStatus, photoTimingIssues } from "./domain";
+import {
+  CASE_RESOLUTION_MIN,
+  GEO_NOTE_MIN,
+  SERVICE_HOURS_MAX,
+  SERVICE_HOURS_MIN,
+  closureBlockers,
+  derivedExecutionStatus,
+  isStrongSurveyToken,
+  photoTimingIssues,
+} from "./domain";
 import { plural } from "./format";
 import { DONE_STATUSES, OPEN_STATUSES } from "./status";
 import { DEMO_ENABLED } from "./demo";
@@ -89,12 +98,17 @@ const nextFolio = (items: { folio: string }[], prefix: string, width: number) =>
   const max = items.reduce((m, x) => Math.max(m, parseInt(x.folio.split("-")[1] ?? "0", 10) || 0), 0);
   return `${prefix}-${String(max + 1).padStart(width, "0")}`;
 };
-/** 256-bit survey link token (43 base64url characters): the server refuses shorter or low-entropy tokens. */
-const surveyToken = () =>
-  btoa(String.fromCharCode(...crypto.getRandomValues(new Uint8Array(32))))
-    .replace(/\+/g, "-")
-    .replace(/\//g, "_")
-    .replace(/=+$/, "");
+/** 256-bit survey link token (43 base64url characters): the server refuses shorter or structured tokens (isStrongSurveyToken). */
+const surveyToken = (): string => {
+  for (let attempt = 0; attempt < 8; attempt++) {
+    const token = btoa(String.fromCharCode(...crypto.getRandomValues(new Uint8Array(32))))
+      .replace(/\+/g, "-")
+      .replace(/\//g, "_")
+      .replace(/=+$/, "");
+    if (isStrongSurveyToken(token)) return token;
+  }
+  throw new Error("No se pudo generar un enlace de encuesta seguro en este dispositivo.");
+};
 const omit = <T extends object, K extends keyof T>(obj: T, keys: K[]): Omit<T, K> =>
   Object.fromEntries(Object.entries(obj).filter(([k]) => !keys.includes(k as K))) as Omit<T, K>;
 
@@ -222,7 +236,8 @@ export type AppState = DataSnapshot & {
   /** Audit-only reminder about missing evidence (Evidencias): never writes into the jornada's bitácora. */
   logReminder: (orderId: string, jornadaId?: string, note?: string) => void;
   /** Save the activity-hours split for a jornada (mobile "Desglose de horas" flow). */
-  setJornadaBreakdown: (jornadaId: string, breakdown: { activity: string; hours: number }[], note?: string) => void;
+  /** Returns whether it was saved (a refusal is toasted). */
+  setJornadaBreakdown: (jornadaId: string, breakdown: { activity: string; hours: number }[], note?: string) => boolean;
   addPhoto: (photo: NewPhotoInput) => string;
   updatePhoto: (photoId: string, patch: Partial<Pick<Photo, "area" | "note" | "caseId" | "incidentId">>) => void;
   deletePhoto: (photoId: string) => void;
@@ -315,6 +330,9 @@ export const useAppStore = create<AppState>()(
         return null;
       };
       const CASE_OWNER_RULE = "El responsable del caso debe ser el supervisor de la orden o alguien de Administración de la unidad.";
+      const SUPERVISOR_OTHER_UNIT = "Usted ya no pertenece a la unidad de esta orden: pida a Administración que la reasigne antes de reabrirla.";
+      const CASE_NEW_STATUS_RULE = "Un caso nuevo empieza abierto o en proceso: regístrelo y después márquelo como resuelto con su resolución.";
+      const CASE_RESOLUTION_RULE = `Escriba la resolución (al menos ${CASE_RESOLUTION_MIN} caracteres) para marcar el caso como resuelto o cerrado.`;
       /** Case owners: active Administración of the order's unit, or the order's own supervisor (who can see the case). */
       const isValidCaseOwner = (ownerId: string, order: Order) => {
         const u = getState().users.find((x) => x.id === ownerId);
@@ -587,6 +605,11 @@ export const useAppStore = create<AppState>()(
             denied("Solo se reabren órdenes finalizadas o con reporte enviado.");
             return;
           }
+          // A supervisor moved to another unit keeps seeing their closed orders but cannot reopen them (server: reopen_order).
+          if (ok.user.unitId !== o.unitId) {
+            denied(SUPERVISOR_OTHER_UNIT);
+            return;
+          }
           if (reason.trim().length < 5) {
             denied("Indique el motivo para reabrir la orden.");
             return;
@@ -621,8 +644,14 @@ export const useAppStore = create<AppState>()(
             return;
           }
           const s = getState();
-          if (jornadaId && !s.jornadas.some((j) => j.id === jornadaId && j.orderId === orderId)) {
+          const target = jornadaId ? s.jornadas.find((j) => j.id === jornadaId && j.orderId === orderId) : undefined;
+          if (jornadaId && !target) {
             denied(OUT_OF_SCOPE);
+            return;
+          }
+          // A closed day's crew is the record of who did the work (server: assign_crew → jornada_closed).
+          if (target?.status === "cerrada") {
+            denied(`La jornada ${target.dayIndex} ya se cerró: su cuadrilla queda como registro de quién hizo el trabajo y no se cambia.`);
             return;
           }
           const pool = new Set(s.workers.filter((w) => w.active && w.unitId === order.unitId).map((w) => w.id));
@@ -720,9 +749,9 @@ export const useAppStore = create<AppState>()(
           record("jornada", jornadaId, `Registro de salida · Jornada ${j.dayIndex} (${geoLabel(geo)})`, {
             orderId: j.orderId, reason: stamp.note, syncLabel: `Salida ${geo.source === "remota" ? "remota" : "GPS"} · ${order.folio}`,
           });
-          const remaining = getState().jornadas.filter((x) => x.orderId === j.orderId && x.status === "pendiente").length;
+          // Another day still in progress keeps the order en_ejecucion (server: record_check → derived_status).
           const o = getState().orders.find((x) => x.id === j.orderId);
-          if (o && o.status !== "con_incidencia") changeStatus(j.orderId, remaining > 0 ? "jornada_cerrada" : "pendiente_validacion");
+          if (o && o.status !== "con_incidencia") changeStatus(j.orderId, derivedExecutionStatus(j.orderId, getState().jornadas));
         },
 
         addJornadaNote: (jornadaId, text) => {
@@ -748,17 +777,23 @@ export const useAppStore = create<AppState>()(
 
         setJornadaBreakdown: (jornadaId, breakdown, note) => {
           const ok = allowJornada(["field.capture"], jornadaId);
-          if (!ok) return;
+          if (!ok) return false;
           const { jornada: j } = ok;
           if (isTerminal(ok.order.status)) {
             denied(CLOSED_ORDER);
-            return;
+            return false;
           }
+          // Every line needs a name and hours; 24 h at most in total (server: set_jornada_breakdown → invalid_breakdown).
           const total = breakdown.reduce((sum, b) => sum + b.hours, 0);
+          if (breakdown.some((b) => !b.activity.trim() || !Number.isFinite(b.hours) || b.hours < 0) || total > 24) {
+            denied("Cada actividad necesita nombre y horas (0 a 24 en total).");
+            return false;
+          }
           patchJornada(jornadaId, { breakdown, breakdownNote: note?.trim() || undefined });
           record("jornada", jornadaId, `Registró desglose de horas · Jornada ${j.dayIndex} (${total.toFixed(1)} h)`, {
             orderId: j.orderId, reason: note?.trim() || undefined, syncLabel: `Desglose de horas · ${ok.order.folio}`,
           });
+          return true;
         },
 
         addPhoto: (photo) => {
@@ -862,6 +897,21 @@ export const useAppStore = create<AppState>()(
           const rest = omit(patch, ["id", "folio", "orderId", "createdAt", "createdBy", "status", "resolvedAt", "resolvedBy"]);
           setState((st) => ({ incidents: st.incidents.map((i) => (i.id === incidentId ? { ...i, ...rest } : i)) }));
           record("incidencia", incidentId, `Actualizó incidencia ${inc.folio}`, { orderId: inc.orderId });
+          // The blocking flag of an open incident drives Con incidencia, like adding or resolving one (server: update_incident).
+          const blocks = rest.blocksClosure ?? inc.blocksClosure;
+          if (inc.status !== "abierta" || blocks === inc.blocksClosure) return;
+          const o = getState().orders.find((x) => x.id === inc.orderId);
+          if (!o) return;
+          if (blocks && o.status !== "con_incidencia") {
+            patchOrder(o.id, { previousStatus: o.status });
+            changeStatus(o.id, "con_incidencia", rest.description ?? inc.description);
+          } else if (!blocks && o.status === "con_incidencia") {
+            const stillBlocking = getState().incidents.some((i) => i.orderId === inc.orderId && i.status === "abierta" && i.blocksClosure);
+            if (stillBlocking) return;
+            const resumable: OrderStatus[] = ["finalizada", "reabierta", "reprogramada"];
+            const next = o.previousStatus && resumable.includes(o.previousStatus) ? o.previousStatus : derivedExecutionStatus(o.id, getState().jornadas);
+            changeStatus(o.id, next, `La incidencia ${inc.folio} ya no bloquea el cierre`);
+          }
         },
 
         resolveIncident: (incidentId, resolution) => {
@@ -959,6 +1009,8 @@ export const useAppStore = create<AppState>()(
         createCase: (input) => {
           const { user, order } = must(allowOrder(["postventa.manage"], input.orderId));
           must(isValidCaseOwner(input.ownerId, order) ? true : denied(CASE_OWNER_RULE));
+          // A case is resolved with its resolution, after it exists (server: create_case → resolution_required).
+          must(!input.status || input.status === "abierto" || input.status === "en_proceso" ? true : denied(CASE_NEW_STATUS_RULE));
           const s = getState();
           const at = nowIso();
           const c: PostSaleCase = {
@@ -980,6 +1032,21 @@ export const useAppStore = create<AppState>()(
           if (patch.ownerId !== undefined && patch.ownerId !== c.ownerId && !isValidCaseOwner(patch.ownerId, ok.order)) {
             denied(CASE_OWNER_RULE);
             return;
+          }
+          // Reopening hands the case back to its owner, who must still be able to see it (server: update_case).
+          const reopening = (c.status === "resuelto" || c.status === "cerrado") && (patch.status === "abierto" || patch.status === "en_proceso");
+          if (reopening && !isValidCaseOwner(patch.ownerId ?? c.ownerId, ok.order)) {
+            denied(`${CASE_OWNER_RULE} Reasigne el caso antes de reabrirlo.`);
+            return;
+          }
+          // Resolved and closed cases keep what was done for the client (server: update_case → resolution_required).
+          if ("status" in patch || "resolution" in patch) {
+            const status = patch.status ?? c.status;
+            const resolution = ("resolution" in patch ? patch.resolution : c.resolution)?.trim() ?? "";
+            if ((status === "resuelto" || status === "cerrado") && resolution.length < CASE_RESOLUTION_MIN) {
+              denied(CASE_RESOLUTION_RULE);
+              return;
+            }
           }
           const at = nowIso();
           const rest = omit(patch, ["id", "folio", "orderId", "clientId", "createdAt", "createdBy", "timeline"]);
@@ -1095,6 +1162,10 @@ export const useAppStore = create<AppState>()(
         },
         upsertServiceType: (stype) => {
           if (!allowCatalog(undefined)) return;
+          if (!(stype.defaultHoursPerDay >= SERVICE_HOURS_MIN && stype.defaultHoursPerDay <= SERVICE_HOURS_MAX)) {
+            denied(`Las horas por día van de ${SERVICE_HOURS_MIN} a ${SERVICE_HOURS_MAX}.`);
+            return;
+          }
           setState((st) => ({ serviceTypes: st.serviceTypes.some((c) => c.id === stype.id) ? st.serviceTypes.map((c) => (c.id === stype.id ? stype : c)) : [...st.serviceTypes, stype] }));
           record("catalogo", stype.id, `Guardó tipo de servicio ${stype.name}`);
         },

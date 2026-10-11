@@ -62,7 +62,14 @@ begin
   raise exception 'FAIL [%]: expected error % %, but it succeeded', p_label, p_state, coalesce(p_hint, '');
 end $$;
 
--- Readable row sets: ids → fixture labels, sorted ("O1,O2"). Unknown ids show as ?<uuid>.
+-- The demo dataset (supabase/seed/demo.sql) may be loaded: every one of its rows is registered in private.demo_rows. The
+-- visibility checks look at the fixtures, so registered demo rows are left out of pg_temp.seen() (and of the audit checks).
+create temp table t_demo (table_name text, row_id text, primary key (table_name, row_id)) on commit drop;
+create index on t_demo (row_id);
+grant select on t_demo to authenticated, anon;
+insert into t_demo select table_name, row_id from private.demo_rows;
+
+-- Readable row sets: ids → fixture labels, sorted ("O1,O2"). Unknown ids show as ?<uuid>; demo rows are skipped.
 create temp table t_label (id uuid primary key, label text not null) on commit drop;
 grant select, insert on t_label to authenticated, anon;
 create function pg_temp.seen(p_sql text) returns text language plpgsql as $$
@@ -70,7 +77,8 @@ declare v text;
 begin
   execute format(
     'select coalesce(string_agg(coalesce(l.label, ''?'' || x.id::text), '','' order by coalesce(l.label, ''?'' || x.id::text)), '''') '
-    'from (%s) as x(id) left join pg_temp.t_label l on l.id = x.id', p_sql) into v;
+    'from (%s) as x(id) left join pg_temp.t_label l on l.id = x.id '
+    'where not exists (select 1 from pg_temp.t_demo d where d.row_id = x.id::text)', p_sql) into v;
   return v;
 end $$;
 create function pg_temp.label(p_id uuid, p_label text) returns uuid language sql as $$
@@ -280,7 +288,7 @@ begin
   perform pg_temp.as_user(c_sup1);
   perform pg_temp.err('crew from another unit', $q$ select public.assign_crew(gen_random_uuid(), '66666666-0000-4000-8000-000000000003', array['44444444-0000-4000-8000-000000000003']::uuid[]) $q$, 'PT422', 'invalid_crew');
   perform pg_temp.err('inactive worker', $q$ select public.assign_crew(gen_random_uuid(), '66666666-0000-4000-8000-000000000003', array['44444444-0000-4000-8000-000000000004']::uuid[]) $q$, 'PT422', 'invalid_crew');
-  perform pg_temp.err('jornada of another order', $q$ select public.assign_crew(gen_random_uuid(), '66666666-0000-4000-8000-000000000003', array['44444444-0000-4000-8000-000000000001']::uuid[], 'x', '66666666-1000-4000-8000-000000000001') $q$, 'PT404', 'out_of_scope');
+  perform pg_temp.err('jornada of another order', $q$ select public.assign_crew(gen_random_uuid(), '66666666-0000-4000-8000-000000000003', array['44444444-0000-4000-8000-000000000001']::uuid[], 'x', '66666666-1000-4000-8000-000000000001') $q$, 'PT422', 'jornada_order_mismatch');
   perform pg_temp.eq('crew → programada',
     pg_temp.ok('assign', $q$ select public.assign_crew(gen_random_uuid(), '66666666-0000-4000-8000-000000000003', array['44444444-0000-4000-8000-000000000001', '44444444-0000-4000-8000-000000000002', '44444444-0000-4000-8000-000000000001']::uuid[], 'Asignación inicial') ->> 'status' $q$), 'programada');
   perform pg_temp.eq('pending jornadas carry the crew (deduplicated)', pg_temp.seen($q$ select unnest(worker_ids) from public.jornadas where order_id = '66666666-0000-4000-8000-000000000003' $q$), 'W1,W2');

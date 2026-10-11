@@ -4,6 +4,7 @@ import { useState } from "react";
 import { motion } from "motion/react";
 import { BadgeCheck, CheckCircle2, RotateCcw } from "lucide-react";
 import { toast } from "sonner";
+import { CASE_RESOLUTION_MIN } from "@/lib/domain";
 import { useAppStore } from "@/lib/store";
 import { useUi } from "@/lib/ui-store";
 import { CASE_CATEGORY, CASE_STATUS } from "@/lib/status";
@@ -19,8 +20,8 @@ import { useHeldTarget } from "./use-held-target";
 
 export type CaseMove = { c: PostSaleCase; client?: Client; owner?: User; to: CaseStatus };
 
-/** What the resolution / reopening text must say before it is recorded (unchanged rule). */
-const TEXT_MIN = 10;
+/** What the resolution / reopening text must say before it is recorded (the store and the server check the resolution). */
+const TEXT_MIN = CASE_RESOLUTION_MIN;
 
 /** Which status changes need a confirmation step (resolution text, client agreement or a reason). */
 export function moveNeedsDialog(c: PostSaleCase, to: CaseStatus) {
@@ -56,7 +57,7 @@ function CaseStatusForm({ move, open, onOpenChange }: { move: CaseMove; open: bo
   const [agreed, setAgreed] = useState(false);
 
   const reopening = to !== "resuelto" && to !== "cerrado";
-  const needsResolution = to === "resuelto" || (to === "cerrado" && !c.resolution);
+  const needsResolution = to === "resuelto" || (to === "cerrado" && (c.resolution?.trim().length ?? 0) < TEXT_MIN);
   const needsText = needsResolution || reopening;
   const textOk = text.trim().length >= TEXT_MIN;
   const canSubmit = (needsText ? textOk : true) && (to === "cerrado" ? agreed : true);

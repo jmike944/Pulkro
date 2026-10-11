@@ -62,7 +62,14 @@ begin
   raise exception 'FAIL [%]: expected error % %, but it succeeded', p_label, p_state, coalesce(p_hint, '');
 end $$;
 
--- Readable row sets: ids → fixture labels, sorted ("O1,O2"). Unknown ids show as ?<uuid>.
+-- The demo dataset (supabase/seed/demo.sql) may be loaded: every one of its rows is registered in private.demo_rows. The
+-- visibility checks look at the fixtures, so registered demo rows are left out of pg_temp.seen() (and of the audit checks).
+create temp table t_demo (table_name text, row_id text, primary key (table_name, row_id)) on commit drop;
+create index on t_demo (row_id);
+grant select on t_demo to authenticated, anon;
+insert into t_demo select table_name, row_id from private.demo_rows;
+
+-- Readable row sets: ids → fixture labels, sorted ("O1,O2"). Unknown ids show as ?<uuid>; demo rows are skipped.
 create temp table t_label (id uuid primary key, label text not null) on commit drop;
 grant select, insert on t_label to authenticated, anon;
 create function pg_temp.seen(p_sql text) returns text language plpgsql as $$
@@ -70,7 +77,8 @@ declare v text;
 begin
   execute format(
     'select coalesce(string_agg(coalesce(l.label, ''?'' || x.id::text), '','' order by coalesce(l.label, ''?'' || x.id::text)), '''') '
-    'from (%s) as x(id) left join pg_temp.t_label l on l.id = x.id', p_sql) into v;
+    'from (%s) as x(id) left join pg_temp.t_label l on l.id = x.id '
+    'where not exists (select 1 from pg_temp.t_demo d where d.row_id = x.id::text)', p_sql) into v;
   return v;
 end $$;
 create function pg_temp.label(p_id uuid, p_label text) returns uuid language sql as $$
@@ -292,7 +300,7 @@ begin
   perform pg_temp.ok('open a case', $q$ select public.create_case(gen_random_uuid(), 'f3f3f3f3-0000-4000-8000-000000000001', '66666666-0000-4000-8000-000000000001', 'calidad', 'media', 'telefono', 'Polvo en ventanas', '22222222-0000-4000-8000-000000000004', current_date + 2) $q$);
   perform pg_temp.as_user(c_adm1);
   perform pg_temp.err('no archive with open cases', $q$ select public.archive_order(gen_random_uuid(), '66666666-0000-4000-8000-000000000001') $q$, 'PT409', 'open_cases');
-  perform pg_temp.ok('resolve the case', $q$ select public.update_case(gen_random_uuid(), 'f3f3f3f3-0000-4000-8000-000000000001', '{"status": "cerrado", "resolution": "Se limpió"}', 'Cerrado con el cliente') $q$);
+  perform pg_temp.ok('resolve the case', $q$ select public.update_case(gen_random_uuid(), 'f3f3f3f3-0000-4000-8000-000000000001', '{"status": "cerrado", "resolution": "Se limpiaron las ventanas"}', 'Cerrado con el cliente') $q$);
   perform pg_temp.err('only post-sale orders archive', $q$ select public.archive_order(gen_random_uuid(), '66666666-0000-4000-8000-000000000003') $q$, 'PT409', 'not_archivable');
   perform pg_temp.as_user(c_dir);
   perform pg_temp.err('Dirección cannot archive', $q$ select public.archive_order(gen_random_uuid(), '66666666-0000-4000-8000-000000000001') $q$, 'PT403', 'forbidden:order.archive');
@@ -314,9 +322,15 @@ begin
   perform pg_temp.err('shares cannot be deleted', $q$ delete from public.report_shares $q$, 'PT409', 'append_only');
   perform pg_temp.err('audit cannot be deleted', $q$ delete from public.audit_log $q$, 'PT409', 'append_only');
   perform pg_temp.err('audit cannot be truncated', $q$ truncate public.audit_log $q$, 'PT409', 'append_only');
+  -- a real note, so the row-level reject_delete trigger fires (an empty table would make both checks vacuous)
+  insert into public.jornada_notes (id, jornada_id, order_id, text, created_by)
+  values ('f4f4f4f4-0000-4000-8000-000000000001', '66666666-1000-4000-8000-000000000001', '66666666-0000-4000-8000-000000000001',
+          'Nota para la retención', '22222222-0000-4000-8000-000000000004');
+  perform pg_temp.err('notes cannot be deleted', $q$ delete from public.jornada_notes where id = 'f4f4f4f4-0000-4000-8000-000000000001' $q$, 'PT409', 'append_only');
   -- the vetted retention path (server-side job, owner only) can still purge inside its own transaction
   perform set_config('pulkro.history_purge', 'on', true);
-  perform pg_temp.ok('retention job purges notes', $q$ with d as (delete from public.jornada_notes returning 1) select count(*)::text from d $q$);
+  perform pg_temp.eq('retention job purges the note',
+    pg_temp.ok('purge', $q$ with d as (delete from public.jornada_notes where id = 'f4f4f4f4-0000-4000-8000-000000000001' returning 1) select count(*)::text from d $q$), '1');
   perform set_config('pulkro.history_purge', '', true);
 end $$;
 

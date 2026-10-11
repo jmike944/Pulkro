@@ -62,7 +62,14 @@ begin
   raise exception 'FAIL [%]: expected error % %, but it succeeded', p_label, p_state, coalesce(p_hint, '');
 end $$;
 
--- Readable row sets: ids → fixture labels, sorted ("O1,O2"). Unknown ids show as ?<uuid>.
+-- The demo dataset (supabase/seed/demo.sql) may be loaded: every one of its rows is registered in private.demo_rows. The
+-- visibility checks look at the fixtures, so registered demo rows are left out of pg_temp.seen() (and of the audit checks).
+create temp table t_demo (table_name text, row_id text, primary key (table_name, row_id)) on commit drop;
+create index on t_demo (row_id);
+grant select on t_demo to authenticated, anon;
+insert into t_demo select table_name, row_id from private.demo_rows;
+
+-- Readable row sets: ids → fixture labels, sorted ("O1,O2"). Unknown ids show as ?<uuid>; demo rows are skipped.
 create temp table t_label (id uuid primary key, label text not null) on commit drop;
 grant select, insert on t_label to authenticated, anon;
 create function pg_temp.seen(p_sql text) returns text language plpgsql as $$
@@ -70,7 +77,8 @@ declare v text;
 begin
   execute format(
     'select coalesce(string_agg(coalesce(l.label, ''?'' || x.id::text), '','' order by coalesce(l.label, ''?'' || x.id::text)), '''') '
-    'from (%s) as x(id) left join pg_temp.t_label l on l.id = x.id', p_sql) into v;
+    'from (%s) as x(id) left join pg_temp.t_label l on l.id = x.id '
+    'where not exists (select 1 from pg_temp.t_demo d where d.row_id = x.id::text)', p_sql) into v;
   return v;
 end $$;
 create function pg_temp.label(p_id uuid, p_label text) returns uuid language sql as $$
@@ -210,8 +218,12 @@ begin
   perform pg_temp.ok('take the case', $q$ select public.update_case(gen_random_uuid(), 'abababab-0000-4000-8000-000000000001', '{"status": "en_proceso", "owner_id": "22222222-0000-4000-8000-000000000004"}', 'Supervisora tomó el caso') $q$);
   perform pg_temp.err('empty note', $q$ select public.add_case_note(gen_random_uuid(), 'abababab-0000-4000-8000-000000000001', '  ') $q$, 'PT422', 'invalid_text');
   perform pg_temp.ok('note', $q$ select public.add_case_note(gen_random_uuid(), 'abababab-0000-4000-8000-000000000001', 'Visita programada') $q$);
-  perform pg_temp.eq('timeline', (select string_agg(text, ' → ' order by created_at, text) from public.case_events where case_id = 'abababab-0000-4000-8000-000000000001'),
-    'Caso registrado y asignado. → Supervisora tomó el caso → Visita programada');
+  -- every event of this test shares the transaction's now(): check what the timeline holds (sorted by text) and that each
+  -- event carries server time; their order comes from created_at, one RPC = one transaction in production
+  perform pg_temp.eq('timeline events', (select string_agg(text, ' | ' order by text) from public.case_events where case_id = 'abababab-0000-4000-8000-000000000001'),
+    'Caso registrado y asignado. | Supervisora tomó el caso | Visita programada');
+  perform pg_temp.check('timeline events stamped with server time',
+    (select bool_and(created_at = now()) from public.case_events where case_id = 'abababab-0000-4000-8000-000000000001'));
   perform pg_temp.as_user(c_dir);
   perform pg_temp.err('Dirección cannot update cases', $q$ select public.add_case_note(gen_random_uuid(), 'abababab-0000-4000-8000-000000000001', 'Nota') $q$, 'PT403', 'forbidden:postventa.manage');
   -- a case on an archived order brings it back to follow-up (store.createCase)
@@ -222,6 +234,7 @@ begin
   perform pg_temp.as_user(c_sup1);
   perform pg_temp.err('weak token', $q$ select public.create_survey(gen_random_uuid(), gen_random_uuid(), '66666666-0000-4000-8000-000000000001', 'whatsapp', 'abc123') $q$, 'PT422', 'weak_token');
   perform pg_temp.err('guessable token (long but low entropy)', $q$ select public.create_survey(gen_random_uuid(), gen_random_uuid(), '66666666-0000-4000-8000-000000000001', 'whatsapp', repeat('ab', 22)) $q$, 'PT422', 'weak_token');
+  perform pg_temp.err('guessable token (16-character cycle: enough distinct characters, repeated sequence)', $q$ select public.create_survey(gen_random_uuid(), gen_random_uuid(), '66666666-0000-4000-8000-000000000001', 'whatsapp', rpad('', 43, 'k3Vq9_xT2mZ8pLw-')) $q$, 'PT422', 'weak_token');
   perform pg_temp.err('128-bit tokens are no longer enough', $q$ select public.create_survey(gen_random_uuid(), gen_random_uuid(), '66666666-0000-4000-8000-000000000001', 'whatsapp', 'Q3v9_xT2mK8pLw4ZbN7cR1yH') $q$, 'PT422', 'weak_token');
   perform pg_temp.ok('survey link', format($q$ select public.create_survey(gen_random_uuid(), 'acacacac-0000-4000-8000-000000000001', '66666666-0000-4000-8000-000000000001', 'whatsapp', %L) $q$, c_tok));
   perform pg_temp.err('token unique', format($q$ select public.create_survey(gen_random_uuid(), gen_random_uuid(), '66666666-0000-4000-8000-000000000001', 'email', %L) $q$, c_tok), '23505');

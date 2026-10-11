@@ -62,7 +62,14 @@ begin
   raise exception 'FAIL [%]: expected error % %, but it succeeded', p_label, p_state, coalesce(p_hint, '');
 end $$;
 
--- Readable row sets: ids → fixture labels, sorted ("O1,O2"). Unknown ids show as ?<uuid>.
+-- The demo dataset (supabase/seed/demo.sql) may be loaded: every one of its rows is registered in private.demo_rows. The
+-- visibility checks look at the fixtures, so registered demo rows are left out of pg_temp.seen() (and of the audit checks).
+create temp table t_demo (table_name text, row_id text, primary key (table_name, row_id)) on commit drop;
+create index on t_demo (row_id);
+grant select on t_demo to authenticated, anon;
+insert into t_demo select table_name, row_id from private.demo_rows;
+
+-- Readable row sets: ids → fixture labels, sorted ("O1,O2"). Unknown ids show as ?<uuid>; demo rows are skipped.
 create temp table t_label (id uuid primary key, label text not null) on commit drop;
 grant select, insert on t_label to authenticated, anon;
 create function pg_temp.seen(p_sql text) returns text language plpgsql as $$
@@ -70,7 +77,8 @@ declare v text;
 begin
   execute format(
     'select coalesce(string_agg(coalesce(l.label, ''?'' || x.id::text), '','' order by coalesce(l.label, ''?'' || x.id::text)), '''') '
-    'from (%s) as x(id) left join pg_temp.t_label l on l.id = x.id', p_sql) into v;
+    'from (%s) as x(id) left join pg_temp.t_label l on l.id = x.id '
+    'where not exists (select 1 from pg_temp.t_demo d where d.row_id = x.id::text)', p_sql) into v;
   return v;
 end $$;
 create function pg_temp.label(p_id uuid, p_label text) returns uuid language sql as $$
@@ -218,17 +226,28 @@ exception when others then
 end $$;
 
 -- F01b · high · same bypass from a planned order: an empty reschedule tombstones the only (pending) day, a blocking
--- incident is opened and un-flagged, and the closure is validated straight from con_incidencia.
+-- incident is opened and un-flagged, and the closure is validated straight from con_incidencia. Each step is checked on
+-- its own: the empty reschedule is refused; a fully tombstoned order (set up directly, as if an older path had done it)
+-- leaves con_incidencia for the status its jornadas support; and even forced into a closable status it cannot close.
 do $$
 declare
   v_o uuid;
 begin
   v_o := pg_temp.new_order(12);
   perform pg_temp.as_user('22222222-0000-4000-8000-000000000004');
-  perform pg_temp.outcome(format($q$ select public.schedule_jornadas(gen_random_uuid(), %L, '[]') $q$, v_o));
+  perform pg_temp.err('F01b an empty reschedule cannot tombstone the only planned day',
+    format($q$ select public.schedule_jornadas(gen_random_uuid(), %L, '[]') $q$, v_o), 'PT422', 'days_required');
+  perform pg_temp.as_owner();
+  update public.jornadas set deleted_at = now() where order_id = v_o;
+  perform pg_temp.as_user('22222222-0000-4000-8000-000000000004');
   perform public.add_incident(gen_random_uuid(), '99999999-5000-4000-8000-000000000012', v_o, 'otra', 'baja', 'Incidencia que bloquea', true);
-  perform public.update_incident(gen_random_uuid(), '99999999-5000-4000-8000-000000000012', '{"blocks_closure": false}');
-  perform pg_temp.outcome(format($q$ select public.validate_closure(gen_random_uuid(), gen_random_uuid(), %L, 'Servicio realizado completo') $q$, v_o));
+  perform pg_temp.eq('F01b un-flagging leaves con_incidencia for the jornadas'' status (none live → borrador)',
+    public.update_incident(gen_random_uuid(), '99999999-5000-4000-8000-000000000012', '{"blocks_closure": false}') ->> 'order_status', 'borrador');
+  perform pg_temp.as_owner();
+  update public.orders set status = 'pendiente_validacion' where id = v_o;
+  perform pg_temp.as_user('22222222-0000-4000-8000-000000000004');
+  perform pg_temp.err('F01b no closure without an executed jornada, whatever the status',
+    format($q$ select public.validate_closure(gen_random_uuid(), gen_random_uuid(), %L, 'Servicio realizado completo') $q$, v_o), 'PT409', 'closure_blocked');
   perform pg_temp.as_owner();
   perform pg_temp.check('F01b no closure after tombstoning every planned day without executing any',
     not exists (select 1 from public.order_closures where order_id = v_o));
@@ -528,6 +547,49 @@ begin
   raise exception 'REVIEW_PASS';
 exception when others then
   perform pg_temp.verdict('F08', 'low', 'unbounded device / conformity timestamps', sqlerrm);
+end $$;
+
+-- F08b · the same bound on every other device time: notes, photos (attached_at and taken_at), reports and shares.
+do $$
+declare
+  v_o uuid;
+  c_j constant uuid := '66666666-1000-4000-8000-000000000082';
+  c_rep constant uuid := '99999999-6000-4000-8000-000000000082';
+  c_ph constant uuid := '99999999-7000-4000-8000-000000000082';
+begin
+  v_o := pg_temp.new_order(82);
+  perform pg_temp.put_object(v_o, 'antes', c_ph);
+  perform pg_temp.as_user('22222222-0000-4000-8000-000000000004');
+  perform public.assign_crew(gen_random_uuid(), v_o, array['44444444-0000-4000-8000-000000000001']::uuid[], 'Inicial');
+  perform public.check_in(gen_random_uuid(), c_j, now() - interval '3 hours', 25.7, -100.3, 10);
+  perform pg_temp.err('F08b note dated in the future',
+    format($q$ select public.add_jornada_note(gen_random_uuid(), gen_random_uuid(), %L, 'Nota del futuro', '2100-01-01T00:00:00Z') $q$, c_j),
+    'PT422', 'device_time_future');
+  perform pg_temp.err('F08b photo attached in the future',
+    format($q$ select public.add_photo(gen_random_uuid(), %L, %L, 'antes', %L, p_attached_at => '2100-01-01T00:00:00Z') $q$,
+      c_ph, v_o, format('orders/%s/antes/%s.jpg', v_o, c_ph)), 'PT422', 'device_time_future');
+  perform pg_temp.err('F08b photo taken in the future',
+    format($q$ select public.add_photo(gen_random_uuid(), %L, %L, 'antes', %L, p_taken_at => '2100-01-01T00:00:00Z') $q$,
+      c_ph, v_o, format('orders/%s/antes/%s.jpg', v_o, c_ph)), 'PT422', 'device_time_future');
+  perform public.check_out(gen_random_uuid(), c_j, now() - interval '1 hour', 25.7, -100.3, 10);
+  perform public.validate_closure(gen_random_uuid(), gen_random_uuid(), v_o, 'Servicio realizado completo', 'verbal', 'Ing. Pérez',
+    p_exception_reason => 'La cámara falló durante todo el turno');
+  perform pg_temp.err('F08b report dated in the future',
+    format($q$ select public.generate_report(gen_random_uuid(), gen_random_uuid(), %L, '{}', 'Resumen del servicio', '2100-01-01T00:00:00Z') $q$, v_o),
+    'PT422', 'device_time_future');
+  perform public.generate_report(gen_random_uuid(), c_rep, v_o, '{}', 'Resumen del servicio');
+  perform pg_temp.err('F08b share dated in the future',
+    format($q$ select public.log_share(gen_random_uuid(), gen_random_uuid(), %L, 'whatsapp', '+52 81 0000 1111', '2100-01-01T00:00:00Z') $q$, c_rep),
+    'PT422', 'device_time_future');
+  perform pg_temp.as_owner();
+  perform pg_temp.check('F08b nothing stored with a future device time',
+    not exists (select 1 from public.jornada_notes where jornada_id = c_j)
+    and not exists (select 1 from public.photos where id = c_ph)
+    and not exists (select 1 from public.reports where order_id = v_o and id <> c_rep)
+    and not exists (select 1 from public.report_shares where report_id = c_rep));
+  raise exception 'REVIEW_PASS';
+exception when others then
+  perform pg_temp.verdict('F08b', 'low', 'unbounded device time on notes, photos, reports or shares', sqlerrm);
 end $$;
 
 ------------------------------------------------------------------------------------------------------------------------

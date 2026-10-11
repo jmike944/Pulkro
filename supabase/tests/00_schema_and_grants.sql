@@ -62,7 +62,14 @@ begin
   raise exception 'FAIL [%]: expected error % %, but it succeeded', p_label, p_state, coalesce(p_hint, '');
 end $$;
 
--- Readable row sets: ids → fixture labels, sorted ("O1,O2"). Unknown ids show as ?<uuid>.
+-- The demo dataset (supabase/seed/demo.sql) may be loaded: every one of its rows is registered in private.demo_rows. The
+-- visibility checks look at the fixtures, so registered demo rows are left out of pg_temp.seen() (and of the audit checks).
+create temp table t_demo (table_name text, row_id text, primary key (table_name, row_id)) on commit drop;
+create index on t_demo (row_id);
+grant select on t_demo to authenticated, anon;
+insert into t_demo select table_name, row_id from private.demo_rows;
+
+-- Readable row sets: ids → fixture labels, sorted ("O1,O2"). Unknown ids show as ?<uuid>; demo rows are skipped.
 create temp table t_label (id uuid primary key, label text not null) on commit drop;
 grant select, insert on t_label to authenticated, anon;
 create function pg_temp.seen(p_sql text) returns text language plpgsql as $$
@@ -70,7 +77,8 @@ declare v text;
 begin
   execute format(
     'select coalesce(string_agg(coalesce(l.label, ''?'' || x.id::text), '','' order by coalesce(l.label, ''?'' || x.id::text)), '''') '
-    'from (%s) as x(id) left join pg_temp.t_label l on l.id = x.id', p_sql) into v;
+    'from (%s) as x(id) left join pg_temp.t_label l on l.id = x.id '
+    'where not exists (select 1 from pg_temp.t_demo d where d.row_id = x.id::text)', p_sql) into v;
   return v;
 end $$;
 create function pg_temp.label(p_id uuid, p_label text) returns uuid language sql as $$
@@ -192,9 +200,10 @@ begin
   perform pg_temp.eq('public tables',
     (select string_agg(tablename, ',' order by tablename) from pg_tables where schemaname = 'public'),
     (select string_agg(t, ',' order by t) from unnest(v_tables) t));
-  for r in select c.relname, c.relrowsecurity from pg_class c join pg_namespace n on n.oid = c.relnamespace
+  for r in select c.relname, c.relrowsecurity, c.relforcerowsecurity from pg_class c join pg_namespace n on n.oid = c.relnamespace
            where n.nspname in ('public', 'private') and c.relkind = 'r' loop
     perform pg_temp.check('RLS enabled on ' || r.relname, r.relrowsecurity);
+    perform pg_temp.check('RLS not forced on ' || r.relname, not r.relforcerowsecurity);
   end loop;
 
   -- 2. grants: anon nothing, authenticated SELECT only, service_role full on mutable tables and read + append on
@@ -219,11 +228,16 @@ begin
         has_table_privilege('service_role', 'public.' || v_t, 'update') and has_table_privilege('service_role', 'public.' || v_t, 'delete'));
     end if;
   end loop;
-  perform pg_temp.check('private.sync_ops not readable by API roles',
-    not has_table_privilege('authenticated', 'private.sync_ops', 'select') and not has_table_privilege('anon', 'private.sync_ops', 'select'));
-  perform pg_temp.check('private.order_assignments not readable by API roles',
-    not has_table_privilege('authenticated', 'private.order_assignments', 'select,insert,update,delete')
-    and not has_table_privilege('service_role', 'private.order_assignments', 'select,insert,update,delete'));
+  -- private tables (sync_ops, order_assignments, …): no privilege at all for any API role, service_role included
+  for r in select c.oid, c.relname from pg_class c join pg_namespace n on n.oid = c.relnamespace
+           where n.nspname = 'private' and c.relkind = 'r' loop
+    perform pg_temp.check('private.' || r.relname || ' unreachable by API roles',
+      not has_table_privilege('anon', r.oid, 'select,insert,update,delete,truncate,references,trigger')
+      and not has_table_privilege('authenticated', r.oid, 'select,insert,update,delete,truncate,references,trigger')
+      and not has_table_privilege('service_role', r.oid, 'select,insert,update,delete,truncate,references,trigger'));
+  end loop;
+  perform pg_temp.check('private tables present (sync_ops, order_assignments)',
+    to_regclass('private.sync_ops') is not null and to_regclass('private.order_assignments') is not null);
   perform pg_temp.check('folio sequences not usable by API roles',
     not has_sequence_privilege('authenticated', 'private.order_folio_seq', 'usage,select,update'));
   -- default privileges: future tables/functions in public are not auto-granted to the API roles
@@ -254,7 +268,7 @@ begin
       perform pg_temp.check('anon cannot execute private.' || r.proname, not has_function_privilege('anon', r.oid, 'execute'));
     end if;
     if r.nspname = 'private' and r.proname not in (select unnest(v_rpcs)) and r.proname not in
-       ('my_role', 'my_unit', 'can', 'visible_order_ids', 'evidence_order_id', 'evidence_kind', 'can_upload_evidence') then
+       ('my_role', 'my_unit', 'can', 'visible_order_ids', 'crew_worker_ids', 'evidence_order_id', 'evidence_kind', 'can_upload_evidence') then
       perform pg_temp.check('authenticated cannot execute helper private.' || r.proname, not has_function_privilege('authenticated', r.oid, 'execute'));
     end if;
   end loop;

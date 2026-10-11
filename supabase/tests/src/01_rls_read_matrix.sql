@@ -93,7 +93,8 @@ begin
     perform pg_temp.eq(p.who || ' · sites', pg_temp.seen('select id from public.sites'), p.sites);
     perform pg_temp.eq(p.who || ' · service_types', pg_temp.seen('select id from public.service_types'), p.service_types);
     perform pg_temp.eq(p.who || ' · materials', pg_temp.seen('select id from public.materials'), p.materials);
-    perform pg_temp.eq(p.who || ' · audit_log', (select coalesce(string_agg(action, ',' order by action), '') from public.audit_log), p.audit);
+    perform pg_temp.eq(p.who || ' · audit_log', (select coalesce(string_agg(action, ',' order by action), '') from public.audit_log a
+      where not exists (select 1 from pg_temp.t_demo d where d.table_name = 'audit_log' and d.row_id = a.id::text)), p.audit);
     perform pg_temp.eq(p.who || ' · storage evidencias',
       pg_temp.seen('select private.evidence_order_id(name) from storage.objects where bucket_id = ''evidencias'''), p.orders);
     perform pg_temp.as_owner();

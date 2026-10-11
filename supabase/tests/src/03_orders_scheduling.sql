@@ -112,7 +112,7 @@ begin
   perform pg_temp.as_user(c_sup1);
   perform pg_temp.err('crew from another unit', $q$ select public.assign_crew(gen_random_uuid(), '66666666-0000-4000-8000-000000000003', array['44444444-0000-4000-8000-000000000003']::uuid[]) $q$, 'PT422', 'invalid_crew');
   perform pg_temp.err('inactive worker', $q$ select public.assign_crew(gen_random_uuid(), '66666666-0000-4000-8000-000000000003', array['44444444-0000-4000-8000-000000000004']::uuid[]) $q$, 'PT422', 'invalid_crew');
-  perform pg_temp.err('jornada of another order', $q$ select public.assign_crew(gen_random_uuid(), '66666666-0000-4000-8000-000000000003', array['44444444-0000-4000-8000-000000000001']::uuid[], 'x', '66666666-1000-4000-8000-000000000001') $q$, 'PT404', 'out_of_scope');
+  perform pg_temp.err('jornada of another order', $q$ select public.assign_crew(gen_random_uuid(), '66666666-0000-4000-8000-000000000003', array['44444444-0000-4000-8000-000000000001']::uuid[], 'x', '66666666-1000-4000-8000-000000000001') $q$, 'PT422', 'jornada_order_mismatch');
   perform pg_temp.eq('crew → programada',
     pg_temp.ok('assign', $q$ select public.assign_crew(gen_random_uuid(), '66666666-0000-4000-8000-000000000003', array['44444444-0000-4000-8000-000000000001', '44444444-0000-4000-8000-000000000002', '44444444-0000-4000-8000-000000000001']::uuid[], 'Asignación inicial') ->> 'status' $q$), 'programada');
   perform pg_temp.eq('pending jornadas carry the crew (deduplicated)', pg_temp.seen($q$ select unnest(worker_ids) from public.jornadas where order_id = '66666666-0000-4000-8000-000000000003' $q$), 'W1,W2');
