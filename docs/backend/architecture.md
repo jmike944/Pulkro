@@ -427,7 +427,9 @@ of the integration (phase 1 of §12); the app still runs on its local demo store
 1. **Project settings** (dashboard): disable sign-ups; Site URL + redirect URLs; enable the hook; custom SMTP + Spanish
    invite/recovery templates; JWT expiry (keep ≤ 1 h) and session limits; new API keys; asymmetric signing keys.
    **Passwords** (Authentication → Providers → Email): minimum length 12, require lowercase, uppercase and digits (no
-   symbol requirement: supervisors type on phones). Leaked-password protection (HaveIBeenPwned) needs the **Pro plan**; the
+   symbol requirement: supervisors type on phones). Sign-ups off, the hook, the password policy, `jwt_exp` and refresh-token
+   rotation are applied by `scripts/supabase-auth-config.mjs` (Management API, your own scoped access token; dry run by
+   default, `--apply` to write, `--ref` for staging, `--pro` adds leaked-password protection). Leaked-password protection (HaveIBeenPwned) needs the **Pro plan**; the
    organization is on Free today. Move the project to Pro before the pilot — Free projects pause after a week without
    activity and have no daily backups — and turn leaked-password protection on then.
    Drop the demo dataset and bootstrap the first Dirección (§2). Create a **dev/staging project or branch** for everything
