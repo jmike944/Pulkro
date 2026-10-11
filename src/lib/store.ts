@@ -385,11 +385,15 @@ export const useAppStore = create<AppState>()(
         if (!account() || capture) return run();
         const c: Capture = { opId: crypto.randomUUID(), deps: [], entries: [] };
         capture = c;
+        let done = false;
         try {
-          return run();
+          const out = run();
+          done = true;
+          return out;
         } finally {
           capture = null;
-          if (c.op) {
+          // A refused action (PermissionDeniedError) or one that failed half-way queues nothing.
+          if (c.op && done) {
             const meta = c.item ?? { label: c.op.rpc, entity: "orden" as const, entityId: c.orderId ?? "" };
             const item: SyncItem = {
               id: uid("syn"), at: nowIso(), ...meta, orderId: c.orderId ?? meta.orderId, state: "pendiente", op: c.op,
@@ -1073,10 +1077,11 @@ export const useAppStore = create<AppState>()(
           }
           const kindLabel = { antes: "ANTES", despues: "DESPUÉS", incidencia: "incidencia", postventa: "postventa" }[p.kind];
           const jornada = p.jornadaId ? s.jornadas.find((j) => j.id === p.jornadaId) : undefined;
+          const shot = Number.isNaN(Date.parse(p.takenAt)) ? p.takenAt : format(parseISO(p.takenAt), "dd/MM/yyyy HH:mm");
           const notes = [
             p.origin === "gallery" ? "Desde galería" : p.origin === "camera" ? "Cámara" : "",
-            p.takenAtSource === "exif" ? `tomada ${format(parseISO(p.takenAt), "dd/MM/yyyy HH:mm")}` : "",
-            p.takenAtSource === "file" ? `fecha del archivo ${format(parseISO(p.takenAt), "dd/MM/yyyy HH:mm")} (sin fecha de la toma)` : "",
+            p.takenAtSource === "exif" ? `tomada ${shot}` : "",
+            p.takenAtSource === "file" ? `fecha del archivo ${shot} (sin fecha de la toma)` : "",
             p.geoSource === "exif" ? "ubicación de la foto" : p.geoSource === "device" ? "ubicación del teléfono al adjuntar" : "",
             ...photoTimingIssues(p, jornada).map((x) => `Advertencia: ${x.label}`),
           ].filter(Boolean);
@@ -1115,9 +1120,10 @@ export const useAppStore = create<AppState>()(
           // attempt got no answer), delete_photo follows it.
           const queue = getState().sync.queue;
           const add = queue.find((q) => q.op?.rpc === "add_photo" && q.op.args.p_photo_id === photoId && isUnsent(q));
-          // Never tried, or explicitly refused by the server (a business / Storage refusal rolls back): not on the server.
+          // Its RPC never went out, or the server explicitly refused it (a refusal rolls back; an applied op answers
+          // "duplicate" before any check, so it is never refused afterwards): not on the server.
           const refused = add?.state === "error" && /^(PT|23|storage)/.test(add.problem?.code ?? "");
-          const untouched = !!add && (refused || (add.state === "pendiente" && !add.attempts));
+          const untouched = !!add && (refused || (add.state === "pendiente" && !add.tried));
           if (untouched) {
             const mine = queue.filter((q) => q.entity === "foto" && q.entityId === photoId && isUnsent(q) && q.state !== "sincronizando");
             const ops = new Set(mine.map((q) => q.op?.args.p_op_id));
@@ -1536,9 +1542,12 @@ export const useAppStore = create<AppState>()(
             denied("No puede cambiar su propio rol, unidad o estado: pídalo a otra persona de Dirección.");
             return;
           }
-          setState((st) => ({ users: prev ? st.users.map((c) => (c.id === next.id ? next : c)) : [...st.users, next] }));
-          // Account sessions: a new account (invite) and access changes (active, e-mail) go through the admin-users Edge
-          // Function, not the queue; the profile fields go through update_profile, one's own phone through update_my_contact.
+          // Account sessions: a new account (invite) and access changes (active, e-mail) go through the admin-users Edge Function,
+          // not the queue, so the device never shows them before the server has them (the pull brings them); the profile
+          // fields go through update_profile, one's own phone through update_my_contact.
+          if (account() && !prev) return;
+          const saved = account() && prev ? { ...next, active: prev.active, email: prev.email } : next;
+          setState((st) => ({ users: prev ? st.users.map((c) => (c.id === next.id ? saved : c)) : [...st.users, saved] }));
           if (prev && !can(me.role, "users.admin")) {
             if (prev.phone !== next.phone) send("update_my_contact", { p_phone: next.phone });
           } else if (prev) {

@@ -649,6 +649,7 @@ async function once(store: PullStore, full: boolean) {
 }
 
 let refreshTried = 0;
+let refreshLast: "ok" | "dead" | "inactive" | "offline" = "dead";
 
 /** The access-token hook refuses an account without an active profile with a 403 and no error code. */
 const isNoProfileRefusal = (error: unknown) =>
@@ -659,17 +660,21 @@ const isNoProfileRefusal = (error: unknown) =>
  * with the push engine (one attempt per minute for both).
  */
 export async function tryRefresh(store: PullStore): Promise<"ok" | "dead" | "inactive" | "offline"> {
-  // At most one refresh attempt per minute (a server that keeps answering 401 must not loop).
-  if (Date.now() - refreshTried < 60_000) return "dead";
+  // At most one refresh attempt per minute (a server that keeps answering 401 must not loop). Within that minute the
+  // pull and the push share its outcome; after a successful one a new 401 is retried later, never "Vuelva a entrar".
+  if (Date.now() - refreshTried < 60_000) return refreshLast === "ok" ? "offline" : refreshLast;
   refreshTried = Date.now();
-  try {
-    const { data, error } = await getSupabaseBrowserClient().auth.refreshSession();
-    if (error && isNoProfileRefusal(error)) return "inactive";
-    if (error) return isAuthRetryableFetchError(error) ? "offline" : "dead";
-    return data.session?.user.id === store.getState().session.userId ? "ok" : "dead";
-  } catch {
-    return "offline";
-  }
+  refreshLast = await (async () => {
+    try {
+      const { data, error } = await getSupabaseBrowserClient().auth.refreshSession();
+      if (error && isNoProfileRefusal(error)) return "inactive" as const;
+      if (error) return isAuthRetryableFetchError(error) ? ("offline" as const) : ("dead" as const);
+      return data.session?.user.id === store.getState().session.userId ? ("ok" as const) : ("dead" as const);
+    } catch {
+      return "offline" as const;
+    }
+  })();
+  return refreshLast;
 }
 
 /**

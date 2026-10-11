@@ -116,7 +116,7 @@ export function classifyRpc(error: RpcError | null, status: number, data?: unkno
 }
 
 /** A Storage error as storage-js reports it (StorageApiError / StorageUnknownError). */
-export type UploadError = { name?: string; message: string; status?: number; statusCode?: string | number };
+export type UploadError = { name?: string; message: string; status?: number; statusCode?: string | number; code?: string };
 
 /**
  * What a Storage answer to the upload means. The bucket never upserts: a retried upload answers "Duplicate" (409), which is
@@ -129,7 +129,8 @@ export function classifyUpload(error: UploadError | null): Outcome {
   const msg = error.message ?? "";
   if (error.name === "StorageUnknownError" || NETWORK_RE.test(msg)) return { kind: "network", message: NETWORK_MESSAGE };
   if (code === "409" || status === 409 || /already exists|duplicate/i.test(msg)) return { kind: "ok" };
-  if (status === 401 || /\bjwt\b|token (is )?expired|invalid (jwt|token)/i.test(msg)) return { kind: "auth", message: msg };
+  if (status === 401 || error.code === "InvalidJWT" || /\bjwt\b|token (is )?expired|invalid (jwt|token)|"exp" claim|claim timestamp/i.test(msg))
+    return { kind: "auth", message: msg };
   const problem = (kind: SyncProblem["kind"], message: string): SyncProblem => ({ kind, message, code: `storage ${code || status}` });
   if (code === "413" || status === 413 || /too large|payload/i.test(msg))
     return { kind: "conflict", problem: problem("conflicto", "La foto es demasiado grande para el servidor (máximo 10 MB).") };
@@ -145,12 +146,55 @@ export function classifyUpload(error: UploadError | null): Outcome {
   return { kind: "conflict", problem: problem("conflicto", `El servidor rechazó el archivo de la foto${msg ? `: ${msg}` : "."}`) };
 }
 
-/** The items "Descartar" removes with `id`: the item, or every unsent item of its order when it is the order's creation. */
+/** Ids of the records an operation creates on the server (what later operations may name). */
+function createdIds(q: SyncItem): string[] {
+  const a = q.op?.args ?? {};
+  const pick = (...keys: string[]) => keys.map((k) => a[k]).filter((v): v is string => typeof v === "string");
+  switch (q.op?.rpc) {
+    case "create_order":
+      return [...pick("p_order_id"), ...(Array.isArray(a.p_days) ? (a.p_days as { id?: unknown }[]).map((d) => d.id).filter((v): v is string => typeof v === "string") : [])];
+    case "schedule_jornadas":
+      return Array.isArray(a.p_days) ? (a.p_days as { id?: unknown }[]).map((d) => d.id).filter((v): v is string => typeof v === "string") : [];
+    case "add_photo":
+      return pick("p_photo_id");
+    case "add_incident":
+      return pick("p_incident_id");
+    case "create_case":
+      return pick("p_case_id");
+    case "generate_report":
+      return pick("p_report_id");
+    case "create_survey":
+      return pick("p_survey_id");
+    default:
+      return q.op?.creates ? pick("p_client_id", "p_site_id", "p_worker_id", "p_service_type_id", "p_material_id") : [];
+  }
+}
+
+/** The operation names one of `ids` anywhere in its arguments (or belongs to one of those orders). */
+function names(q: SyncItem, ids: Set<string>): boolean {
+  if (q.orderId && ids.has(q.orderId)) return true;
+  const walk = (v: unknown): boolean =>
+    typeof v === "string" ? ids.has(v) : Array.isArray(v) ? v.some(walk) : !!v && typeof v === "object" && Object.values(v).some(walk);
+  return walk(q.op?.args);
+}
+
+/**
+ * The items "Descartar" removes with `id`: the item and every later unsent item that depends on a record it creates — the
+ * photo edits of a discarded photo, the check-ins of discarded days, the order on a discarded client, every change of a
+ * discarded new order… They could never be applied (the server would answer `parent_missing` until the retry cap).
+ */
 export function discardSet(queue: readonly SyncItem[], id: string): SyncItem[] {
-  const item = queue.find((q) => q.id === id);
+  const at = queue.findIndex((q) => q.id === id);
+  const item = queue[at];
   if (!item || item.state === "sincronizado" || item.state === "sincronizando") return [];
-  if (item.op?.rpc === "create_order" && item.orderId) return queue.filter((q) => isUnsent(q) && q.orderId === item.orderId && q.state !== "sincronizando");
-  return [item];
+  const out = [item];
+  const ids = new Set(createdIds(item));
+  for (const q of queue.slice(at + 1)) {
+    if (!isUnsent(q) || q.state === "sincronizando" || !ids.size || !names(q, ids)) continue;
+    out.push(q);
+    for (const x of createdIds(q)) ids.add(x);
+  }
+  return out;
 }
 
 /** Server answers after which retrying the same request cannot help (only discarding it does). */

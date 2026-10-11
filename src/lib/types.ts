@@ -440,6 +440,8 @@ export type SyncItem = {
   deps?: string[];
   /** Failed attempts that are retried (network, server busy, a parent still on its way). */
   attempts?: number;
+  /** Its RPC was sent at least once (it may have been applied even without an answer). */
+  tried?: boolean;
   firstFailAt?: string;
   /** Earliest next attempt after a failure. */
   nextAt?: string;

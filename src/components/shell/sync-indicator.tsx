@@ -406,7 +406,7 @@ function DiscardDialog({ item, onClose }: { item: SyncItem | null; onClose: () =
       description="No se enviará al servidor. Lo que este dispositivo muestra de ese registro vuelve a ser lo que tiene el servidor."
       rows={[
         { k: "Cambio", v: item?.label ?? "" },
-        ...(more > 0 ? [{ k: "Cambios de la misma orden", v: `${more} más` }] : []),
+        ...(more > 0 ? [{ k: "Cambios que dependen de él", v: `${more} más` }] : []),
       ]}
       checkboxLabel={photo ? "Entiendo que el cambio no llegará al servidor y que la foto se borrará de este dispositivo." : "Entiendo que este cambio no llegará al servidor."}
       confirmLabel={more > 0 ? `Descartar ${set.length} cambios` : "Descartar"}
@@ -420,7 +420,8 @@ function DiscardDialog({ item, onClose }: { item: SyncItem | null; onClose: () =
       {item?.problem && <p className="rounded-[14px] bg-soft px-4 py-3 text-[13.5px] leading-snug text-ink">{item.problem.message}</p>}
       {more > 0 && (
         <p className="mt-3 text-[13.5px] leading-snug text-subtle">
-          La orden no llegó al servidor, así que los demás cambios capturados en ella tampoco pueden enviarse.
+          Usan lo que se descarta (la orden, la foto, la jornada, el registro nuevo…), así que tampoco podrían aplicarse y se
+          descartan con él.
         </p>
       )}
     </ConfirmDialog>
@@ -442,7 +443,8 @@ function QueueRow({
 }) {
   const retry = useAppStore((s) => s.retrySyncItem);
   const detail = rowDetail(q, waitFor, offline, account);
-  const stopped = account && q.state === "error";
+  // Stopped items, and items being retried (a parent that may never arrive, a server that keeps failing): the person decides.
+  const stopped = account && (q.state === "error" || (q.state === "pendiente" && !!q.problem));
   const canRetry = stopped && !!q.op && !NO_RETRY_HINTS.has(q.problem?.hint ?? "");
   return (
     <li className="flex items-start gap-3 rounded-[12px] px-2 py-2.5 text-[13.5px]">

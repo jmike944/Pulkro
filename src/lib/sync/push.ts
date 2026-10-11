@@ -220,6 +220,7 @@ async function send(store: Store, client: SupabaseBrowserClient, item: SyncItem)
       patchItem(store, item.id, (q) => (q.op?.upload ? { op: { ...q.op, upload: { ...q.op.upload, uploaded: true } } } : {}));
     }
     // 2 · the RPC, with exactly the arguments stored when the action ran.
+    if (!item.tried) patchItem(store, item.id, { tried: true });
     return await settle(store, item, await call(client, op.rpc, op.args));
   } catch (e) {
     // Never leave an item "sincronizando" (it would hold its order until a reload): back in line, retried with backoff.
@@ -498,7 +499,8 @@ const CATALOG_RPC: Record<string, { table: CatalogTable; id: string }> = {
 };
 
 /**
- * "Descartar": the item (see discardSet) leaves the queue and is never sent; the device goes back to the server's truth —
+ * "Descartar": the item and what depends on it (see discardSet) leave the queue and are never sent; the device goes back to
+ * the server's truth —
  * a record the item created here is removed, anything else is read again from the server (the order's whole subtree, the
  * catalog record by id). The Bitácora lines this device wrote for it go too. Returns how many items were removed.
  */
