@@ -89,6 +89,11 @@ export function DeactivateUserDialog({
       return false;
     }
     op.current = null;
+    if (result.active) {
+      // a retried answer from before someone reactivated it: the next click is a new operation
+      setError("La cuenta sigue activa: otra persona de Dirección la reactivó mientras tanto. Vuelva a confirmar para desactivarla.");
+      return false;
+    }
     // after this dialog has started closing, so whatever comes next (the open-orders notice) opens on top of nothing
     const folios = result.open_orders;
     setTimeout(() => onDeactivated?.(u, folios), 0);

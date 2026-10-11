@@ -8,14 +8,15 @@ users screen (Configuración → Usuarios) calls it in account sessions; the dem
 | `invite` | `{ action, opId, email, name, role, unitId, title?, phone?, hue? }` | `inviteUserByEmail` (`redirectTo` = `APP_URL` + `/acceso/definir-contrasena`), then `provision_profile` **with the caller's JWT**. If the profile fails, the auth user this call created is deleted again. |
 | `deactivate` | `{ action, opId, userId }` | `update_profile {active:false}` with the caller's JWT (revokes the sessions, returns `open_orders`), then bans the auth user (`ban_duration` 876000h). |
 | `reactivate` | `{ action, opId, userId }` | `update_profile {active:true}`, then lifts the ban. |
-| `change_email` | `{ action, opId, userId, email }` | admin `updateUserById {email, email_confirm: true}`, then `sync_profile_email` with the caller's JWT. If the sync fails, the auth e-mail goes back to the previous one. |
+| `change_email` | `{ action, opId, userId, email }` | admin `updateUserById {email, email_confirm: true}`, then `sync_profile_email` with the caller's JWT. If the sync is refused, the auth e-mail goes back to the previous one; if its outcome is unknown (network, 5xx) it is left as is and the same request sent again completes it. |
 
 - **Who**: `verify_jwt` on (user JWT). The function re-verifies the JWT (`@supabase/server`, project JWKS) and requires an
   **active Dirección** profile before any Auth admin call; every RPC re-checks `users.admin` in the database and audits the
   caller. The secret key is used only for `auth.admin` and to read the caller's own profile row.
 - **Idempotent**: `opId` is the RPC op id. Sending the same request again (same payload) answers the stored result with
   `duplicate: true` — an invitation is not e-mailed twice, a deactivation is not repeated. The ban always mirrors the
-  profile's current `active`.
+  profile's current `active` (re-checked after it is set, for two people switching the same account at once), and
+  `active` in the answer is the profile's, which can differ from the request on a stale retry.
 - **Response** `200`: `{ ok: true, action, duplicate, user_id, profile, open_orders?, active?, email?, invite_pending? }`.
   `profile` is the `public.profiles` row after the change (or `null` if reading it failed). `open_orders` (deactivate) lists
   the folios the person still supervises. `invite_pending` (change_email) means the person never accepted the invitation:
@@ -71,7 +72,8 @@ From the repository root, with the Supabase CLI logged in (a scoped access token
 supabase functions deploy admin-users --project-ref cbdzndpdpwtxbhshidyi
 ```
 
-`verify_jwt` stays **on** (the default): never pass `--no-verify-jwt`. Dependencies are pinned in the imports
+Without Docker running, add `--use-api` (the bundle is built server-side). `verify_jwt` stays **on** (the default): never
+pass `--no-verify-jwt`. Dependencies are pinned in the imports
 (`npm:@supabase/server@1.9.1`, `npm:@supabase/supabase-js@2.117.2`). Alternatively, deploy with the Supabase MCP
 `deploy_edge_function` (name `admin-users`, entrypoint `index.ts`, `verify_jwt: true`, the file `index.ts`).
 

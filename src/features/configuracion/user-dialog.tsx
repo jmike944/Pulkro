@@ -63,6 +63,8 @@ export function UserDialog({
   const [confirmOff, setConfirmOff] = useState(false);
   const [busy, setBusy] = useState(false);
   const [serverError, setServerError] = useState<string | null>(null);
+  // bumped when the server answered another status than asked (a stale retry): the next "Guardar" is a new operation
+  const [activeAttempt, setActiveAttempt] = useState(0);
   // what the form opened with: drives "¿Descartar cambios?" and "Aún no hay cambios que guardar"
   const [start] = useState({ name, title, role, unitId, email, phone, active });
 
@@ -160,9 +162,16 @@ export function UserDialog({
       }
       let openOrders: string[] = [];
       if (activeChanged) {
-        const switched = await setUserActive(target, active, opFor("active", active));
+        const switched = await setUserActive(target, active, opFor("active", [active, activeAttempt]));
         if (!switched.ok) {
           setServerError(emailChanged ? `El correo ya quedó cambiado. ${switched.message}` : switched.message);
+          return;
+        }
+        if (switched.active !== active) {
+          setActiveAttempt((n) => n + 1);
+          setServerError(
+            `${emailChanged ? "El correo ya quedó cambiado. " : ""}Otra persona de Dirección cambió el estado de la cuenta mientras tanto: ahora está ${switched.active ? "activa" : "desactivada"}. Revise y vuelva a guardar.`,
+          );
           return;
         }
         openOrders = switched.open_orders;

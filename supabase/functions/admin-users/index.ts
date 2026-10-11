@@ -10,8 +10,8 @@
  *   { action: "deactivate",   opId, userId }   update_profile {active:false} (caller's JWT; revokes sessions, returns
  *   { action: "reactivate",   opId, userId }   open_orders), then ban / unban through the admin API.
  *   { action: "change_email", opId, userId, email }
- *       admin updateUserById {email, email_confirm:true}, then sync_profile_email (caller's JWT); if the sync fails, the
- *       auth e-mail goes back to the previous one.
+ *       admin updateUserById {email, email_confirm:true}, then sync_profile_email (caller's JWT); if the sync is refused,
+ *       the auth e-mail goes back to the previous one (an unknown outcome leaves it: the same request again completes it).
  *
  * 200 → { ok: true, action, duplicate, user_id, profile, open_orders?, invite_pending? }   (`profile` = the public.profiles
  *       row as the caller reads it after the change, or null if that read failed: the next pull brings it)
@@ -364,10 +364,12 @@ async function invite(ctx: Ctx, req: InviteRequest) {
   const invited = await ctx.admin.auth.admin.inviteUserByEmail(req.email, { redirectTo: `${APP_URL}${INVITE_PATH}` });
   if (invited.error || !invited.data?.user) throw authFailure(invited.error, "invite");
   const user = invited.data.user;
-  // GoTrue re-sends the invitation of an existing, never-confirmed account (same id): only an account created by this
-  // call is removed if the profile fails. (An auth user with a profile can never be deleted: profiles.id is ON DELETE
-  // RESTRICT.)
-  const createdNow = Date.parse(user.created_at) >= startedAt - 60_000;
+  // GoTrue re-sends the invitation of an existing, never-confirmed account (same id, `invited_at` moves on): only an
+  // account created by this call — just now, invited in the same step — is removed if the profile fails. (An auth user
+  // with a profile can never be deleted anyway: profiles.id is ON DELETE RESTRICT.)
+  const createdAt = Date.parse(user.created_at);
+  const invitedAt = user.invited_at ? Date.parse(user.invited_at) : createdAt;
+  const createdNow = createdAt >= startedAt - 60_000 && Math.abs(invitedAt - createdAt) < 5_000;
 
   const provisioned = await provision(ctx, req, user.id);
   if (provisioned.error) {
@@ -387,18 +389,24 @@ async function setActive(ctx: Ctx, req: ActiveRequest) {
   const rpc = await ctx.db.rpc("update_profile", { p_op_id: req.opId, p_user_id: req.userId, p_patch: { active } });
   if (rpc.error) throw dbFailure(rpc.error, rpc.status);
   const result = rpc.data as RpcResult;
-  const profile = await readProfile(ctx, req.userId);
-  // Then the auth account, mirroring the profile as it is NOW (a retried op answers its stored result even if someone
-  // changed the status since: the ban must follow the profile, not the request). Also on a retry: banning is idempotent
-  // and repairs an earlier attempt that stopped here.
-  const nowActive = profile ? profile.active : active;
-  const banned = await ctx.admin.auth.admin.updateUserById(req.userId, { ban_duration: nowActive ? "none" : BAN_DURATION });
-  if (banned.error) {
-    console.error(`admin-users ${req.action}: ${nowActive ? "unban" : "ban"} failed after the profile change`, describe(banned.error));
-    if (nowActive) {
-      fail(502, "unban_failed", "La cuenta quedó activa en Pulkro Cuadrillas, pero no se pudo quitar el bloqueo de acceso. Intente de nuevo.");
+  // Then the auth account, mirroring the profile as it is NOW: a retried op answers its stored result even if someone
+  // changed the status since, and two people may switch the same account at once — the ban follows the profile, not the
+  // request, and is checked again after it is set. Idempotent, so a retry also repairs an attempt that stopped here.
+  let profile = await readProfile(ctx, req.userId);
+  let nowActive = profile ? profile.active : active;
+  for (let round = 0; round < 3; round++) {
+    const banned = await ctx.admin.auth.admin.updateUserById(req.userId, { ban_duration: nowActive ? "none" : BAN_DURATION });
+    if (banned.error) {
+      console.error(`admin-users ${req.action}: ${nowActive ? "unban" : "ban"} failed after the profile change`, describe(banned.error));
+      if (nowActive) {
+        fail(502, "unban_failed", "La cuenta quedó activa en Pulkro Cuadrillas, pero no se pudo quitar el bloqueo de acceso. Intente de nuevo.");
+      }
+      fail(502, "ban_failed", "La cuenta quedó desactivada en Pulkro Cuadrillas, pero no se pudo bloquear su acceso. Intente de nuevo.");
     }
-    fail(502, "ban_failed", "La cuenta quedó desactivada en Pulkro Cuadrillas, pero no se pudo bloquear su acceso. Intente de nuevo.");
+    const after = await readProfile(ctx, req.userId);
+    if (!after || after.active === nowActive) break;
+    profile = after;
+    nowActive = after.active;
   }
   const listed = result?.open_orders;
   const openOrders = Array.isArray(listed) ? listed.filter((folio): folio is string => typeof folio === "string") : [];
@@ -434,31 +442,45 @@ async function changeEmail(ctx: Ctx, req: EmailRequest) {
     changedAuth = true;
   }
 
-  const synced = await ctx.db.rpc("sync_profile_email", { p_op_id: req.opId, p_user_id: req.userId });
-  if (synced.error) {
-    if (changedAuth && previous) {
-      const reverted = await ctx.admin.auth.admin.updateUserById(req.userId, { email: previous, email_confirm: true });
-      if (reverted.error) console.error("admin-users change_email: could not restore the previous auth e-mail", describe(reverted.error));
-    }
-    throw dbFailure(synced.error, synced.status);
-  }
-  const result = synced.data as RpcResult;
-  if (result?.duplicate && changedAuth) {
-    // This op was applied before and the address changed again since (the stored result does not re-sync the profile):
-    // put the auth e-mail back instead of leaving it different from the profile.
+  const restoreLogin = async (why: string) => {
+    if (!changedAuth || !previous) return;
     const reverted = await ctx.admin.auth.admin.updateUserById(req.userId, { email: previous, email_confirm: true });
-    if (reverted.error) console.error("admin-users change_email: could not restore the auth e-mail after a stale retry", describe(reverted.error));
-    fail(409, "stale_retry", "Este cambio ya se había aplicado y el correo cambió después. Actualice la pantalla y revise el correo actual.");
-  }
-  return {
+    if (reverted.error) console.error(`admin-users change_email: could not restore the previous auth e-mail (${why})`, describe(reverted.error));
+  };
+  const done = (profile: ProfileRow | null, duplicate: boolean) => ({
     ok: true,
     action: req.action,
-    duplicate: !!result?.duplicate,
+    duplicate,
     user_id: req.userId,
     email: req.email,
     invite_pending: invitePending,
-    profile: await readProfile(ctx, req.userId),
-  };
+    profile,
+  });
+
+  const synced = await ctx.db.rpc("sync_profile_email", { p_op_id: req.opId, p_user_id: req.userId });
+  if (synced.error) {
+    const failure = dbFailure(synced.error, synced.status);
+    if (failure.status >= 500) {
+      // Unknown outcome (network, timeout, 5xx): the sync may have committed, so the login is never undone on a guess.
+      // Sending the same request again completes it without repeating anything.
+      const now = await readProfile(ctx, req.userId);
+      if (now?.email === req.email) return done(now, false);
+      throw failure;
+    }
+    // A definite refusal: nothing changed in the profile, so the login goes back too.
+    await restoreLogin("sync refused");
+    throw failure;
+  }
+  const result = synced.data as RpcResult;
+  const now = await readProfile(ctx, req.userId);
+  if (result?.duplicate && changedAuth && now?.email !== req.email) {
+    // This op was applied before and the address changed again since (the stored result does not re-sync the profile):
+    // the login goes back to what it was instead of differing from the profile. (When the profile already holds this
+    // address — an earlier attempt synced it and its login change was lost — the login now matches it: nothing to undo.)
+    await restoreLogin("stale retry");
+    fail(409, "stale_retry", "Este cambio ya se había aplicado y el correo cambió después. Actualice la pantalla y revise el correo actual.");
+  }
+  return done(now, !!result?.duplicate);
 }
 
 function run(ctx: Ctx, req: AdminRequest) {
@@ -511,6 +533,8 @@ Deno.serve(async (req: Request): Promise<Response> => {
     if (auth.error) {
       if (auth.error.status === 401) fail(401, "no_session", MSG.sessionExpired);
       console.error("admin-users: context setup failed", describe(auth.error));
+      // the project's signing keys could not be fetched right now: temporary, not a configuration problem
+      if (auth.error.status === 503 || auth.error.code === "JWKS_FETCH_FAILED") fail(503, "unavailable", MSG.unavailable);
       fail(500, "server_misconfigured", MSG.misconfigured);
     }
     const context = auth.data;

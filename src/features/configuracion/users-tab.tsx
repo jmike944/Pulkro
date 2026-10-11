@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { AnimatePresence, motion } from "motion/react";
 import { Pencil, UserPlus, Users, WifiOff } from "lucide-react";
 import { toast } from "sonner";
@@ -45,6 +45,8 @@ export function UsersTab() {
   // Account sessions: invitations and (de)activations go through the server (admin-users), online only.
   const { account, offline } = useAccountAdmin();
   const [busyIds, setBusyIds] = useState<ReadonlySet<string>>(() => new Set());
+  // One op id per reactivation until it succeeds: "Reintentar" after a failure or a lost answer is a retry, not a new change.
+  const reactivationOps = useRef(new Map<string, string>());
   const reassign = useDialogTarget<{ user: User; folios: string[] }>();
 
   const openOrdersBy = useOpenOrdersBy();
@@ -67,11 +69,24 @@ export function UsersTab() {
 
   /** Account sessions: the server lifts the ban and the profile is active again (the person signs in with their password). */
   const reactivateOnServer = async (u: User) => {
+    const ops = reactivationOps.current;
+    const opId = ops.get(u.id) ?? newOpId();
+    ops.set(u.id, opId);
     markBusy(u.id, true);
-    const result = await setUserActive(u, true, newOpId());
+    const result = await setUserActive(u, true, opId);
     markBusy(u.id, false);
     if (!result.ok) {
-      toast.error("No se pudo reactivar la cuenta", { description: result.message });
+      // The profile may already be active (the switch shows it after the pull) while the access block was not lifted:
+      // the toast's action sends the same operation again, which finishes it.
+      toast.error("No se pudo reactivar la cuenta", {
+        description: result.message,
+        action: { label: "Reintentar", onClick: () => void reactivateOnServer(u) },
+      });
+      return;
+    }
+    ops.delete(u.id);
+    if (!result.active) {
+      toast.error("La cuenta sigue desactivada", { description: "Otra persona de Dirección la desactivó mientras tanto. Revise y vuelva a intentarlo." });
       return;
     }
     toast.success(`${u.name.split(" ")[0]} puede volver a iniciar sesión`, { description: "Su correo y su contraseña vuelven a funcionar. Registrado en la bitácora." });
