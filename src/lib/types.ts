@@ -449,6 +449,11 @@ export type SyncItem = {
   netAttempts?: number;
   /** Its RPC was sent at least once (it may have been applied even without an answer). */
   tried?: boolean;
+  /**
+   * An attempt went out and its answer was lost (network, a gateway timeout, a device error after sending): the server may
+   * have applied it. Only a definite answer clears it (applied, or a refusal that ran on the server); a busy answer does not.
+   */
+  maybeApplied?: boolean;
   firstFailAt?: string;
   /** Earliest next attempt after a failure. */
   nextAt?: string;

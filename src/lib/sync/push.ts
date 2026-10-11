@@ -34,14 +34,17 @@ import {
   MAX_ATTEMPTS,
   MAX_RETRY_MS,
   NETWORK_MESSAGE,
+  cappedMessage,
   classifyRpc,
   classifyUpload,
   discardSet,
   discardedCaptures,
   isRetryable,
   isUnsent,
+  lostAnswer,
   nextReady,
   nextWake,
+  outcomeUnknown,
   retryDelay,
   type Outcome,
   type RpcError,
@@ -231,6 +234,8 @@ async function send(store: Store, client: SupabaseBrowserClient, item: SyncItem,
   // Another tab may hold the device now (it may have discarded this item): nothing more leaves this one.
   if (!(await stillWriter())) return "stop";
   patchItem(store, item.id, { state: "sincronizando" });
+  /** The RPC went out (a failure from here on may follow its application on the server). */
+  let rpcSent = false;
   try {
     // 1 · the picture (add_photo), once: a retry after the upload resumes at the RPC.
     let noPicture = false;
@@ -257,13 +262,18 @@ async function send(store: Store, client: SupabaseBrowserClient, item: SyncItem,
     // 2 · the RPC, with exactly the arguments stored when the action ran.
     if (!item.tried) patchItem(store, item.id, { tried: true });
     const sent = Date.now();
+    rpcSent = true;
     const outcome = await call(client, op.rpc, op.args);
+    // Whether this or an earlier attempt may have been applied: only a definite answer settles it (outcomeUnknown).
+    const lost = lostAnswer(outcome);
+    if (lost !== undefined) patchItem(store, item.id, { maybeApplied: lost || undefined });
     if (noPicture && outcome.kind === "retry" && outcome.reupload)
       return await settle(store, item, { kind: "error", problem: { kind: "error", message: LOST_PHOTO_MESSAGE, code: outcome.problem.code, hint: "photo_lost" } });
     return await settle(store, item, outcome, { sent, got: Date.now() });
   } catch (e) {
     // Never leave an item "sincronizando" (it would hold its order until a reload): back in line, retried with backoff.
     console.warn("[push]", op.rpc, e instanceof Error ? e.message : e);
+    if (rpcSent) patchItem(store, item.id, { maybeApplied: true });
     retryLater(store, item, { kind: "reintento", message: "No se pudo enviar por un error del dispositivo; se reintentará." });
     return "next";
   }
@@ -370,7 +380,7 @@ function retryLater(store: Store, item: SyncItem, problem: SyncProblem, reupload
         attempts,
         firstFailAt,
         nextAt: undefined,
-        problem: { ...problem, kind: "conflicto", message: `No se pudo enviar tras ${attempts} intentos en 24 horas. ${problem.message}` },
+        problem: { ...problem, kind: "conflicto", message: cappedMessage(problem, attempts) },
       };
     return { ...upload, state: "pendiente", attempts, netAttempts: undefined, firstFailAt, nextAt: new Date(now + retryDelay(attempts)).toISOString(), problem };
   });
@@ -570,7 +580,10 @@ export function discardItems(store: Store, id: string): number {
         case "create_order": {
           const oid = str(a.p_order_id)!;
           d = dropRows(d, { orders: [oid] }, pendingIndex(queue)).data;
-          subtrees.delete(oid);
+          // Its answer was lost: the server may have the order. Read it back by id (a pull may already have moved past it);
+          // if the server does not have it, nothing comes back. Refused for good: nothing to read.
+          if (outcomeUnknown(q)) subtrees.add(oid);
+          else subtrees.delete(oid);
           continue;
         }
         case "add_photo":

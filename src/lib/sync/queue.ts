@@ -17,21 +17,25 @@ export const chainKey = (q: Pick<SyncItem, "orderId" | "entity" | "entityId">): 
 export const isUnsent = (q: SyncItem) => q.state !== "sincronizado";
 
 /**
- * For every unsent item that must wait: the earlier unsent item it waits for (the first one of its chain or of a dep). A dep
- * holds the item while its record is being created, or while an edit of it is still on its way (a site moved to another
- * client lands before the order that relies on it); an edit of an existing record that the server refused does not: the
- * record is there, and an unrelated new order must not wait for someone to fix a contact e-mail.
+ * For every unsent item that must wait: the earlier unsent item it waits for (the first one of its chain, or what holds a
+ * dep). A dep holds the item while its record is being created, or while an edit of it is still on its way (a site moved to
+ * another client lands before the order that relies on it) — any unsent edit of that record, not only the first one of its
+ * chain. An edit of an existing record that the server refused does not hold it: the record is there, and an unrelated new
+ * order must not wait for someone to fix a contact e-mail.
  */
 export function waitsFor(queue: readonly SyncItem[]): Map<string, SyncItem> {
   const heads = new Map<string, SyncItem>();
+  /** Per chain: its first unsent item that holds the items depending on that record (a creation, or an edit still on its way). */
+  const holds = new Map<string, SyncItem>();
   const out = new Map<string, SyncItem>();
   for (const q of queue) {
     if (!isUnsent(q)) continue;
     const own = chainKey(q);
-    const dep = (q.deps ?? []).map((k) => heads.get(k)).find((h) => h && (h.op?.creates || h.state !== "error"));
+    const dep = (q.deps ?? []).map((k) => holds.get(k)).find(Boolean);
     const blocker = heads.get(own) ?? dep;
     if (blocker) out.set(q.id, blocker);
     if (!heads.has(own)) heads.set(own, q);
+    if (!holds.has(own) && (q.op?.creates || q.state !== "error")) holds.set(own, q);
   }
   return out;
 }
@@ -108,6 +112,9 @@ const RETRY_CODES = new Set(["40001", "40P01", "57014", "53300", "55P03"]);
  * server (backoff, then the cap). The capture screens warn while the phone's clock is off (clock.ts).
  */
 const CLOCK_AHEAD = "device_time_future";
+/** Said while a time ahead of the server's clock is retried; once retrying stopped, what to do instead. */
+const CLOCK_AHEAD_WAIT = "Se enviará cuando la hora del servidor alcance la del registro.";
+const CLOCK_AHEAD_STOPPED = "Corrija la fecha y hora del teléfono y pulse Reintentar.";
 
 /**
  * Refusals that mean the requested end state already holds: the item counts as sent. delete_photo of a photo someone else
@@ -130,7 +137,7 @@ export function classifyRpc(error: RpcError | null, status: number, data?: unkno
   if (status === 401 || /^PGRST30\d$/.test(code) || (!/^PT\d{3}$/.test(code) && /\bjwt\b/i.test(error.message))) return { kind: "auth", message: error.message };
   const problem = (kind: SyncProblem["kind"], message = messageOf(error, code)): SyncProblem => ({ kind, message, code: code || String(status), hint: hint || undefined });
   if (code === "PT422" && hint === CLOCK_AHEAD)
-    return { kind: "retry", problem: problem("reintento", `${messageOf(error, code)} Se enviará cuando la hora del servidor alcance la del registro.`) };
+    return { kind: "retry", problem: problem("reintento", `${messageOf(error, code)} ${CLOCK_AHEAD_WAIT}`) };
   if (code === "PT409" && RETRY_HINTS.has(hint)) return { kind: "retry", problem: problem("reintento"), reupload: hint === "object_missing" };
   if (code === "PT409") return { kind: "conflict", problem: problem("conflicto") };
   if (RETRY_CODES.has(code) || status === 408 || status === 429 || (status >= 500 && !/^PT\d{3}$/.test(code)))
@@ -155,12 +162,27 @@ export function classifyUpload(error: UploadError | null): Outcome {
   if (status === 401 || error.code === "InvalidJWT" || /\bjwt\b|token (is )?expired|invalid (jwt|token)|"exp" claim|claim timestamp/i.test(msg))
     return { kind: "auth", message: msg };
   const problem = (kind: SyncProblem["kind"], message: string, hint?: string): SyncProblem => ({ kind, message, code: `storage ${code || status}`, hint });
+  // The file itself: no resend of it can go through (NO_RETRY_HINTS).
   if (code === "413" || status === 413 || /too large|payload/i.test(msg))
-    return { kind: "conflict", problem: problem("conflicto", "La foto es demasiado grande para el servidor (máximo 10 MB).") };
+    return {
+      kind: "conflict",
+      problem: problem(
+        "conflicto",
+        "La foto es demasiado grande para el servidor (máximo 10 MB). Descarte este registro y tome la foto de nuevo, o adjunte una versión más pequeña.",
+        "upload_too_large",
+      ),
+    };
   if (code === "415" || status === 415 || /mime|content type|invalid_mime_type/i.test(msg))
-    return { kind: "conflict", problem: problem("conflicto", "El servidor no acepta este tipo de archivo (solo JPEG, PNG o WebP).") };
-  // The bucket's policy refused it (the order closed, or it is no longer this supervisor's): `upload_forbidden`, which a
-  // resend of the same file cannot change (NO_RETRY_HINTS).
+    return {
+      kind: "conflict",
+      problem: problem(
+        "conflicto",
+        "El servidor no acepta este tipo de archivo (solo JPEG, PNG o WebP). Descarte este registro y tome la foto de nuevo, o adjúntela en uno de esos formatos.",
+        "upload_bad_type",
+      ),
+    };
+  // The bucket's policy refused it (the order closed, or it is no longer this supervisor's): `upload_forbidden`. A reopening
+  // or a reassignment back lets the same file through (REVERSIBLE_HINTS).
   if (code === "403" || status === 403 || /row[- ]level security|unauthorized|not allowed/i.test(msg))
     return {
       kind: "conflict",
@@ -224,14 +246,38 @@ function names(q: SyncItem, ids: Set<string>): boolean {
 }
 
 /**
- * The item's last attempt went out and got no answer (network, a gateway timeout, a device error after sending): the server
+ * An attempt of the item went out and got no answer (network, a gateway timeout, a device error after sending): the server
  * may have applied it. Only a resend can tell (an applied op answers `duplicate`), so nothing that depends on it is judged
- * by it.
+ * by it. It stays so (`maybeApplied`) through later busy answers, which prove nothing about that attempt.
  */
 export function outcomeUnknown(q: SyncItem): boolean {
-  if (!q.tried || !q.problem || q.state === "sincronizado") return false;
+  if (q.state === "sincronizado") return false;
+  if (q.maybeApplied) return true;
+  if (!q.tried || !q.problem) return false;
   const code = q.problem.code ?? "";
   return code === "" || code === "network" || code === "502" || code === "504";
+}
+
+/**
+ * What an RPC answer says about whether an earlier attempt of the item may have been applied: true, the answer was lost
+ * (no answer, a gateway timeout); false, a definite answer (applied or duplicate; a refusal that ran on the server — a
+ * business error other than PT401, a constraint, a privilege); undefined, it proves nothing (busy, 408 / 429 / 5xx, a
+ * PostgREST error, a transient database state, an expired session): whatever was known stays.
+ */
+export function lostAnswer(outcome: Outcome): boolean | undefined {
+  if (outcome.kind === "ok") return false;
+  if (outcome.kind === "network") return true;
+  if (outcome.kind === "auth" || outcome.kind === "inactive") return undefined;
+  const code = outcome.problem.code ?? "";
+  if (code === "502" || code === "504") return true;
+  if ((/^PT\d{3}$/.test(code) && code !== "PT401") || /^23\d{3}$/.test(code) || code === "42501") return false;
+  return undefined;
+}
+
+/** The message of an item the retry cap stopped (it is not resent by itself any more). */
+export function cappedMessage(problem: SyncProblem, attempts: number): string {
+  const reason = problem.hint === CLOCK_AHEAD ? `${problem.message.replace(` ${CLOCK_AHEAD_WAIT}`, "")} ${CLOCK_AHEAD_STOPPED}` : problem.message;
+  return `No se pudo enviar tras ${attempts} intentos en 24 horas. ${reason}`;
 }
 
 /**
@@ -306,15 +352,21 @@ export function likelyRefusedAfter(queue: readonly SyncItem[], id: string): Sync
 
 /**
  * Server answers after which retrying the same request cannot help (only discarding it does): the sheet offers no
- * "Reintentar" for them. Besides the request itself (a reused op id, a check already there, a lost photo): a device time
- * older than the server accepts (`device_time_stale`), a jornada rescheduled or an order reassigned, out of the person's
- * scope, closed or cancelled meanwhile (field evidence of those orders stays on the device until it is discarded, and the
- * discard offers to save its photos first), and a photo file the bucket refused (`upload_forbidden`, classifyUpload).
+ * "Reintentar" for them. The request itself (a reused op id, a check already there, a lost photo, a photo file too large or
+ * of a type the bucket refuses) and a device time older than the server accepts (`device_time_stale`).
  */
 export const NO_RETRY_HINTS = new Set([
-  "op_id_reused", "duplicate_check", "already_resolved", "already_provisioned", "photo_lost",
-  "device_time_stale", "jornada_rescheduled", "order_reassigned", "out_of_scope", "order_closed", "order_cancelled", "upload_forbidden",
+  "op_id_reused", "duplicate_check", "already_resolved", "already_provisioned", "photo_lost", "upload_too_large", "upload_bad_type",
+  "device_time_stale",
 ]);
+
+/**
+ * Refusals the order's state explains, which a change on the server can undo (owner decision 2026-10-11): the order closed
+ * (reopened later), reassigned or out of the person's scope (assigned back), cancelled, the jornada rescheduled, the bucket
+ * refusing the file for those reasons. The same request then goes through, so "Reintentar" stays offered; the sheet says
+ * when it helps. Field evidence of those orders stays on the device until it goes or is discarded.
+ */
+export const REVERSIBLE_HINTS = new Set(["order_closed", "order_reassigned", "out_of_scope", "order_cancelled", "jornada_rescheduled", "upload_forbidden"]);
 
 /**
  * The person decides about it (the sync sheet offers Reintentar / Descartar): stopped items, and items being retried after

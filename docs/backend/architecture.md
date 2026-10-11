@@ -421,9 +421,21 @@ One RPC per queue item keeps generated TypeScript types for every argument (a ba
   - *permanent error* (bug or invalid input): other `PT403/PT404/PT409/PT422`; re-pull the order, let the user decide.
   - *never retried* — a resend of the same request cannot change the answer, so the sync sheet offers only "Descartar"
     and "Reintentar N envíos" skips them (`NO_RETRY_HINTS`, queue.ts): `op_id_reused`, `duplicate_check`,
-    `already_resolved`, `already_provisioned`, `photo_lost`, `device_time_stale`, `jornada_rescheduled`,
-    `order_reassigned`, `out_of_scope`, `order_closed`, `order_cancelled`, and a photo file the bucket refused (Storage
-    403 / RLS → hint `upload_forbidden`).
+    `already_resolved`, `already_provisioned`, `photo_lost`, `device_time_stale`, and a photo file the bucket can never
+    take (Storage 413 → `upload_too_large`, 415 → `upload_bad_type`; the message says to take the photo again or attach
+    a smaller one / another format).
+  - *reversible refusals* (owner decision 2026-10-11, `REVERSIBLE_HINTS`): `order_closed`, `order_reassigned`,
+    `out_of_scope`, `order_cancelled`, `jornada_rescheduled` and the bucket refusing the file for those reasons (Storage
+    403 / RLS → `upload_forbidden`). A reopening, a reassignment back or a reschedule lets the very same request through,
+    so «Reintentar» stays offered (per item and in "Reintentar N envíos"); the row keeps the server's message and adds
+    when Reintentar helps. A refused resend changes nothing (the op rolls back).
+  - *maybe applied*: an attempt whose answer was lost (no answer, 502/504, a device error after the request left) marks
+    the item `maybeApplied` until a definite answer (applied / duplicate, a business refusal, a constraint, a privilege);
+    busy answers (408/429/5xx, PostgREST, transient database states) prove nothing about it and keep the mark. While it
+    holds, «Descartar» takes the item alone (what depends on it may still apply), deletes no picture a queued item still
+    needs, and a discarded `create_order` is read back from the server by id.
+  - an item the retry cap stopped is never resent by itself: its message says so (a phone clock ahead: "Corrija la fecha
+    y hora del teléfono y pulse Reintentar").
   Field evidence is never dropped silently: a quarantined capture stays on the device until the person discards it, and
   the "Descartar" confirmation first offers «Guardar fotos en el teléfono» for every photo it would delete (the share
   sheet with the files where supported, else one download each, named `<folio>_<kind>_<yyyy-MM-dd_HH-mm-ss>`); the device

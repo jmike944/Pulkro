@@ -12,6 +12,7 @@ import { fmtAgo, fmtTime, plural } from "@/lib/format";
 import type { SyncItem } from "@/lib/types";
 import {
   NO_RETRY_HINTS,
+  REVERSIBLE_HINTS,
   discardSet,
   discardSummary,
   discardedCaptures,
@@ -226,12 +227,16 @@ const STATE_WORD: Record<SyncItem["state"], string> = {
   error: "No se pudo enviar",
 };
 
+/** A refusal the order's state explains (REVERSIBLE_HINTS): when the same request goes through. */
+const REVERSIBLE_ADVICE = "Si la orden se reabre, vuelve a estar a su cargo o se reprograma, pulse Reintentar.";
+
 /** What a queue row says under its label: why it waits, or why the server did not apply it (usted). */
 function rowDetail(q: SyncItem, waitFor: SyncItem | undefined, offline: boolean, account: boolean): string {
   if (q.state === "sincronizado" || q.state === "sincronizando") return STATE_WORD[q.state];
   if (q.state === "error") {
     if (!q.problem) return STATE_WORD.error;
-    return q.problem.kind === "conflicto" ? `No se aplicó: ${q.problem.message}` : `No se pudo enviar: ${q.problem.message}`;
+    const why = q.problem.kind === "conflicto" ? `No se aplicó: ${q.problem.message}` : `No se pudo enviar: ${q.problem.message}`;
+    return REVERSIBLE_HINTS.has(q.problem.hint ?? "") ? `${why} ${REVERSIBLE_ADVICE}` : why;
   }
   if (offline) return STATE_WORD.pendiente;
   if (waitFor)
