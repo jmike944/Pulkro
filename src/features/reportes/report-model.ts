@@ -3,6 +3,7 @@
  * Pure data, shared by the HTML A4 preview and the react-pdf document so both always match.
  */
 import { jornadaMinutes } from "@/lib/domain";
+import { isProvisionalFolio } from "@/lib/folio";
 import { INCIDENT_TYPE, SEVERITY } from "@/lib/status";
 import type {
   Client,
@@ -18,6 +19,27 @@ import type {
   User,
   Worker,
 } from "@/lib/types";
+
+/**
+ * What a composed PDF of `report` prints that the sync can still change after it was composed: the order's and the
+ * incidents' folios (provisional until the server assigns them), the version and photo list the server sets, the summary,
+ * the jornadas' times and the closure version. A PDF composed under another fingerprint is out of date: compose it again.
+ */
+export function reportFingerprint(ctx: Pick<ReportContext, "order" | "incidents" | "jornadas">, report: Report): string {
+  return JSON.stringify([
+    ctx.order.folio,
+    ctx.order.closure?.version ?? null,
+    report.version,
+    report.photoIds,
+    report.summary,
+    ctx.incidents.map((i) => [i.id, i.folio, i.status]),
+    ctx.jornadas.map((j) => [j.id, j.checkIn?.serverAt ?? j.checkIn?.deviceAt ?? null, j.checkOut?.serverAt ?? j.checkOut?.deviceAt ?? null]),
+  ]);
+}
+
+/** The PDF would print a folio the server has not assigned yet (the order's or an incident's): never hand it to the client. */
+export const hasProvisionalFolio = (ctx: Pick<ReportContext, "order" | "incidents">) =>
+  isProvisionalFolio(ctx.order.folio) || ctx.incidents.some((i) => isProvisionalFolio(i.folio));
 
 /** Recommended upper bound so the PDF stays light enough for WhatsApp. */
 export const RECOMMENDED_MAX_PHOTOS = 12;

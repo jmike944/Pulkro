@@ -14,6 +14,7 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { daysUntil, firstName } from "@/lib/format";
+import { isProvisionalFolio } from "@/lib/folio";
 import { CASE_CATEGORY } from "@/lib/status";
 import type { CaseCategory, CaseStatus, Order, PostSaleCase, ShareChannel, Survey, User } from "@/lib/types";
 
@@ -59,6 +60,17 @@ export function caseOwnerCandidates(users: User[], unitId: string, orderSupervis
 }
 
 /** Public survey link — only call in the browser (event handlers, open dialogs). */
+/**
+ * The WhatsApp greeting about a case. A folio the server has not assigned yet (PV-PEND-…, OS-PEND-…) never reaches the
+ * client: it would quote a reference nobody can find once the real folio exists.
+ */
+export function caseWhatsappText(contactName: string, caseFolio: string, orderFolio?: string): string {
+  const name = firstName(contactName.replace(/^(Lic|Ing|Dra?|Mtra?|Adm|Cap)\.\s*/i, ""));
+  const ref = isProvisionalFolio(caseFolio) ? "" : ` ${caseFolio}`;
+  const service = orderFolio && !isProvisionalFolio(orderFolio) ? ` del servicio ${orderFolio}` : "";
+  return `Hola ${name}, le saluda Pulkro respecto a su reporte${ref}${service}.`;
+}
+
 export function surveyUrl(token: string) {
   const origin = typeof window !== "undefined" ? window.location.origin : "";
   return `${origin}/encuesta/${token}`;

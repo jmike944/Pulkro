@@ -20,7 +20,7 @@ import { Button } from "@/components/ui/button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { DueLabel } from "./case-card";
 import { CaseStatusDialog, type CaseMove } from "./case-status-dialog";
-import { CASE_FLOW, caseOwnerCandidates } from "./lib";
+import { CASE_FLOW, caseOwnerCandidates, caseWhatsappText } from "./lib";
 import { Gate, REASON_POSTVENTA, menuItemCls, outlineBtnCls } from "./ui";
 
 /** Right column of the case detail: status card in an aurora frame + client contact. */
@@ -221,7 +221,7 @@ export function CaseSidePanel({
                 disabled={!contactPhone || !canManage}
                 onClick={() => {
                   window.open(
-                    whatsappLink(contactPhone, `Hola ${firstName(contactName.replace(/^(Lic|Ing|Dra?|Mtra?|Adm|Cap)\.\s*/i, ""))}, le saluda Pulkro respecto a su reporte ${c.folio}${order ? ` del servicio ${order.folio}` : ""}.`),
+                    whatsappLink(contactPhone, caseWhatsappText(contactName, c.folio, order?.folio)),
                     "_blank",
                     "noopener,noreferrer",
                   );

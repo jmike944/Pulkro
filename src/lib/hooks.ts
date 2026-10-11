@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useShallow } from "zustand/react/shallow";
 import { isOffline, useAppStore } from "./store";
 import { can, canSeeAuditEntry, canSeeOrder, scopedUnitIds, type Action } from "./permissions";
@@ -251,16 +251,34 @@ export function useSyncSummary() {
 
 /**
  * Keeps the address on the record's current folio: a page opened by id, or by the provisional folio of a record created on
- * this device ("OS-PEND-…"), moves to the real folio once the server assigned it — so a link, a bookmark or the back button
- * keeps working across the change. Native history (no navigation: works offline; Next keeps usePathname in step).
+ * this device ("OS-PEND-…"), moves to the real folio — so a link, a bookmark or the back button keeps working across the
+ * change. Native history (no navigation: works offline; Next keeps usePathname in step).
+ * It runs when the page opens (or the record first shows) and when the tab becomes visible again — never right when the
+ * folio changes under an open page: Next turns replaceState into a restore that discards a navigation already under way (a
+ * tap on «Jornada» or «Reporte» while the server's answer arrives). findByRef keeps the old address working meanwhile.
  */
 export function useCanonicalFolio(segment: string, folio: string | undefined, base: string, suffix = "") {
+  const latest = useRef(folio);
   useEffect(() => {
-    if (!folio || folio === segment) return;
-    const target = `${base}${encodeURIComponent(folio)}${suffix}`;
-    if (window.location.pathname === target) return;
-    window.history.replaceState(null, "", `${target}${window.location.search}${window.location.hash}`);
-  }, [segment, folio, base, suffix]);
+    latest.current = folio;
+  }, [folio]);
+  const ready = !!folio;
+  useEffect(() => {
+    if (!ready) return;
+    const canonical = () => {
+      const current = latest.current;
+      if (!current || current === segment) return;
+      const target = `${base}${encodeURIComponent(current)}${suffix}`;
+      if (window.location.pathname === target) return;
+      window.history.replaceState(null, "", `${target}${window.location.search}${window.location.hash}`);
+    };
+    canonical();
+    const onVisible = () => {
+      if (document.visibilityState === "visible") canonical();
+    };
+    document.addEventListener("visibilitychange", onVisible);
+    return () => document.removeEventListener("visibilitychange", onVisible);
+  }, [segment, base, suffix, ready]);
 }
 
 /** Re-renders every `ms` — for live timers and "hace X min" labels. */

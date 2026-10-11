@@ -8,7 +8,7 @@ import { useUi } from "@/lib/ui-store";
 import { mailtoLink, whatsappLink } from "@/lib/domain";
 import type { Report, ShareChannel } from "@/lib/types";
 import { buildReportPdf } from "./pdf-build";
-import { reportFileName, type ReportContext } from "./report-model";
+import { hasProvisionalFolio, reportFileName, reportFingerprint, type ReportContext } from "./report-model";
 import { CHANNEL_TO_LABEL, DOWNLOAD_TARGET, canShareFile, downloadBlob, emailDraft, whatsappMessage } from "./share";
 
 export type OutputStep = "registro" | "fotos" | "pdf" | "listo" | "error";
@@ -41,6 +41,13 @@ const firstShareFor = (orderId: string) =>
     .reports.filter((r) => r.orderId === orderId)
     .every((r) => r.shares.length === 0);
 
+/** Client-facing outputs never carry a provisional folio (OS-PEND-…, INC-PEND-…): the definitive PDF waits for the sync. */
+function provisional(ctx: ReportContext) {
+  if (!hasProvisionalFolio(ctx)) return false;
+  toast.error("El reporte aún tiene folios provisionales", { description: "Se asignan al sincronizar: espere a que termine para enviar el PDF definitivo." });
+  return true;
+}
+
 /**
  * PDF lifecycle for reports: generate a version (store.generateReport + PDF), re-render an existing
  * version on demand, and the three manual outputs. Every attempt is logged with store.logShare —
@@ -51,7 +58,9 @@ export function useReportOutputs() {
   const logShare = useAppStore((s) => s.logShare);
   const canShare = useCan("report.share");
   const canExport = useCan("export.pdf");
-  const [blobs, setBlobs] = useState<Record<string, Blob>>({});
+  // Each composed PDF with the fingerprint of what it printed (reportFingerprint): a sync that changed a folio, the version or
+  // the photo list since makes it stale, and it is composed again before it is shared.
+  const [blobs, setBlobs] = useState<Record<string, { blob: Blob; key: string }>>({});
   const [task, setTask] = useState<OutputTask | null>(null);
 
   const compose = useCallback(async (ctx: ReportContext, report: Report, kind: OutputTask["kind"], root?: ParentNode | null) => {
@@ -65,7 +74,7 @@ export function useReportOutputs() {
         onStage: (st) =>
           setTask((t) => (t && t.reportId === report.id ? { ...t, step: st.step, ...(st.step === "fotos" ? { done: st.done, total: st.total } : {}) } : t)),
       });
-      setBlobs((b) => ({ ...b, [report.id]: blob }));
+      setBlobs((b) => ({ ...b, [report.id]: { blob, key: reportFingerprint(ctx, report) } }));
       setTask((t) => (t && t.reportId === report.id ? { ...t, step: "listo" } : t));
       setTimeout(() => setTask((t) => (t && t.reportId === report.id && t.step === "listo" ? null : t)), 2200);
       return blob;
@@ -77,11 +86,14 @@ export function useReportOutputs() {
     }
   }, []);
 
-  /** Blob for a version, composing it if it is not in memory yet. */
+  /** A PDF of this version, composed from what the device has now, is in memory. */
+  const hasFresh = useCallback((ctx: ReportContext, report: Report) => blobs[report.id]?.key === reportFingerprint(ctx, report), [blobs]);
+
+  /** Blob for a version, composing it if it is not in memory yet (or what it printed changed since). */
   const prepare = useCallback(
     async (ctx: ReportContext, report: Report, root?: ParentNode | null) => {
       const cached = blobs[report.id];
-      if (cached) return { blob: cached, slow: false };
+      if (cached && cached.key === reportFingerprint(ctx, report)) return { blob: cached.blob, slow: false };
       const t0 = performance.now();
       const blob = await compose(ctx, report, "prepare", root);
       return blob ? { blob, slow: performance.now() - t0 > ACTIVATION_MS } : null;
@@ -127,6 +139,7 @@ export function useReportOutputs() {
   const shareWhatsApp = useCallback(
     async (ctx: ReportContext, report: Report, opts: Opts = {}): Promise<ShareResult> => {
       if (!canShare) return "denied";
+      if (provisional(ctx)) return "error";
       const ready = await prepare(ctx, report, opts.root);
       if (!ready) return "error";
       const fileName = reportFileName(ctx.order.folio, report.version);
@@ -181,6 +194,7 @@ export function useReportOutputs() {
   const shareEmail = useCallback(
     async (ctx: ReportContext, report: Report, opts: Opts = {}): Promise<ShareResult> => {
       if (!canShare) return "denied";
+      if (provisional(ctx)) return "error";
       const ready = await prepare(ctx, report, opts.root);
       if (!ready) return "error";
       const fileName = reportFileName(ctx.order.folio, report.version);
@@ -206,6 +220,8 @@ export function useReportOutputs() {
   const download = useCallback(
     async (ctx: ReportContext, report: Report, opts: DownloadOpts = {}): Promise<ShareResult> => {
       if (!canExport) return "denied";
+      // A logged download is a send attempt (it goes to the client): definitive folios only.
+      if (canShare && opts.log !== false && provisional(ctx)) return "error";
       const ready = await prepare(ctx, report, opts.root);
       if (!ready) return "error";
       const fileName = reportFileName(ctx.order.folio, report.version);
@@ -217,7 +233,7 @@ export function useReportOutputs() {
     [canExport, canShare, prepare, record],
   );
 
-  return { task, blobs, prepare, generate, shareWhatsApp, shareEmail, download };
+  return { task, hasFresh, prepare, generate, shareWhatsApp, shareEmail, download };
 }
 
 export type ReportOutputs = ReturnType<typeof useReportOutputs>;
