@@ -117,9 +117,9 @@ const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
  * another tab does (the blocker shows). "taking": «Usar aquí» was pressed, the writer is saving and stepping aside. "kept":
  * the writer could not save what it holds and stays. "handing": this tab is saving and stepping aside for another.
  * "unanswered": the writer did not answer «Usar aquí» and its last save failed (what it holds is only in its memory): the
- * person decides. "lost": another tab took over (this one starts over behind the blocker). "full": the device refuses even the epoch's
- * write (storage full): this tab waits, without the data, until it can. "unreadable": the device could not be read, or
- * refuses the epoch's write for another reason (site data blocked, a broken database).
+ * person decides. "lost": another tab took over (this one starts over behind the blocker). "full": the device refuses even
+ * the epoch's write (storage full): this tab waits, without the data, until it can. "unreadable": the device could not be
+ * read, or refuses the epoch's write for another reason (site data blocked, a broken database).
  */
 export type WriterState = "starting" | "writer" | "blocked" | "taking" | "kept" | "unanswered" | "handing" | "lost" | "full" | "unreadable";
 
