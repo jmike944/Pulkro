@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useId, useMemo, useState } from "react";
+import { useCallback, useEffect, useId, useMemo, useState } from "react";
 import { AnimatePresence, motion } from "motion/react";
 import Link from "next/link";
 import { Check, ChevronRight, CloudDownload, CloudOff, CloudUpload, KeyRound, Loader2, RefreshCw, Trash2, TriangleAlert, WifiOff } from "lucide-react";
@@ -10,7 +10,7 @@ import { useAppStore, useNow, useSyncSummary } from "@/lib/hooks";
 import { useUi } from "@/lib/ui-store";
 import { fmtAgo, fmtTime, plural } from "@/lib/format";
 import type { SyncItem } from "@/lib/types";
-import { NO_RETRY_HINTS, discardSet, waitsFor } from "@/lib/sync/queue";
+import { NO_RETRY_HINTS, discardSet, discardSummary, isRetryable, isStopped, outcomeUnknown, waitsFor } from "@/lib/sync/queue";
 import { ModalShell } from "@/components/pk/modal-shell";
 import { ConfirmDialog } from "@/features/configuracion/shared";
 import { Switch } from "@/components/ui/switch";
@@ -41,6 +41,15 @@ export function SyncChip({ collapsed, compact, slim }: { collapsed?: boolean; co
   const warn = state === "offline" || state === "reauth" || state === "stale";
   const busy = state === "syncing" || state === "downloading";
   const row = !!slim && state === "ok";
+  // Collapsed, only the dot shows: the name carries the state. Otherwise the visible text names the button.
+  const spoken = {
+    ok: `Sincronizado, ${fmtAgo(lastSyncAt)}`,
+    syncing: `Sincronizando, ${pending.length + syncing.length} en cola`,
+    offline: `Sin conexión, ${plural(pending.length, "pendiente", "pendientes")}`,
+    downloading: "Descargando datos de su cuenta",
+    stale: `Sin actualizar, ${fmtAgo(lastSyncAt)}`,
+    reauth: "Vuelva a entrar, sin sincronizar",
+  }[state];
   return (
     <button
       onClick={() => setOpen(true)}
@@ -55,7 +64,7 @@ export function SyncChip({ collapsed, compact, slim }: { collapsed?: boolean; co
         collapsed && "justify-center px-0",
         compact && "w-auto rounded-full px-3 py-2 text-[12.5px]",
       )}
-      aria-label="Estado de sincronización"
+      aria-label={collapsed ? `Sincronización: ${spoken}` : undefined}
     >
       {/* In the slim row the dot sits in a 20px box so it lines up with the nav icons above. */}
       <span className={cn("relative inline-flex size-2.5 shrink-0", row && "m-[5px]")}>
@@ -209,9 +218,10 @@ function rowDetail(q: SyncItem, waitFor: SyncItem | undefined, offline: boolean,
 export function SyncSheet() {
   const open = useUi((s) => s.syncOpen);
   const setOpen = useUi((s) => s.setSyncOpen);
-  const { queue } = useSyncSummary();
+  const { queue, offline, account } = useSyncSummary();
   const retry = useAppStore((s) => s.retrySync);
-  const failed = queue.reduce((n, q) => n + (q.state === "error" ? 1 : 0), 0);
+  // Account sessions: only what a resend can help (a duplicate check-in, a reused op id… only Descartar fixes those).
+  const failed = queue.reduce((n, q) => n + ((account ? isRetryable(q) : q.state === "error") ? 1 : 0), 0);
 
   return (
     <ModalShell
@@ -224,7 +234,7 @@ export function SyncSheet() {
       bodyClassName="pt-2"
       footer={
         failed > 0 ? (
-          <Button onClick={retry} className="h-11 rounded-[12px] px-5 text-[14px] font-semibold">
+          <Button onClick={retry} disabled={offline} className="h-11 rounded-[12px] px-5 text-[14px] font-semibold">
             <RefreshCw /> Reintentar {plural(failed, "envío", "envíos")}
           </Button>
         ) : undefined
@@ -244,6 +254,7 @@ function SyncPanel() {
   const items = useMemo(() => [...queue].reverse(), [queue]);
   const blockedBy = useMemo(() => waitsFor(queue), [queue]);
   const [discarding, setDiscarding] = useState<SyncItem | null>(null);
+  const closeDiscard = useCallback(() => setDiscarding(null), []);
   const waiting = queue.filter((q) => q.state !== "sincronizado").length;
   const failed = queue.filter((q) => q.state === "error").length;
   useNow(30_000); // keeps "hace 2 min" honest while the sheet stays open
@@ -384,9 +395,20 @@ function SyncPanel() {
           </ul>
         )}
       </section>
-      {account && <DiscardDialog item={discarding} onClose={() => setDiscarding(null)} />}
+      {account && <DiscardDialog item={discarding} onClose={closeDiscard} />}
     </div>
   );
+}
+
+/** "Fotos: 6, 2 registros de entrada o salida y 2 notas de bitácora" — the field captures a discard deletes, named. */
+function capturesText(set: SyncItem[]): string {
+  const sum = discardSummary(set);
+  const parts = [
+    sum.photos ? plural(sum.photos, "foto", "fotos") : "",
+    sum.checks ? plural(sum.checks, "registro de entrada o salida", "registros de entrada o salida") : "",
+    sum.notes ? plural(sum.notes, "nota de bitácora", "notas de bitácora") : "",
+  ].filter(Boolean);
+  return parts.length > 1 ? `${parts.slice(0, -1).join(", ")} y ${parts.at(-1)}` : (parts[0] ?? "");
 }
 
 /** "Descartar": the change leaves the queue for good; the device goes back to what the server has. */
@@ -395,7 +417,15 @@ function DiscardDialog({ item, onClose }: { item: SyncItem | null; onClose: () =
   const discard = useAppStore((s) => s.discardSyncItem);
   const set = item ? discardSet(queue, item.id) : [];
   const more = set.length - 1;
-  const photo = set.some((q) => q.op?.rpc === "add_photo");
+  const captures = capturesText(set);
+  const sum = discardSummary(set);
+  // The answer may have been lost after the server applied it: only the item itself goes (discardSet).
+  const unknown = !!item && outcomeUnknown(item);
+  // The item is being sent again (or went through) while the dialog was open: close it for good, never reopen by itself.
+  useEffect(() => {
+    if (item && !set.length) onClose();
+  }, [item, set.length, onClose]);
+  const many = set.length > 1;
   return (
     <ConfirmDialog
       open={!!item && set.length > 0}
@@ -407,8 +437,15 @@ function DiscardDialog({ item, onClose }: { item: SyncItem | null; onClose: () =
       rows={[
         { k: "Cambio", v: item?.label ?? "" },
         ...(more > 0 ? [{ k: "Cambios que dependen de él", v: `${more} más` }] : []),
+        ...(sum.photos ? [{ k: "Fotos que se borran del dispositivo", v: String(sum.photos) }] : []),
+        ...(sum.checks ? [{ k: "Registros de entrada o salida", v: String(sum.checks) }] : []),
+        ...(sum.notes ? [{ k: "Notas de bitácora", v: String(sum.notes) }] : []),
       ]}
-      checkboxLabel={photo ? "Entiendo que el cambio no llegará al servidor y que la foto se borrará de este dispositivo." : "Entiendo que este cambio no llegará al servidor."}
+      checkboxLabel={
+        captures
+          ? `Entiendo que ${many ? "estos cambios no llegarán" : "este cambio no llegará"} al servidor y que se borrarán de este dispositivo: ${captures}.`
+          : `Entiendo que ${many ? "estos cambios no llegarán" : "este cambio no llegará"} al servidor.`
+      }
       confirmLabel={more > 0 ? `Descartar ${set.length} cambios` : "Descartar"}
       destructive
       onConfirm={() => {
@@ -418,11 +455,24 @@ function DiscardDialog({ item, onClose }: { item: SyncItem | null; onClose: () =
       }}
     >
       {item?.problem && <p className="rounded-[14px] bg-soft px-4 py-3 text-[13.5px] leading-snug text-ink">{item.problem.message}</p>}
-      {more > 0 && (
+      {unknown && (
         <p className="mt-3 text-[13.5px] leading-snug text-subtle">
-          Usan lo que se descarta (la orden, la foto, la jornada, el registro nuevo…), así que tampoco podrían aplicarse y se
-          descartan con él.
+          El último envío no tuvo respuesta: puede que el servidor ya lo haya aplicado. Si es así, este dispositivo lo volverá a
+          mostrar. Lo que depende de este cambio sigue en la cola y se enviará.
         </p>
+      )}
+      {more > 0 && (
+        <>
+          <p className="mt-3 text-[13.5px] leading-snug text-subtle">
+            Usan lo que se descarta (la orden, la foto, la jornada, el registro nuevo…), así que tampoco podrían aplicarse y se
+            descartan con él:
+          </p>
+          <ul className="mt-2 max-h-40 space-y-1 overflow-y-auto rounded-[14px] border border-hairline px-4 py-2.5 text-[13px] leading-snug text-ink">
+            {set.slice(1).map((q) => (
+              <li key={q.id}>{q.label}</li>
+            ))}
+          </ul>
+        </>
       )}
     </ConfirmDialog>
   );
@@ -443,8 +493,9 @@ function QueueRow({
 }) {
   const retry = useAppStore((s) => s.retrySyncItem);
   const detail = rowDetail(q, waitFor, offline, account);
-  // Stopped items, and items being retried (a parent that may never arrive, a server that keeps failing): the person decides.
-  const stopped = account && (q.state === "error" || (q.state === "pendiente" && !!q.problem));
+  // Stopped items, and items retried after a server answer (a parent that may never arrive, a server that keeps failing): the
+  // person decides. An item waiting for the network only waits.
+  const stopped = account && isStopped(q);
   const canRetry = stopped && !!q.op && !NO_RETRY_HINTS.has(q.problem?.hint ?? "");
   return (
     <li className="flex items-start gap-3 rounded-[12px] px-2 py-2.5 text-[13.5px]">
@@ -476,11 +527,24 @@ function QueueRow({
         {stopped && (
           <span className="mt-1.5 flex flex-wrap gap-2">
             {canRetry && (
-              <Button variant="outline" size="sm" className="h-8 rounded-[10px] border-line px-3 text-[12.5px] font-semibold" disabled={offline} onClick={() => retry(q.id)}>
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-8 rounded-[10px] border-line px-3 text-[12.5px] font-semibold"
+                disabled={offline}
+                onClick={() => retry(q.id)}
+                aria-label={`Reintentar «${q.label}»`}
+              >
                 <RefreshCw /> Reintentar
               </Button>
             )}
-            <Button variant="outline" size="sm" className="h-8 rounded-[10px] border-line px-3 text-[12.5px] font-semibold" onClick={onDiscard}>
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-8 rounded-[10px] border-line px-3 text-[12.5px] font-semibold"
+              onClick={onDiscard}
+              aria-label={`Descartar «${q.label}»`}
+            >
               <Trash2 /> Descartar
             </Button>
           </span>
