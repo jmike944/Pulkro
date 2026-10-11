@@ -8,7 +8,7 @@
  * short-lived signed URL (architecture §7), and every picture that was displayed is also kept on the device (same IndexedDB
  * store, key `st:<path>`, the most recent ones only) so it still shows offline. Nothing is downloaded before it is shown.
  */
-import { clear, createStore, del, delMany, get, keys, set } from "idb-keyval";
+import { createStore, del, delMany, get, keys, set } from "idb-keyval";
 import { readCaptureMeta, type CaptureMeta } from "./exif";
 import { getSupabaseBrowserClient, isSupabaseConfigured } from "./supabase/client";
 import { stillWriter } from "./sync/writer";
@@ -119,8 +119,9 @@ export async function deletePhotoFile(key: string) {
 }
 
 /**
- * Bumped by clearPhotoFiles and cancelPhotoWork: work started before the wipe, or before this tab gave the device up (a server
- * photo being kept for offline viewing, a download for a report), never writes its pictures into the store afterwards.
+ * Bumped by cancelPhotoWork (also when the device changes hands: handOverPhotos): work started before, on the previous
+ * owner's pictures or in a tab that gave the device up (a server photo being kept for offline viewing, a download for a
+ * report), never writes into the store afterwards.
  */
 let epoch = 0;
 
@@ -134,18 +135,31 @@ export function cancelPhotoWork() {
   keepChain = Promise.resolve();
 }
 
-/** Every photo blob on the device (account sign-out, or another account's data being replaced), server copies included. */
-export async function clearPhotoFiles() {
-  epoch++;
-  keeping.clear();
+/**
+ * The device changes hands (an account's sign-out, another account's sign-in replacing its data). The work under way on the
+ * previous owner's pictures stops now, and the blobs on the device now — its captures and the copies of server photos — are
+ * listed: the function returned deletes exactly those. store.ts runs it once the save that hands the device over has
+ * committed (device-storage `afterHandover`), so a save that was refused or failed leaves them with the data that names
+ * them, and what the next account captures meanwhile stays. Never throws.
+ */
+export function handOverPhotos(): () => Promise<void> {
+  cancelPhotoWork();
   const waiting = signQueue;
   signQueue = null;
   waiting?.forEach((waiters) => waiters.forEach((done) => done({ url: null, retry: false })));
-  keepChain = Promise.resolve();
   urlCache.forEach((url) => URL.revokeObjectURL(url));
   urlCache.clear();
   signedUrls.clear();
-  if (store) await clear(store);
+  // Listed right away: the next account's first capture comes later.
+  const listed: Promise<IDBValidKey[]> = store ? keys(store).catch(() => []) : Promise.resolve([]);
+  return async () => {
+    try {
+      const previous = await listed;
+      if (store && previous.length) await delMany(previous, store);
+    } catch {
+      // a closed database: they stay until the next handover lists them again
+    }
+  };
 }
 
 /**
@@ -271,7 +285,7 @@ let keepChain: Promise<void> = Promise.resolve();
 
 /**
  * Stores a server photo's copy and trims the oldest beyond KEEP_OFFLINE (serialized: the index is read-modify-write).
- * `since`: the epoch the work started in; a wipe since then (clearPhotoFiles, cancelPhotoWork) cancels the write.
+ * `since`: the epoch the work started in; a handover or a drop since then (handOverPhotos, cancelPhotoWork) cancels the write.
  */
 function keepBlob(path: string, blob: Blob, since: number): Promise<void> {
   const run = keepChain.then(() => writeKept(path, blob, since));

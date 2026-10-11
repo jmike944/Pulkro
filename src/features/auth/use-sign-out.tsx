@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { CloudOff } from "lucide-react";
 import { toast } from "sonner";
 import { endSessionOnDevice } from "@/lib/supabase/client";
-import { useAppStore } from "@/lib/store";
+import { WIPE_PENDING_TOAST, useAppStore } from "@/lib/store";
 import { capturesInProgress, ownerOf, whenCapturesSettled } from "@/lib/device-storage";
 import { flagReauth } from "@/lib/sync/pull";
 import { fmtNum, plural } from "@/lib/format";
@@ -21,8 +21,12 @@ const newSince = (now: ReadonlySet<string>, accepted: ReadonlySet<string>) => [.
 
 const NONE: ReadonlySet<string> = new Set();
 
-/** "ok": signed out and wiped. "again": new unsent changes, nothing changed. "kept": session ended, data kept (re-auth). */
-export type SignOutOutcome = { result: "ok" | "kept" } | { result: "again"; ids: ReadonlySet<string> };
+/**
+ * "ok": signed out and wiped. "again": new unsent changes, nothing changed. "kept": session ended, data kept (re-auth).
+ * "unsaved": session ended, but the device has not stored the wipe yet (full, failing, or another window holds it): the
+ * account's data is still on it.
+ */
+export type SignOutOutcome = { result: "ok" | "kept" | "unsaved" } | { result: "again"; ids: ReadonlySet<string> };
 
 /**
  * The end of an account sign-out the person confirmed (`accepted`: the unsent changes they agreed to lose). A photo still
@@ -43,8 +47,8 @@ export async function endAccountOnDevice(accepted: ReadonlySet<string>): Promise
     flagReauth(useAppStore);
     return { result: "kept" };
   }
-  useAppStore.getState().clearDeviceData();
-  return { result: "ok" };
+  const saved = await useAppStore.getState().clearDeviceData();
+  return saved === "committed" ? { result: "ok" } : { result: "unsaved" };
 }
 
 /**
@@ -81,6 +85,14 @@ export function useSignOut({ redirectTo = "/login" }: { redirectTo?: string | nu
     } else if (outcome.result === "kept") {
       toast.warning("Sus datos siguen en este dispositivo", {
         description: "Aparecieron cambios sin enviar mientras se cerraba la sesión. Entre de nuevo para enviarlos, o cierre sesión otra vez para borrarlos.",
+      });
+    } else if (outcome.result === "unsaved") {
+      // Never «se borraron» while the device still holds the account's data: the wipe is retried (this toast goes once stored).
+      toast.error("No se pudieron borrar sus datos", {
+        id: WIPE_PENDING_TOAST,
+        duration: Infinity,
+        description:
+          "Su sesión se cerró, pero los datos de su cuenta siguen en este dispositivo: no se pudo guardar el borrado. No cierre la app mientras se reintenta y, si el teléfono está lleno, libere espacio. Si la cierra antes, ábrala y cierre sesión de nuevo.",
       });
     } else {
       toast.success("Sesión cerrada", { description: "Los datos de su cuenta se borraron de este dispositivo." });

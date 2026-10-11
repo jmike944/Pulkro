@@ -557,6 +557,11 @@ async function commitNow(w: Write, evicted: boolean): Promise<SaveResult> {
     return "refused";
   }
   base = w.value;
+  if (handover?.to === w.owner) {
+    const { done } = handover;
+    handover = undefined;
+    done();
+  }
   if (failing) {
     failing = false;
     failures = 0;
@@ -577,6 +582,15 @@ export function flushWrite(): Promise<SaveResult> {
   const w = pending;
   pending = null;
   return serial(() => commitNow(w, false));
+}
+
+/**
+ * Runs `done` once a save of `to`'s data has committed in this tab (the caller's flush or a retry's): the device holds the
+ * new owner's data from then on, so what the previous owner left (its photo blobs) can go. A later handover replaces it.
+ */
+let handover: { to: DeviceOwner; done: () => void } | undefined;
+export function afterHandover(to: DeviceOwner, done: () => void) {
+  handover = { to, done };
 }
 
 /** Keys whose value is not undefined (a key set to undefined in memory is missing once saved as JSON). */

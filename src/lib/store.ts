@@ -34,8 +34,8 @@ import {
 import { plural } from "./format";
 import { DONE_STATUSES, OPEN_STATUSES } from "./status";
 import { DEMO_ENABLED, DEMO_SIGN_IN } from "./demo";
-import { cancelPhotoWork, clearPhotoFiles, deletePhotoFile, evictKeptPhotos } from "./photo-store";
-import { becomeWriter, createDeviceStorage, flushWrite, isQuotaError, registerTab, writerState } from "./device-storage";
+import { cancelPhotoWork, deletePhotoFile, evictKeptPhotos, handOverPhotos } from "./photo-store";
+import { afterHandover, becomeWriter, createDeviceStorage, flushWrite, isQuotaError, ownerOf, registerTab, writerState, type SaveResult } from "./device-storage";
 import { requestPull, verifyAccount, type PullRequest, type PullState } from "./sync/pull";
 import { breakdownArg, daysArg, diffPatch, localDay, materialsArg, orderPatch, rpcOp, type MutationRpc, type RpcArgs } from "./sync/ops";
 import { discardItems, pushQueue, releaseBlobs, resumeAfterReconnect, retryItems } from "./sync/push";
@@ -237,8 +237,11 @@ export type AppState = DataSnapshot & {
    * the outcome shows in usePullStatus / session.needsReauth. No-op offline, for the demo and while re-authentication is due.
    */
   pullNow: (req?: PullRequest) => Promise<void>;
-  /** Wipes the device after an account sign-out: data, queue and photo blobs (IndexedDB), then the demo seed if offered. */
-  clearDeviceData: () => void;
+  /**
+   * Wipes the device after an account sign-out: data, queue and photo blobs (IndexedDB), then the demo seed if offered.
+   * Resolves with the wipe's save: until it is "committed" the device still holds the account's data (it is retried).
+   */
+  clearDeviceData: () => Promise<SaveResult>;
   /** Demo only (NEXT_PUBLIC_DEMO ≠ "0"). */
   switchRole: (role: Role) => void;
   /** No-op for roles without view.allUnits. */
@@ -665,11 +668,11 @@ export const useAppStore = create<AppState>()(
             session: { signedIn: true, userId: user.id, unitFilter: "all", mode: "supabase" },
             sync: { ...st.sync, queue: [], lastSyncAt: nowIso(), processing: false },
           }));
-          // Written now. The previous owner's photo blobs go only once the device has changed hands: a write the device
-          // refused or could not store (full) leaves that owner's data — and the captures it names — where they were.
-          void flushWrite().then((saved) => {
-            if (saved === "committed") void clearPhotoFiles();
-          });
+          // Written now. The previous owner's photo blobs (those on the device now) go once the device holds this account's
+          // data — this save or a retry of it. A save the device refused or could not store leaves that owner's data, and
+          // the captures it names, where they were; what this account captures meanwhile stays.
+          afterHandover(ownerOf({ mode: "supabase", userId: user.id }), handOverPhotos());
+          void flushWrite();
           requestPersistentStorage();
           // First load of the account's catalogs and orders in scope, then the incremental cursors (sync/pull.ts).
           setTimeout(() => void getState().pullNow({ manual: true }), 0);
@@ -687,12 +690,19 @@ export const useAppStore = create<AppState>()(
             sync: { forcedOffline: false, browserOffline: st.sync.browserOffline, queue: [], lastSyncAt: nowIso(), processing: false, clock: st.sync.clock },
           }));
           // Write the empty state now (not after the debounce): the account's records leave IndexedDB with the sign-out. Its
-          // photo blobs go once that is on the device: a tab that lost the device meanwhile deletes nothing of the writer's.
-          void flushWrite().then((saved) => {
-            if (saved === "committed") void clearPhotoFiles();
+          // photo blobs go once that is on the device (this save or a retry of it): a tab that lost the device meanwhile
+          // deletes nothing of the writer's.
+          const release = handOverPhotos();
+          afterHandover("demo", release);
+          const saved = flushWrite().then(async (result) => {
+            // A full device: the person agreed to lose what those blobs hold — they go first, then the wipe is tried again.
+            if (result !== "failed" || !getState().sync.saveFull) return result;
+            await release();
+            return flushWrite();
           });
           // The login screen's demo picker needs the demo dataset back (when the build offers it).
           getState().ensureSeeded();
+          return saved;
         },
         switchRole: (role) => {
           if (!DEMO_ENABLED || getState().session.mode === "supabase") {
@@ -1880,6 +1890,9 @@ export const useAppStore = create<AppState>()(
 // Server times read outside the sync engines (the Auth answers of supabase/client.ts) adjust the clock estimate.
 setClockSink((sample) => noteServerTime(useAppStore, sample));
 
+/** The toast of an account sign-out whose wipe the device has not stored yet (useSignOut): it goes once a save works again. */
+export const WIPE_PENDING_TOAST = "pk-wipe-pending";
+
 registerTab({
   // Another tab holds the device now, or another owner's data is on it: nothing of it stays in this tab's memory (writes
   // are already off). Not hydrated any more: the shell waits (behind the blocker) instead of sending this tab to /login.
@@ -1903,6 +1916,8 @@ registerTab({
     if (error === null) {
       useAppStore.setState((st) => (st.sync.saveError ? { sync: { ...st.sync, saveError: undefined, saveFull: undefined } } : st));
       toast.dismiss("pk-save-error");
+      // A sign-out's wipe that had failed is on the device now (this save carries it).
+      toast.dismiss(WIPE_PENDING_TOAST);
       return;
     }
     // The same test device-storage uses to free space first (a quota error, by name or by message).
