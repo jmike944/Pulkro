@@ -378,6 +378,11 @@ async function pullSubtrees(ctx: Ctx) {
     usePullStatus.setState({ initial: true });
     const chunk = due.slice(0, SUBTREE_CHUNK);
     for (const id of chunk) reads.set(id, (reads.get(id) ?? 0) + 1);
+    // A read that starts in the same millisecond as a send counts that send as later (pendingIndex) and holds its order
+    // again: start after it.
+    const now = Date.now();
+    const lastSent = Math.max(0, ...st.sync.queue.map((q) => (q.state === "sincronizado" && q.syncedAt ? Date.parse(q.syncedAt) : 0)).filter((t) => t <= now));
+    if (lastSent >= now) await new Promise((r) => setTimeout(r, 1 + lastSent - now));
     const readAt = nowIso();
     const batch: RowsByTable = {};
     batch.orders = await readAll<Row<"orders">>(ctx, "orders", (q) => q.in("id", chunk));
