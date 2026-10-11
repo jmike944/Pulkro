@@ -3,6 +3,7 @@
 import { useEffect } from "react";
 import { getSupabaseBrowserClient, isSupabaseConfigured } from "@/lib/supabase/client";
 import { isOffline, useAppStore } from "@/lib/store";
+import { checkClock } from "./clock";
 import { flagReauth, verifyAccount } from "./pull";
 
 const INTERVAL_MS = 60_000;
@@ -22,12 +23,19 @@ export function usePullScheduler() {
 
   useEffect(() => {
     if (!hydrated || !account || !isSupabaseConfigured) return;
+    // The phone's clock against the server's (ClockWarning): a clock the person just corrected is measured again.
+    const clock = () => {
+      const s = useAppStore.getState();
+      checkClock(useAppStore, () => getSupabaseBrowserClient().auth.refreshSession(), !isOffline(s) && !s.session.needsReauth);
+    };
     const pull = (manual = false) => {
+      clock();
       // The unsent changes first (a no-op when nothing is ready), then the server's. Both check first that this tab still
       // holds the device (lib/device-storage): one taken over while it was in the background sends and reads nothing.
       void useAppStore.getState().processSyncQueue();
       void useAppStore.getState().pullNow({ manual });
     };
+    clock();
     const visible = () => document.visibilityState === "visible";
 
     const onFocus = () => pull();

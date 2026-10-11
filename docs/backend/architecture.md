@@ -463,6 +463,11 @@ One RPC per queue item keeps generated TypeScript types for every argument (a ba
   Auth answer in supabase/client.ts), and the newest `updated_at` a pull reads (a lower bound: it only raises the
   estimate). While the offset exceeds 5 minutes, the capture screens (check-in/out, photos, notes, incidents, closure)
   show a non-blocking warning to correct the phone's date and time (`ClockWarning`); nothing is blocked (policy in §14).
+  When the app comes back to the screen and every minute, a wall clock that moved more than the time that passed
+  (`performance.now()`) was set by hand: the estimate of the old clock is dropped, and while the warning shows (or after
+  such a jump) the clock is measured again with a token refresh, at most every 2 minutes (`checkClock`). The comparison
+  of a send time with a read time (both the phone's clock) treats a send time later than now as earlier than the read
+  (the clock went back since), so a corrected clock never holds an order in every pull.
 
 **Pull — RLS-scoped table reads with incremental cursors, plus fetch-by-reference for scope gain.**
 
