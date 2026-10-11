@@ -3,6 +3,7 @@
 import type { SupabaseBrowserClient } from "@/lib/supabase/client";
 import { unsentCount, useAppStore } from "@/lib/store";
 import { DEMO_ENABLED } from "@/lib/demo";
+import { mapProfile, mapUnit } from "@/lib/sync/map";
 import type { Unit, User } from "@/lib/types";
 import { NETWORK_MESSAGE, isNetworkFailure } from "./auth-errors";
 
@@ -26,21 +27,10 @@ export async function loadOwnProfile(supabase: SupabaseBrowserClient, userId: st
     .maybeSingle();
   if (error) return { ok: false, message: isNetworkFailure(error) ? NETWORK_MESSAGE : "No se pudo leer su perfil. Intente de nuevo en unos minutos." };
   if (!data || !data.active) return { ok: false, message: NO_PROFILE_MESSAGE };
-  const user: User = {
-    id: data.id,
-    name: data.name,
-    initials: data.initials,
-    role: data.role,
-    title: data.title,
-    unitId: data.unit_id,
-    email: data.email,
-    phone: data.phone,
-    hue: data.hue,
-    active: data.active,
-  };
+  const user = mapProfile(data);
   // The unit names the account's scope in the shell; the session works without it (RLS lets every role read its own unit).
   const { data: unit } = await supabase.from("units").select("id, name, code, city").eq("id", data.unit_id).maybeSingle();
-  return { ok: true, user, unit: unit ?? undefined };
+  return { ok: true, user, unit: unit ? mapUnit(unit) : undefined };
 }
 
 /** Resolves once the store has been read back from IndexedDB (writing before that would be overwritten by the rehydration). */

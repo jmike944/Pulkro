@@ -95,6 +95,8 @@ export type OrderStatus =
   | "reabierta";
 
 export type CrewChange = {
+  /** Server row id (crew_changes.id) of a pulled entry; entries recorded on this device have none until synced. */
+  id?: string;
   at: string;
   workerIds: string[];
   by: string; // user id
@@ -118,6 +120,9 @@ export type EvidenceException = {
 };
 
 export type Closure = {
+  /** Server row (order_closures.id) and its version: a re-validation after a reopening is version n+1. */
+  id?: string;
+  version?: number;
   validatedAt: string;
   validatedBy: string; // user id (supervisor)
   conformity?: Conformity;
@@ -178,7 +183,8 @@ export type GeoStamp = {
 
 export type JornadaStatus = "pendiente" | "en_curso" | "cerrada";
 
-export type JornadaLogEntry = { at: string; by: string; text: string };
+/** `id`: server row id (jornada_notes.id) of a pulled entry; entries written on this device have none until synced. */
+export type JornadaLogEntry = { id?: string; at: string; by: string; text: string };
 
 /** One working day of an order. Multi-day orders keep independent jornadas. */
 export type Jornada = {
@@ -210,10 +216,14 @@ export type SceneKind =
   | "lobby"
   | "escalera";
 
-/** Photo source: either a procedural seed scene, or a real capture stored in IndexedDB. */
+/**
+ * Photo source: a procedural seed scene (demo), a capture still on this device (IndexedDB blob), or evidence stored on the
+ * server (private Storage bucket `evidencias`, shown through a short-lived signed URL — photo-store.ts).
+ */
 export type PhotoSource =
   | { type: "scene"; scene: SceneKind; seed: number }
-  | { type: "idb"; key: string; width: number; height: number };
+  | { type: "idb"; key: string; width: number; height: number }
+  | { type: "storage"; path: string; width?: number; height?: number };
 
 /** Where a real capture came from: the camera input right now, or picked from the gallery (may be older / taken by someone else). */
 export type PhotoOrigin = "camera" | "gallery";
@@ -331,7 +341,8 @@ export type PostSaleCase = {
   createdAt: string;
   createdBy: string;
   updatedAt: string;
-  timeline: { at: string; by: string; text: string }[];
+  /** `id`: server row id (case_events.id) of a pulled entry; entries written on this device have none until synced. */
+  timeline: { id?: string; at: string; by: string; text: string }[];
 };
 
 export type SurveyAnswers = {
