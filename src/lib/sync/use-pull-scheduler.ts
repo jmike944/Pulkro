@@ -9,7 +9,8 @@ const INTERVAL_MS = 60_000;
 
 /**
  * When an account session pulls (architecture §8: "pull on reconnect / interval / focus"): on window focus, when the tab
- * becomes visible, when the connection comes back, and every 60 s while the tab is visible. The first pull and the one after
+ * becomes visible, when the connection comes back, and every 60 s while the tab is visible. The same moments also send what
+ * the queue holds (sync/push.ts, which also wakes itself for its retries), and so does the end of a re-authentication. The first pull and the one after
  * signing in are started by the store (ensureSeeded / startSupabaseSession). Also watches the browser's Supabase session:
  * signed out (refresh token revoked or expired) or replaced by another account's (an invite / recovery link opened on this
  * device) → "Vuelva a entrar", nothing pulled, data kept; this account's session back (signed in again in another tab) →
@@ -21,7 +22,11 @@ export function usePullScheduler() {
 
   useEffect(() => {
     if (!hydrated || !account || !isSupabaseConfigured) return;
-    const pull = (manual = false) => void useAppStore.getState().pullNow({ manual });
+    const pull = (manual = false) => {
+      // Unsent changes first (a no-op when nothing is ready), then the server's.
+      void useAppStore.getState().processSyncQueue();
+      void useAppStore.getState().pullNow({ manual });
+    };
     const visible = () => document.visibilityState === "visible";
 
     const onFocus = () => pull();
@@ -36,6 +41,8 @@ export function usePullScheduler() {
     // "Simular sin conexión" switched off (or the browser came back) → pull too.
     const stopStore = useAppStore.subscribe((s, prev) => {
       if (isOffline(prev) && !isOffline(s)) pull(true);
+      // Signed in again: what waited for the session goes now.
+      else if (prev.session.needsReauth && !s.session.needsReauth && s.session.signedIn) void s.processSyncQueue();
     });
 
     window.addEventListener("focus", onFocus);
