@@ -1302,7 +1302,7 @@ export const useAppStore = create<AppState>()(
         },
         processSyncQueue: async () => {
           // The loop below only simulates the server for the demo. An account's changes stay "pendiente" (and count as
-          // unsent at sign-out) until the real push exists. TODO(phase 4 — push, architecture §8): send each item as its RPC.
+          // unsent at sign-out) until the real push exists. TODO(push, after the phase 2 pull — architecture §8, §12 step 4): send each item as its RPC.
           if (getState().session.mode === "supabase") return;
           if (getState().sync.processing) return;
           setState((st) => ({ sync: { ...st.sync, processing: true } }));
