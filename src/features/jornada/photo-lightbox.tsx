@@ -5,7 +5,6 @@ import { AnimatePresence, motion } from "motion/react";
 import { Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { useAppStore } from "@/lib/hooks";
-import { deletePhotoFile } from "@/lib/photo-store";
 import { PHOTO_KIND } from "@/lib/status";
 import type { Photo } from "@/lib/types";
 import { Button } from "@/components/ui/button";
@@ -67,8 +66,7 @@ function DeletePhoto({ photo, canDelete, reason, onDelete }: { photo: Photo; can
 
   const remove = () => {
     onDelete();
-    deletePhoto(photo.id);
-    if (photo.source.type === "idb") void deletePhotoFile(photo.source.key);
+    deletePhoto(photo.id); // the store also deletes the image blob
     toast.success("Foto eliminada", { description: `${kind.label.toUpperCase()} · ${photo.area}` });
   };
 

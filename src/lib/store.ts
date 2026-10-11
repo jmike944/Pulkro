@@ -19,6 +19,7 @@ import { GEO_NOTE_MIN, closureBlockers, photoTimingIssues } from "./domain";
 import { plural } from "./format";
 import { DONE_STATUSES, OPEN_STATUSES } from "./status";
 import { DEMO_ENABLED } from "./demo";
+import { deletePhotoFile } from "./photo-store";
 import type {
   AuditEntity,
   CaseStatus,
@@ -779,6 +780,9 @@ export const useAppStore = create<AppState>()(
           const ok = allowPhotoEdit(photoId);
           if (!ok) return;
           setState((st) => ({ photos: st.photos.filter((x) => x.id !== photoId) }));
+          // The image blob goes with the record (every caller: lightbox delete, discarded drafts, incident/case photos),
+          // and only after the permission check passed.
+          if (ok.photo.source.type === "idb") void deletePhotoFile(ok.photo.source.key);
           record("foto", photoId, `Eliminó foto · ${ok.photo.area}`, { orderId: ok.photo.orderId });
         },
 
