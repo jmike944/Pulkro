@@ -14,6 +14,8 @@
     "@maplibre/maplibre-gl-leaflet": "0.1.4",
     "@number-flow/react": "^0.6.2",
     "@react-pdf/renderer": "^4.9.0",
+    "@supabase/ssr": "0.12.7",
+    "@supabase/supabase-js": "2.117.2",
     "class-variance-authority": "^0.7.1",
     "cmdk": "^1.1.1",
     "cn": "^0.4.0",
