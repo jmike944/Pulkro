@@ -34,7 +34,7 @@ import {
 import { plural } from "./format";
 import { DONE_STATUSES, OPEN_STATUSES } from "./status";
 import { DEMO_ENABLED, DEMO_SIGN_IN } from "./demo";
-import { clearPhotoFiles, deletePhotoFile, evictKeptPhotos } from "./photo-store";
+import { cancelPhotoWork, clearPhotoFiles, deletePhotoFile, evictKeptPhotos } from "./photo-store";
 import { becomeWriter, createDeviceStorage, flushWrite, isQuotaError, registerTab, writerState } from "./device-storage";
 import { requestPull, verifyAccount, type PullRequest, type PullState } from "./sync/pull";
 import { breakdownArg, daysArg, diffPatch, localDay, materialsArg, orderPatch, rpcOp, type MutationRpc, type RpcArgs } from "./sync/ops";
@@ -1883,14 +1883,17 @@ setClockSink((sample) => noteServerTime(useAppStore, sample));
 registerTab({
   // Another tab holds the device now, or another owner's data is on it: nothing of it stays in this tab's memory (writes
   // are already off). Not hydrated any more: the shell waits (behind the blocker) instead of sending this tab to /login.
-  drop: () =>
+  drop: () => {
+    // Nor does any copy of a server photo it was still keeping land on the device afterwards.
+    cancelPhotoWork();
     useAppStore.setState((st) => ({
       ...emptyData,
       meta: { seededAt: "", seedVersion: 0 },
       session: signedOutSession(),
       sync: { ...st.sync, queue: [], processing: false },
       hydrated: false,
-    })),
+    }));
+  },
   // A handover: nothing is sent or read while this tab saves what it holds; it goes on if it could not (and stays the writer).
   halt: (on) => {
     haltSync(on);

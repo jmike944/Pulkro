@@ -11,6 +11,7 @@
 import { clear, createStore, del, delMany, get, keys, set } from "idb-keyval";
 import { readCaptureMeta, type CaptureMeta } from "./exif";
 import { getSupabaseBrowserClient, isSupabaseConfigured } from "./supabase/client";
+import { stillWriter } from "./sync/writer";
 import type { Photo, PhotoOrigin } from "./types";
 
 const store = typeof indexedDB !== "undefined" ? createStore("pulkro-photos", "blobs") : undefined;
@@ -118,10 +119,20 @@ export async function deletePhotoFile(key: string) {
 }
 
 /**
- * Bumped by clearPhotoFiles: work started before the wipe (a server photo being kept for offline viewing, a download for a
- * report) never writes the previous account's pictures back into the emptied store.
+ * Bumped by clearPhotoFiles and cancelPhotoWork: work started before the wipe, or before this tab gave the device up (a server
+ * photo being kept for offline viewing, a download for a report), never writes its pictures into the store afterwards.
  */
 let epoch = 0;
+
+/**
+ * This tab gives the device up (another tab holds it now, or another owner's data is on it): the copies of server photos
+ * still being kept here are not written (store.ts, registerTab's drop).
+ */
+export function cancelPhotoWork() {
+  epoch++;
+  keeping.clear();
+  keepChain = Promise.resolve();
+}
 
 /** Every photo blob on the device (account sign-out, or another account's data being replaced), server copies included. */
 export async function clearPhotoFiles() {
@@ -260,7 +271,7 @@ let keepChain: Promise<void> = Promise.resolve();
 
 /**
  * Stores a server photo's copy and trims the oldest beyond KEEP_OFFLINE (serialized: the index is read-modify-write).
- * `since`: the epoch the work started in; a wipe since then (clearPhotoFiles) cancels the write.
+ * `since`: the epoch the work started in; a wipe since then (clearPhotoFiles, cancelPhotoWork) cancels the write.
  */
 function keepBlob(path: string, blob: Blob, since: number): Promise<void> {
   const run = keepChain.then(() => writeKept(path, blob, since));
@@ -269,7 +280,9 @@ function keepBlob(path: string, blob: Blob, since: number): Promise<void> {
 }
 
 async function writeKept(path: string, blob: Blob, since: number) {
-  if (!store || since !== epoch) return;
+  // Only the device's writer keeps copies: a tab that lost the device while it downloaded (frozen in the background) never
+  // writes into the new writer's store — the previous account's picture after its sign-out's wipe, a trim of its index.
+  if (!store || since !== epoch || !(await stillWriter())) return;
   await set(blobKey(path), blob, store);
   if (since !== epoch) return void (await del(blobKey(path), store));
   const index = ((await get<string[]>(INDEX_KEY, store)) ?? []).filter((p) => p !== path);
