@@ -11,12 +11,20 @@ let client: SupabaseBrowserClient | undefined;
 /**
  * The one browser client (store, sync engine, auth screens). The session lives in cookies, so the proxy and server code
  * read the same session. Call it from event handlers and effects only (never while rendering on the server).
+ *
+ * It never takes a session from the address bar (`detectSessionInUrl: false`; @supabase/ssr turns it on in browsers).
+ * /acceso/definir-contrasena is the only place that turns an e-mail link into a session (features/auth/auth-link.ts). With
+ * detection on and the PKCE flow @supabase/ssr forces, the first use of this client on any page would:
+ *  - reject an invite's implicit-flow fragment ("Not a valid PKCE flow url") and skip loading the stored session;
+ *  - exchange a recovery `?code=` itself before the page could. A code works once, and exchangeCodeForSession waits for that
+ *    detection, so the page's own exchange would always lose.
+ * No other flow needs detection: the app has no OAuth, magic-link or sign-up callbacks.
  */
 export function getSupabaseBrowserClient(): SupabaseBrowserClient {
   if (!isSupabaseConfigured) {
     throw new Error("Supabase no está configurado: faltan NEXT_PUBLIC_SUPABASE_URL y NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY.");
   }
-  client ??= createBrowserClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY);
+  client ??= createBrowserClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, { auth: { detectSessionInUrl: false } });
   return client;
 }
 

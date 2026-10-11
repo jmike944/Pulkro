@@ -3,36 +3,37 @@
 import { Suspense, useCallback, useEffect, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { ArrowRight, KeyRound, Link2Off, Loader2, LockKeyhole, Mail, MailCheck, RotateCw, UserRoundX, WifiOff } from "lucide-react";
-import type { EmailOtpType } from "@supabase/supabase-js";
+import type { EmailOtpType, Session, User } from "@supabase/supabase-js";
 import { cn } from "@/lib/utils";
 import { getSupabaseBrowserClient, isSupabaseConfigured } from "@/lib/supabase/client";
 import { BigButton } from "@/components/pk/mobile";
 import { Button } from "@/components/ui/button";
-import { linkErrorOf, setPasswordErrorMessage, type LinkFailure } from "./auth-errors";
+import { NETWORK_MESSAGE, linkErrorOf, linkRedirectErrorOf, setPasswordErrorMessage, type LinkFailure } from "./auth-errors";
 import { AuthFrame, AuthHeading } from "./auth-frame";
+import { isCredential, needsPassword, parseAuthLink, type AuthLink, type LinkCredential, type LinkType } from "./auth-link";
 import { AuthField, FormMessage, PasswordChecklist, PasswordField } from "./form-bits";
 import { PASSWORD_RULE_TEXT, passwordProblem } from "./password-policy";
 import { accountOnDevice, whenHydrated } from "./session";
 import { useEnterAccount } from "./use-enter-account";
 
 /**
- * /acceso/definir-contrasena — where the invite and recovery e-mails land (supabase/templates):
- *   ?token_hash=…&type=invite|recovery   → verifyOtp, then "Defina su contraseña" (updateUser), then into the app
- *   ?token_hash=…&type=email_change|email → verifyOtp, then "Correo confirmado", then into the app
- * Verifying the link replaces the browser's Supabase session with the link's account: while an account is open on this device,
- * the page asks first ("other-account"), so a link opened on a shared tablet never silently takes over its session.
- * The token is a credential until it is used: the query leaves the address bar (and the history) as soon as the page has read
- * it, whatever happens next; "Reintentar" works from the copy in memory. It is verified once per page (React may run effects
- * twice).
+ * /acceso/definir-contrasena: where the invite and recovery e-mails land, in every form Supabase Auth sends (auth-link.ts):
+ *   ?token_hash=…&type=…                   (custom templates, supabase/templates)        → verifyOtp
+ *   #access_token=…&refresh_token=…&type=… (default templates, invite: implicit flow)    → setSession
+ *   ?code=…                                (default templates, recovery asked for here)  → exchangeCodeForSession ("recovery")
+ *   #error=…&error_code=…                  (a link Auth refused)                         → expired / failed, nothing to verify
+ * invite / recovery → "Defina su contraseña" (updateUser), email_change / email / signup → "Correo confirmado"; then into
+ * the app. Links that land on another page (the dashboard's invite goes to the Site URL) are sent here by the root layout
+ * (auth-link-forward.ts).
+ * This page is the only place that turns a link into a session. The browser client never reads the address bar
+ * (detectSessionInUrl: false, lib/supabase/client.ts), so it cannot spend the one-time code or swallow the fragment first.
+ * Verifying the link replaces the browser's Supabase session with the link's account. While an account is open on this
+ * device, the page asks first ("other-account"), so a link opened on a shared tablet never silently takes over its session.
+ * The link is a credential until it is used: the query and the fragment leave the address bar (and the history) as soon as
+ * the page has read them, whatever happens next; "Reintentar" works from the copy in memory. It is verified once per page
+ * (React may run effects twice).
  */
 
-const PASSWORD_LINKS = ["invite", "recovery"] as const;
-const CONFIRM_LINKS = ["email_change", "email", "signup"] as const;
-type LinkType = (typeof PASSWORD_LINKS)[number] | (typeof CONFIRM_LINKS)[number];
-const isLinkType = (t: string): t is LinkType => (PASSWORD_LINKS as readonly string[]).includes(t) || (CONFIRM_LINKS as readonly string[]).includes(t);
-const needsPassword = (t: LinkType) => (PASSWORD_LINKS as readonly string[]).includes(t);
-
-type Link = { tokenHash: string; type: string };
 type Verified = { userId: string; email: string; type: LinkType };
 type Outcome = { ok: true; verified: Verified } | { ok: false; failure: LinkFailure };
 
@@ -41,24 +42,29 @@ type Stage =
   | { kind: "other-account"; name: string }
   | { kind: "unconfigured" }
   | { kind: "incomplete" }
-  | { kind: "expired"; type: LinkType }
-  | { kind: "failed"; failure: LinkFailure }
+  // type null: Auth refused the link before it reached the page, and its error does not say which kind it was.
+  | { kind: "expired"; type: LinkType | null; otherBrowser: boolean }
+  // retry false: the link carried Auth's error, so trying it again reads the same error.
+  | { kind: "failed"; failure: LinkFailure; retry: boolean }
   | { kind: "password"; verified: Verified }
   | { kind: "confirmed"; verified: Verified }
   | { kind: "refused"; message: string };
 
 const verifications = new Map<string, Promise<Outcome>>();
+/** PKCE codes this page has handed to Auth. After any attempt auth-js drops the verifier, so the code cannot work again here. */
+const triedCodes = new Set<string>();
 /** This page's link and its verified account, for a remount after the address bar was cleaned (memory only). */
-let pageLink: Link | null = null;
+let pageLink: LinkCredential | null = null;
 let lastVerified: Verified | null = null;
 
-/** The link in the query; without one (already cleaned), the one this page read before. */
-function readLink(params: URLSearchParams): Link {
-  const tokenHash = params.get("token_hash") ?? "";
-  if (!tokenHash) return pageLink ?? { tokenHash: "", type: "" };
-  pageLink = { tokenHash, type: params.get("type") ?? "" };
+/** The link in the address bar; without one (already cleaned), the one this page read before. */
+function readLink(search: string, hash: string): AuthLink {
+  const link = parseAuthLink(search, hash);
+  if (link.form === "none") return pageLink ?? link;
   lastVerified = null; // a new link: whatever the previous one verified does not carry over
-  return pageLink;
+  // An error or an unusable link is final: nothing of it is kept for a remount.
+  pageLink = isCredential(link) ? link : null;
+  return link;
 }
 
 /** The link is finished with (entered, refused, spent): nothing of it stays in memory for a later visit. */
@@ -67,45 +73,76 @@ function forgetLink() {
   lastVerified = null;
 }
 
-function verifyOnce(tokenHash: string, type: LinkType): Promise<Outcome> {
-  let pending = verifications.get(tokenHash);
+const keyOf = (link: LinkCredential) =>
+  link.form === "otp" ? `otp:${link.tokenHash}` : link.form === "session" ? `session:${link.refreshToken}` : `code:${link.code}`;
+
+function verifyOnce(link: LinkCredential): Promise<Outcome> {
+  const key = keyOf(link);
+  let pending = verifications.get(key);
   if (!pending) {
-    pending = (async (): Promise<Outcome> => {
-      try {
-        const { data, error } = await getSupabaseBrowserClient().auth.verifyOtp({ token_hash: tokenHash, type: type as EmailOtpType });
-        if (error) return { ok: false, failure: linkErrorOf(error) };
-        if (!data.session || !data.user) {
-          // Secure e-mail change: the first of the two links is accepted without a session.
-          const message =
-            type === "email_change"
-              ? "Falta un paso: abra también el enlace que llegó a su otro correo para terminar el cambio."
-              : "No se pudo abrir la sesión con este enlace. Pida a Dirección un nuevo enlace.";
-          return { ok: false, failure: { kind: "other", message } };
-        }
-        return { ok: true, verified: { userId: data.user.id, email: data.user.email ?? "", type } };
-      } catch (err) {
-        return { ok: false, failure: linkErrorOf(err) };
-      }
-    })();
-    verifications.set(tokenHash, pending);
+    pending = verify(link).catch((err): Outcome => ({ ok: false, failure: linkErrorOf(err) }));
+    verifications.set(key, pending);
   }
   return pending;
 }
 
-function stageOf(outcome: Outcome, type: LinkType): Stage {
+const fail = (failure: LinkFailure): Outcome => ({ ok: false, failure });
+
+async function verify(link: LinkCredential): Promise<Outcome> {
+  const auth = getSupabaseBrowserClient().auth;
+  switch (link.form) {
+    case "otp": {
+      const { data, error } = await auth.verifyOtp({ token_hash: link.tokenHash, type: link.type as EmailOtpType });
+      return error ? fail(linkErrorOf(error)) : sessionOutcome(data, link.type);
+    }
+    case "session": {
+      // The session Auth put in the fragment, checked with Auth (getUser, or a refresh if the access token has expired).
+      const { data, error } = await auth.setSession({ access_token: link.accessToken, refresh_token: link.refreshToken });
+      return error ? fail(linkErrorOf(error)) : sessionOutcome(data, link.type);
+    }
+    case "code": {
+      // auth-js drops this browser's verifier after any exchange, even one that never reached Auth. Offline it is kept,
+      // and "Reintentar" can still work.
+      if (typeof navigator !== "undefined" && navigator.onLine === false) return fail({ kind: "network", message: NETWORK_MESSAGE });
+      const retried = triedCodes.has(link.code);
+      triedCodes.add(link.code);
+      const { data, error } = await auth.exchangeCodeForSession(link.code, link.flowId ? { flowId: link.flowId } : undefined);
+      if (!error) return sessionOutcome(data, "recovery");
+      const failure = linkErrorOf(error);
+      // No verifier after an attempt of this page's own: the link is spent here, not opened in the wrong browser.
+      return fail(failure.kind === "other-browser" && retried ? { kind: "expired", message: "Este enlace ya se usó o venció." } : failure);
+    }
+  }
+}
+
+function sessionOutcome(data: { session: Session | null; user: User | null }, type: LinkType): Outcome {
+  if (!data.session || !data.user) {
+    // Secure e-mail change: the first of the two links is accepted without a session.
+    const message =
+      type === "email_change"
+        ? "Falta un paso: abra también el enlace que llegó a su otro correo para terminar el cambio."
+        : "No se pudo abrir la sesión con este enlace. Pida a Dirección un nuevo enlace.";
+    return fail({ kind: "other", message });
+  }
+  return { ok: true, verified: { userId: data.user.id, email: data.user.email ?? "", type } };
+}
+
+function stageOf(outcome: Outcome, type: LinkType | null, retry: boolean): Stage {
   if (outcome.ok) return { kind: needsPassword(outcome.verified.type) ? "password" : "confirmed", verified: outcome.verified };
   const { failure } = outcome;
   // No "pedir un enlace nuevo" nor "Reintentar" when the account itself may not enter.
   if (failure.kind === "no-access") return { kind: "refused", message: failure.message };
-  return failure.kind === "expired" ? { kind: "expired", type } : { kind: "failed", failure };
+  if (failure.kind === "expired" || failure.kind === "other-browser") return { kind: "expired", type, otherBrowser: failure.kind === "other-browser" };
+  return { kind: "failed", failure, retry };
 }
 
-function initialStage({ tokenHash, type }: Link): Stage {
+function initialStage(link: AuthLink): Stage {
   if (!isSupabaseConfigured) return { kind: "unconfigured" };
-  if (!tokenHash) return { kind: "incomplete" };
+  if (link.form === "error") return stageOf(fail(linkRedirectErrorOf(link.error, link.errorCode)), link.type, false);
+  if (!isCredential(link)) return { kind: "incomplete" };
   // Verified earlier in this page (a remount): keep going with it.
   if (lastVerified) return { kind: needsPassword(lastVerified.type) ? "password" : "confirmed", verified: lastVerified };
-  return isLinkType(type) ? { kind: "checking" } : { kind: "incomplete" };
+  return { kind: "checking" };
 }
 
 export function SetPasswordView() {
@@ -119,8 +156,9 @@ export function SetPasswordView() {
 function SetPasswordInner() {
   const router = useRouter();
   const params = useSearchParams();
-  // Read once into memory; the effect below takes it out of the address bar.
-  const [link] = useState(() => readLink(params));
+  // Read once into memory; the effect below takes it out of the address bar. useSearchParams keeps this tree client-rendered
+  // (prerendered routes bail out to the client up to the Suspense above), where the fragment can be read too.
+  const [link] = useState(() => readLink(params.toString(), typeof window === "undefined" ? "" : window.location.hash));
   const [stage, setStage] = useState<Stage>(() => initialStage(link));
   const [attempt, setAttempt] = useState(0);
   const [leaving, setLeaving] = useState(false);
@@ -134,8 +172,7 @@ function SetPasswordInner() {
   }, []);
 
   useEffect(() => {
-    if (stage.kind !== "checking" || !isLinkType(link.type)) return;
-    const type = link.type;
+    if (stage.kind !== "checking" || !isCredential(link)) return;
     let alive = true;
     void (async () => {
       if (!takeOver.current) {
@@ -146,12 +183,12 @@ function SetPasswordInner() {
           return;
         }
       }
-      const outcome = await verifyOnce(link.tokenHash, type);
+      const outcome = await verifyOnce(link);
       if (!alive) return;
       if (outcome.ok) lastVerified = outcome.verified;
       // Used or refused for good: a later visit to this page starts from its own link.
       else if (outcome.failure.kind !== "network" && outcome.failure.kind !== "other") forgetLink();
-      setStage(stageOf(outcome, type));
+      setStage(stageOf(outcome, link.type, true));
     })();
     return () => {
       alive = false;
@@ -159,7 +196,7 @@ function SetPasswordInner() {
   }, [attempt, link, stage.kind]);
 
   const retry = () => {
-    verifications.delete(link.tokenHash);
+    if (isCredential(link)) verifications.delete(keyOf(link));
     setStage({ kind: "checking" });
     setAttempt((a) => a + 1);
   };
@@ -243,18 +280,25 @@ function SetPasswordInner() {
         {stage.kind === "expired" && (
           <Notice
             icon={<Link2Off />}
-            title="El enlace ya no funciona"
+            title={stage.otherBrowser ? "Abra el enlace donde lo pidió" : "El enlace ya no funciona"}
             primary={
-              stage.type === "recovery" ? (
+              // Asked for again from this browser, the new link works here.
+              stage.type === "recovery" || stage.type === null ? (
                 <BigButton href="/login?recuperar=1">
                   Pedir un enlace nuevo <ArrowRight />
                 </BigButton>
               ) : undefined
             }
           >
-            Este enlace ya se usó o venció. Pida a Dirección un nuevo enlace
-            {stage.type === "recovery" ? ", o solicite otro con «¿Olvidó su contraseña?»." : "."}{" "}
-            {stage.type === "invite" && "Si ya definió su contraseña, entre con su correo."}
+            {stage.otherBrowser ? (
+              "Por seguridad, este enlace funciona una sola vez y solo en el navegador donde pidió el cambio de contraseña. Ábralo ahí, o pida uno nuevo desde este dispositivo."
+            ) : (
+              <>
+                Este enlace ya se usó o venció. Pida a Dirección un nuevo enlace
+                {stage.type === "recovery" || stage.type === null ? ", o solicite otro con «¿Olvidó su contraseña?»." : "."}{" "}
+                {(stage.type === "invite" || stage.type === null) && "Si ya definió su contraseña, entre con su correo."}
+              </>
+            )}
           </Notice>
         )}
 
@@ -263,9 +307,11 @@ function SetPasswordInner() {
             icon={stage.failure.kind === "network" ? <WifiOff /> : <Link2Off />}
             title={stage.failure.kind === "network" ? "Sin conexión" : "No se pudo comprobar el enlace"}
             primary={
-              <BigButton onClick={retry}>
-                <RotateCw /> Reintentar
-              </BigButton>
+              stage.retry ? (
+                <BigButton onClick={retry}>
+                  <RotateCw /> Reintentar
+                </BigButton>
+              ) : undefined
             }
           >
             {stage.failure.message}

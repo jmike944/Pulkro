@@ -11,9 +11,12 @@ import { AuthField, FormMessage, TextAction } from "./form-bits";
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 /**
- * "¿Olvidó su contraseña?": Supabase e-mails a recovery link to /acceso/definir-contrasena (the recovery template builds it
- * from the Site URL; `redirectTo` must also be in the project's redirect allow list). The answer never says whether the
- * address has an account.
+ * "¿Olvidó su contraseña?": Supabase e-mails a recovery link that ends on /acceso/definir-contrasena. The Spanish template
+ * (custom SMTP only) builds it from the Site URL with a `token_hash`. Supabase's default template goes through Auth's /verify
+ * and comes back to `redirectTo` with a PKCE `?code=`. Only this browser can exchange that code (it keeps the code verifier
+ * in a cookie), so the link works in the browser that asked for it. `redirectTo` must be in the project's redirect allow
+ * list; otherwise the code lands on the Site URL, which forwards it (auth-link-forward.ts). The answer never says whether
+ * the address has an account.
  */
 export function RecoveryRequest({ email, onEmailChange, onBack }: { email: string; onEmailChange: (email: string) => void; onBack: () => void }) {
   const [busy, setBusy] = useState(false);

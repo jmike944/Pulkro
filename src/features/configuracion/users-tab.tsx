@@ -1,8 +1,8 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { AnimatePresence, motion } from "motion/react";
-import { Pencil, UserPlus, Users } from "lucide-react";
+import { Pencil, UserPlus, Users, WifiOff } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { useAppStore, useCan, useCurrentUser, useLookups } from "@/lib/hooks";
@@ -14,7 +14,8 @@ import { EmptyState } from "@/components/pk/feedback";
 import { EASE } from "@/components/pk/motion";
 import { Button } from "@/components/ui/button";
 import { GatedButton, useDialogTarget, InlineSwitch, ListHead, NO_USERS, ROLES, RoleBadge, SearchField, norm } from "./shared";
-import { DeactivateUserDialog, useOpenOrdersBy } from "./deactivate-user";
+import { DeactivateUserDialog, OpenOrdersNotice, useOpenOrdersBy } from "./deactivate-user";
+import { NEEDS_CONNECTION_DETAIL, newOpId, setUserActive, useAccountAdmin } from "./account-admin";
 import { UserDialog } from "./user-dialog";
 import { PermissionMatrix } from "./permission-matrix";
 
@@ -41,6 +42,12 @@ export function UsersTab() {
   const dlg = useDialogTarget<User | "new">();
   const [deactivating, setDeactivating] = useState<User | null>(null);
   const [confirmOpen, setConfirmOpen] = useState(false);
+  // Account sessions: invitations and (de)activations go through the server (admin-users), online only.
+  const { account, offline } = useAccountAdmin();
+  const [busyIds, setBusyIds] = useState<ReadonlySet<string>>(() => new Set());
+  // One op id per reactivation until it succeeds: "Reintentar" after a failure or a lost answer is a retry, not a new change.
+  const reactivationOps = useRef(new Map<string, string>());
+  const reassign = useDialogTarget<{ user: User; folios: string[] }>();
 
   const openOrdersBy = useOpenOrdersBy();
 
@@ -52,14 +59,63 @@ export function UsersTab() {
       .sort((a, b) => Number(b.active) - Number(a.active) || ROLE_ORDER[a.role] - ROLE_ORDER[b.role] || a.name.localeCompare(b.name, "es"));
   }, [users, role, q, lk.units]);
 
+  const markBusy = (id: string, busy: boolean) =>
+    setBusyIds((prev) => {
+      const next = new Set(prev);
+      if (busy) next.add(id);
+      else next.delete(id);
+      return next;
+    });
+
+  /** Account sessions: the server lifts the ban and the profile is active again (the person signs in with their password). */
+  const reactivateOnServer = async (u: User) => {
+    const ops = reactivationOps.current;
+    const opId = ops.get(u.id) ?? newOpId();
+    ops.set(u.id, opId);
+    markBusy(u.id, true);
+    const result = await setUserActive(u, true, opId);
+    markBusy(u.id, false);
+    if (!result.ok) {
+      // The profile may already be active (the switch shows it after the pull) while the access block was not lifted:
+      // the toast's action sends the same operation again, which finishes it.
+      toast.error("No se pudo reactivar la cuenta", {
+        description: result.message,
+        action: { label: "Reintentar", onClick: () => void reactivateOnServer(u) },
+      });
+      return;
+    }
+    ops.delete(u.id);
+    if (!result.active) {
+      toast.error("La cuenta sigue desactivada", { description: "Otra persona de Dirección la desactivó mientras tanto. Revise y vuelva a intentarlo." });
+      return;
+    }
+    toast.success(`${u.name.split(" ")[0]} puede volver a iniciar sesión`, { description: "Su correo y su contraseña vuelven a funcionar. Registrado en la bitácora." });
+  };
+
   const toggleActive = (u: User, next: boolean) => {
     if (!next) {
       setDeactivating(u);
       setConfirmOpen(true);
       return;
     }
+    if (account) {
+      void reactivateOnServer(u);
+      return;
+    }
     upsertUser({ ...u, active: true });
     toast.success(`${u.name.split(" ")[0]} puede volver a iniciar sesión`);
+  };
+
+  /** Account sessions: the server deactivated the account; it lists the open orders the person still supervises. */
+  const deactivatedOnServer = (u: User, folios: string[]) => {
+    if (folios.length > 0) {
+      reassign.show({ user: u, folios });
+      return;
+    }
+    toast(`${u.name} quedó desactivado`, {
+      description: "Ya no puede iniciar sesión. Registrado en la bitácora.",
+      action: { label: "Deshacer", onClick: () => void reactivateOnServer(u) },
+    });
   };
 
   const roleCounts = useMemo(() => {
@@ -75,11 +131,25 @@ export function UsersTab() {
           title="Usuarios"
           subtitle="Cada persona inicia sesión con su cuenta individual. Los trabajadores de cuadrilla no usan la app."
           action={
-            <GatedButton allowed={canAdmin} reason={NO_USERS} onClick={() => dlg.show("new")}>
+            <GatedButton
+              allowed={canAdmin && !offline}
+              reason={canAdmin ? "Necesita conexión: las invitaciones se envían desde el servidor." : NO_USERS}
+              lockIcon={canAdmin && offline ? <WifiOff className="size-3.5" /> : undefined}
+              onClick={() => dlg.show("new")}
+            >
               <UserPlus className="size-4" /> Nuevo usuario
             </GatedButton>
           }
         />
+
+        {canAdmin && offline && (
+          <div role="status" className="mb-5 flex items-start gap-3 rounded-[16px] bg-soft px-4 py-3 text-[13.5px] text-subtle">
+            <WifiOff className="mt-0.5 size-4 shrink-0 text-ink/60" aria-hidden />
+            <p>
+              <b className="font-semibold text-ink">Necesita conexión.</b> {NEEDS_CONNECTION_DETAIL}
+            </p>
+          </div>
+        )}
 
         <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div className="scrollbar-none -mx-1 overflow-x-auto px-1">
@@ -114,6 +184,7 @@ export function UsersTab() {
                 {list.map((u, i) => {
                   const isMe = u.id === me.id;
                   const open = openOrdersBy.get(u.id) ?? 0;
+                  const switchBusy = busyIds.has(u.id);
                   return (
                     <motion.li
                       key={u.id}
@@ -158,8 +229,16 @@ export function UsersTab() {
                           checked={u.active}
                           onChange={(v) => toggleActive(u, v)}
                           label={`${u.active ? "Desactivar" : "Activar"} a ${u.name}`}
-                          disabled={!canAdmin || isMe}
-                          reason={isMe ? "No puede desactivar su propia cuenta." : NO_USERS}
+                          disabled={!canAdmin || isMe || offline || switchBusy}
+                          reason={
+                            !canAdmin
+                              ? NO_USERS
+                              : isMe
+                                ? "No puede desactivar su propia cuenta."
+                                : offline
+                                  ? "Necesita conexión para activar o desactivar cuentas."
+                                  : "Aplicando el cambio en el servidor…"
+                          }
                         />
                         <Button
                           variant="outline"
@@ -188,12 +267,23 @@ export function UsersTab() {
 
       <PermissionMatrix />
 
-      {dlg.target && <UserDialog key={dlg.key} user={dlg.target === "new" ? null : dlg.target} open={dlg.open} onOpenChange={dlg.onOpenChange} />}
+      {dlg.target && (
+        <UserDialog
+          key={dlg.key}
+          user={dlg.target === "new" ? null : dlg.target}
+          open={dlg.open}
+          onOpenChange={dlg.onOpenChange}
+          onDeactivated={(u, folios) => folios.length > 0 && reassign.show({ user: u, folios })}
+        />
+      )}
+
+      <OpenOrdersNotice key={reassign.key} target={reassign.target} open={reassign.open} onOpenChange={reassign.onOpenChange} />
 
       <DeactivateUserDialog
         user={deactivating}
         open={confirmOpen}
         onOpenChange={setConfirmOpen}
+        onDeactivated={deactivatedOnServer}
         onConfirm={(u) => {
           upsertUser({ ...u, active: false });
           toast(`${u.name} quedó desactivado`, {

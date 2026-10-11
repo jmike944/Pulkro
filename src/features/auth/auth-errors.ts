@@ -64,24 +64,71 @@ export function recoveryErrorMessage(error: unknown): string {
   return "No se pudo enviar el enlace. Intente de nuevo en unos minutos.";
 }
 
-/** "no-access": the link is fine but the account may not enter (banned, or no active profile): a new link would not help. */
-export type LinkFailure = { kind: "expired" | "network" | "no-access" | "other"; message: string };
-
-const EXPIRED_LINK_CODES = new Set(["otp_expired", "flow_state_expired", "flow_state_not_found"]);
+/**
+ * "no-access": the link is fine but the account may not enter (banned, or no active profile): a new link would not help.
+ * "other-browser": a PKCE recovery link (`?code=`) opened without this browser's code verifier: it was asked for in another
+ * browser or app, or this browser already spent it.
+ */
+export type LinkFailure = { kind: "expired" | "other-browser" | "network" | "no-access" | "other"; message: string };
 
 /**
- * verifyOtp of an invite / recovery / confirmation link. A used, expired or altered link answers otp_expired (403); a 403
- * without a code is the access-token hook refusing an account without an active profile, which no new link fixes.
+ * Used, expired or altered: otp_expired / flow_state_* (verifyOtp, the code exchange, Auth's /verify redirect); a spent or
+ * revoked session and a forged token (setSession of an implicit-flow link); the account deleted since.
  */
-export function linkErrorOf(error: unknown): LinkFailure {
-  if (isNetworkFailure(error)) return { kind: "network", message: NETWORK_MESSAGE };
-  const { code, status } = codeOf(error);
-  if ((code && EXPIRED_LINK_CODES.has(code)) || (!code && status === 404)) return { kind: "expired", message: "Este enlace ya se usó o venció." };
+const EXPIRED_LINK_CODES = new Set([
+  "otp_expired",
+  "flow_state_expired",
+  "flow_state_not_found",
+  "refresh_token_not_found",
+  "refresh_token_already_used",
+  "session_not_found",
+  "session_expired",
+  "bad_jwt",
+  "invalid_jwt",
+  "user_not_found",
+]);
+/** exchangeCodeForSession: no verifier in this browser (auth-js), or a verifier from another request (Auth). */
+const OTHER_BROWSER_CODES = new Set(["pkce_code_verifier_not_found", "bad_code_verifier"]);
+const EXPIRED_LINK_MESSAGE = "Este enlace ya se usó o venció.";
+
+function linkFailureOf(code: string | undefined, status: number | undefined, fallback: string): LinkFailure {
+  if ((code && EXPIRED_LINK_CODES.has(code)) || (!code && status === 404)) return { kind: "expired", message: EXPIRED_LINK_MESSAGE };
+  if (code && OTHER_BROWSER_CODES.has(code))
+    return { kind: "other-browser", message: "Este enlace solo funciona una vez y en el navegador donde se pidió." };
   if (code === "user_banned") return { kind: "no-access", message: NO_ACCESS_MESSAGE };
   if (!code && status === 403) return { kind: "no-access", message: NO_PROFILE_MESSAGE };
   if (code === "over_request_rate_limit" || status === 429) return { kind: "other", message: RATE_LIMIT_MESSAGE };
   if (status && status >= 500) return { kind: "other", message: SERVER_MESSAGE };
-  return { kind: "other", message: "No se pudo comprobar el enlace. Intente de nuevo en unos minutos." };
+  return { kind: "other", message: fallback };
+}
+
+/**
+ * Verifying an invite / recovery / confirmation link (verifyOtp, setSession, exchangeCodeForSession). A used, expired or
+ * altered link answers otp_expired (403); a 403 without a code is the access-token hook refusing an account without an
+ * active profile, which no new link fixes.
+ */
+export function linkErrorOf(error: unknown): LinkFailure {
+  if (isNetworkFailure(error)) return { kind: "network", message: NETWORK_MESSAGE };
+  const { code, status } = codeOf(error);
+  return linkFailureOf(code, status, "No se pudo comprobar el enlace. Intente de nuevo en unos minutos.");
+}
+
+/** The OAuth `error` of Auth's redirect, set from the HTTP status of the failure. */
+const REDIRECT_ERROR_STATUS = new Map([
+  ["invalid_request", 400],
+  ["unauthorized_client", 401],
+  ["access_denied", 403],
+  ["server_error", 500],
+  ["temporarily_unavailable", 503],
+]);
+
+/**
+ * A link Auth refused at its /verify step and reported in the redirect (`#error=access_denied&error_code=otp_expired&
+ * error_description=…`; in the query too for PKCE), read like linkErrorOf. The English description is never shown, and a
+ * new link is the way out: retrying this one would read the same error again.
+ */
+export function linkRedirectErrorOf(error: string, errorCode: string): LinkFailure {
+  return linkFailureOf(errorCode || undefined, REDIRECT_ERROR_STATUS.get(error), "No se pudo abrir este enlace. Pida a Dirección un nuevo enlace.");
 }
 
 const WEAK_REASON: Record<string, string> = {

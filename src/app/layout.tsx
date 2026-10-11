@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono, Montserrat, Newsreader } from "next/font/google";
 import { Providers } from "@/components/shell/providers";
+import { FORWARD_AUTH_LINK_SCRIPT } from "@/features/auth/auth-link-forward";
 import "./globals.css";
 
 const geist = Geist({ variable: "--font-geist", subsets: ["latin"] });
@@ -38,6 +39,11 @@ export const viewport: Viewport = {
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html lang="es-MX" suppressHydrationWarning className={`${geist.variable} ${geistMono.variable} ${newsreader.variable} ${montserrat.variable} h-full antialiased`}>
+      <head>
+        {/* An invite / recovery link that Supabase Auth sent to the Site URL (or another page) goes on to
+            /acceso/definir-contrasena before anything reads the session: features/auth/auth-link-forward.ts. */}
+        <script dangerouslySetInnerHTML={{ __html: FORWARD_AUTH_LINK_SCRIPT }} />
+      </head>
       <body className="min-h-full">
         <Providers>{children}</Providers>
       </body>
