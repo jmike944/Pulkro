@@ -90,17 +90,21 @@ export function oldestNote(kind: PendingKind, items: PendingItem[], now: Date): 
   return items.length === 1 ? ago.charAt(0).toUpperCase() + ago.slice(1) : `La más antigua, ${ago}`;
 }
 
-/** One line under the lead item: why it matters, so the button needs no explanation. */
+/** One line under the lead item: why it matters, so the button needs no explanation. Follow-ups (not actionable) read as status, not as an order. */
 export function leadNote(it: PendingItem): string {
   switch (it.kind) {
     case "incidencia":
-      return it.blocksClosure ? `Impide cerrar ${it.folio} hasta que se resuelva.` : "Registrar la solución para darla por resuelta.";
+      return it.blocksClosure
+        ? `Impide cerrar ${it.folio} hasta que se resuelva.`
+        : it.actionable
+          ? "Registrar la solución para darla por resuelta."
+          : "Sigue abierta hasta que el supervisor registre la solución.";
     case "evidencia":
       return `Sin esa foto no se puede validar el cierre de ${it.folio}.`;
     case "cierre":
       return "Jornadas y fotos ANTES y DESPUÉS completas. Al validar se genera el reporte.";
     case "entrada":
-      return "Registrar la entrada con GPS al llegar al sitio.";
+      return it.actionable ? "Registrar la entrada con GPS al llegar al sitio." : "El supervisor registra la entrada con GPS al llegar al sitio.";
     case "reporte":
       return "Cierre validado: falta que el reporte llegue al cliente.";
     case "asignar":

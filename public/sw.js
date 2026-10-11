@@ -8,7 +8,7 @@
  *  - /_next/static: cache-first (content-hashed, immutable); the scripts of every precached page are precached too
  *  - map tiles: cache-first with a size cap, so sites already viewed render without signal
  */
-const VERSION = "pk-v2";
+const VERSION = "pk-v3";
 const SHELL = `${VERSION}-shell`;
 const STATIC = `${VERSION}-static`;
 const TILES = `${VERSION}-tiles`;
@@ -148,6 +148,19 @@ async function rsc(request) {
   }
 }
 
+async function freshFirst(request, cacheName) {
+  const cache = await caches.open(cacheName);
+  try {
+    const response = await fetch(request);
+    if (response.ok) cache.put(request, response.clone());
+    return response;
+  } catch {
+    const cached = await cache.match(request);
+    if (cached) return cached;
+    throw new Error("offline");
+  }
+}
+
 async function cacheFirst(request, cacheName) {
   const cache = await caches.open(cacheName);
   const cached = await cache.match(request);
@@ -165,14 +178,17 @@ self.addEventListener("fetch", (event) => {
   if (request.method !== "GET") return;
   const url = new URL(request.url);
 
-  if (url.hostname.endsWith("basemaps.cartocdn.com")) {
-    event.respondWith(cacheFirst(request, TILES));
+  if (url.hostname === "tiles.openfreemap.org") {
+    // Styles and TileJSON point at weekly versioned tile sets: fetch them fresh, fall back to the cached copy offline.
+    // Tiles and glyphs (.pbf) and the versioned /sprites/ are immutable per URL → cache first.
+    const immutable = url.pathname.endsWith(".pbf") || url.pathname.startsWith("/sprites/");
+    event.respondWith(immutable ? cacheFirst(request, TILES) : freshFirst(request, TILES));
     return;
   }
   if (url.origin !== self.location.origin) return;
   if (url.pathname.startsWith("/_next/webpack-hmr") || url.pathname.startsWith("/__nextjs")) return;
 
-  if (url.pathname.startsWith("/_next/static/") || url.pathname.startsWith("/icons/") || /\.(woff2?|png|svg|ico)$/.test(url.pathname)) {
+  if (url.pathname.startsWith("/_next/static/") || url.pathname.startsWith("/icons/") || url.pathname.startsWith("/vendor/") || /\.(woff2?|png|svg|ico)$/.test(url.pathname)) {
     event.respondWith(cacheFirst(request, STATIC));
     return;
   }

@@ -22,6 +22,7 @@ import { EmptyState } from "@/components/pk/feedback";
 import { EASE, rowVariants, staggerContainer } from "@/components/pk/motion";
 import { Button } from "@/components/ui/button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { useCanSeeRoute } from "@/components/shell/use-can-see-route";
 
 export function DashboardView() {
   const desktop = useMediaQuery("(min-width: 1024px)");
@@ -34,6 +35,13 @@ function DesktopDashboard() {
   const lk = useLookups();
   const now = useNow(60_000);
   const [month, setMonthIdx] = useState(now.getMonth());
+  const canSee = useCanSeeRoute();
+  // Agenda, Jornada, Incidencias and Evidencias are supervisor screens: other roles get the map, the order detail,
+  // the orders with incidents and Indicadores › Calidad instead (never the "not available for your role" page).
+  const dayLink = canSee("/agenda") ? { href: "/agenda", label: "Abrir agenda" } : { href: "/mapa", label: "Ver mapa" };
+  const incidentsLink = canSee("/incidencias") ? { href: "/incidencias", label: "Ver incidencias" } : { href: "/ordenes?tab=incidencia", label: "Ver órdenes con incidencia" };
+  const complianceHref = canSee("/evidencias") ? "/evidencias" : canSee("/indicadores") ? "/indicadores?tab=calidad" : undefined;
+  const jornadaHref = (j: Jornada, o: Order) => (canSee(`/jornada/${j.id}`) ? `/jornada/${j.id}` : `/ordenes/${o.folio}?tab=jornadas`);
 
   const stats = useHoyStats(data, now, month);
 
@@ -140,8 +148,8 @@ function DesktopDashboard() {
         <SectionHeader
           title="Hoy en campo"
           subtitle={user.role === "supervisor" ? "Tus jornadas de hoy" : `${ROLE_LABEL[user.role]} · todas las cuadrillas visibles`}
-          href="/agenda"
-          linkLabel="Abrir agenda"
+          href={dayLink.href}
+          linkLabel={dayLink.label}
         />
         {today.length === 0 ? (
           <EmptyState icon={<Clock />} title="Sin jornadas hoy">
@@ -155,7 +163,7 @@ function DesktopDashboard() {
             className="scrollbar-none -mx-4 flex snap-x gap-4 overflow-x-auto px-4 pb-2 sm:-mx-7 sm:px-7 lg:-mx-1 lg:px-1"
           >
             {today.map((j) => (
-              <TodayCard key={j.id} j={j} order={orders.find((o) => o.id === j.orderId)!} now={now} lk={lk} photosCount={photos.filter((p) => p.jornadaId === j.id)} />
+              <TodayCard key={j.id} j={j} order={orders.find((o) => o.id === j.orderId)!} now={now} lk={lk} photosCount={photos.filter((p) => p.jornadaId === j.id)} href={jornadaHref} />
             ))}
           </motion.div>
         )}
@@ -223,13 +231,13 @@ function DesktopDashboard() {
         <div className="min-w-0 lg:pl-10">
           <div className="mb-1 flex items-start justify-between gap-4">
             <h2 className="text-[19px] font-medium tracking-[-0.01em] text-ink">Qué detiene los cierres</h2>
-            <CornerLink href="/incidencias" label="Ver incidencias" />
+            <CornerLink href={incidentsLink.href} label={incidentsLink.label} />
           </div>
           <p className="mb-6 text-[13.5px] text-subtle">
             {plural(incidentYear.length, "incidencia", "incidencias")} · {now.getFullYear()}
           </p>
           <BarList items={incidentBars.map((b) => ({ label: b.label, value: b.count, pct: b.pct }))} />
-          <Insight icon={<Camera />} href="/evidencias" linkLabel="Ver cumplimiento fotográfico" className="mt-8">
+          <Insight icon={<Camera />} href={complianceHref} linkLabel="Ver cumplimiento fotográfico" className="mt-8">
             Faltó la foto <b className="font-semibold">DESPUÉS</b> en {stats.compliance.missingDespues} de {fmtNum(stats.compliance.total)} cierres del año
             {stats.compliance.withException ? `, ${stats.compliance.withException} con excepción autorizada` : ""}.
           </Insight>
@@ -245,12 +253,14 @@ function TodayCard({
   now,
   lk,
   photosCount,
+  href,
 }: {
   j: Jornada;
   order: Order;
   now: Date;
   lk: ReturnType<typeof useLookups>;
   photosCount: { kind: string }[];
+  href: (j: Jornada, o: Order) => string;
 }) {
   if (!order) return null;
   const client = lk.clients.get(order.clientId);
@@ -262,7 +272,7 @@ function TodayCard({
   return (
     <motion.div variants={rowVariants} className="snap-start">
       <Link
-        href={`/jornada/${j.id}`}
+        href={href(j, order)}
         className={cn(
           "group relative flex w-[290px] flex-col overflow-hidden rounded-[22px] border p-5 transition-all duration-300 hover:-translate-y-1 hover:shadow-lift",
           live ? "border-transparent bg-brand-deep text-white" : "border-hairline bg-surface",

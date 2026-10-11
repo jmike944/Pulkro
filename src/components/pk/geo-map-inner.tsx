@@ -3,7 +3,8 @@
 import "leaflet/dist/leaflet.css";
 import { useEffect } from "react";
 import L from "leaflet";
-import { Circle, MapContainer, Marker, Polyline, TileLayer, Tooltip, useMap } from "react-leaflet";
+import { Circle, MapContainer, Marker, Polyline, Tooltip, useMap } from "react-leaflet";
+import { Basemap } from "./basemap";
 import type { GeoMapProps } from "./geo-map";
 
 // CSS variables (the pin HTML lives in the page DOM, and SVG paint attributes accept var()), so pins follow the theme.
@@ -56,12 +57,7 @@ export default function GeoMapInner({ markers, accuracy, zoom = 16, className, i
       className={className}
       style={{ height: "100%", width: "100%" }}
     >
-      <TileLayer
-        url="https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png"
-        attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a> &copy; <a href="https://carto.com/">CARTO</a>'
-        subdomains="abcd"
-        maxZoom={20}
-      />
+      <Basemap />
       {accuracy && <Circle center={[accuracy.lat, accuracy.lng]} radius={accuracy.radius} pathOptions={{ color: "var(--st-blue)", weight: 1, fillColor: "var(--sky)", fillOpacity: 0.18 }} />}
       {connect && points.length > 1 && <Polyline positions={points} pathOptions={{ color: "var(--brand)", weight: 2, dashArray: "4 6", opacity: 0.6, className: "pk-route" }} />}
       {markers.map((m, i) => (

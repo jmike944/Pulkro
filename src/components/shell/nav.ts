@@ -11,6 +11,7 @@ import {
   House,
   Inbox,
   LayoutGrid,
+  MapIcon,
   MessageSquareHeart,
   Settings,
   TriangleAlert,
@@ -24,6 +25,7 @@ export type NavKey =
   | "inicio"
   | "pendientes"
   | "ordenes"
+  | "mapa"
   | "agenda"
   | "evidencias"
   | "incidencias"
@@ -70,6 +72,8 @@ export const NAV_GROUPS: NavGroup[] = [
     icon: HardHat,
     items: [
       { key: "ordenes", href: "/ordenes", label: "Órdenes", icon: ClipboardList, badge: "ordenes" },
+      // PROPUESTO (beyond the doc): where the day's services are, for presencial and remote supervision (§4.2). Every role, own scope.
+      { key: "mapa", href: "/mapa", label: "Mapa", icon: MapIcon },
       { key: "agenda", href: "/agenda", label: "Agenda", icon: CalendarDays, roles: FIELD },
       { key: "evidencias", href: "/evidencias", label: "Evidencias", icon: Camera, badge: "evidencias", roles: FIELD },
       { key: "incidencias", href: "/incidencias", label: "Incidencias", icon: TriangleAlert, badge: "incidencias", roles: FIELD },

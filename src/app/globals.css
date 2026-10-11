@@ -607,19 +607,13 @@
   }
 }
 
-/* Leaflet (maps) — keep tiles soft and on-brand; dark tiles are the light ones inverted and desaturated */
+/* Leaflet (maps) — the basemap is OpenFreeMap vector tiles via MapLibre (Positron / Dark styles), so no tile filters */
 .leaflet-container {
   font-family: var(--font-geist), system-ui, sans-serif;
   background: var(--map-bg);
 }
 .dark .leaflet-container {
   background: var(--map-bg); /* leaflet.css loads later and wins at equal specificity */
-}
-.leaflet-tile-pane {
-  filter: saturate(0.65) contrast(0.98);
-}
-.dark .leaflet-tile-pane {
-  filter: invert(1) hue-rotate(200deg) saturate(0.5) brightness(0.8) contrast(0.92);
 }
 .leaflet-control-attribution {
   font-size: 9px !important;
