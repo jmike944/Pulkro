@@ -105,7 +105,8 @@ const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
  * another tab does (the blocker shows). "taking": «Usar aquí» was pressed, the writer is saving and stepping aside. "kept":
  * the writer could not save what it holds and stays. "handing": this tab is saving and stepping aside for another.
  * "lost": another tab took over (this one starts over behind the blocker). "full": the device refuses even the epoch's
- * write (storage full): this tab waits, without the data, until it can. "unreadable": the device could not be read.
+ * write (storage full): this tab waits, without the data, until it can. "unreadable": the device could not be read, or
+ * refuses the epoch's write for another reason (site data blocked, a broken database).
  */
 export type WriterState = "starting" | "writer" | "blocked" | "taking" | "kept" | "handing" | "lost" | "full" | "unreadable";
 
@@ -136,7 +137,10 @@ const writing = () => !left && (writer === "writer" || writer === "handing");
 type Locks = {
   request(name: string, options: { ifAvailable?: boolean; steal?: boolean; signal?: AbortSignal }, run: (lock: unknown) => Promise<void>): Promise<void>;
 };
+/** The browser refused this page a Web Lock (site data blocked: SecurityError…): the epoch alone from then on. */
+let locksDenied = false;
 const locks = (): Locks | undefined => {
+  if (locksDenied) return undefined;
   const l = browser ? (navigator as Navigator & { locks?: Locks }).locks : undefined;
   return typeof l?.request === "function" ? l : undefined;
 };
@@ -190,15 +194,24 @@ function requestLock(how: "first" | "wait" | "steal") {
     await claim();
     // Held while this tab lives: a takeover reloads this tab (or steals the lock from it).
     await new Promise<void>(() => {});
-  }).catch(() => {
-    // The queued request was aborted (this tab takes over instead): nothing. The lock was stolen from this tab (it held
-    // it): another tab took the device.
-    if (held) loseWriter();
+  }).catch((error: unknown) => {
+    // The lock was stolen from this tab (it held it): another tab took the device.
+    if (held) return loseWriter();
+    // This tab's own queued request, aborted because it takes over instead: nothing.
+    if (how === "wait" && (error as { name?: string } | null)?.name === "AbortError") return;
+    // The browser refuses Web Locks here (site data blocked…): the epoch alone, as without Web Locks — this tab never
+    // waits for a lock that will not come.
+    locksDenied = true;
+    if (writer === "taking") void claim();
+    else {
+      setWriter("starting");
+      void probe();
+    }
   });
 }
 
 /** One attempt at incrementing the epoch in one transaction (a full device first frees the copies of server photos). */
-async function claimEpoch(): Promise<number | undefined> {
+async function claimEpoch(): Promise<{ epoch: number } | { error: unknown }> {
   for (let evicted = false; ; evicted = true) {
     try {
       let next = 0;
@@ -210,9 +223,9 @@ async function claimEpoch(): Promise<number | undefined> {
         };
         return promisifyRequest(store.transaction);
       });
-      return next;
+      return { epoch: next };
     } catch (error) {
-      if (evicted || !isQuotaError(error) || !hooks) return undefined;
+      if (evicted || !isQuotaError(error) || !hooks) return { error };
       await hooks.evict().catch(() => undefined);
     }
   }
@@ -227,21 +240,22 @@ export function retryClaim() {
 /**
  * Claims the epoch, then this tab is the writer. A tab never becomes the writer without its epoch stored: it could not
  * fence off a late write of the tab it replaced. When the device refuses even this small write, the tab waits without the
- * data ("full": the blocker asks to free space) and tries again.
+ * data and tries again: "full" (the blocker asks to free space), or "unreadable" for any other refusal (site data blocked, a
+ * broken database: freeing space would not help).
  */
 async function claim() {
   held = true;
   for (let attempt = 0; !gaveUp; attempt++) {
     const claimed = await claimEpoch();
     if (gaveUp) return;
-    if (claimed !== undefined) {
-      epoch = claimed;
+    if ("epoch" in claimed) {
+      epoch = claimed.epoch;
       setWriter("writer");
       post({ t: "writer", epoch });
       becameWriter();
       return;
     }
-    setWriter("full");
+    setWriter(isQuotaError(claimed.error) ? "full" : "unreadable");
     await new Promise<void>((resolve) => {
       const t = setTimeout(resolve, Math.min(30_000, 2000 * 2 ** Math.min(attempt, 4)));
       retryClaimNow = () => {

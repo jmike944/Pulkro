@@ -1,15 +1,17 @@
 "use client";
 
-import { use, useEffect, useState } from "react";
+import { use, useEffect, useState, useSyncExternalStore } from "react";
 import { motion } from "motion/react";
 import { CalendarDays, Sparkles, UserRound } from "lucide-react";
 import { useAppStore } from "@/lib/store";
+import { subscribeWriter, writerState } from "@/lib/device-storage";
 import { endSessionOnDevice, getSupabaseBrowserClient, isSupabaseConfigured } from "@/lib/supabase/client";
 import { useSignOut } from "@/features/auth/use-sign-out";
 import { firstName, fmtDate, fmtLongDay } from "@/lib/format";
 import type { SurveyAnswers } from "@/lib/types";
 import { ClientMark } from "@/components/pk/client-mark";
 import { EASE } from "@/components/pk/motion";
+import { surveyWithoutDevice } from "@/components/shell/writer-gate";
 import { SurveyLoader, SurveyShell } from "./survey-shell";
 import { SurveyWizard } from "./survey-wizard";
 import { SurveyLoading, SurveyMissing, SurveyStaffSession, SurveyThanks, SurveyUnreachable } from "./survey-states";
@@ -21,11 +23,14 @@ import { loadSurvey, sendSurvey, type LoadOutcome } from "./survey-remote";
  *    `get_survey(p_token)` and sends the answer with `submit_survey`, as `anon` (survey-remote.ts).
  *  - The demo (no project, or a demo survey kept on this device): the on-device store, as before.
  * A staff session open on the device never answers as the client: it is asked to sign out first.
+ * An account build's survey never depends on the device: when this tab cannot hold the app's data (the device is full or
+ * unreadable), the page answers on the server without it (the server refuses a staff session it sees in the cookies).
  */
 export function SurveyView({ params }: { params: Promise<{ token: string }> }) {
   const { token } = use(params);
   const hydrated = useAppStore((s) => s.hydrated);
-  if (!hydrated) return <SurveyLoader />;
+  const writer = useSyncExternalStore(subscribeWriter, writerState, () => "starting" as const);
+  if (!hydrated && !surveyWithoutDevice(writer)) return <SurveyLoader />;
   return (
     <SurveyShell>
       <SurveyContent token={token} />

@@ -3,20 +3,35 @@
 import { useSyncExternalStore } from "react";
 import { AppWindow, HardDrive, Loader2, RefreshCw, TriangleAlert } from "lucide-react";
 import { retryClaim, subscribeWriter, takeOver, writerState, type WriterState } from "@/lib/device-storage";
+import { isSupabaseConfigured } from "@/lib/supabase/config";
 import { BigButton } from "@/components/pk/mobile";
 import { AuthFrame, AuthHeading } from "@/features/auth/auth-frame";
 
 const BLOCKED: WriterState[] = ["blocked", "taking", "kept", "handing", "lost", "full", "unreadable"];
 
 /**
+ * An account build's client survey is read and answered on the server (features/encuesta): a device that cannot hold the
+ * app's data (full, unreadable) never keeps the client from answering it. The store then holds no staff session; the server
+ * still refuses one it sees in this browser's cookies.
+ */
+export const surveyWithoutDevice = (state: WriterState) => isSupabaseConfigured && (state === "full" || state === "unreadable");
+
+/** Whether the blocker covers the page at `pathname` in `state`. */
+export const blocksPage = (state: WriterState, pathname: string) =>
+  BLOCKED.includes(state) && !(pathname.startsWith("/encuesta") && surveyWithoutDevice(state));
+
+/**
  * One tab per device holds the app's data (lib/device-storage: the writer). Every other tab of the app shows this blocker
  * over the page, which stays inert underneath (it never loaded the data). «Usar aquí» asks the other tab to save what it has
  * pending and step aside; this tab then loads the data. The tab also takes over by itself when the other one closes. The
- * same screen says when this tab cannot hold the data yet: the device is full, or could not be read.
+ * same screen says when this tab cannot hold the data yet: the device is full, or could not be read (except over an account
+ * build's client survey, which needs nothing from the device).
  */
 export function WriterGate({ children }: { children: React.ReactNode }) {
   const state = useSyncExternalStore(subscribeWriter, writerState, () => "starting" as const);
-  const blocked = BLOCKED.includes(state);
+  // The address is read on the client only (the server snapshot never blocks): usePathname here would hold the prerender
+  // of every page.
+  const blocked = typeof window !== "undefined" && blocksPage(state, window.location.pathname);
   return (
     <>
       <div className="contents" inert={blocked}>
