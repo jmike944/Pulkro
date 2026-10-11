@@ -29,6 +29,7 @@ import { plural } from "./format";
 import { DONE_STATUSES, OPEN_STATUSES } from "./status";
 import { DEMO_ENABLED, DEMO_SIGN_IN } from "./demo";
 import { clearPhotoFiles, deletePhotoFile } from "./photo-store";
+import { requestPull, type PullRequest, type PullState } from "./sync/pull";
 import type {
   AuditEntity,
   CaseStatus,
@@ -197,6 +198,13 @@ type Session = {
    * read from public.profiles); the demo dataset and the demo controls never apply to it.
    */
   mode: "demo" | "supabase";
+  /**
+   * Account sessions: the Supabase session is gone (expired refresh token, signed out elsewhere, profile deactivated). The
+   * device keeps every record and unsent change; pulling stops until the person signs in again (ReauthBanner → /login).
+   */
+  needsReauth?: boolean;
+  /** Account sessions: pull cursors and progress (sync/pull.ts). Belongs to this account; a new account starts without it. */
+  pull?: PullState;
 };
 
 type SyncSlice = {
@@ -224,6 +232,11 @@ export type AppState = DataSnapshot & {
    * The caller confirms first when another account still has unsent changes (otherAccountOnDevice, features/auth/session).
    */
   startSupabaseSession: (user: User, unit?: Unit) => void;
+  /**
+   * Account sessions: read the server's changes now (first load, cursors, scope gain and loss — sync/pull.ts). Never throws;
+   * the outcome shows in usePullStatus / session.needsReauth. No-op offline, for the demo and while re-authentication is due.
+   */
+  pullNow: (req?: PullRequest) => Promise<void>;
   /** Wipes the device after an account sign-out: data, queue and photo blobs (IndexedDB), then the demo seed if offered. */
   clearDeviceData: () => void;
   /** Demo only (NEXT_PUBLIC_DEMO ≠ "0"). */
@@ -495,8 +508,10 @@ export const useAppStore = create<AppState>()(
             setState((st) => ({
               users: st.users.some((u) => u.id === user.id) ? st.users.map((u) => (u.id === user.id ? user : u)) : [...st.users, user],
               units: !unit ? st.units : st.units.some((x) => x.id === unit.id) ? st.units.map((x) => (x.id === unit.id ? unit : x)) : [...st.units, unit],
-              session: { ...st.session, signedIn: true, mode: "supabase" },
+              // Signing in again ends a pending re-authentication; the cursors carry on from where they were.
+              session: { ...st.session, signedIn: true, mode: "supabase", needsReauth: false },
             }));
+            setTimeout(() => void getState().pullNow({ manual: true }), 0);
             return;
           }
           // Demo data or another account's data never carries over: start from an empty dataset with this profile only,
@@ -511,9 +526,10 @@ export const useAppStore = create<AppState>()(
           }));
           flushWrite();
           void clearPhotoFiles();
-          // TODO(phase 2 — pull, architecture §8): initial load of the account's catalogs and orders in scope, then the
-          // incremental cursors. Until then an account session holds only its own profile and unit.
+          // First load of the account's catalogs and orders in scope, then the incremental cursors (sync/pull.ts).
+          setTimeout(() => void getState().pullNow({ manual: true }), 0);
         },
+        pullNow: (req) => requestPull({ getState, setState }, req),
         clearDeviceData: () => {
           setState((st) => ({
             ...emptyData,
@@ -1369,8 +1385,12 @@ export const useAppStore = create<AppState>()(
 
         ensureSeeded: () => {
           const s = getState();
-          // An account session never gets the demo dataset. TODO(phase 2 — pull): this is where its data will load.
-          if (s.session.mode === "supabase") return;
+          // An account session never gets the demo dataset: it reads its data from the server (after the bootstrap has
+          // set the connectivity flags, hence the timeout).
+          if (s.session.mode === "supabase") {
+            if (s.session.signedIn) setTimeout(() => void getState().pullNow({ manual: true }), 0);
+            return;
+          }
           // A build without the demo sign-in keeps no demo data (nor a demo session left by an earlier demo build).
           if (!DEMO_SIGN_IN) {
             if (s.session.signedIn || s.users.length || s.orders.length) {

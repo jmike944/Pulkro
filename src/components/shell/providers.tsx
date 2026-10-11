@@ -6,12 +6,16 @@ import { useOffline } from "next/offline";
 import { ThemeProvider, useTheme } from "next-themes";
 import { bootstrapStore, useAppStore } from "@/lib/store";
 import { useUi } from "@/lib/ui-store";
+import { usePullScheduler } from "@/lib/sync/use-pull-scheduler";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { Toaster } from "@/components/ui/sonner";
 import { Celebrate } from "@/components/pk/feedback";
 import { PwaRegistrar } from "./pwa";
 
-/** Global client providers: theme (Claro / Oscuro / Sistema), store bootstrap (IndexedDB), connectivity, motion prefs, toasts. */
+/**
+ * Global client providers: theme (Claro / Oscuro / Sistema), store bootstrap (IndexedDB), connectivity, the account pull
+ * schedule, motion prefs, toasts.
+ */
 export function Providers({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     void bootstrapStore();
@@ -22,6 +26,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
         <TooltipProvider delayDuration={250}>
           <ThemeColorSync />
           <ConnectivityWatcher />
+          <PullScheduler />
           <PwaRegistrar />
           {children}
           <GlobalCelebrate />
@@ -79,6 +84,12 @@ function ConnectivityWatcher() {
       window.removeEventListener("offline", update);
     };
   }, [nextOffline, setBrowserOffline, hydrated]);
+  return null;
+}
+
+/** Account sessions: pulls the server's changes on focus, reconnect and every minute (lib/sync). */
+function PullScheduler() {
+  usePullScheduler();
   return null;
 }
 
