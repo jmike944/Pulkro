@@ -16,6 +16,7 @@ import { TEXT_LIMITS } from "@/lib/domain";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { ClientMark } from "./client-mark";
+import { ClockWarning } from "./clock-warning";
 import { BigButton, FlowHeading, FlowScreen, ItemCard, SuccessHero } from "./mobile";
 import { MODAL_DESKTOP_QUERY, ModalCancel, ModalShell, firstMissing } from "./modal-shell";
 import { EASE } from "./motion";
@@ -279,6 +280,7 @@ export function IncidentSheet({
 
   const detailFields = order && (
     <>
+      <ClockWarning />
       <ReasonField
         id="inc-desc"
         label="Descripción"

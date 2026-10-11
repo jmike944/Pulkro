@@ -11,6 +11,7 @@ import { fmtAgo, fmtDay, fmtTime } from "@/lib/format";
 import { INCIDENT_TYPE } from "@/lib/status";
 import { TEXT_LIMITS } from "@/lib/domain";
 import { PersonAvatar } from "@/components/pk/bits";
+import { ClockWarning } from "@/components/pk/clock-warning";
 import { EASE } from "@/components/pk/motion";
 import { BigButton, FieldCaption, FlowHeading, FlowScreen } from "@/components/pk/mobile";
 import { Button } from "@/components/ui/button";
@@ -109,6 +110,7 @@ export function NoteFlow({ f, open, onOpenChange }: { f: FieldReady; open: boole
       <FlowHeading eyebrow={<FlowEyebrow f={f} />} title="Nota de bitácora">
         Queda con su nombre y la hora del dispositivo, aunque no haya señal.
       </FlowHeading>
+      <ClockWarning className="mb-4" />
       <FieldCaption>
         <label htmlFor="note-flow">Nota</label>
       </FieldCaption>

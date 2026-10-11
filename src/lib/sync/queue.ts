@@ -102,6 +102,12 @@ function messageOf(error: RpcError, code: string): string {
 const RETRY_HINTS = new Set(["parent_missing", "object_missing"]);
 /** Transient database states. */
 const RETRY_CODES = new Set(["40001", "40P01", "57014", "53300", "55P03"]);
+/**
+ * A device time more than 5 minutes ahead of the server's clock (the phone's clock is fast). The time is evidence and is
+ * never rewritten: once the server's clock passes it, the very same request goes through, so it is retried like a busy
+ * server (backoff, then the cap). The capture screens warn while the phone's clock is off (clock.ts).
+ */
+const CLOCK_AHEAD = "device_time_future";
 
 /**
  * Refusals that mean the requested end state already holds: the item counts as sent. delete_photo of a photo someone else
@@ -123,6 +129,8 @@ export function classifyRpc(error: RpcError | null, status: number, data?: unkno
   }
   if (status === 401 || /^PGRST30\d$/.test(code) || (!/^PT\d{3}$/.test(code) && /\bjwt\b/i.test(error.message))) return { kind: "auth", message: error.message };
   const problem = (kind: SyncProblem["kind"], message = messageOf(error, code)): SyncProblem => ({ kind, message, code: code || String(status), hint: hint || undefined });
+  if (code === "PT422" && hint === CLOCK_AHEAD)
+    return { kind: "retry", problem: problem("reintento", `${messageOf(error, code)} Se enviará cuando la hora del servidor alcance la del registro.`) };
   if (code === "PT409" && RETRY_HINTS.has(hint)) return { kind: "retry", problem: problem("reintento"), reupload: hint === "object_missing" };
   if (code === "PT409") return { kind: "conflict", problem: problem("conflicto") };
   if (RETRY_CODES.has(code) || status === 408 || status === 429 || (status >= 500 && !/^PT\d{3}$/.test(code)))
@@ -246,8 +254,12 @@ export function discardSet(queue: readonly SyncItem[], id: string): SyncItem[] {
   return out;
 }
 
-/** Server answers after which retrying the same request cannot help (only discarding it does). */
-export const NO_RETRY_HINTS = new Set(["op_id_reused", "duplicate_check", "already_resolved", "already_provisioned", "photo_lost"]);
+/**
+ * Server answers after which retrying the same request cannot help (only discarding it does): the sheet offers no
+ * "Reintentar" for them — the request itself (a reused op id, a check already there, a lost photo), or a device time older
+ * than the server accepts (`device_time_stale`).
+ */
+export const NO_RETRY_HINTS = new Set(["op_id_reused", "duplicate_check", "already_resolved", "already_provisioned", "photo_lost", "device_time_stale"]);
 
 /**
  * The person decides about it (the sync sheet offers Reintentar / Descartar): stopped items, and items being retried after

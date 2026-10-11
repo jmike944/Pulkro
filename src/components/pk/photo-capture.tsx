@@ -15,6 +15,7 @@ import { plural } from "@/lib/format";
 import { SCENE_AREAS, SCENES_BY_SERVICE } from "@/lib/seed";
 import type { Photo, PhotoKind, SceneKind } from "@/lib/types";
 import { Button } from "@/components/ui/button";
+import { ClockWarning } from "./clock-warning";
 
 
 export function areaSuggestions(serviceTypeId: string) {
@@ -235,6 +236,7 @@ export function PhotoCaptureButtons({
         </Button>
       )}
       {help && <p className="basis-full text-[12.5px] leading-snug text-subtle">{CAPTURE_HELP}</p>}
+      {!compact && <ClockWarning className="basis-full" />}
     </div>
   );
 }

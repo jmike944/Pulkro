@@ -5,6 +5,7 @@ import { useShallow } from "zustand/react/shallow";
 import { isOffline, useAppStore } from "./store";
 import { can, canSeeAuditEntry, canSeeOrder, scopedUnitIds, type Action } from "./permissions";
 import { usePullStatus } from "./sync/status";
+import { clockSkewMs } from "./sync/clock";
 import { DEMO_ENABLED } from "./demo";
 import { findByRef } from "./folio";
 import type { AuditEntry, Client, Jornada, Order, ServiceType, Site, User, Worker, Material, Unit } from "./types";
@@ -222,6 +223,15 @@ export function useJornadaBundle(jornadaId: string) {
 /** Offline = browser offline OR "Simular sin conexión". */
 export function useIsOffline() {
   return useAppStore((s) => isOffline(s));
+}
+
+/**
+ * Account sessions: how far the phone's clock is from the server's (ms, server minus phone; negative = the phone is
+ * ahead) while that is beyond 5 minutes, else undefined (sync/clock.ts). The demo never talks to a server: undefined.
+ */
+export function useClockSkew(): number | undefined {
+  const clock = useAppStore((s) => (s.session.mode === "supabase" ? s.sync.clock : undefined));
+  return clockSkewMs(clock);
 }
 
 /**

@@ -1,5 +1,6 @@
 import { createBrowserClient } from "@supabase/ssr";
 import { createClient } from "@supabase/supabase-js";
+import { jwtIssuedAt, reportServerTime } from "@/lib/sync/clock";
 import type { Database } from "./database.types";
 import { SUPABASE_PUBLISHABLE_KEY, SUPABASE_URL, isSupabaseConfigured } from "./config";
 
@@ -13,12 +14,39 @@ let client: SupabaseBrowserClient | undefined;
 let logoutBudgetMs = 7000;
 
 /**
+ * A sign-in or refresh answer (`/auth/v1/token`, `/auth/v1/verify`) carries an access token the Auth server issued while the
+ * request was under way: its `iat` reads the server's clock (sync/clock.ts). Read from a copy of the answer, never delaying
+ * or changing what auth-js gets.
+ */
+async function timedTokenFetch(input: RequestInfo | URL, init?: RequestInit): Promise<Response> {
+  const sent = Date.now();
+  const res = await fetch(input, init);
+  const got = Date.now();
+  if (res.ok) {
+    try {
+      void res
+        .clone()
+        .json()
+        .then((body: { access_token?: unknown } | null) => {
+          const iat = jwtIssuedAt(body?.access_token);
+          if (iat !== undefined) reportServerTime({ kind: "between", server: iat * 1000, sent, got, resolution: 1000 });
+        })
+        .catch(() => undefined);
+    } catch {
+      // a body that cannot be copied: no clock reading this time
+    }
+  }
+  return res;
+}
+
+/**
  * The browser client's fetch. The revoke request a sign-out makes (`/auth/v1/logout`) gives up within endSessionOnDevice's
  * wait: left running on a weak connection, it would settle after the next person signed in, and auth-js would then remove
- * *their* session from the cookies (and broadcast SIGNED_OUT to every tab).
+ * *their* session from the cookies (and broadcast SIGNED_OUT to every tab). Token answers also read the server's clock.
  */
 const clientFetch: typeof fetch = (input, init) => {
   const url = typeof input === "string" ? input : input instanceof URL ? input.href : input.url;
+  if (/\/auth\/v1\/(token|verify)(\?|$)/.test(url)) return timedTokenFetch(input, init);
   if (!/\/auth\/v1\/logout(\?|$)/.test(url) || typeof AbortSignal === "undefined" || !("timeout" in AbortSignal)) return fetch(input, init);
   const limit = AbortSignal.timeout(logoutBudgetMs);
   const signal = init?.signal && "any" in AbortSignal ? AbortSignal.any([init.signal, limit]) : limit;

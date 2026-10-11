@@ -8,6 +8,7 @@ import { SCENE_AREAS } from "@/lib/seed";
 import { useDemoSession } from "@/lib/hooks";
 import { PermissionDeniedError } from "@/lib/store";
 import type { Photo, SceneKind } from "@/lib/types";
+import { ClockWarning } from "@/components/pk/clock-warning";
 import { useEdgeFade } from "@/components/pk/edge-fade";
 import { CAPTURE_HELP, areaSuggestions, usePhotoCapture, type CaptureMeta } from "@/components/pk/photo-capture";
 import { PhotoThumb } from "@/components/pk/scene-photo";
@@ -305,7 +306,10 @@ export function QuickCaptureFlow({ f, kind, open, onOpenChange }: { f: FieldRead
           {f.photoBlock}
         </p>
       ) : (
-        <CaptureComposer f={f} kind={kind} onCaptured={(ids) => setTaken((t) => [...ids, ...t])} />
+        <>
+          <ClockWarning className="mb-4" />
+          <CaptureComposer f={f} kind={kind} onCaptured={(ids) => setTaken((t) => [...ids, ...t])} />
+        </>
       )}
       <div className="mt-7">
         <FieldCaption>{shots.length ? `Tomadas ahora · ${shots.length}` : `En esta jornada · ${all.length}`}</FieldCaption>

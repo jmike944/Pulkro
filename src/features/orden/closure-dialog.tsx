@@ -7,6 +7,7 @@ import { Check, CircleCheck, FileText } from "lucide-react";
 import { useMediaQuery } from "@/lib/hooks";
 import { PulkroMark } from "@/components/pk/brand";
 import { IconTile } from "@/components/pk/bits";
+import { ClockWarning } from "@/components/pk/clock-warning";
 import { MODAL_DESKTOP_QUERY, ModalCancel, ModalShell, useDiscardGuard } from "@/components/pk/modal-shell";
 import { Button } from "@/components/ui/button";
 import { useOrder } from "./order-context";
@@ -204,6 +205,7 @@ function ClosureModal({ open, onOpenChange, draft, done, onValidate, onNavigate,
               <ConformityFields draft={draft} />
             </section>
             <SummaryField draft={draft} />
+            <ClockWarning />
             {draft.offline && <OfflineNote />}
             <ConfirmCheck checked={draft.confirmed} onChange={draft.setConfirmed}>
               Confirmo que el servicio se ejecutó conforme a la orden y que la evidencia es correcta.

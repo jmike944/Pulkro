@@ -8,10 +8,12 @@
  *  - Idempotency: each item keeps its exact arguments, `p_op_id` included, and resends them unchanged; `{duplicate: true}`
  *    (the server already applied it) counts as sent.
  *  - Answers (queue.ts → classifyRpc): applied → sent, and the server's values (folios, statuses, server time, versions)
- *    replace the device's; network / timeout / 5xx / 429 / `parent_missing` / `object_missing` → retried with backoff (capped,
- *    then quarantine); PT401 or an expired session → one refresh, else "Vuelva a entrar" and the queue waits; other PT409 →
- *    quarantine with the server's message; PT422 / PT403 / PT404 / 23505 / 23503 → error. The item and the person's data stay
- *    on the device in every case; the sync sheet offers "Reintentar" / "Descartar".
+ *    replace the device's; network / timeout / 5xx / 429 / `parent_missing` / `object_missing` / `device_time_future` (the
+ *    phone's clock ahead: it goes once the server's clock passes it) → retried with backoff (capped, then quarantine); PT401
+ *    or an expired session → one refresh, else "Vuelva a entrar" and the queue waits; other PT409 → quarantine with the
+ *    server's message; PT422 / PT403 / PT404 / 23505 / 23503 → error. The item and the person's data stay on the device in
+ *    every case; the sync sheet offers "Reintentar" (unless a resend cannot help: NO_RETRY_HINTS) / "Descartar".
+ *  - Server times in the answers (check-in/out `server_at`, `reopened_at`) also read the server's clock (clock.ts).
  *  - Photos: one item, two steps. The picture goes to Storage first (`orders/<order>/<kind>/<photo>.jpg`, bucket
  *    `evidencias`, never upserted; "already exists" is success), the item remembers it, then `add_photo` links it. The photo
  *    then shows from Storage; its device copy is freed once a pull that started after the push confirmed it.
@@ -22,6 +24,7 @@ import type { AppState } from "@/lib/store";
 import { getSupabaseBrowserClient, getTokenClient, isSupabaseConfigured, type SupabaseBrowserClient } from "@/lib/supabase/client";
 import { deletePhotoFile, getPhotoBlob, keepCaptureAs } from "@/lib/photo-store";
 import type { DataSnapshot, OrderStatus, SyncItem, SyncProblem } from "@/lib/types";
+import { noteServerTime } from "./clock";
 import { iso } from "./map";
 import { dropRows, pendingIndex, type CatalogTable } from "./merge";
 import { endInactive, flagReauth, requestPull, tryRefresh, type PullStore } from "./pull";
@@ -245,10 +248,11 @@ async function send(store: Store, client: SupabaseBrowserClient, item: SyncItem,
     }
     // 2 · the RPC, with exactly the arguments stored when the action ran.
     if (!item.tried) patchItem(store, item.id, { tried: true });
+    const sent = Date.now();
     const outcome = await call(client, op.rpc, op.args);
     if (noPicture && outcome.kind === "retry" && outcome.reupload)
       return await settle(store, item, { kind: "error", problem: { kind: "error", message: LOST_PHOTO_MESSAGE, code: outcome.problem.code, hint: "photo_lost" } });
-    return await settle(store, item, outcome);
+    return await settle(store, item, outcome, { sent, got: Date.now() });
   } catch (e) {
     // Never leave an item "sincronizando" (it would hold its order until a reload): back in line, retried with backoff.
     console.warn("[push]", op.rpc, e instanceof Error ? e.message : e);
@@ -293,14 +297,17 @@ async function upload(client: SupabaseBrowserClient, u: NonNullable<NonNullable<
   }
 }
 
+/** When the RPC went out and when its answer arrived (device ms): a server time in the answer reads the server's clock. */
+type Timing = { sent: number; got: number };
+
 /** Records what happened to the item; tells the burst whether to go on. */
-async function settle(store: Store, item: SyncItem, outcome: Outcome): Promise<Step> {
+async function settle(store: Store, item: SyncItem, outcome: Outcome, timing?: Timing): Promise<Step> {
   switch (outcome.kind) {
     case "ok": {
       const at = nowIso();
       patchItem(store, item.id, { state: "sincronizado", syncedAt: at, problem: undefined, nextAt: undefined, attempts: undefined, netAttempts: undefined, firstFailAt: undefined });
       store.setState((st) => ({ sync: { ...st.sync, lastSyncAt: at } }));
-      await applyResult(store, item, outcome.data);
+      await applyResult(store, item, outcome.data, timing);
       return "sent";
     }
     case "network":
@@ -380,10 +387,15 @@ const ORDER_STATUSES = new Set<OrderStatus>([
 ]);
 const str = (v: unknown) => (typeof v === "string" ? v : undefined);
 
-async function applyResult(store: Store, item: SyncItem, data: unknown) {
+async function applyResult(store: Store, item: SyncItem, data: unknown, timing?: Timing) {
   const op = item.op!;
   const a = op.args;
   const r = (data && typeof data === "object" ? data : {}) as Record<string, unknown>;
+
+  // The server's clock (clock.ts): a time it stamped while this request was under way. A duplicate answer carries the time
+  // of the first application, which says nothing about now.
+  const stamped = str(r.server_at) ?? str(r.reopened_at);
+  if (stamped && timing && r.duplicate !== true) noteServerTime(store, { kind: "between", server: Date.parse(stamped), sent: timing.sent, got: timing.got });
 
   /** The order's status, unless later changes of that order are still queued (their own answers will say). */
   const status = (orderId: unknown, value: unknown) => {

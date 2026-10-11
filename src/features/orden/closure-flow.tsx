@@ -5,6 +5,7 @@ import { motion } from "motion/react";
 import { Check, ChevronLeft, FileText } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { ClientMark } from "@/components/pk/client-mark";
+import { ClockWarning } from "@/components/pk/clock-warning";
 import { BigButton, FieldCaption, FlowScreen, SuccessHero } from "@/components/pk/mobile";
 import { EASE } from "@/components/pk/motion";
 import { useOrder } from "./order-context";
@@ -182,6 +183,7 @@ export function ClosureFlow({
                 exception={draft.photosMissing ? { reason: draft.exception.trim(), by: user.name } : undefined}
               />
             </div>
+            <ClockWarning className="mt-5" />
             {draft.offline && <OfflineNote className="mt-5" />}
             <div className="mt-5">
               <ConfirmCheck checked={draft.confirmed} onChange={draft.setConfirmed}>

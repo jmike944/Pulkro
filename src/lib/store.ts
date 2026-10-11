@@ -41,6 +41,7 @@ import { requestPull, verifyAccount, type PullRequest, type PullState } from "./
 import { breakdownArg, daysArg, diffPatch, localDay, materialsArg, orderPatch, rpcOp, type MutationRpc, type RpcArgs } from "./sync/ops";
 import { discardItems, pushQueue, releaseBlobs, resumeAfterReconnect, retryItems } from "./sync/push";
 import { isUnsent } from "./sync/queue";
+import { noteServerTime, setClockSink, type ClockOffset } from "./sync/clock";
 import { provisionalFolio } from "./folio";
 import type {
   AuditEntity,
@@ -204,6 +205,11 @@ type SyncSlice = {
    * again. Not persisted; the shell warns while it is set.
    */
   saveError?: string;
+  /**
+   * How far the phone's clock is from the server's (sync/clock.ts), from server times the app receives. A property of the
+   * device, not of an account: a sign-out keeps it. The capture screens warn while it is beyond 5 minutes (ClockWarning).
+   */
+  clock?: ClockOffset;
 };
 
 export type AppState = DataSnapshot & {
@@ -653,7 +659,7 @@ export const useAppStore = create<AppState>()(
             ...emptyData,
             meta: { seededAt: "", seedVersion: 0 },
             session: signedOutSession(),
-            sync: { forcedOffline: false, browserOffline: st.sync.browserOffline, queue: [], lastSyncAt: nowIso(), processing: false },
+            sync: { forcedOffline: false, browserOffline: st.sync.browserOffline, queue: [], lastSyncAt: nowIso(), processing: false, clock: st.sync.clock },
           }));
           // Write the empty state now (not after the debounce): the account's records leave IndexedDB with the sign-out, and
           // once that is committed the other open tabs of the account drop theirs and start over at /login.
@@ -1854,6 +1860,9 @@ export const useAppStore = create<AppState>()(
     },
   ),
 );
+
+// Server times read outside the sync engines (the Auth answers of supabase/client.ts) adjust the clock estimate.
+setClockSink((sample) => noteServerTime(useAppStore, sample));
 
 registerTab({
   owner: () => ownerOf(useAppStore.getState().session),

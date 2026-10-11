@@ -16,6 +16,7 @@ import { OrderStatusPill, TonePill } from "@/components/pk/status";
 import { BeforeAfter, PhotoThumb } from "@/components/pk/scene-photo";
 import { CAPTURE_HELP, PhotoCaptureButtons, usePhotoCapture } from "@/components/pk/photo-capture";
 import { ClientMark } from "@/components/pk/client-mark";
+import { ClockWarning } from "@/components/pk/clock-warning";
 import { AuroraStat, BigButton, FlowHeading, FlowScreen, ItemCard, MODAL_DESKTOP_QUERY, SuccessHero } from "@/components/pk/mobile";
 import { EASE } from "@/components/pk/motion";
 import { dueLabel, type EvidenceRequest } from "./evidence-data";
@@ -286,6 +287,7 @@ function PhoneRequest({
     <div className="space-y-2.5">
       {canCapture ? (
         <>
+          <ClockWarning />
           <input ref={camRef} type="file" accept="image/*" capture="environment" hidden onChange={(e) => void onFiles(e.target.files, "camera").then(() => (e.target.value = ""))} />
           <input ref={galRef} type="file" accept="image/*" multiple hidden onChange={(e) => void onFiles(e.target.files, "gallery").then(() => (e.target.value = ""))} />
           <BigButton onClick={() => camRef.current?.click()} disabled={busy}>

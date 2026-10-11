@@ -25,6 +25,7 @@ import type { AppState } from "@/lib/store";
 import { endSessionOnDevice, getSupabaseBrowserClient, getTokenClient, isSupabaseConfigured, type SupabaseBrowserClient } from "@/lib/supabase/client";
 import { OPEN_STATUSES } from "@/lib/status";
 import type { DataSnapshot, Role } from "@/lib/types";
+import { noteServerTime } from "./clock";
 import { mapProfile } from "./map";
 import { catalogKey, dropRows, mergeRows, missingRefs, pendingIndex, type CatalogTable, type Drops } from "./merge";
 import { usePullStatus } from "./status";
@@ -330,6 +331,8 @@ async function pullTable(ctx: Ctx, table: SyncTable, opts: { from?: string; subt
     const readAt = nowIso();
     const rows = await run<RowOf<SyncTable>[]>(page(ctx, table, lower, after));
     if (!rows.length) break;
+    // The page's newest updated_at (server clock): the server's clock is at least there now (clock.ts).
+    noteServerTime(ctx.store, { kind: "floor", server: ms((rows[rows.length - 1] as { updated_at: string }).updated_at), got: Date.now() });
     const cursor = ctx.store.getState().session.pull?.cursors[table];
     const seen = cursor?.seen ?? {};
     const fresh = rows.filter((r) => seen[pkValue(table, r)] !== (r as { updated_at: string }).updated_at);

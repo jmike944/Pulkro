@@ -9,6 +9,7 @@ import { useDemoSession } from "@/lib/hooks";
 import { GEO_NOTE_MIN, TEXT_LIMITS } from "@/lib/domain";
 import { fmtCoords } from "@/lib/format";
 import { ClientMark } from "@/components/pk/client-mark";
+import { ClockWarning } from "@/components/pk/clock-warning";
 import { distanceMeters, readPosition, type GeoMarker, type GeoReading } from "@/components/pk/geo-map";
 import { AuroraStat, BigButton, FlowHeading, FlowScreen, ItemCard, MobileRow } from "@/components/pk/mobile";
 import { AnimatedNumber } from "@/components/pk/bits";
@@ -390,6 +391,8 @@ export function GpsFlow({
           </motion.div>
         )}
       </AnimatePresence>
+
+      <ClockWarning className="mt-5" />
 
       {warnings.length > 0 && (
         <ul className="mt-5 space-y-2">

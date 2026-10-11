@@ -14,6 +14,7 @@ import { TEXT_LIMITS } from "@/lib/domain";
 import { PageHeader } from "@/components/pk/page";
 import { NotFoundOrOutOfScope } from "@/components/shell/out-of-scope";
 import { ClientMark } from "@/components/pk/client-mark";
+import { ClockWarning } from "@/components/pk/clock-warning";
 import { SectionHeader } from "@/components/pk/bits";
 import { TonePill } from "@/components/pk/status";
 import { Timeline, type TimelineStep } from "@/components/pk/timeline";
@@ -183,6 +184,7 @@ function CaseDetail({ c }: { c: PostSaleCase }) {
                 ) : undefined
               }
             />
+            {canManage && order && <ClockWarning className="mb-3" />}
             {casePhotos.length ? (
               <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
                 {casePhotos.map((p) => (
