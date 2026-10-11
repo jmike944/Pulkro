@@ -54,6 +54,8 @@ type Ctx = {
   /** Orders / cases reassigned at some point: their creation entry no longer says who it was assigned to. */
   reassignedOrders: Set<string>;
   reassignedCases: Set<string>;
+  /** Latest "Reasignó el caso" audit entry id per case: only that one can notify the current owner. */
+  lastCaseReassignment: Map<string, string>;
 };
 
 const WINDOW_DAYS = 30;
@@ -78,25 +80,26 @@ function toNotice(a: AuditEntry, c: Ctx): Omit<Notice, "unread" | "id" | "at" | 
         icon: ClipboardPlus,
         tone: "navy",
         title: "Nueva orden asignada",
-        body: order?.status === "borrador" ? `${actor} te asignó ${ref}. Programa las jornadas.` : `${actor} te asignó ${ref}.`,
+        body: order?.status === "borrador" ? `${actor} le asignó ${ref}. Programe las jornadas.` : `${actor} le asignó ${ref}.`,
         href: orderHref,
       };
     if (t.startsWith("Reasignó la orden") && t.endsWith(`a ${c.me.name}`))
-      return { icon: UserRoundCheck, tone: "navy", title: "Te pasaron una orden", body: `${actor} te asignó ${ref}.`, href: orderHref };
+      return { icon: UserRoundCheck, tone: "navy", title: "Le reasignaron una orden", body: `${actor} le asignó ${ref}.`, href: orderHref };
     if ((t === "Cambió estado a Reprogramada" || /^Programó \d+ jornada/.test(t)) && role !== "direccion")
       return { icon: CalendarClock, tone: "amber", title: "Cambiaron las fechas", body: `${actor} reprogramó ${ref}.`, href: `${orderHref}?tab=jornadas` };
     if (t === "Cambió estado a Cancelada")
       return { icon: XCircle, tone: "red", title: "Orden cancelada", body: `${actor} canceló ${ref}.`, href: orderHref };
     // Only the assigned supervisor can act on a reopened order (re-validate the closure).
     if (t === "Cambió estado a Reabierta" && role === "supervisor" && mine)
-      return { icon: RotateCcw, tone: "amber", title: "Orden reabierta", body: `${actor} reabrió ${ref}. Valida el cierre de nuevo.`, href: orderHref };
+      return { icon: RotateCcw, tone: "amber", title: "Orden reabierta", body: `${actor} reabrió ${ref}. Valide el cierre de nuevo.`, href: orderHref };
     return null;
   }
 
   if (a.entity === "incidencia" && t.startsWith("Registró incidencia") && role !== "supervisor") {
     const inc = c.incidents.get(a.entityId);
+    // Only open incidents: a resolved one no longer blocks anything.
     // Blocking incidents for both management roles; non-blocking high severity only for Administración.
-    if (!inc || !(inc.blocksClosure || (inc.severity === "alta" && role === "administracion"))) return null;
+    if (!inc || inc.status !== "abierta" || !(inc.blocksClosure || (inc.severity === "alta" && role === "administracion"))) return null;
     const what = INCIDENT_TYPE[inc.type]?.label.toLowerCase() ?? "incidencia";
     return {
       icon: TriangleAlert,
@@ -113,7 +116,7 @@ function toNotice(a: AuditEntry, c: Ctx): Omit<Notice, "unread" | "id" | "at" | 
       icon: FileCheck2,
       tone: "teal",
       title: "Reporte enviado al cliente",
-      body: `${actor} envió el reporte de ${ref}. Ya puedes enviar la encuesta.`,
+      body: `${actor} envió el reporte de ${ref}. Ya puede enviar la encuesta.`,
       href: order ? `/postventa?orden=${order.folio}` : "/postventa",
     };
 
@@ -121,17 +124,18 @@ function toNotice(a: AuditEntry, c: Ctx): Omit<Notice, "unread" | "id" | "at" | 
     const cs = c.cases.get(a.entityId);
     const folio = cs?.folio ?? t.replace("Abrió caso postventa ", "");
     const href = cs ? `/postventa/${cs.folio}` : "/postventa";
-    if (cs?.ownerId === c.me.id && !c.reassignedCases.has(cs.id))
-      return { icon: MessageSquareWarning, tone: "violet", title: "Te asignaron un caso", body: `${actor} abrió ${folio} en ${ref} y te lo asignó.`, href };
+    if (cs && c.reassignedCases.has(cs.id) && cs.ownerId === c.me.id) return null;
+    if (cs?.ownerId === c.me.id)
+      return { icon: MessageSquareWarning, tone: "violet", title: "Le asignaron un caso", body: `${actor} abrió ${folio} en ${ref} y se lo asignó.`, href };
     if (role === "supervisor" && !mine) return null;
     return { icon: MessageSquareWarning, tone: "violet", title: "Nuevo caso postventa", body: `${actor} abrió ${folio} en ${ref}.`, href };
   }
 
   if (a.entity === "caso") {
-    const to = t.match(/^Reasignó el caso a (.+?)\.?$/)?.[1];
     const cs = c.cases.get(a.entityId);
-    if (to && to === c.me.name && cs)
-      return { icon: MessageSquareWarning, tone: "violet", title: "Te asignaron un caso", body: `${actor} te pasó ${cs.folio} de ${ref}.`, href: `/postventa/${cs.folio}` };
+    // Match the owner by id (not by the name in the audit text), and only on the case's latest reassignment.
+    if (t.startsWith("Reasignó el caso") && cs && cs.ownerId === c.me.id && c.lastCaseReassignment.get(cs.id) === a.id)
+      return { icon: MessageSquareWarning, tone: "violet", title: "Le reasignaron un caso", body: `${actor} le pasó ${cs.folio} de ${ref}.`, href: `/postventa/${cs.folio}` };
     return null;
   }
 
@@ -156,40 +160,41 @@ function toNotice(a: AuditEntry, c: Ctx): Omit<Notice, "unread" | "id" | "at" | 
   return null;
 }
 
-const SEEN_KEY = (userId: string) => `pk.notificaciones.vistas.${userId}`;
+/** Per user and per visible unit scope (Dirección can switch units; reading one unit must not mark another as read). */
+const SEEN_KEY = (scope: string) => `pk.notificaciones.vistas.${scope}`;
 const seenListeners = new Set<() => void>();
-function readSeen(userId: string) {
+function readSeen(scope: string) {
   try {
-    return localStorage.getItem(SEEN_KEY(userId)) ?? "";
+    return localStorage.getItem(SEEN_KEY(scope)) ?? "";
   } catch {
     return "";
   }
 }
-function writeSeen(userId: string, iso: string) {
+function writeSeen(scope: string, iso: string) {
   try {
-    localStorage.setItem(SEEN_KEY(userId), iso);
+    localStorage.setItem(SEEN_KEY(scope), iso);
   } catch {}
   seenListeners.forEach((l) => l());
 }
 /** Per-user "read up to" cursor, shared by the desktop bell and the phone button. */
-function useSeenCursor(userId: string) {
+function useSeenCursor(scope: string) {
   const subscribe = useCallback((cb: () => void) => {
     seenListeners.add(cb);
     return () => void seenListeners.delete(cb);
   }, []);
-  const seen = useSyncExternalStore(subscribe, () => readSeen(userId), () => "");
-  const markSeen = useCallback(() => writeSeen(userId, new Date().toISOString()), [userId]);
+  const seen = useSyncExternalStore(subscribe, () => readSeen(scope), () => "");
+  const markSeen = useCallback(() => writeSeen(scope, new Date().toISOString()), [scope]);
   return { seen, markSeen };
 }
 
 /** Role-scoped notices from the last 30 days, newest first, never the current user's own actions. */
 function useNotifications() {
-  const { audit, orders, incidents, cases, surveys } = useScopedData();
+  const { audit, orders, incidents, cases, surveys, unitFilter } = useScopedData();
   const me = useCurrentUser();
   const lk = useLookups();
   const now = useNow(60_000);
   const canSee = useCanSeeRoute();
-  const { seen, markSeen } = useSeenCursor(me.id);
+  const { seen, markSeen } = useSeenCursor(me.role === "direccion" ? `${me.id}.${unitFilter}` : me.id);
 
   const notices = useMemo<Notice[]>(() => {
     const nowMs = now.getTime();
@@ -202,7 +207,10 @@ function useNotifications() {
     const surveyed = new Set(surveys.map((x) => x.orderId));
     const surveyById = new Map(surveys.map((x) => [x.id, x]));
     const reassignedOrders = new Set(audit.filter((x) => x.entity === "orden" && x.action.startsWith("Reasignó la orden")).map((x) => x.entityId));
-    const reassignedCases = new Set(audit.filter((x) => x.entity === "caso" && x.action.startsWith("Reasignó el caso")).map((x) => x.entityId));
+    const caseReassignments = audit.filter((x) => x.entity === "caso" && x.action.startsWith("Reasignó el caso"));
+    const reassignedCases = new Set(caseReassignments.map((x) => x.entityId));
+    const lastCaseReassignment = new Map<string, string>();
+    for (const x of [...caseReassignments].sort((p, q) => (p.at < q.at ? -1 : 1))) lastCaseReassignment.set(x.entityId, x.id);
     const seenKeys = new Set<string>();
     const out: Notice[] = [];
     for (const a of [...audit].sort((x, y) => (x.at < y.at ? 1 : -1))) {
@@ -222,10 +230,11 @@ function useNotifications() {
         surveys: surveyById,
         reassignedOrders,
         reassignedCases,
+        lastCaseReassignment,
       });
       if (!n) continue;
       // One notice per kind per order (a report sent by WhatsApp and by email is one "Reporte enviado").
-      const key = `${n.title}|${a.orderId ?? a.entityId}`;
+      const key = `${n.title}|${a.entity === "encuesta" ? a.entityId : (a.orderId ?? a.entityId)}`;
       if (seenKeys.has(key)) continue;
       seenKeys.add(key);
       // A screen this role can't open falls back to the order (always readable in scope).
@@ -246,7 +255,7 @@ const explainsChange = (action: string) => /^(Cambió estado a (Cancelada|Reprog
 /* ─────────────────────────── View ─────────────────────────── */
 
 function summary(unread: number) {
-  return unread > 0 ? `${unread} ${unread === 1 ? "nueva" : "nuevas"} sobre tu trabajo` : "Estás al día";
+  return unread > 0 ? `${unread} ${unread === 1 ? "nueva" : "nuevas"} sobre su trabajo` : "Está al día";
 }
 
 /**
@@ -283,8 +292,10 @@ export function NotificationPanel({ onNavigate, header = true, className }: { on
       <div className="min-h-0 flex-1 overflow-y-auto px-5 pb-2">
         {notices.length === 0 ? (
           <div className="py-10 text-center">
-            <p className="font-serif text-[19px] text-ink">Estás al día</p>
-            <p className="mx-auto mt-1 max-w-[30ch] text-[13.5px] text-subtle">Aquí aparecerá lo que otras personas cambien en tu trabajo.</p>
+            <p className="font-serif text-[19px] text-ink">Está al día</p>
+            <p className="mx-auto mt-1 max-w-[34ch] text-[13.5px] text-subtle">
+              Cuando alguien le asigne una orden, reprograme fechas o registre una incidencia, el aviso aparecerá aquí.
+            </p>
           </div>
         ) : (
           <>

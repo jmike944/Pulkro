@@ -205,8 +205,8 @@ export function CommandMenu() {
       { label: "Acciones", hits: actionHits },
     ]
       .filter((g) => g.hits.length > 0)
-      // stable: equal best scores keep the order above (Órdenes first)
-      .sort((a, b) => (best[b.label] ?? 0) - (best[a.label] ?? 0));
+      // Best match first; on a tie a client beats its orders (a client's full name also feeds its orders' score).
+      .sort((a, b) => (best[b.label] ?? 0) + (b.label === "Clientes" ? 0.5 : 0) - ((best[a.label] ?? 0) + (a.label === "Clientes" ? 0.5 : 0)));
   }, [tokens, orders, lk, catalog, showCrew, sections, canCreate]);
 
   const flat = useMemo(() => groups.flatMap((g) => g.hits), [groups]);
@@ -240,7 +240,7 @@ export function CommandMenu() {
         )}
       >
         <DialogTitle className="sr-only">Buscar en Pulkro</DialogTitle>
-        <DialogDescription className="sr-only">Órdenes, clientes, personal y secciones de tu alcance</DialogDescription>
+        <DialogDescription className="sr-only">Órdenes, clientes, personal y secciones de su alcance</DialogDescription>
         <Cmdk shouldFilter={false} loop value={current?.key ?? ""} onValueChange={setSelected} className="flex min-h-0 min-w-0 flex-col" label="Buscar en Pulkro">
           {/* query row */}
           <div className="flex items-center gap-3 border-b border-hairline px-4 lg:px-5">
@@ -257,7 +257,7 @@ export function CommandMenu() {
               <Kbd className="bg-tile text-[11px]">Esc</Kbd>
             ) : (
               <button type="button" onClick={() => onOpenChange(false)} className="inline-flex h-11 shrink-0 items-center px-1 text-[15px] font-semibold text-link">
-                Cancelar
+                Cerrar
               </button>
             )}
           </div>
@@ -271,7 +271,7 @@ export function CommandMenu() {
             >
               <Cmdk.Empty className="px-4 py-12 text-center">
                 <p className="font-serif text-[19px] text-ink">Nada con “{query}”</p>
-                <p className="mx-auto mt-1 max-w-[34ch] text-[13.5px] text-subtle">Prueba con un folio como OS-24404, el nombre corto del cliente o el municipio del sitio.</p>
+                <p className="mx-auto mt-1 max-w-[34ch] text-[13.5px] text-subtle">Pruebe con un folio como OS-24404, el nombre corto del cliente o el municipio del sitio.</p>
               </Cmdk.Empty>
               {groups.map((g) => (
                 <Cmdk.Group
@@ -308,7 +308,7 @@ export function CommandMenu() {
                 <Kbd className="bg-tile">↵</Kbd> abrir
               </span>
               <span className="ml-auto tabular-nums">
-                {tokens.length ? `${flat.length} ${flat.length === 1 ? "resultado" : "resultados"}` : `${orders.length} órdenes en tu alcance`}
+                {tokens.length ? `${flat.length} ${flat.length === 1 ? "resultado" : "resultados"}` : `${orders.length} órdenes en su alcance`}
               </span>
             </div>
           )}
@@ -433,8 +433,8 @@ function IconTile({ icon: Icon, accent }: { icon: LucideIcon; accent?: boolean }
 function PreviewHint() {
   return (
     <div className="flex h-full flex-col justify-center px-6 text-center">
-      <p className="font-serif text-[19px] text-ink">Busca y revisa sin salir</p>
-      <p className="mt-1 text-[13px] text-subtle">Muévete con las flechas: aquí verás el detalle de cada resultado.</p>
+      <p className="font-serif text-[19px] text-ink">Busque y revise sin salir</p>
+      <p className="mt-1 text-[13px] text-subtle">Recorra los resultados con las flechas: aquí verá el detalle de cada uno.</p>
     </div>
   );
 }
@@ -527,7 +527,7 @@ function Preview({ hit, onRun }: { hit: Hit; onRun: (h: Hit) => void }) {
         }
         rows={[
           ["Contacto", c.contactName],
-          ["Órdenes", `${hit.orders} en tu alcance`],
+          ["Órdenes", `${hit.orders} en su alcance`],
           last?.closure && ["Último servicio", `${last.folio}, ${fmtDay(last.closure.validatedAt)}`],
         ]}
         actions={<PrimaryAction onClick={() => onRun(hit)}>Abrir cliente</PrimaryAction>}
