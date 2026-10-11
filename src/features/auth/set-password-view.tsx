@@ -1,7 +1,7 @@
 "use client";
 
-import { Suspense, useCallback, useEffect, useRef, useState } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import { ArrowRight, KeyRound, Link2Off, Loader2, LockKeyhole, Mail, MailCheck, RotateCw, UserRoundX, WifiOff } from "lucide-react";
 import type { EmailOtpType, Session, User } from "@supabase/supabase-js";
 import { cn } from "@/lib/utils";
@@ -36,6 +36,10 @@ import { useEnterAccount } from "./use-enter-account";
  * The link is a credential until it is used: the query and the fragment leave the address bar (and the history) as soon as
  * the page has read them, whatever happens next; "Reintentar" works from the copy in memory. It is verified once per page
  * (React may run effects twice).
+ * The address bar is read only after hydration: the server never sees the fragment (and in development, or as a dynamic
+ * render, it does see the query), so a first render that depended on the link would differ from the server's HTML. Server
+ * and hydration render nothing; the first effect reads the link and the page mounts with its first card, as a client-only
+ * render would.
  */
 
 type Verified = { userId: string; email: string; type: LinkType };
@@ -162,20 +166,10 @@ function initialStage(link: AuthLink): Stage {
 }
 
 export function SetPasswordView() {
-  return (
-    <Suspense>
-      <SetPasswordInner />
-    </Suspense>
-  );
-}
-
-function SetPasswordInner() {
   const router = useRouter();
-  const params = useSearchParams();
-  // Read once into memory; the effect below takes it out of the address bar. useSearchParams keeps this tree client-rendered
-  // (prerendered routes bail out to the client up to the Suspense above), where the fragment can be read too.
-  const [link] = useState(() => readLink(params.toString(), typeof window === "undefined" ? "" : window.location.hash));
-  const [stage, setStage] = useState<Stage>(() => initialStage(link));
+  // null until the first effect reads the address bar (never during render: see the note above).
+  const [link, setLink] = useState<AuthLink | null>(null);
+  const [stage, setStage] = useState<Stage>({ kind: "checking" });
   const [attempt, setAttempt] = useState(0);
   const [leaving, setLeaving] = useState(false);
   // The person chose to go on with the link although an account is open on this device.
@@ -185,14 +179,22 @@ function SetPasswordInner() {
   const deviceName = useAppStore((s) => s.users.find((u) => u.id === s.session.userId)?.name ?? "otra cuenta");
   const replaces = (verified: Verified) => (deviceUserId && deviceUserId !== verified.userId ? deviceName : null);
 
-  // Right away, on every outcome (also a failed, expired or abandoned check): the token stays out of the history, the
-  // address bar and anything that stores URLs (sync of open tabs, screenshots, a link shared by mistake).
+  // The link, read once into memory after hydration, then out of the address bar right away, on every outcome (also a
+  // failed, expired or abandoned check): the token stays out of the history, the address bar and anything that stores URLs
+  // (sync of open tabs, screenshots, a link shared by mistake). The ref keeps React's second effect run (development) from
+  // reading the cleaned address bar again.
+  const linkRead = useRef(false);
   useEffect(() => {
+    if (linkRead.current) return;
+    linkRead.current = true;
+    const read = readLink(window.location.search, window.location.hash);
     if (window.location.search || window.location.hash) window.history.replaceState(null, "", window.location.pathname);
+    setLink(read);
+    setStage(initialStage(read));
   }, []);
 
   useEffect(() => {
-    if (stage.kind !== "checking" || !isCredential(link)) return;
+    if (stage.kind !== "checking" || !link || !isCredential(link)) return;
     let alive = true;
     void (async () => {
       if (!takeOver.current) {
@@ -220,7 +222,7 @@ function SetPasswordInner() {
   }, [attempt, link, stage.kind]);
 
   const retry = () => {
-    if (isCredential(link)) verifications.delete(keyOf(link));
+    if (link && isCredential(link)) verifications.delete(keyOf(link));
     setStage({ kind: "checking" });
     setAttempt((a) => a + 1);
   };
@@ -258,6 +260,9 @@ function SetPasswordInner() {
       setStage({ kind: "refused", message: result.message });
     }
   };
+
+  // Server render and hydration: nothing yet (the link is not read until the first effect).
+  if (!link) return null;
 
   return (
     <>
