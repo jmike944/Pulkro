@@ -60,6 +60,11 @@ export type Client = {
   contactPhone: string; // E.164-ish "+52 81 1234 5678"
   contactEmail: string;
   since: string; // ISO date
+  /**
+   * The server has no "cliente desde" for it (clients.since is null): `since` shows the record's creation instead, and an
+   * edit never sends that stand-in as if someone had entered it.
+   */
+  sinceUnset?: boolean;
   hue: number;
   siteIds: string[];
 };

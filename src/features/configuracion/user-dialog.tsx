@@ -14,6 +14,7 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ChipSelect, Field, FormDialog, GatedButton, ROLES, SwitchLite, hueFrom, initialsOf, inputCls, isEmail, norm, phoneDigits, selectTriggerCls } from "./shared";
 import { DeactivateUserDialog } from "./deactivate-user";
+import { TEXT_LIMITS } from "@/lib/domain";
 import {
   ALREADY_ACTIVE,
   NEEDS_CONNECTION,
@@ -186,7 +187,7 @@ export function UserDialog({
       hue: user?.hue ?? hueFrom(clean),
       active,
     };
-    upsertUser(next);
+    if (!upsertUser(next)) return;
     toast.success(isNew ? `Usuario ${clean.split(" ")[0]} creado` : "Cambios guardados", {
       description: willDeactivate ? "Cuenta desactivada: ya no puede iniciar sesión." : `${ROLE_LABEL[role]} · ${unitName}`,
     });
@@ -250,7 +251,7 @@ export function UserDialog({
       if (profileChanged) {
         // The other fields go through the store (queued); e-mail and active are the server's values applied above.
         const current = useAppStore.getState().users.find((u) => u.id === target.id) ?? target;
-        upsertUser({ ...current, name: clean, initials: initialsOf(clean), role, title: title.trim(), unitId, phone: phone.trim() });
+        if (!upsertUser({ ...current, name: clean, initials: initialsOf(clean), role, title: title.trim(), unitId, phone: phone.trim() })) return;
       }
 
       toast.success("Cambios guardados", {
@@ -321,6 +322,7 @@ export function UserDialog({
                 onBlur={() => touch("name")}
                 autoComplete="name"
                 placeholder="Ej. Ana López Garza"
+                maxLength={TEXT_LIMITS.personName.max}
                 className={inputCls}
                 aria-invalid={!!show("name")}
               />

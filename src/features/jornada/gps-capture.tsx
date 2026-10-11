@@ -6,7 +6,7 @@ import { Camera, CircleAlert, CloudOff, Crosshair, Headset, Info, LocateFixed, M
 import { cn } from "@/lib/utils";
 import type { GeoInput } from "@/lib/store";
 import { useDemoSession } from "@/lib/hooks";
-import { GEO_NOTE_MIN } from "@/lib/domain";
+import { GEO_NOTE_MIN, TEXT_LIMITS } from "@/lib/domain";
 import { fmtCoords } from "@/lib/format";
 import { ClientMark } from "@/components/pk/client-mark";
 import { distanceMeters, readPosition, type GeoMarker, type GeoReading } from "@/components/pk/geo-map";
@@ -363,6 +363,7 @@ export function GpsFlow({
                 id="gps-note"
                 value={note}
                 onChange={(e) => setNote(e.target.value)}
+                maxLength={TEXT_LIMITS.geoNote.max}
                 placeholder={remote ? "¿Cómo confirmó la entrada o salida de la cuadrilla?" : "¿Por qué no hay lectura GPS confiable en el sitio?"}
                 className="min-h-[84px] rounded-[14px] border-amber-line bg-surface text-[16px]"
               />

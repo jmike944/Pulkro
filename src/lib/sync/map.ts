@@ -98,8 +98,9 @@ export function mapClient(r: Row<"clients">, siteIds: string[] = []): Client {
     contactName: r.contact_name,
     contactPhone: r.contact_phone,
     contactEmail: r.contact_email,
-    // `since` is optional in the database (a client registered without it): the record's creation stands in.
+    // `since` is optional in the database (a client registered without it): the record's creation stands in, flagged.
     since: r.since ? localDateTime(r.since, "00:00") : iso(r.created_at),
+    ...(r.since ? {} : { sinceUnset: true }),
     hue: r.hue,
     siteIds,
   };

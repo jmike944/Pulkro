@@ -7,6 +7,7 @@ import { ArrowRight, Check, Eraser, Mail, MessageSquare, ShieldAlert, Signature,
 import { cn } from "@/lib/utils";
 import { fmtTime } from "@/lib/format";
 import type { Conformity } from "@/lib/types";
+import { TEXT_LIMITS } from "@/lib/domain";
 import { ClientMark } from "@/components/pk/client-mark";
 import { ItemCard } from "@/components/pk/mobile";
 import { OrderStatusPill } from "@/components/pk/status";
@@ -137,6 +138,7 @@ export function ExceptionPanel({ draft, userName, className }: { draft: ClosureD
         value={draft.exception}
         onChange={draft.setException}
         min={EXCEPTION_MIN}
+        max={TEXT_LIMITS.exception.max}
         placeholder="Ej. El cliente bloqueó el área al terminar; se envió confirmación por correo."
         hint={draft.exceptionOk ? "Justificación lista." : `Mínimo ${EXCEPTION_MIN} caracteres.`}
       />
@@ -184,10 +186,10 @@ export function ConformityFields({ draft }: { draft: ClosureDraft }) {
 
       <div className="mt-4 grid gap-3 sm:grid-cols-2">
         <Field label="Nombre de quien acepta" htmlFor="conf-name">
-          <input id="conf-name" value={draft.name} onChange={(e) => draft.setName(e.target.value)} className={inputClass} autoComplete="off" autoCapitalize="words" />
+          <input id="conf-name" value={draft.name} onChange={(e) => draft.setName(e.target.value)} className={inputClass} autoComplete="off" autoCapitalize="words" maxLength={TEXT_LIMITS.conformityName.max} />
         </Field>
         <Field label="Puesto o relación" htmlFor="conf-role">
-          <input id="conf-role" value={draft.role} onChange={(e) => draft.setRole(e.target.value)} className={inputClass} placeholder="Gerente de mantenimiento" autoComplete="off" />
+          <input id="conf-role" value={draft.role} onChange={(e) => draft.setRole(e.target.value)} className={inputClass} placeholder="Gerente de mantenimiento" autoComplete="off" maxLength={TEXT_LIMITS.conformityRole.max} />
         </Field>
       </div>
 
@@ -203,6 +205,7 @@ export function ConformityFields({ draft }: { draft: ClosureDraft }) {
                 id="conf-comment"
                 value={draft.comment}
                 onChange={(e) => draft.setComment(e.target.value)}
+                maxLength={TEXT_LIMITS.conformityComment.max}
                 className={inputClass}
                 placeholder={method === "correo" ? "Asunto o fecha del correo de conformidad" : "Ej. Recorrido final con el contacto"}
               />
@@ -266,6 +269,7 @@ export function SummaryField({ draft }: { draft: ClosureDraft }) {
         value={draft.summary}
         onChange={(e) => draft.setSummary(e.target.value)}
         rows={4}
+        maxLength={TEXT_LIMITS.summary.max}
         aria-invalid={short || undefined}
         aria-describedby="closure-summary-hint"
         className="block w-full resize-none rounded-[14px] border border-input bg-surface px-3.5 py-3 text-[16px] leading-relaxed text-ink outline-none transition placeholder:text-faint focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 aria-invalid:border-amber-line-strong lg:text-[15px]"

@@ -24,8 +24,10 @@ import {
   GEO_NOTE_MIN,
   SERVICE_HOURS_MAX,
   SERVICE_HOURS_MIN,
+  TEXT_LIMITS,
   closureBlockers,
   derivedExecutionStatus,
+  fitsText,
   isStrongSurveyToken,
   photoTimingIssues,
 } from "./domain";
@@ -283,11 +285,12 @@ export type AppState = DataSnapshot & {
   recordManualSurvey: (orderId: string, answers: SurveyAnswers, respondentName: string) => Survey;
 
   /* catalogs */
-  upsertClient: (client: Client) => void;
-  upsertSite: (site: Site) => void;
-  upsertWorker: (worker: Worker) => void;
+  /** Catalog and people upserts: whether the change was applied (a refusal is toasted). */
+  upsertClient: (client: Client) => boolean;
+  upsertSite: (site: Site) => boolean;
+  upsertWorker: (worker: Worker) => boolean;
   /** users.admin, or self-service on one's own record limited to the phone (role, unit, e-mail and active never change here). */
-  upsertUser: (user: User) => void;
+  upsertUser: (user: User) => boolean;
   /**
    * Account sessions: a profile the server already changed (invite, deactivation, reactivation and e-mail change go through
    * the `admin-users` Edge Function, online). Applied as is, without a queue item or a local audit entry (the server wrote
@@ -297,8 +300,8 @@ export type AppState = DataSnapshot & {
   applyServerUser: (user: User, fields?: (keyof User)[]) => void;
   /** Self-service "Mis datos": the phone of the signed-in user (the e-mail is the account's identity: Dirección manages it). */
   updateMyContact: (contact: { phone?: string }) => void;
-  upsertServiceType: (st: ServiceType) => void;
-  upsertMaterial: (m: Material) => void;
+  upsertServiceType: (st: ServiceType) => boolean;
+  upsertMaterial: (m: Material) => boolean;
 
   /* sync */
   setForcedOffline: (v: boolean) => void;
@@ -558,11 +561,16 @@ export const useAppStore = create<AppState>()(
         p_jornada_id: jornadaId, p_device_at: stamp.deviceAt, p_lat: stamp.lat, p_lng: stamp.lng, p_accuracy: stamp.accuracy,
         p_source: stamp.source, p_note: stamp.note, p_offline: stamp.offline,
       });
-      /** Manual pins and remote supervision always carry a justification. */
-      const geoNoteOk = (geo: GeoInput) =>
-        geo.source === "gps" || (geo.note?.trim().length ?? 0) >= GEO_NOTE_MIN
+      /** Manual pins and remote supervision always carry a justification, within what the server stores. */
+      const geoNoteOk = (geo: GeoInput) => {
+        if (!fitsText(geo.note, TEXT_LIMITS.geoNote))
+          return denied(`La justificación admite hasta ${TEXT_LIMITS.geoNote.max} caracteres: resúmala.`);
+        return geo.source === "gps" || (geo.note?.trim().length ?? 0) >= GEO_NOTE_MIN
           ? true
           : denied(geo.source === "remota" ? "Explique la supervisión remota (quién está en sitio y cómo se confirmó)." : "Justifique la ubicación manual.");
+      };
+      /** A text the server would refuse for good once queued (TEXT_LIMITS): refused here, with the reason. */
+      const textOk = (text: string | undefined, limit: { min?: number; max: number }, message: string) => (fitsText(text, limit) ? true : denied(message));
 
       const reseed = () => {
         const seed = generateSeed(new Date());
@@ -912,6 +920,7 @@ export const useAppStore = create<AppState>()(
             denied("La cuadrilla debe ser personal activo de la unidad de la orden.");
             return;
           }
+          if (!textOk(reason, TEXT_LIMITS.crewReason, `El motivo admite hasta ${TEXT_LIMITS.crewReason.max} caracteres.`)) return;
           const at = nowIso();
           setState((st) => ({
             jornadas: st.jornadas.map((j) =>
@@ -1027,6 +1036,7 @@ export const useAppStore = create<AppState>()(
             denied("La orden ya no admite cambios.");
             return;
           }
+          if (!textOk(text, TEXT_LIMITS.jornadaNote, `Escriba la nota (hasta ${TEXT_LIMITS.jornadaNote.max} caracteres).`)) return;
           const at = nowIso();
           // An account's note keeps the id the server will store (jornada_notes.id): the pulled row replaces it, never doubles it.
           const noteId = account() ? uid("not") : undefined;
@@ -1184,6 +1194,7 @@ export const useAppStore = create<AppState>()(
         addIncident: (input) => act(() => {
           const { order, user } = must(allowOrder(["field.capture"], input.orderId));
           must(isTerminal(order.status) ? denied(CLOSED_ORDER) : true);
+          must(textOk(input.description, TEXT_LIMITS.description, `Describa la incidencia (de ${TEXT_LIMITS.description.min} a ${TEXT_LIMITS.description.max} caracteres).`));
           const s = getState();
           const id = uid("inc");
           const inc: Incident = {
@@ -1225,6 +1236,7 @@ export const useAppStore = create<AppState>()(
           }
           // Identity and authorship never change; resolution goes through resolveIncident.
           const rest = omit(patch, ["id", "folio", "orderId", "createdAt", "createdBy", "status", "resolvedAt", "resolvedBy"]);
+          if (rest.description !== undefined && !textOk(rest.description, TEXT_LIMITS.description, `Describa la incidencia (de ${TEXT_LIMITS.description.min} a ${TEXT_LIMITS.description.max} caracteres).`)) return;
           setState((st) => ({ incidents: st.incidents.map((i) => (i.id === incidentId ? { ...i, ...rest } : i)) }));
           // Only server fields travel (photoIds follow the photos' own incident_id).
           const serverPatch = diffPatch(inc, rest, { type: "type", severity: "severity", description: "description", blocksClosure: "blocks_closure", jornadaId: "jornada_id" });
@@ -1256,6 +1268,7 @@ export const useAppStore = create<AppState>()(
             denied("La orden ya no admite cambios.");
             return;
           }
+          if (!textOk(resolution, { min: 3, max: TEXT_LIMITS.resolution.max }, `Describa la resolución (de 3 a ${TEXT_LIMITS.resolution.max} caracteres).`)) return;
           setState((st) => ({
             incidents: st.incidents.map((i) =>
               i.id === incidentId ? { ...i, status: "resuelta", resolution, resolvedAt: nowIso(), resolvedBy: ok.user.id } : i,
@@ -1299,6 +1312,17 @@ export const useAppStore = create<AppState>()(
             denied("Faltan fotos ANTES o DESPUÉS: registre una excepción autorizada y justificada para cerrar.");
             return;
           }
+          // What the server stores of a closure (order_closures): a longer text would strand the closure and its signature.
+          const L = TEXT_LIMITS;
+          const c0 = closure.conformity;
+          if (
+            !textOk(closure.summary, L.summary, `La descripción para el reporte va de ${L.summary.min} a ${L.summary.max} caracteres.`) ||
+            !textOk(c0?.name, L.conformityName, `El nombre de quien acepta admite hasta ${L.conformityName.max} caracteres.`) ||
+            !textOk(c0?.role, L.conformityRole, `El puesto admite hasta ${L.conformityRole.max} caracteres.`) ||
+            !textOk(c0?.comment, L.conformityComment, `El comentario admite hasta ${L.conformityComment.max} caracteres.`) ||
+            !textOk(closure.exception?.reason, L.exception, `La justificación de la excepción admite hasta ${L.exception.max} caracteres.`)
+          )
+            return;
           // An account's closure keeps the id the server stores (order_closures.id); its version comes in the answer.
           const closureId = account() ? uid("clo") : undefined;
           const full: Closure = { ...closure, ...(closureId ? { id: closureId } : {}), validatedAt: nowIso(), validatedBy: user.id };
@@ -1361,6 +1385,7 @@ export const useAppStore = create<AppState>()(
         createCase: (input) => act(() => {
           const { user, order } = must(allowOrder(["postventa.manage"], input.orderId));
           must(isValidCaseOwner(input.ownerId, order) ? true : denied(CASE_OWNER_RULE));
+          must(textOk(input.description, TEXT_LIMITS.description, `Describa el caso (de ${TEXT_LIMITS.description.min} a ${TEXT_LIMITS.description.max} caracteres).`));
           // A case is resolved with its resolution, after it exists (server: create_case → resolution_required).
           must(!input.status || input.status === "abierto" || input.status === "en_proceso" ? true : denied(CASE_NEW_STATUS_RULE));
           const s = getState();
@@ -1390,6 +1415,12 @@ export const useAppStore = create<AppState>()(
           const c = getState().cases.find((x) => x.id === caseId);
           const ok = allowOrder(["postventa.manage"], c?.orderId);
           if (!ok || !c) return false;
+          if (
+            !textOk(note, TEXT_LIMITS.caseNote, `La nota admite hasta ${TEXT_LIMITS.caseNote.max} caracteres.`) ||
+            (patch.description !== undefined && !textOk(patch.description, TEXT_LIMITS.description, `Describa el caso (de ${TEXT_LIMITS.description.min} a ${TEXT_LIMITS.description.max} caracteres).`)) ||
+            (patch.resolution !== undefined && !textOk(patch.resolution, TEXT_LIMITS.resolution, `La resolución admite hasta ${TEXT_LIMITS.resolution.max} caracteres.`))
+          )
+            return false;
           if (patch.ownerId !== undefined && patch.ownerId !== c.ownerId && !isValidCaseOwner(patch.ownerId, ok.order)) {
             denied(CASE_OWNER_RULE);
             return false;
@@ -1461,6 +1492,7 @@ export const useAppStore = create<AppState>()(
 
         recordManualSurvey: (orderId, answers, respondentName) => act(() => {
           const { order: o, user } = must(allowOrder(["postventa.manage"], orderId));
+          must(textOk(respondentName, TEXT_LIMITS.respondentName, `Indique quién respondió (de ${TEXT_LIMITS.respondentName.min} a ${TEXT_LIMITS.respondentName.max} caracteres).`));
           const s = getState();
           const existing = s.surveys.find((x) => x.orderId === orderId && !x.respondedAt);
           const at = nowIso();
@@ -1487,10 +1519,26 @@ export const useAppStore = create<AppState>()(
         /* ── catalogs ── (account sessions: one upsert RPC, only when a field the server keeps changes) */
         upsertClient: (client) => act(() => {
           const prev = getState().clients.find((c) => c.id === client.id);
-          if (!allowCatalog(prev?.unitId) || !allowCatalog(client.unitId)) return;
+          if (!allowCatalog(prev?.unitId) || !allowCatalog(client.unitId)) return false;
+          const L = TEXT_LIMITS;
+          if (
+            !textOk(client.name, L.clientName, `El nombre del cliente va de ${L.clientName.min} a ${L.clientName.max} caracteres.`) ||
+            !textOk(client.shortName, L.clientShortName, `El nombre corto va de ${L.clientShortName.min} a ${L.clientShortName.max} caracteres.`)
+          )
+            return false;
+          // Its orders and history belong to its unit (server: upsert_client → client_in_use). The server counts every order,
+          // history the device may not hold included: this only catches what the device can see.
+          if (prev && client.unitId !== prev.unitId) {
+            const folios = getState().orders.filter((o) => o.clientId === client.id).map((o) => o.folio);
+            if (folios.length) {
+              denied(`El cliente ya tiene órdenes (${folios.slice(0, 5).join(", ")}${folios.length > 5 ? "…" : ""}): no puede cambiar de unidad.`);
+              return false;
+            }
+          }
           setState((st) => ({ clients: prev ? st.clients.map((c) => (c.id === client.id ? client : c)) : [...st.clients, client] }));
-          const since = Number.isNaN(Date.parse(client.since)) ? undefined : localDay(client.since);
-          const day = (c?: Client) => (c && !Number.isNaN(Date.parse(c.since)) ? localDay(c.since) : undefined);
+          // A client without "cliente desde" on the server keeps none: its stand-in (the creation date) never travels.
+          const day = (c?: Client) => (c && !c.sinceUnset && !Number.isNaN(Date.parse(c.since)) ? localDay(c.since) : undefined);
+          const since = day(client);
           if (changed(prev, client, ["name", "shortName", "segment", "unitId", "contactName", "contactPhone", "contactEmail", "hue"]) || day(prev) !== since)
             send(
               "upsert_client",
@@ -1502,25 +1550,27 @@ export const useAppStore = create<AppState>()(
               { creates: !prev },
             );
           record("catalogo", client.id, `Guardó cliente ${client.shortName}`);
+          return true;
         }),
         upsertSite: (site) => act(() => {
           const s = getState();
           const client = s.clients.find((c) => c.id === site.clientId);
           if (!client) {
             denied(OUT_OF_SCOPE);
-            return;
+            return false;
           }
-          if (!allowCatalog(client.unitId)) return;
+          if (!allowCatalog(client.unitId)) return false;
           // An existing site is also guarded by the unit of the client it belongs to today (a payload must not move it across units).
           const prevSite = s.sites.find((x) => x.id === site.id);
           if (prevSite) {
             const prevClient = s.clients.find((c) => c.id === prevSite.clientId);
             if (!prevClient) {
               denied(OUT_OF_SCOPE);
-              return;
+              return false;
             }
-            if (!allowCatalog(prevClient.unitId)) return;
+            if (!allowCatalog(prevClient.unitId)) return false;
           }
+          if (!textOk(site.name, TEXT_LIMITS.siteName, `El nombre del sitio va de ${TEXT_LIMITS.siteName.min} a ${TEXT_LIMITS.siteName.max} caracteres.`)) return false;
           setState((st) => ({ sites: st.sites.some((c) => c.id === site.id) ? st.sites.map((c) => (c.id === site.id ? site : c)) : [...st.sites, site] }));
           if (changed(prevSite, site, ["clientId", "name", "address", "municipality", "lat", "lng"]))
             send(
@@ -1532,10 +1582,12 @@ export const useAppStore = create<AppState>()(
               { creates: !prevSite, deps: cat(site.clientId) },
             );
           record("catalogo", site.id, `Guardó sitio ${site.name}`);
+          return true;
         }),
         upsertWorker: (worker) => act(() => {
           const prev = getState().workers.find((w) => w.id === worker.id);
-          if (!allowCatalog(prev?.unitId) || !allowCatalog(worker.unitId)) return;
+          if (!allowCatalog(prev?.unitId) || !allowCatalog(worker.unitId)) return false;
+          if (!textOk(worker.name, TEXT_LIMITS.workerName, `El nombre va de ${TEXT_LIMITS.workerName.min} a ${TEXT_LIMITS.workerName.max} caracteres.`)) return false;
           setState((st) => ({ workers: prev ? st.workers.map((c) => (c.id === worker.id ? worker : c)) : [...st.workers, worker] }));
           // The server derives the initials from the name.
           if (changed(prev, worker, ["name", "unitId", "specialty", "phone", "hue", "active"]))
@@ -1548,10 +1600,11 @@ export const useAppStore = create<AppState>()(
               { creates: !prev },
             );
           record("catalogo", worker.id, `Guardó trabajador ${worker.name}`);
+          return true;
         }),
         upsertUser: (next) => act(() => {
           const me = allowRole(null);
-          if (!me) return;
+          if (!me) return false;
           const prev = getState().users.find((u) => u.id === next.id);
           if (!can(me.role, "users.admin")) {
             // Self-service: only one's own phone.
@@ -1559,16 +1612,32 @@ export const useAppStore = create<AppState>()(
               !!prev && prev.id === me.id && (Object.keys(next) as (keyof User)[]).every((k) => k === "phone" || next[k] === prev[k]);
             if (!sameIdentity) {
               denied(DENIED_REASON["users.admin"]!);
-              return;
+              return false;
             }
           } else if (next.id === me.id && (next.role !== me.role || !next.active || next.unitId !== me.unitId)) {
             denied("No puede cambiar su propio rol, unidad o estado: pídalo a otra persona de Dirección.");
-            return;
+            return false;
+          }
+          if (prev && next.name !== prev.name && !textOk(next.name, TEXT_LIMITS.personName, `El nombre va de ${TEXT_LIMITS.personName.min} a ${TEXT_LIMITS.personName.max} caracteres.`)) return false;
+          // A new role or unit leaves the person's open orders and cases out of reach: they are reassigned first (server:
+          // update_profile → has_open_orders / has_open_cases).
+          if (prev && (next.role !== prev.role || next.unitId !== prev.unitId)) {
+            const s = getState();
+            const orders = s.orders.filter((o) => o.supervisorId === next.id && !isTerminal(o.status)).map((o) => o.folio);
+            if (orders.length) {
+              denied(`Tiene órdenes abiertas como supervisor (${orders.join(", ")}): reasígnelas antes de cambiar su unidad o rol.`);
+              return false;
+            }
+            const cases = s.cases.filter((c) => c.ownerId === next.id && (c.status === "abierto" || c.status === "en_proceso")).map((c) => c.folio);
+            if (cases.length) {
+              denied(`Es responsable de casos postventa abiertos (${cases.join(", ")}): reasígnelos antes de cambiar su unidad o rol.`);
+              return false;
+            }
           }
           // Account sessions: a new account (invite) and access changes (active, e-mail) go through the admin-users Edge Function,
           // not the queue, so the device never shows them before the server has them (the pull brings them); the profile
           // fields go through update_profile, one's own phone through update_my_contact.
-          if (account() && !prev) return;
+          if (account() && !prev) return true;
           const saved = account() && prev ? { ...next, active: prev.active, email: prev.email } : next;
           setState((st) => ({ users: prev ? st.users.map((c) => (c.id === next.id ? saved : c)) : [...st.users, saved] }));
           if (prev && !can(me.role, "users.admin")) {
@@ -1578,6 +1647,7 @@ export const useAppStore = create<AppState>()(
             if (Object.keys(patch).length) send("update_profile", { p_user_id: next.id, p_patch: patch });
           }
           record("usuario", next.id, `Guardó usuario ${next.name}`);
+          return true;
         }),
         applyServerUser: (server, fields) => {
           if (getState().session.mode !== "supabase") return;
@@ -1599,11 +1669,17 @@ export const useAppStore = create<AppState>()(
           record("usuario", me.id, "Actualizó sus datos de contacto");
         }),
         upsertServiceType: (stype) => act(() => {
-          if (!allowCatalog(undefined)) return;
+          if (!allowCatalog(undefined)) return false;
           if (!(stype.defaultHoursPerDay >= SERVICE_HOURS_MIN && stype.defaultHoursPerDay <= SERVICE_HOURS_MAX)) {
             denied(`Las horas por día van de ${SERVICE_HOURS_MIN} a ${SERVICE_HOURS_MAX}.`);
-            return;
+            return false;
           }
+          const L = TEXT_LIMITS;
+          if (
+            !textOk(stype.name, L.serviceTypeName, `El nombre va de ${L.serviceTypeName.min} a ${L.serviceTypeName.max} caracteres.`) ||
+            !textOk(stype.short, L.serviceTypeShort, `El nombre corto va de ${L.serviceTypeShort.min} a ${L.serviceTypeShort.max} caracteres.`)
+          )
+            return false;
           const prev = getState().serviceTypes.find((c) => c.id === stype.id);
           setState((st) => ({ serviceTypes: st.serviceTypes.some((c) => c.id === stype.id) ? st.serviceTypes.map((c) => (c.id === stype.id ? stype : c)) : [...st.serviceTypes, stype] }));
           if (changed(prev, stype, ["name", "short", "hue", "defaultHoursPerDay"]))
@@ -1613,13 +1689,22 @@ export const useAppStore = create<AppState>()(
               { creates: !prev },
             );
           record("catalogo", stype.id, `Guardó tipo de servicio ${stype.name}`);
+          return true;
         }),
         upsertMaterial: (m) => act(() => {
-          if (!allowCatalog(undefined)) return;
+          if (!allowCatalog(undefined)) return false;
+          // A unit the server refuses would hold every order that uses the material behind it (server: upsert_material).
+          const L = TEXT_LIMITS;
+          if (
+            !textOk(m.name, L.materialName, `El nombre del material va de ${L.materialName.min} a ${L.materialName.max} caracteres.`) ||
+            !textOk(m.unit, L.materialUnit, `La unidad de medida va de ${L.materialUnit.min} a ${L.materialUnit.max} caracteres (ej. «m²», «L», «pza»).`)
+          )
+            return false;
           const prev = getState().materials.find((c) => c.id === m.id);
           setState((st) => ({ materials: st.materials.some((c) => c.id === m.id) ? st.materials.map((c) => (c.id === m.id ? m : c)) : [...st.materials, m] }));
           if (changed(prev, m, ["name", "unit"])) send("upsert_material", { p_material_id: m.id, p_name: m.name, p_unit: m.unit }, { creates: !prev });
           record("catalogo", m.id, `Guardó material ${m.name}`);
+          return true;
         }),
 
         /* ── sync engine (account sessions: sync/push.ts; the demo simulates the server round-trips) ── */

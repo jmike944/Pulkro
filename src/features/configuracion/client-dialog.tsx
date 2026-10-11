@@ -12,6 +12,8 @@ import { ClientMark } from "@/components/pk/client-mark";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ChipSelect, Field, FormDialog, inputCls, isEmail, phoneDigits, selectTriggerCls } from "./shared";
+import { localDay } from "@/lib/sync/ops";
+import { TEXT_LIMITS } from "@/lib/domain";
 
 const SEGMENTS: ClientSegment[] = ["Industrial", "Comercial", "Residencial"];
 const HUES = [205, 222, 190, 160, 262, 300, 340, 14, 32, 48];
@@ -53,7 +55,8 @@ export function ClientDialog({
   const [contactName, setContactName] = useState(client?.contactName ?? "");
   const [contactPhone, setContactPhone] = useState(client?.contactPhone ?? "+52 81 ");
   const [contactEmail, setContactEmail] = useState(client?.contactEmail ?? "");
-  const [since, setSince] = useState(client ? client.since.slice(0, 10) : format(new Date(), "yyyy-MM-dd"));
+  // The local calendar day (a UTC slice is the next day for evening times in UTC-6); empty while the server has none.
+  const [since, setSince] = useState(client ? (client.sinceUnset ? "" : localDay(client.since)) : format(new Date(), "yyyy-MM-dd"));
   const clientCount = useAppStore((s) => s.clients.length);
   const [hue, setHue] = useState(client?.hue ?? HUES[clientCount % HUES.length]);
   const [submitted, setSubmitted] = useState(false);
@@ -92,11 +95,11 @@ export function ClientDialog({
           contactName: contactName.trim(),
           contactPhone: contactPhone.trim(),
           contactEmail: contactEmail.trim().toLowerCase(),
-          since: new Date(`${since}T12:00:00`).toISOString(),
+          ...(since ? { since: new Date(`${since}T12:00:00`).toISOString() } : { since: client?.since ?? new Date().toISOString(), sinceUnset: true }),
           hue,
           siteIds: client?.siteIds ?? [],
         };
-        upsertClient(next);
+        if (!upsertClient(next)) return;
         if (isNew) onCreated?.(next);
         else toast.success(`${next.shortName} actualizado`);
         onOpenChange(false);
@@ -123,6 +126,7 @@ export function ClientDialog({
                 if (!shortTouched) setShortName(suggestShort(e.target.value));
               }}
               placeholder="Ej. Hotel Arboleda Monterrey"
+              maxLength={TEXT_LIMITS.clientName.max}
               className={inputCls}
               aria-invalid={!!show("name")}
             />
@@ -135,6 +139,7 @@ export function ClientDialog({
                 setShortTouched(true);
                 setShortName(e.target.value);
               }}
+              maxLength={TEXT_LIMITS.clientShortName.max}
               className={inputCls}
               aria-invalid={!!show("shortName")}
             />

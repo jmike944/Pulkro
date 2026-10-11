@@ -12,6 +12,7 @@ import { useMediaQuery, useOrderBundle, type OrderBundle } from "@/lib/hooks";
 import { fmtDay, plural } from "@/lib/format";
 import { INCIDENT_TYPE, SEVERITY, toneDot, toneSoftBg, toneText } from "@/lib/status";
 import type { Incident, IncidentType, Jornada, OrderStatus, Photo, Severity } from "@/lib/types";
+import { TEXT_LIMITS } from "@/lib/domain";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { ClientMark } from "./client-mark";
@@ -284,6 +285,7 @@ export function IncidentSheet({
         value={description}
         onChange={setDescription}
         min={DESCRIPTION_MIN}
+        max={TEXT_LIMITS.description.max}
         rows={4}
         placeholder="¿Qué pasó, dónde y qué se hizo al respecto?"
         hint="Se guarda con su usuario, la fecha y la hora."

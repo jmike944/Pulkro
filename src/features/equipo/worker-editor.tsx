@@ -126,7 +126,7 @@ export function useWorkerDraft(workerId: string | null, defaultUnitId?: string) 
       hue: existing?.hue ?? hueFromName(cleanName),
       active: f.active,
     };
-    upsertWorker(worker);
+    if (!upsertWorker(worker)) return null;
     toast.success(existing ? "Cambios guardados" : "Trabajador agregado", {
       description: `${worker.name} · ${worker.specialty}${worker.active ? "" : " · inactivo"}`,
     });

@@ -12,6 +12,7 @@ import { EmptyState } from "@/components/pk/feedback";
 import { rowVariants, staggerContainer } from "@/components/pk/motion";
 import { Input } from "@/components/ui/input";
 import { ChipSelect, Field, FormDialog, GatedButton, ListHead, NO_CATALOGS, SearchField, inputCls, norm, useDialogTarget } from "./shared";
+import { TEXT_LIMITS } from "@/lib/domain";
 
 const UNITS = ["L", "kg", "pza", "caja", "galón", "rollo", "m²"] as const;
 const UNIT_LABEL: Record<string, string> = { L: "Litros", kg: "Kilogramos", pza: "Piezas", caja: "Cajas", galón: "Galones", rollo: "Rollos", "m²": "Metros cuadrados" };
@@ -116,7 +117,12 @@ function MaterialDialog({ material, open, onOpenChange }: { material: Material |
   const finalUnit = unit === "otra" ? custom.trim() : unit;
   const errors = {
     name: name.trim().length < 3 ? "Escriba el nombre del material." : dup ? "Ese material ya está en el catálogo: búsquelo en la lista o use otro nombre." : null,
-    unit: !finalUnit ? "Elija una unidad de medida o escriba otra." : null,
+    // The server keeps units of up to 12 characters (upsert_material): a longer one would hold every order that uses it.
+    unit: !finalUnit
+      ? "Elija una unidad de medida o escriba otra."
+      : finalUnit.length > TEXT_LIMITS.materialUnit.max
+        ? `Abrevie la unidad: hasta ${TEXT_LIMITS.materialUnit.max} caracteres (ej. «m²» en vez de «metro cuadrado»).`
+        : null,
   };
 
   return (
@@ -131,14 +137,14 @@ function MaterialDialog({ material, open, onOpenChange }: { material: Material |
       onSubmit={() => {
         setSubmitted(true);
         if (errors.name || errors.unit) return;
-        upsert({ id: material?.id ?? uid("mat"), name: name.trim(), unit: finalUnit });
+        if (!upsert({ id: material?.id ?? uid("mat"), name: name.trim(), unit: finalUnit })) return;
         toast.success(isNew ? `${name.trim()} agregado al catálogo` : `${name.trim()} actualizado`);
         onOpenChange(false);
       }}
     >
       <div className="space-y-5">
         <Field label="Nombre" htmlFor="m-name" error={submitted ? errors.name : null}>
-          <Input id="m-name" value={name} onChange={(e) => setName(e.target.value)} placeholder="Ej. Desengrasante industrial" className={inputCls} aria-invalid={submitted && !!errors.name} />
+          <Input id="m-name" value={name} onChange={(e) => setName(e.target.value)} placeholder="Ej. Desengrasante industrial" maxLength={TEXT_LIMITS.materialName.max} className={inputCls} aria-invalid={submitted && !!errors.name} />
         </Field>
         <Field label="Unidad de medida" error={submitted ? errors.unit : null}>
           <ChipSelect
@@ -148,7 +154,7 @@ function MaterialDialog({ material, open, onOpenChange }: { material: Material |
             options={[...UNITS.map((u) => ({ value: u as string, label: u })), { value: "otra", label: "Otra…" }]}
           />
           {unit === "otra" && (
-            <Input value={custom} onChange={(e) => setCustom(e.target.value)} placeholder="Ej. bulto" aria-label="Otra unidad" className={`${inputCls} mt-2`} autoFocus />
+            <Input value={custom} onChange={(e) => setCustom(e.target.value)} placeholder="Ej. bulto" aria-label="Otra unidad" maxLength={TEXT_LIMITS.materialUnit.max} className={`${inputCls} mt-2`} autoFocus />
           )}
         </Field>
       </div>

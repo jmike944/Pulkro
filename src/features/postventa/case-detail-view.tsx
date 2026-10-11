@@ -10,6 +10,7 @@ import { findByRef } from "@/lib/folio";
 import { firstName, fmtDateTime, plural } from "@/lib/format";
 import { CASE_CATEGORY, CASE_CHANNEL, CASE_STATUS, ROLE_LABEL } from "@/lib/status";
 import type { PostSaleCase } from "@/lib/types";
+import { TEXT_LIMITS } from "@/lib/domain";
 import { PageHeader } from "@/components/pk/page";
 import { NotFoundOrOutOfScope } from "@/components/shell/out-of-scope";
 import { ClientMark } from "@/components/pk/client-mark";
@@ -148,6 +149,7 @@ function CaseDetail({ c }: { c: PostSaleCase }) {
                 id="case-note"
                 value={note}
                 onChange={(e) => setNote(e.target.value)}
+                maxLength={TEXT_LIMITS.caseNote.max}
                 onKeyDown={(e) => {
                   if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) submitNote();
                 }}

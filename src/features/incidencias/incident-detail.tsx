@@ -9,6 +9,7 @@ import { useMediaQuery } from "@/lib/hooks";
 import { fmtAgo, fmtDateTime, fmtDay, plural } from "@/lib/format";
 import { INCIDENT_TYPE, SEVERITY } from "@/lib/status";
 import type { Photo } from "@/lib/types";
+import { TEXT_LIMITS } from "@/lib/domain";
 import { Sheet, SheetContent, SheetDescription, SheetFooter, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -438,6 +439,7 @@ function ResolutionForm({ value, onChange }: { value: string; onChange: (v: stri
         id="inc-resolution"
         value={value}
         onChange={(e) => onChange(e.target.value)}
+        maxLength={TEXT_LIMITS.resolution.max}
         placeholder="¿Qué se hizo y con quién se acordó?"
         className="min-h-[104px] rounded-[14px] text-[15px]"
       />
