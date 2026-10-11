@@ -84,7 +84,7 @@ function IncidentCard({ inc }: { inc: Incident }) {
   const save = () => {
     const value = text.trim();
     if (value.length < 6) {
-      toast.error("Describa la resolución (mínimo 6 caracteres)");
+      toast.error("Describa cómo se resolvió (mínimo 6 caracteres)");
       return;
     }
     resolveIncident(inc.id, value);

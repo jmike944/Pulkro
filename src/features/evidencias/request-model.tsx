@@ -119,7 +119,7 @@ export function useRequestModel(request: EvidenceRequest) {
     const { order, jornada, client, kindLabel, supFirst } = model;
     const text =
       `Hola ${supFirst}, falta la foto ${kindLabel} de la jornada ${jornada.dayIndex} en ${order.folio} (${client.shortName}). ` +
-      `¿Me ayudas a subirla en Pulkro Cuadrillas? Es requisito para validar el cierre. Gracias.`;
+      `¿Podría subirla en Pulkro Cuadrillas? Es requisito para validar el cierre. Gracias.`;
     window.open(whatsappLink(model.supervisor.phone, text), "_blank", "noopener,noreferrer");
     addJornadaNote(jornada.id, `${REMINDER_PREFIX} enviado por ${user.name}`);
     toast.success(`Recordatorio para ${supFirst} iniciado`, {

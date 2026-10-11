@@ -35,7 +35,7 @@ export function CaseDetailView({ params }: { params: Promise<{ folio: string }> 
     return (
       <div>
         <PageHeader title="Caso postventa" breadcrumb={[{ label: "Postventa", href: "/postventa" }, { label: "Caso" }]} />
-        <NotFoundOrOutOfScope subject="Este caso" backHref="/postventa" backLabel="Ir a Postventa" />
+        <NotFoundOrOutOfScope subject="Este caso" backHref="/postventa" backLabel="Volver a Postventa" />
       </div>
     );
   }

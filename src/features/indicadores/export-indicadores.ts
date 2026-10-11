@@ -80,12 +80,12 @@ function resumen(ind: Indicators, win: PeriodWindow, scopeLabel: string, generat
     { indicador: "Tasa de respuesta de encuestas", valor: `${Math.round(ind.sat.responseRate * 100)}%`, detalle: "" },
     { indicador: "Cumplimiento fotográfico", valor: `${Math.round(ind.compliance.rate * 100)}%`, detalle: `${ind.compliance.compliant} de ${ind.compliance.total} cierres · ${ind.compliance.withException} con excepción` },
     { indicador: "Servicios con quejas", valor: ind.complaints.servicesWithComplaints, detalle: `${Math.round(ind.complaints.rate * 100)}% de servicios terminados · ${ind.complaints.open} casos abiertos` },
-    { indicador: "Costos y rentabilidad", valor: "Fase 2", detalle: "Requiere captura de mano de obra, materiales, traslados e ingreso (doc §5)" },
-    { indicador: "Consumo de materiales", valor: "Fase 2", detalle: "Requiere captura de cantidades entregadas y usadas por orden (doc §5)" },
-    { indicador: "Productividad por trabajador", valor: "Fase 2", detalle: "Requiere horas individuales y definición del indicador (doc §5, §11)" },
+    { indicador: "Costos y rentabilidad", valor: "Fase 2", detalle: "Requiere captura de mano de obra, materiales, traslados e ingreso" },
+    { indicador: "Consumo de materiales", valor: "Fase 2", detalle: "Requiere captura de cantidades entregadas y usadas por orden" },
+    { indicador: "Productividad por trabajador", valor: "Fase 2", detalle: "Requiere horas individuales y definición del indicador" },
   ];
   return {
-    name: "Resumen KPIs",
+    name: "Resumen de indicadores",
     columns: [
       { header: "Indicador", key: "indicador", width: 44 },
       { header: "Valor", key: "valor", width: 20 },
@@ -255,7 +255,7 @@ function productividad(ind: Indicators, lk: Lookups): SheetSpec {
       hps: Math.round(p.hoursPerService * 10) / 10,
       csat: p.csat ? Math.round(p.csat * 100) / 100 : null,
       encuestas: p.surveys,
-      nota: i === 0 ? "Denominador provisional: órdenes con cierre validado (PENDIENTE §5)" : "",
+      nota: i === 0 ? "Denominador provisional: órdenes con cierre validado (por definir)" : "",
     })),
   };
 }

@@ -128,7 +128,7 @@ function Narrative({ f }: { f: FieldReady }) {
     >
       {jornada.status === "pendiente" && (
         <>
-          Inicio programado a las <b>{fmtTime(jornada.plannedStart)}</b> con cuadrilla de <b>{f.crew.length}</b>. Registra la entrada al llegar al sitio.
+          Inicio programado a las <b>{fmtTime(jornada.plannedStart)}</b> con cuadrilla de <b>{f.crew.length}</b>. Registre la entrada al llegar al sitio.
         </>
       )}
       {jornada.status === "en_curso" && (
@@ -170,7 +170,7 @@ function ConnectivityBanner({ f }: { f: FieldReady }) {
             <WifiOff className="size-[18px]" />
           </span>
           <span className="min-w-0 flex-1 text-[14px] leading-snug text-amber-olive">
-            <b className="font-semibold text-amber-olive-ink">Sin conexión</b> · lo que captures se guarda en el dispositivo y se sincroniza al volver la señal
+            <b className="font-semibold text-amber-olive-ink">Sin conexión</b> · lo que capture se guarda en el dispositivo y se sincroniza al volver la señal
           </span>
           <span className="shrink-0 rounded-full bg-surface/80 px-2.5 py-1 text-[12.5px] font-semibold text-amber-fg tabular">
             {pending} {pending === 1 ? "pendiente" : "pendientes"}

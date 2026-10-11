@@ -147,13 +147,13 @@ function DesktopDashboard() {
       <section className="mt-10">
         <SectionHeader
           title="Hoy en campo"
-          subtitle={user.role === "supervisor" ? "Tus jornadas de hoy" : `${ROLE_LABEL[user.role]} · todas las cuadrillas visibles`}
+          subtitle={user.role === "supervisor" ? "Sus jornadas de hoy" : `${ROLE_LABEL[user.role]} · todas las cuadrillas visibles`}
           href={dayLink.href}
           linkLabel={dayLink.label}
         />
         {today.length === 0 ? (
           <EmptyState icon={<Clock />} title="Sin jornadas hoy">
-            No hay cuadrillas programadas para hoy en tu alcance.
+            No hay cuadrillas programadas para hoy en su alcance.
           </EmptyState>
         ) : (
           <motion.div

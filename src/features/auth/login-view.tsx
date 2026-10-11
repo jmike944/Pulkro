@@ -63,9 +63,9 @@ function LoginInner() {
               transition={{ duration: 0.9, ease: EASE }}
               className="font-serif text-[58px] font-medium leading-[1.02] tracking-[-0.02em] text-ink"
             >
-              Si piensas en limpio…
+              Si piensa en limpio…
               <br />
-              <span className="italic text-brand-ink">¡piensa en Pulkro!</span>
+              <span className="italic text-brand-ink">¡piense en Pulkro!</span>
             </motion.p>
             <motion.p
               initial={{ opacity: 0 }}
@@ -84,7 +84,7 @@ function LoginInner() {
               <b className="block text-[22px] font-medium text-ink">3</b>Unidades
             </span>
             <span>
-              <b className="block text-[22px] font-medium text-ink">Offline</b>Captura en campo
+              <b className="block text-[22px] font-medium text-ink">Sin señal</b>Captura en campo
             </span>
           </div>
         </div>
@@ -103,7 +103,7 @@ function LoginInner() {
             >
               <PulkroLogo className="mb-8 gap-3 lg:hidden [&>span:first-child]:size-11 [&>span:last-child]:h-[19px]" />
               <h1 className="font-serif text-[34px] font-medium leading-tight text-ink">Bienvenido</h1>
-              <p className="mt-2 text-[15px] text-subtle">Elige un perfil de demostración para entrar. Cada rol ve solo lo que le corresponde.</p>
+              <p className="mt-2 text-[15px] text-subtle">Elija un perfil de demostración para entrar. Cada rol ve solo lo que le corresponde.</p>
 
               <div className="mt-7 space-y-3" role="radiogroup" aria-label="Perfil">
                 {(["supervisor", "administracion", "direccion"] as Role[]).map((r, i) => {

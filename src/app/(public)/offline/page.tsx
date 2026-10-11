@@ -12,7 +12,7 @@ export default function OfflinePage() {
         <PulkroMark className="mx-auto size-14 rounded-[16px]" />
         <h1 className="mt-6 font-serif text-[30px] font-medium leading-tight text-ink">Sin conexión</h1>
         <p className="mt-3 text-[15.5px] leading-relaxed text-subtle">
-          Esta pantalla todavía no se ha guardado en el dispositivo. Tus capturas siguen a salvo y se enviarán al volver la señal.
+          Esta pantalla todavía no se ha guardado en el dispositivo. Sus capturas siguen a salvo y se enviarán al volver la señal.
         </p>
         <Link href="/" className="mt-7 inline-flex h-[54px] w-full items-center justify-center rounded-[14px] bg-brand-deep text-[17px] font-semibold text-white">
           Volver a Hoy

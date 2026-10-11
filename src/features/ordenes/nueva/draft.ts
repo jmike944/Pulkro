@@ -188,7 +188,7 @@ export function validateStep(step: number, d: Draft, ctx: Ctx): Issues {
     else if (digits.length < 10) errors.contactPhone = "El teléfono debe tener al menos 10 dígitos";
     const ref = normalizeRef(d.commercialRef);
     if (!ref) errors.commercialRef = "La referencia del sistema comercial es obligatoria";
-    else if (ref.length < 5) errors.commercialRef = "Referencia demasiado corta";
+    else if (ref.length < 5) errors.commercialRef = "La referencia debe tener al menos 5 caracteres";
     else if (!REF_PATTERN.test(ref)) warnings.commercialRef = "Formato habitual: COT-2026-1187";
     if (ref && ctx.duplicateRef)
       warnings.commercialRefDup = ctx.duplicateRef.folio
@@ -210,8 +210,8 @@ export function validateStep(step: number, d: Draft, ctx: Ctx): Issues {
     for (const day of d.days) {
       const k = `day:${day.id}`;
       if (!day.date) errors[k] = "Elija la fecha";
-      else if (day.date < ctx.today) errors[k] = "La fecha ya pasó";
-      else if ((seen.get(day.date) ?? 0) > 1) errors[k] = "Fecha repetida en otra jornada";
+      else if (day.date < ctx.today) errors[k] = "La fecha ya pasó: elija hoy o un día posterior";
+      else if ((seen.get(day.date) ?? 0) > 1) errors[k] = "Ya hay otra jornada ese día: elija otra fecha";
       else if (!day.start || !day.end) errors[k] = "Indique el horario";
       else if (toMinutes(day.end) <= toMinutes(day.start)) errors[k] = "La salida debe ser después de la entrada";
       else if (isSundayKey(day.date)) warnings[k] = "Domingo: confirme el acceso con el cliente";
@@ -220,7 +220,7 @@ export function validateStep(step: number, d: Draft, ctx: Ctx): Issues {
   }
 
   if (step === 3) {
-    if (!d.authorized) errors.authorized = "Confirme que el trabajo está autorizado";
+    if (!d.authorized) errors.authorized = "Marque la casilla para confirmar que el trabajo está autorizado";
   }
 
   return { errors, warnings, first: Object.values(errors)[0] };

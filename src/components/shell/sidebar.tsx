@@ -518,7 +518,7 @@ export function UserCard({ collapsed }: { collapsed?: boolean }) {
                   key={r}
                   onClick={() => {
                     switchRole(r);
-                    toast.success(`Ahora ves Pulkro como ${ROLE_LABEL[r]}`);
+                    toast.success(`Ahora ve Pulkro como ${ROLE_LABEL[r]}`);
                   }}
                 >
                   <UserRound className="size-4" />
@@ -533,7 +533,7 @@ export function UserCard({ collapsed }: { collapsed?: boolean }) {
           <DropdownMenuSeparator />
           {DEMO_ENABLED && (
             <DropdownMenuItem onClick={() => setResetOpen(true)}>
-              <RotateCcw className="size-4" /> Restablecer datos demo…
+              <RotateCcw className="size-4" /> Restablecer datos de demostración…
             </DropdownMenuItem>
           )}
           <DropdownMenuItem

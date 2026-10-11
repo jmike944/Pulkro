@@ -61,7 +61,7 @@ export function SettingsView() {
   const description =
     user.role === "supervisor" ? (
       <>
-        Tu dispositivo guarda <b>{plural(orders.length, "orden asignada", "órdenes asignadas")}</b>
+        Su dispositivo guarda <b>{plural(orders.length, "orden asignada", "órdenes asignadas")}</b>
         {pending.length > 0 ? (
           <>
             {" "}y <b>{plural(pending.length, "registro", "registros")}</b> esperan sincronizar.
@@ -69,9 +69,9 @@ export function SettingsView() {
         ) : (
           <> y todo está sincronizado.</>
         )}{" "}
-        Revisa{" "}
+        Revise{" "}
         <Link href="/bitacora" className="font-semibold text-link hover:underline">
-          tu bitácora
+          su bitácora
         </Link>{" "}
         y el aviso de privacidad.
       </>
@@ -79,7 +79,7 @@ export function SettingsView() {
       <>
         <b>{plural(activeUsers, "usuario activo", "usuarios activos")}</b> en <b>{plural(units.length, "unidad", "unidades")}</b>,{" "}
         <b>{plural(clients.length, "cliente", "clientes")}</b> con <b>{plural(sites.length, "sitio", "sitios")}</b> en catálogo
-        {catalogUnit !== "all" && <> de {units.find((u) => u.id === catalogUnit)?.name ?? "tu unidad"}</>}.
+        {catalogUnit !== "all" && <> de {units.find((u) => u.id === catalogUnit)?.name ?? "su unidad"}</>}.
         {pending.length > 0 && (
           <>
             {" "}

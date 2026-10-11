@@ -42,7 +42,8 @@ export function CaseSidePanel({
   const updateCase = useAppStore((s) => s.updateCase);
   const [move, setMove] = useState<CaseMove | null>(null);
   const owner = users.find((u) => u.id === c.ownerId);
-  const candidates = caseOwnerCandidates(users, unitId);
+  const orderSupervisorId = useAppStore((s) => s.orders.find((o) => o.id === c.orderId)?.supervisorId);
+  const candidates = caseOwnerCandidates(users, unitId, orderSupervisorId);
   const meta = CASE_STATUS[c.status];
   const step = CASE_FLOW.indexOf(c.status);
 

@@ -57,7 +57,7 @@ export function IncidentsSection({ f, onNew }: { f: FieldReady; onNew: () => voi
             <CircleCheck className="size-5" />
           </span>
           <p className="text-[14px] text-subtle">
-            <b className="font-semibold text-ink">Sin incidencias en esta jornada.</b> Si algo pasa en sitio, regístralo con fotos para que quede en el reporte.
+            <b className="font-semibold text-ink">Sin incidencias en esta jornada.</b> Si algo pasa en sitio, regístrelo con fotos para que quede en el reporte.
           </p>
         </div>
       ) : (
@@ -83,7 +83,7 @@ function IncidentRow({ f, inc, photos }: { f: FieldReady; inc: Incident; photos:
 
   const resolve = () => {
     if (text.trim().length < 6) {
-      toast.error("Describe cómo se resolvió (mínimo 6 caracteres)");
+      toast.error("Describa cómo se resolvió (mínimo 6 caracteres)");
       return;
     }
     resolveIncident(inc.id, text.trim());

@@ -89,9 +89,9 @@ export function SurveyThanks({ answers, name, respondedAt, fresh }: { answers: S
           transition={{ duration: 0.9, ease: EASE, delay: 0.75 }}
           className="mt-9 font-serif text-[26px] leading-[1.15] text-ink sm:text-[30px]"
         >
-          Si piensas en limpio…
+          Si piensa en limpio…
           <br />
-          <span className="italic text-brand-ink">¡piensa en Pulkro!</span>
+          <span className="italic text-brand-ink">¡piense en Pulkro!</span>
         </motion.p>
       </motion.section>
       <p className="mt-5 text-center text-[13px] text-ink/60">Ya puede cerrar esta ventana.</p>
@@ -123,7 +123,7 @@ export function SurveyMissing({ token }: { token: string }) {
         <p className="mx-auto mt-5 w-fit rounded-[10px] bg-tile px-3 py-1.5 text-[12.5px] text-subtle">
           Código <span className="font-semibold text-ink tabular">{token}</span>
         </p>
-        <p className="mt-8 font-serif text-[20px] italic text-brand-ink">Si piensas en limpio… ¡piensa en Pulkro!</p>
+        <p className="mt-8 font-serif text-[20px] italic text-brand-ink">Si piensa en limpio… ¡piense en Pulkro!</p>
       </motion.section>
     </div>
   );

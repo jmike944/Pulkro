@@ -34,7 +34,7 @@ export function useIncidentModel(incidentId: string) {
   const resolve = (text: string): ResolveOutcome | null => {
     const resolution = text.trim();
     if (!incident || !bundle || resolution.length < 6) {
-      toast.error("Describe cómo se resolvió (mínimo 6 caracteres)");
+      toast.error("Describa cómo se resolvió (mínimo 6 caracteres)");
       return null;
     }
     const { order } = bundle;

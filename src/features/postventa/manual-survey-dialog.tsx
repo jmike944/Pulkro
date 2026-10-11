@@ -5,18 +5,22 @@ import { AnimatePresence, motion } from "motion/react";
 import { toast } from "sonner";
 import { attempt, useAppStore } from "@/lib/store";
 import type { Client, Order, Survey, SurveyAnswers } from "@/lib/types";
+import { ModalShell, ModalCancel, firstMissing } from "@/components/pk/modal-shell";
 import { Button } from "@/components/ui/button";
-import { Dialog } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { NpsPicker, StarInput } from "./rating";
-import { DialogPanel, FieldLabel, inputCls, textareaCls } from "./ui";
+import { FieldLabel, inputCls, textareaCls } from "./ui";
+import { useHeldTarget } from "./use-held-target";
 
 export type ManualTarget = { order: Order; client?: Client };
 
 /**
  * "Registro manual de comentarios" (doc §4.4): staff capture a survey answered by phone,
  * WhatsApp or in person. Reuses the pending survey of the order when there is one.
+ *
+ * Centered dialog on desktop, bottom sheet on phones. "Guardar respuesta" stays disabled until the three required
+ * answers are in and the footer says which one is missing. Stays mounted while it closes (exit animation).
  */
 export function ManualSurveyDialog({
   target,
@@ -27,19 +31,16 @@ export function ManualSurveyDialog({
   onOpenChange: (open: boolean) => void;
   onSaved?: (survey: Survey, target: ManualTarget) => void;
 }) {
+  const { held, session } = useHeldTarget(target);
+  if (!held) return null;
   return (
-    <Dialog open={!!target} onOpenChange={onOpenChange}>
-      {target && (
-        <ManualForm
-          key={target.order.id}
-          target={target}
-          onDone={(sv) => {
-            onOpenChange(false);
-            if (sv) onSaved?.(sv, target);
-          }}
-        />
-      )}
-    </Dialog>
+    <ManualForm
+      key={session}
+      open={!!target}
+      target={held}
+      onOpenChange={onOpenChange}
+      onSaved={(sv) => onSaved?.(sv, held)}
+    />
   );
 }
 
@@ -49,47 +50,69 @@ const DETAIL: { key: "quality" | "punctuality" | "staff"; label: string }[] = [
   { key: "staff", label: "Trato del personal" },
 ];
 
-function ManualForm({ target, onDone }: { target: ManualTarget; onDone: (sv?: Survey) => void }) {
+function ManualForm({
+  target,
+  open,
+  onOpenChange,
+  onSaved,
+}: {
+  target: ManualTarget;
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  onSaved: (survey: Survey) => void;
+}) {
   const { order, client } = target;
   const recordManualSurvey = useAppStore((s) => s.recordManualSurvey);
+  const initialName = order.siteContact.name || client?.contactName || "";
   const [overall, setOverall] = useState(0);
   const [detail, setDetail] = useState({ quality: 0, punctuality: 0, staff: 0 });
   const [nps, setNps] = useState<number | null>(null);
   const [comment, setComment] = useState("");
-  const [name, setName] = useState(order.siteContact.name || client?.contactName || "");
+  const [name, setName] = useState(initialName);
 
-  const missing = [!overall && "calificación general", nps === null && "recomendación", !name.trim() && "nombre de quien responde"].filter(Boolean) as string[];
+  const hint = firstMissing(
+    [!overall, "Marque la calificación general"],
+    [nps === null, "Marque qué tan probable es que el cliente nos recomiende (0 a 10)"],
+    [!name.trim(), "Escriba el nombre de quien respondió"],
+  );
+  const dirty = overall > 0 || nps !== null || comment.trim().length > 0 || name.trim() !== initialName.trim() || Object.values(detail).some(Boolean);
 
   const save = () => {
-    if (missing.length) {
-      toast.error(`Falta: ${missing.join(", ")}`);
-      return;
-    }
+    if (hint || nps === null) return;
     const answers: SurveyAnswers = {
       overall,
       quality: detail.quality || overall,
       punctuality: detail.punctuality || overall,
       staff: detail.staff || overall,
-      nps: nps!,
+      nps,
       comment: comment.trim() || undefined,
     };
     const sv = attempt(() => recordManualSurvey(order.id, answers, name.trim()));
     if (!sv) return; // refused: the store already told the user why
     toast.success("Respuesta registrada", { description: `${order.folio} · ${overall}/5 · capturada manualmente` });
-    onDone(sv);
+    onOpenChange(false);
+    onSaved(sv);
   };
 
   return (
-    <DialogPanel
-      wide
+    <ModalShell
+      open={open}
+      onOpenChange={onOpenChange}
       title="Registrar respuesta manual"
-      description={`${order.folio} · ${client?.shortName ?? ""} — para respuestas recibidas por teléfono, WhatsApp o en sitio.`}
+      description={
+        <>
+          <b>{order.folio}</b>
+          {client ? ` · ${client.shortName}` : ""}. Para respuestas que el cliente dio por teléfono, WhatsApp o en sitio.
+        </>
+      }
+      size="lg"
+      dirty={dirty}
+      onSubmit={save}
+      footerHint={hint}
       footer={
         <>
-          <Button variant="outline" onClick={() => onDone()} className="h-11 rounded-[12px] px-5">
-            Cancelar
-          </Button>
-          <Button onClick={save} className="h-11 rounded-[12px] px-5 font-semibold">
+          <ModalCancel />
+          <Button type="submit" disabled={!!hint} className="h-11 rounded-[12px] px-5 font-semibold">
             Guardar respuesta
           </Button>
         </>
@@ -103,7 +126,7 @@ function ManualForm({ target, onDone }: { target: ManualTarget; onDone: (sv?: Su
 
         <AnimatePresence initial={false}>
           {overall > 0 && (
-            <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} className="space-y-1 overflow-hidden">
+            <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} exit={{ opacity: 0, height: 0 }} className="space-y-1 overflow-hidden">
               {DETAIL.map((d) => (
                 <div key={d.key} className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1 border-b border-hairline py-2 last:border-0">
                   <span className="text-[14px] text-ink">{d.label}</span>
@@ -129,9 +152,17 @@ function ManualForm({ target, onDone }: { target: ManualTarget; onDone: (sv?: Su
 
         <div>
           <FieldLabel htmlFor="ms-name">Respondió</FieldLabel>
-          <Input id="ms-name" value={name} onChange={(e) => setName(e.target.value)} placeholder="Nombre de quien respondió" className={inputCls} />
+          <Input
+            id="ms-name"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            placeholder="Nombre de quien respondió"
+            autoComplete="off"
+            aria-required
+            className={inputCls}
+          />
         </div>
       </div>
-    </DialogPanel>
+    </ModalShell>
   );
 }

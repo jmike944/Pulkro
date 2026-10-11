@@ -4,19 +4,18 @@ import Link from "next/link";
 import { useMemo, useState } from "react";
 import { subDays } from "date-fns";
 import { motion } from "motion/react";
-import { HardHat, Pencil, Plus, Users } from "lucide-react";
+import { HardHat, Pencil, Plus, UserMinus, Users } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
-import { uid } from "@/lib/store";
-import { useAppStore, useCan, useCurrentUser, useLookups, useShallow } from "@/lib/hooks";
+import { useAppStore, useCan, useLookups, useShallow } from "@/lib/hooks";
+import { firstName } from "@/lib/format";
 import type { Worker } from "@/lib/types";
 import { PersonAvatar } from "@/components/pk/bits";
 import { Segmented } from "@/components/pk/page";
 import { EmptyState } from "@/components/pk/feedback";
 import { rowVariants, staggerContainer } from "@/components/pk/motion";
-import { Input } from "@/components/ui/input";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Field, FormDialog, GatedButton, InlineSwitch, useDialogTarget, ListHead, NO_CATALOGS, SearchField, SwitchLite, hueFrom, initialsOf, inputCls, norm, phoneDigits, selectTriggerCls } from "./shared";
+import { WorkerEditor, useOpenJornadas } from "@/features/equipo/worker-editor";
+import { ConfirmDialog, GatedButton, InlineSwitch, useDialogTarget, ListHead, NO_CATALOGS, SearchField, norm } from "./shared";
 import { useCatalogUnit } from "./use-catalog-unit";
 
 type StatusFilter = "activos" | "inactivos" | "todos";
@@ -30,6 +29,9 @@ export function WorkersCatalog() {
   const [status, setStatus] = useState<StatusFilter>("activos");
   const [q, setQ] = useState("");
   const dlg = useDialogTarget<Worker | "new">();
+  const openJornadas = useOpenJornadas();
+  const [deactivating, setDeactivating] = useState<Worker | null>(null);
+  const [confirmOpen, setConfirmOpen] = useState(false);
 
   const recent = useMemo(() => {
     const since = subDays(new Date(), 30).toISOString();
@@ -51,11 +53,20 @@ export function WorkersCatalog() {
   }, [inUnit, status, q]);
   const activeCount = inUnit.filter((w) => w.active).length;
 
-  const toggle = (w: Worker, active: boolean) => {
+  const apply = (w: Worker, active: boolean) => {
     upsertWorker({ ...w, active });
     toast(active ? `${w.name} vuelve a estar disponible para cuadrillas` : `${w.name} ya no aparecerá al asignar cuadrillas`, {
       action: { label: "Deshacer", onClick: () => upsertWorker({ ...w, active: !active }) },
     });
+  };
+  // Same rule as the editor: someone with open jornadas stays booked on them, so deactivating asks first.
+  const toggle = (w: Worker, active: boolean) => {
+    if (!active && (openJornadas.get(w.id) ?? 0) > 0) {
+      setDeactivating(w);
+      setConfirmOpen(true);
+      return;
+    }
+    apply(w, active);
   };
 
   return (
@@ -80,7 +91,7 @@ export function WorkersCatalog() {
       </div>
       <p className="mb-5 flex items-start gap-2 text-[13px] text-subtle">
         <HardHat className="mt-0.5 size-4 shrink-0" />
-        El personal de limpieza no usa la app: el supervisor registra por ellos entrada, salida, fotos e incidencias (doc §4.2).
+        El personal de limpieza no usa la app: el supervisor registra por ellos entrada, salida, fotos e incidencias.
       </p>
 
       {list.length === 0 ? (
@@ -138,108 +149,42 @@ export function WorkersCatalog() {
         </>
       )}
 
-      {dlg.target && <WorkerDialog key={dlg.key} worker={dlg.target === "new" ? null : dlg.target} defaultUnit={unit === "all" ? "u_mty" : unit} open={dlg.open} onOpenChange={dlg.onOpenChange} />}
+      {dlg.target && (
+        <WorkerEditor
+          key={dlg.key}
+          workerId={dlg.target === "new" ? null : dlg.target.id}
+          defaultUnitId={unit === "all" ? undefined : unit}
+          open={dlg.open}
+          onOpenChange={dlg.onOpenChange}
+        />
+      )}
+
+      <ConfirmDialog
+        open={confirmOpen}
+        onOpenChange={setConfirmOpen}
+        icon={<UserMinus />}
+        iconTone="red"
+        title="Desactivar trabajador"
+        description="Deja de aparecer al asignar cuadrillas. Su historial y sus jornadas ya asignadas se conservan."
+        rows={
+          deactivating
+            ? [
+                { k: "Persona", v: deactivating.name },
+                { k: "Especialidad", v: deactivating.specialty },
+                { k: "Unidad", v: lk.units.get(deactivating.unitId)?.name ?? "—" },
+                { k: "Jornadas abiertas", v: openJornadas.get(deactivating.id) ?? 0 },
+              ]
+            : []
+        }
+        checkboxLabel={`Entiendo que ${deactivating ? firstName(deactivating.name) : "la persona"} dejará de aparecer al asignar cuadrillas.`}
+        confirmLabel="Desactivar trabajador"
+        destructive
+        onConfirm={() => deactivating && apply(deactivating, false)}
+      >
+        <p className="rounded-[14px] bg-amber-soft px-4 py-3 text-[13.5px] leading-snug text-amber-ink">
+          Revise esas jornadas en la agenda: la persona sigue asignada hasta que se cambie la cuadrilla.
+        </p>
+      </ConfirmDialog>
     </section>
-  );
-}
-
-function WorkerDialog({ worker, defaultUnit, open, onOpenChange }: { worker: Worker | null; defaultUnit: string; open: boolean; onOpenChange: (v: boolean) => void }) {
-  const me = useCurrentUser();
-  const { workers, units } = useAppStore(useShallow((s) => ({ workers: s.workers, units: s.units })));
-  const upsert = useAppStore((s) => s.upsertWorker);
-  const isNew = !worker;
-  const unitLocked = me.role !== "direccion";
-  const specialties = useMemo(() => [...new Set(workers.map((w) => w.specialty))].sort((a, b) => a.localeCompare(b, "es")), [workers]);
-
-  const [name, setName] = useState(worker?.name ?? "");
-  const [specialty, setSpecialty] = useState(worker?.specialty ?? "Limpieza general");
-  const [unitId, setUnitId] = useState(worker?.unitId ?? defaultUnit);
-  const [phone, setPhone] = useState(worker?.phone ?? "+52 81 ");
-  const [active, setActive] = useState(worker?.active ?? true);
-  const [submitted, setSubmitted] = useState(false);
-
-  const errors = {
-    name: name.trim().length < 5 ? "Captura nombre y apellido." : null,
-    specialty: !specialty.trim() ? "Captura la especialidad." : null,
-    phone: phoneDigits(phone) < 10 ? "Teléfono de al menos 10 dígitos." : null,
-  };
-  const valid = !Object.values(errors).some(Boolean);
-  const preview = name.trim() || "Nuevo trabajador";
-
-  return (
-    <FormDialog
-      open={open}
-      onOpenChange={onOpenChange}
-      icon={<HardHat />}
-      title={isNew ? "Nuevo trabajador" : "Editar trabajador"}
-      description="Personal disponible para cuadrillas variables. No necesita cuenta en la app."
-      submitLabel={isNew ? "Agregar trabajador" : "Guardar cambios"}
-      onSubmit={() => {
-        setSubmitted(true);
-        if (!valid) return;
-        const clean = name.trim().replace(/\s+/g, " ");
-        upsert({
-          id: worker?.id ?? uid("wrk"),
-          name: clean,
-          initials: initialsOf(clean),
-          unitId,
-          specialty: specialty.trim(),
-          phone: phone.trim(),
-          hue: worker?.hue ?? hueFrom(clean),
-          active,
-        });
-        toast.success(isNew ? `${clean.split(" ")[0]} se agregó al personal` : `${clean} actualizado`, { description: units.find((u) => u.id === unitId)?.name });
-        onOpenChange(false);
-      }}
-    >
-      <div className="space-y-5">
-        <div className="flex items-center gap-3 rounded-[16px] bg-soft p-3">
-          <PersonAvatar name={preview} initials={initialsOf(preview)} hue={worker?.hue ?? hueFrom(preview)} size={44} />
-          <div className="min-w-0">
-            <p className="truncate text-[16px] font-semibold text-ink xl:text-[15px]">{preview}</p>
-            <p className="truncate text-[13px] text-subtle">
-              {specialty || "Especialidad"} · {units.find((u) => u.id === unitId)?.name}
-            </p>
-          </div>
-        </div>
-        <div className="grid gap-4 sm:grid-cols-2">
-          <Field label="Nombre completo" htmlFor="w-name" error={submitted ? errors.name : null} className="sm:col-span-2">
-            <Input id="w-name" value={name} onChange={(e) => setName(e.target.value)} placeholder="Ej. Juan Hernández Ruiz" className={inputCls} aria-invalid={submitted && !!errors.name} />
-          </Field>
-          <Field label="Especialidad" htmlFor="w-spec" error={submitted ? errors.specialty : null}>
-            <Input id="w-spec" list="pk-especialidades" value={specialty} onChange={(e) => setSpecialty(e.target.value)} className={inputCls} aria-invalid={submitted && !!errors.specialty} />
-            <datalist id="pk-especialidades">
-              {specialties.map((s) => (
-                <option key={s} value={s} />
-              ))}
-            </datalist>
-          </Field>
-          <Field label="Teléfono" htmlFor="w-phone" error={submitted ? errors.phone : null}>
-            <Input id="w-phone" type="tel" inputMode="tel" value={phone} onChange={(e) => setPhone(e.target.value)} className={inputCls} aria-invalid={submitted && !!errors.phone} />
-          </Field>
-          <Field label="Unidad" hint={unitLocked ? "Administración registra personal de su unidad." : undefined} className="sm:col-span-2">
-            <Select value={unitId} onValueChange={setUnitId} disabled={unitLocked}>
-              <SelectTrigger className={selectTriggerCls} aria-label="Unidad">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {units.map((u) => (
-                  <SelectItem key={u.id} value={u.id}>
-                    {u.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </Field>
-        </div>
-        <div className="flex items-center justify-between gap-4 rounded-[16px] border border-hairline px-4 py-3">
-          <div>
-            <p className="text-[14px] font-semibold text-ink">Disponible para cuadrillas</p>
-            <p className="text-[12.5px] text-subtle">Si se desactiva, deja de aparecer al asignar personal.</p>
-          </div>
-          <SwitchLite checked={active} onChange={setActive} label="Disponible para cuadrillas" />
-        </div>
-      </div>
-    </FormDialog>
   );
 }

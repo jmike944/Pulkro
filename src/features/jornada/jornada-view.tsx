@@ -33,7 +33,7 @@ export function JornadaView({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
   const res = useFieldState(id);
   // One state for "doesn't exist" and "outside your scope" (doc §2): never which of the two, never the record's name.
-  if (res.status !== "ok") return <NotFoundOrOutOfScope subject="Esta jornada" backHref="/agenda" backLabel="Ir a la agenda" />;
+  if (res.status !== "ok") return <NotFoundOrOutOfScope subject="Esta jornada" backHref="/agenda" backLabel="Volver a la agenda" />;
   return <FieldScreen f={res.f} />;
 }
 
@@ -72,7 +72,7 @@ function FieldScreen({ f }: { f: FieldReady }) {
       if (before.checkIn) return { ok: false, error: "Esta jornada ya tiene registro de entrada." };
       checkIn(before.id, geo);
       const after = read();
-      if (!after?.checkIn) return { ok: false, error: "No se pudo registrar la entrada. Intenta de nuevo." };
+      if (!after?.checkIn) return { ok: false, error: "No se pudo registrar la entrada. Intente de nuevo." };
       toast.success(`Entrada registrada · ${fmtTime(after.checkIn.deviceAt)}`, {
         description: `${how}${after.checkIn.offline ? " · guardada sin conexión" : ""}`,
       });
@@ -87,7 +87,7 @@ function FieldScreen({ f }: { f: FieldReady }) {
     if (!after?.checkOut)
       return {
         ok: false,
-        error: `La hora del dispositivo es anterior a la entrada (${fmtTime(before.checkIn.deviceAt)}). Revisa la fecha y hora del teléfono.`,
+        error: `La hora del dispositivo es anterior a la entrada (${fmtTime(before.checkIn.deviceAt)}). Revise la fecha y hora del teléfono.`,
       };
     const minutes = jornadaMinutes(after);
     toast.success(`Salida registrada · ${fmtTime(after.checkOut.deviceAt)}`, {
@@ -171,13 +171,13 @@ function gpsWarnings(f: FieldReady, mode: GpsMode, now: Date): FieldWarning[] {
       const early = differenceInMinutes(start, now);
       if (early > 90) w.push({ tone: "info", text: `Faltan ${fmtDuration(early)} para el inicio programado (${fmtTime(start)}).` });
     }
-    if (!f.crew.length) w.push({ tone: "amber", text: "La jornada no tiene cuadrilla asignada; asígnala desde “Cambiar”." });
-    if (f.order.status === "reprogramada") w.push({ tone: "info", text: "La orden está reprogramada; confirma las fechas con administración." });
+    if (!f.crew.length) w.push({ tone: "amber", text: "La jornada no tiene cuadrilla asignada; asígnela desde “Cambiar”." });
+    if (f.order.status === "reprogramada") w.push({ tone: "info", text: "La orden está reprogramada; confirme las fechas con administración." });
   } else {
     if (!f.antes.length) w.push({ tone: "amber", text: "No hay fotos ANTES en esta jornada; son obligatorias para el cierre." });
-    if (!f.despues.length) w.push({ tone: "info", text: "Aún no hay fotos DESPUÉS: tómalas al terminar, después de la salida. Son obligatorias para el cierre." });
+    if (!f.despues.length) w.push({ tone: "info", text: "Aún no hay fotos DESPUÉS: tómelas al terminar, después de la salida. Son obligatorias para el cierre." });
     if (f.openIncidents.length)
-      w.push({ tone: "info", text: `${f.openIncidents.length === 1 ? "Hay 1 incidencia abierta" : `Hay ${f.openIncidents.length} incidencias abiertas`}: puedes registrar la salida y resolverla después.` });
+      w.push({ tone: "info", text: `${f.openIncidents.length === 1 ? "Hay 1 incidencia abierta" : `Hay ${f.openIncidents.length} incidencias abiertas`}: puede registrar la salida y resolverla después.` });
   }
   return w;
 }

@@ -72,9 +72,9 @@ export function useMapaData(key: string, todayKey: string) {
 
   const scopeLabel =
     user.role === "supervisor"
-      ? "Tus servicios"
+      ? "Sus servicios"
       : user.role === "administracion"
-        ? (lk.units.get(user.unitId)?.name ?? "Tu unidad")
+        ? (lk.units.get(user.unitId)?.name ?? "Su unidad")
         : unitFilter === "all"
           ? "Todas las unidades"
           : (lk.units.get(unitFilter)?.name ?? "Unidad seleccionada");

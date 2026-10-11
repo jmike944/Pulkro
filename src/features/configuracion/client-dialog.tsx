@@ -57,13 +57,16 @@ export function ClientDialog({
   const clientCount = useAppStore((s) => s.clients.length);
   const [hue, setHue] = useState(client?.hue ?? HUES[clientCount % HUES.length]);
   const [submitted, setSubmitted] = useState(false);
+  // what the form opened with: any difference makes Esc / outside tap / X / Cancelar ask "¿Descartar cambios?"
+  const snapshot = JSON.stringify([name, shortName, segment, unitId, contactName, contactPhone, contactEmail, since, hue]);
+  const [initial] = useState(snapshot);
 
   const errors = {
-    name: name.trim().length < 3 ? "Captura la razón social o nombre comercial." : null,
-    shortName: !shortName.trim() ? "Captura un nombre corto para listas y reportes." : null,
-    contactName: !contactName.trim() ? "Captura el contacto principal." : null,
-    contactPhone: phoneDigits(contactPhone) < 10 ? "Teléfono de al menos 10 dígitos (se usa para WhatsApp)." : null,
-    contactEmail: !isEmail(contactEmail) ? "Correo no válido (se usa para enviar el reporte)." : null,
+    name: name.trim().length < 3 ? "Escriba la razón social o el nombre comercial." : null,
+    shortName: !shortName.trim() ? "Escriba un nombre corto para listas y reportes." : null,
+    contactName: !contactName.trim() ? "Escriba el nombre del contacto principal." : null,
+    contactPhone: phoneDigits(contactPhone) < 10 ? "Escriba al menos 10 dígitos, con lada (se usa para WhatsApp)." : null,
+    contactEmail: !isEmail(contactEmail) ? "Escriba un correo completo, con @ y dominio (se usa para enviar el reporte)." : null,
   };
   const valid = !Object.values(errors).some(Boolean);
   const show = (k: keyof typeof errors) => (submitted ? errors[k] : null);
@@ -74,8 +77,9 @@ export function ClientDialog({
       onOpenChange={onOpenChange}
       icon={<Building2 />}
       title={isNew ? "Nuevo cliente" : "Editar cliente"}
-      description="Los clientes no usan la app: reciben el reporte por WhatsApp o correo (doc §1)."
+      description="Los clientes no usan la app: reciben el reporte por WhatsApp o correo."
       submitLabel={isNew ? "Crear cliente" : "Guardar cambios"}
+      dirty={snapshot !== initial}
       onSubmit={() => {
         setSubmitted(true);
         if (!valid) return;

@@ -1,111 +1,164 @@
 "use client";
 
+/**
+ * The one crew editor (doc §4.1, §8: historial de cambios de personal por fecha, con motivo).
+ *
+ * Mounted from three places, all through `CrewModal`: the order page (`orden/crew-dialog`), the agenda's jornada sheet
+ * and the field view (`CrewFlow` below). Phones get the full-screen flow, desktop a centered dialog; the picker is as tall
+ * as its list (the modal body scrolls, never the picker), and the reason is the app-wide `ReasonField` (at least 5 characters).
+ */
 import { useMemo, useState } from "react";
 import { AnimatePresence, motion } from "motion/react";
 import { toast } from "sonner";
 import { useAppStore, useLookups } from "@/lib/hooks";
-import type { Worker } from "@/lib/types";
+import { plural } from "@/lib/format";
+import type { Jornada, Order, Worker } from "@/lib/types";
 import { CrewPicker } from "@/components/pk/crew-picker";
 import { PersonAvatar } from "@/components/pk/bits";
-import { BigButton, FieldCaption, FlowHeading, FlowScreen } from "@/components/pk/mobile";
-import { Textarea } from "@/components/ui/textarea";
-import { Chip, fmtShortDay } from "./field-bits";
-import { FlowEyebrow } from "./flow-bits";
+import { ModalCancel, ModalShell, firstMissing } from "@/components/pk/modal-shell";
+import { ReasonField, reasonOk } from "@/components/pk/reason-field";
+import { Button } from "@/components/ui/button";
+import { Switch } from "@/components/ui/switch";
+import { sameSet } from "@/features/agenda/agenda-model";
+import { FOOTER_PRIMARY, useOpenSession } from "@/features/agenda/modal-bits";
+import { jornadaTitle } from "@/features/orden/orden-format";
 import type { FieldReady } from "./use-field-state";
 
-const REASONS = ["Ausencia de personal", "Refuerzo por carga de trabajo", "Rotación de turno", "Especialidad requerida en sitio"];
+const REASONS = ["Ausencia de personal", "Refuerzo por carga de trabajo", "Cambio de turno", "Especialidad requerida", "Solicitud del cliente"];
 
-/** Variable crew for THIS jornada (doc §4.1, §8: historial de cambios de personal por fecha, con motivo). */
-export function CrewFlow({ f, open, onOpenChange }: { f: FieldReady; open: boolean; onOpenChange: (v: boolean) => void }) {
+export type CrewModalProps = {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  order: Pick<Order, "id" | "folio" | "unitId" | "crewHistory">;
+  /** every jornada of the order */
+  jornadas: Jornada[];
+  /** the jornada to edit; without one the change applies to every pending jornada (or the one in progress when none is pending) */
+  jornadaId?: string;
+  /** offer "Aplicar a todas las jornadas pendientes" when the jornada is pending and so are others */
+  allowApplyAll?: boolean;
+};
+
+/** Variable crew for one jornada, several, or the order's next ones. Starts fresh on every open. */
+export function CrewModal(props: CrewModalProps) {
+  const session = useOpenSession(props.open);
+  if (session === 0) return null;
+  return <CrewForm key={session} {...props} />;
+}
+
+function CrewForm({ open, onOpenChange, order, jornadas, jornadaId, allowApplyAll = false }: CrewModalProps) {
   const assignCrew = useAppStore((s) => s.assignCrew);
   const { workers } = useLookups();
-  const [ids, setIds] = useState<string[]>(f.jornada.workerIds);
-  const [reason, setReason] = useState("");
+
+  const target = jornadaId ? jornadas.find((j) => j.id === jornadaId) : undefined;
+  const pending = jornadas.filter((j) => j.status === "pendiente");
+  const live = jornadas.find((j) => j.status === "en_curso");
+  const canApplyAll = allowApplyAll && !!target && target.status === "pendiente" && pending.length > 1;
+  const [applyAll, setApplyAll] = useState(false);
+  const all = canApplyAll && applyAll;
+
+  // assignCrew() without a jornada id updates every pending jornada
+  const affected = target ? (all ? pending : [target]) : pending.length ? pending : live ? [live] : [];
+  const applyTo = target ? (all ? undefined : target.id) : pending.length ? undefined : live?.id;
+
+  const [initial] = useState<string[]>(() => {
+    const base = target ? [target] : pending.length ? pending : live ? [live] : [];
+    const current = (jornadas.find((j) => j.status !== "cerrada") ?? jornadas.at(-1))?.workerIds.filter((id) => workers.has(id)) ?? [];
+    return base[0]?.workerIds ?? current;
+  });
+  const [initialReason] = useState(() => (order.crewHistory.length ? "" : "Asignación inicial"));
+  const [value, setValue] = useState<string[]>(initial);
+  const [reason, setReason] = useState(initialReason);
 
   const diff = useMemo(() => {
-    const before = new Set(f.jornada.workerIds);
-    const after = new Set(ids);
-    const pick = (xs: string[]) => xs.map((id) => workers.get(id)).filter((w): w is Worker => !!w);
-    return { added: pick(ids.filter((id) => !before.has(id))), removed: pick(f.jornada.workerIds.filter((id) => !after.has(id))) };
-  }, [ids, f.jornada.workerIds, workers]);
+    const before = new Set(initial);
+    const after = new Set(value);
+    const pick = (ids: string[]) => ids.map((id) => workers.get(id)).filter((w): w is Worker => !!w);
+    return { added: pick(value.filter((id) => !before.has(id))), removed: pick(initial.filter((id) => !after.has(id))) };
+  }, [initial, value, workers]);
+  // a stable array: the picker recomputes who is double-booked whenever `dates` changes identity
+  const dateKey = affected.map((j) => j.date).join(",");
+  const crewDates = useMemo(() => (dateKey ? dateKey.split(",") : []), [dateKey]);
 
-  const changed = diff.added.length > 0 || diff.removed.length > 0;
-  const valid = changed && ids.length > 0 && reason.trim().length >= 6;
+  const changed = affected.length ? affected.some((j) => !sameSet(j.workerIds, value)) : !sameSet(initial, value);
+  const valid = changed && value.length > 0 && reasonOk(reason);
+  const dirty = !sameSet(value, initial) || reason !== initialReason || all;
+
+  let scope: string;
+  if (target && !all) scope = `${jornadaTitle(target)} · solo esta jornada`;
+  else if (pending.length) scope = `Se aplica a ${plural(pending.length, "jornada pendiente", "jornadas pendientes")}`;
+  else if (live) scope = `Se aplica a la jornada ${live.dayIndex}, en curso`;
+  else scope = "Se usará en las próximas jornadas que programe";
+
+  const scopeShort = target && !all ? `Jornada ${target.dayIndex}` : pending.length ? "jornadas pendientes" : live ? `Jornada ${live.dayIndex}` : "próximas jornadas";
+  const summary = `${plural(value.length, "persona", "personas")}${diff.added.length ? ` · +${diff.added.length}` : ""}${diff.removed.length ? ` · −${diff.removed.length}` : ""}`;
+  const hint =
+    firstMissing(
+      [value.length === 0, "Seleccione al menos una persona"],
+      [!changed, "Marque o desmarque personas para cambiar la cuadrilla"],
+      [!reasonOk(reason), "Indique el motivo (mínimo 5 caracteres)"],
+    ) ?? summary;
 
   const save = () => {
-    if (!ids.length) return void toast.error("La cuadrilla necesita al menos una persona");
-    if (reason.trim().length < 6) return void toast.error("Escribe el motivo del cambio");
-    assignCrew(f.order.id, ids, reason.trim(), f.jornada.id);
-    toast.success("Cuadrilla actualizada", {
-      description: `${ids.length} personas en la Jornada ${f.jornada.dayIndex}${diff.added.length ? ` · +${diff.added.length}` : ""}${diff.removed.length ? ` · −${diff.removed.length}` : ""}`,
-    });
+    if (!valid) return;
+    assignCrew(order.id, value, reason.trim(), applyTo);
+    toast.success("Cuadrilla actualizada", { description: `${order.folio} · ${scopeShort} · ${summary}` });
     onOpenChange(false);
   };
 
   return (
-    <FlowScreen
+    <ModalShell
       open={open}
       onOpenChange={onOpenChange}
-      title="Cuadrilla"
-      description={`Cambiar cuadrilla de la Jornada ${f.jornada.dayIndex}`}
-      className="md:w-[min(540px,calc(100vw-32px))]"
+      title="Cambiar cuadrilla"
+      eyebrow={order.folio}
+      description={scope}
+      size="md"
+      phone="flow"
+      dirty={dirty}
+      footerHint={hint}
       footer={
-        <BigButton onClick={save} disabled={!valid}>
-          Guardar cuadrilla
-        </BigButton>
+        <>
+          <ModalCancel className="max-lg:hidden" />
+          <Button type="button" disabled={!valid} onClick={save} className={FOOTER_PRIMARY}>
+            Guardar cuadrilla
+          </Button>
+        </>
       }
     >
-      <FlowHeading eyebrow={<FlowEyebrow f={f} />} title="Cambiar cuadrilla">
-        Aplica solo a la jornada del {fmtShortDay(f.jornada.plannedStart)} y queda en el historial de la orden con el motivo.
-      </FlowHeading>
-
-      <CrewPicker
-        unitId={f.order.unitId}
-        dates={[f.jornada.date]}
-        value={ids}
-        onChange={setIds}
-        excludeOrderId={f.order.id}
-        className="h-[320px]"
-      />
-
-      <AnimatePresence initial={false}>
-        {changed && (
-          <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} exit={{ opacity: 0, height: 0 }} className="overflow-hidden">
-            <div className="mt-4 flex flex-wrap gap-x-6 gap-y-3 rounded-[18px] bg-sand/70 p-4">
-              {diff.added.length > 0 && <DiffGroup label="Entran" tone="teal" people={diff.added} />}
-              {diff.removed.length > 0 && <DiffGroup label="Salen" tone="red" people={diff.removed} />}
-            </div>
-          </motion.div>
+      <div className="space-y-5">
+        {canApplyAll && (
+          <label className="flex min-h-14 cursor-pointer items-center justify-between gap-4 rounded-[16px] border border-hairline p-4">
+            <span className="text-[13.5px] leading-snug">
+              <span className="block font-semibold text-ink">Aplicar a todas las jornadas pendientes</span>
+              <span className="text-subtle">{plural(pending.length, "jornada pendiente", "jornadas pendientes")} de la orden.</span>
+            </span>
+            <Switch checked={applyAll} onCheckedChange={setApplyAll} aria-label="Aplicar a todas las jornadas pendientes" />
+          </label>
         )}
-      </AnimatePresence>
 
-      <div className="mt-6">
-        <FieldCaption>
-          <label htmlFor="crew-reason">Motivo del cambio · obligatorio</label>
-        </FieldCaption>
-        <Textarea
-          id="crew-reason"
-          value={reason}
-          onChange={(e) => setReason(e.target.value)}
-          placeholder="Ej. Ausencia de Juan; se integra Rosa como refuerzo"
-          className="min-h-[80px] rounded-[14px] border-field-line bg-field text-[16px]"
-        />
-        <div className="scrollbar-none -mx-1 mt-2.5 flex gap-2 overflow-x-auto px-1 pb-0.5">
-          {REASONS.map((r) => (
-            <Chip key={r} active={reason === r} onClick={() => setReason(r)}>
-              {r}
-            </Chip>
-          ))}
-        </div>
+        <CrewPicker unitId={order.unitId} dates={crewDates} value={value} onChange={setValue} excludeOrderId={order.id} />
+
+        <AnimatePresence initial={false}>
+          {(diff.added.length > 0 || diff.removed.length > 0) && (
+            <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} exit={{ opacity: 0, height: 0 }} className="overflow-hidden">
+              <div className="flex flex-wrap gap-x-6 gap-y-3 rounded-[18px] bg-sand/70 p-4">
+                {diff.added.length > 0 && <DiffGroup label="Entran" tone="teal" people={diff.added} />}
+                {diff.removed.length > 0 && <DiffGroup label="Salen" tone="red" people={diff.removed} />}
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        <ReasonField id="crew-reason" value={reason} onChange={setReason} suggestions={REASONS} />
       </div>
-    </FlowScreen>
+    </ModalShell>
   );
 }
 
 function DiffGroup({ label, tone, people }: { label: string; tone: "teal" | "red"; people: Worker[] }) {
   return (
     <div className="min-w-0">
-      <p className={tone === "teal" ? "mb-2 text-[12px] font-semibold uppercase tracking-[0.1em] text-teal-fg" : "mb-2 text-[12px] font-semibold uppercase tracking-[0.1em] text-red-fg"}>
+      <p className={tone === "teal" ? "mb-2 text-[13px] font-semibold text-teal-fg" : "mb-2 text-[13px] font-semibold text-red-fg"}>
         {label} · {people.length}
       </p>
       <ul className="flex flex-wrap gap-2">
@@ -118,4 +171,9 @@ function DiffGroup({ label, tone, people }: { label: string; tone: "teal" | "red
       </ul>
     </div>
   );
+}
+
+/** Field view: change the crew of THIS jornada (the phone flow of the jornada screen). */
+export function CrewFlow({ f, open, onOpenChange }: { f: FieldReady; open: boolean; onOpenChange: (v: boolean) => void }) {
+  return <CrewModal open={open} onOpenChange={onOpenChange} order={f.order} jornadas={f.jornadas} jornadaId={f.jornada.id} />;
 }

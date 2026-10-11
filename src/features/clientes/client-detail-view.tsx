@@ -40,7 +40,7 @@ export function ClientDetailView({ params }: { params: Promise<{ clientId: strin
     return (
       <div>
         <PageHeader title="Cliente" breadcrumb={[{ label: "Clientes", href: "/clientes" }, { label: "Cliente" }]} />
-        <NotFoundOrOutOfScope subject="Este cliente" backHref="/clientes" backLabel="Ver clientes" />
+        <NotFoundOrOutOfScope subject="Este cliente" backHref="/clientes" backLabel="Volver a clientes" />
       </div>
     );
   }

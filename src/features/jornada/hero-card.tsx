@@ -146,18 +146,18 @@ function LiveState({ f, actions }: { f: FieldReady; actions: HeroActions }) {
       <div className="mt-5">
         {f.permissions.capture ? (
           <Gate reason={f.checkOutBlock} className="w-full">
-            <BigAction icon={<LogOut />} label="Registrar salida" sub="Cierra la jornada con hora + GPS" onClick={actions.checkOut} disabled={!!f.checkOutBlock} variant="sky" />
+            <BigAction icon={<LogOut />} label="Registrar salida" sub="Cierre de la jornada con hora y GPS" onClick={actions.checkOut} disabled={!!f.checkOutBlock} variant="sky" />
           </Gate>
         ) : (
           <ReadOnlyLine>La salida la registra el supervisor al terminar.</ReadOnlyLine>
         )}
         {f.permissions.capture && f.antes.length === 0 && (
           <p className="mt-3 flex items-start gap-2 text-[13px] leading-snug text-[#ffd18a]">
-            <TriangleAlert className="mt-0.5 size-4 shrink-0" /> Aún no hay fotos ANTES: tómalas antes de empezar los trabajos.
+            <TriangleAlert className="mt-0.5 size-4 shrink-0" /> Aún no hay fotos ANTES: tómelas antes de empezar los trabajos.
           </p>
         )}
         {f.permissions.capture && f.antes.length > 0 && f.despues.length === 0 && (
-          <p className="mt-3 text-[13px] leading-snug text-white/60">Después de registrar la salida, toma las fotos DESPUÉS: son obligatorias para el cierre.</p>
+          <p className="mt-3 text-[13px] leading-snug text-white/60">Después de registrar la salida, tome las fotos DESPUÉS: son obligatorias para el cierre.</p>
         )}
       </div>
     </div>
@@ -315,7 +315,7 @@ function BreakdownStrip({ f, onEdit }: { f: FieldReady; onEdit: () => void }) {
         </span>
         <span className="min-w-0 flex-1">
           <span className="block text-[14px] font-semibold">Desglose de horas</span>
-          <span className="block truncate text-[12.5px] text-white/60">Opcional · reparte el tiempo entre actividades</span>
+          <span className="block truncate text-[12.5px] text-white/60">Opcional · repartir el tiempo entre actividades</span>
         </span>
         <ChevronRight className="size-[18px] shrink-0 text-white/50" />
       </button>
@@ -386,7 +386,7 @@ function CrewRow({ f, onChange, className }: { f: FieldReady; onChange: () => vo
         )}
         <div className="min-w-0">
           <p className="text-[14px] font-semibold">{f.crew.length ? `${f.crew.length} en cuadrilla` : "Sin cuadrilla asignada"}</p>
-          <p className="truncate text-[12.5px] text-white/60">{names || "Asigna al menos una persona"}</p>
+          <p className="truncate text-[12.5px] text-white/60">{names || "Asigne al menos una persona"}</p>
         </div>
       </div>
       <Gate reason={f.crewBlock}>

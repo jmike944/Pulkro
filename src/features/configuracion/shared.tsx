@@ -10,9 +10,9 @@ import { IconTile } from "@/components/pk/bits";
 import { ReasonTip } from "@/components/pk/reason-tip";
 import { SoftBadge } from "@/components/pk/status";
 import { EASE } from "@/components/pk/motion";
+import { ModalCancel, ModalFooter, ModalShell } from "@/components/pk/modal-shell";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Dialog, DialogClose, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 
 /* ───────────── doc scope tags (CONFIRMADO / PROPUESTO / PENDIENTE) ───────────── */
@@ -77,9 +77,9 @@ export function GatedButton({
   );
 }
 
-export const NO_CATALOGS = "Solo Dirección y Administración administran catálogos (doc §2 · PENDIENTE de confirmar).";
-export const NO_USERS = "Solo Dirección administra usuarios y permisos en el prototipo (doc §2 · PENDIENTE de confirmar).";
-export const NO_EXCEL = "Exportar Excel está habilitado para Dirección y Administración (doc §2).";
+export const NO_CATALOGS = "Solo Dirección y Administración administran catálogos.";
+export const NO_USERS = "Solo Dirección administra usuarios y permisos.";
+export const NO_EXCEL = "Exportar a Excel está disponible para Dirección y Administración.";
 
 /** Soft banner that tells mobile users (no hover tooltips) why controls are read-only. */
 export function ReadOnlyNote({ children, className }: { children: React.ReactNode; className?: string }) {
@@ -93,7 +93,8 @@ export function ReadOnlyNote({ children, className }: { children: React.ReactNod
 
 /* ───────────── forms ───────────── */
 
-export const inputCls = "h-11 rounded-[12px] px-3.5 text-[15px] md:text-[14.5px]";
+/** Text inputs: 16px below lg so iOS does not zoom on focus (overrides the shadcn `md:text-sm`). */
+export const inputCls = "h-11 rounded-[12px] px-3.5 text-[16px] md:text-[16px] lg:text-[14.5px]";
 export const selectTriggerCls = "w-full rounded-[12px] px-3.5 text-[14.5px] data-[size=default]:h-11";
 
 export function Field({
@@ -128,7 +129,7 @@ export function Field({
   );
 }
 
-/** Small chip selector (segment, unit of measure…) with ≥40px tap targets. */
+/** Small chip selector (segment, unit of measure…) with ≥44px tap targets on phones. */
 export function ChipSelect<T extends string>({
   options,
   value,
@@ -154,7 +155,7 @@ export function ChipSelect<T extends string>({
             aria-checked={active}
             onClick={() => onChange(o.value)}
             className={cn(
-              "inline-flex h-10 items-center gap-1.5 rounded-[12px] border px-3.5 text-[14px] transition",
+              "inline-flex h-11 items-center gap-1.5 rounded-[12px] border px-3.5 text-[14px] transition lg:h-10",
               active ? "border-brand-deep bg-brand-deep font-semibold text-white shadow-[0_6px_14px_-8px_rgb(2_58_99/0.7)]" : "border-hairline bg-surface text-ink hover:border-line-strong",
             )}
           >
@@ -166,7 +167,11 @@ export function ChipSelect<T extends string>({
   );
 }
 
-/** Large Dialog form shell: serif title, scrollable body, sticky footer. */
+/**
+ * Form modal: a thin wrapper over the shared `ModalShell` (centered dialog at lg+, bottom sheet on phones) wrapped in a
+ * `<form noValidate>` — Enter submits, "Cancelar" closes through the shell (so `dirty` asks before discarding).
+ * `footerNote` sits in the footer hint slot: use it to say what is still missing while `submitDisabled`.
+ */
 export function FormDialog({
   open,
   onOpenChange,
@@ -180,6 +185,8 @@ export function FormDialog({
   submitDisabled,
   footerNote,
   className,
+  dirty,
+  phone,
 }: {
   open: boolean;
   onOpenChange: (v: boolean) => void;
@@ -193,49 +200,42 @@ export function FormDialog({
   submitDisabled?: boolean;
   footerNote?: React.ReactNode;
   className?: string;
+  /** unsaved work: Esc / outside tap / X / Cancelar ask "¿Descartar cambios?" first */
+  dirty?: boolean;
+  /** phone presentation: bottom sheet (default) or full-screen flow */
+  phone?: "flow" | "sheet";
 }) {
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent showCloseButton={false} className={cn("max-h-[calc(100dvh-2rem)] gap-0 overflow-hidden rounded-[26px] p-0 sm:max-w-[560px]", className)}>
-        <form
-          noValidate
-          onSubmit={(e) => {
-            e.preventDefault();
-            onSubmit();
-          }}
-          className="flex max-h-[calc(100dvh-2rem)] min-h-0 flex-col"
-        >
-          <header className="flex items-start gap-4 border-b border-hairline px-5 pb-5 pt-6 sm:px-6">
-            {icon && (
-              <IconTile tone={iconTone} className="mt-1 size-10 rounded-[12px] [&_svg]:size-5">
-                {icon}
-              </IconTile>
-            )}
-            <div className="min-w-0 flex-1">
-              <DialogTitle className="font-serif text-[25px] font-medium leading-tight text-ink">{title}</DialogTitle>
-              {description && <DialogDescription className="mt-1.5 text-[14px] leading-relaxed text-subtle">{description}</DialogDescription>}
-            </div>
-            <DialogClose asChild>
-              <button type="button" aria-label="Cerrar" className="-mr-1.5 -mt-1 inline-flex size-10 shrink-0 items-center justify-center rounded-[12px] text-subtle transition hover:bg-muted hover:text-ink">
-                <X className="size-[18px]" />
-              </button>
-            </DialogClose>
-          </header>
-          <div className="min-h-0 flex-1 overflow-y-auto px-5 py-5 sm:px-6">{children}</div>
-          <footer className="flex flex-col-reverse gap-2.5 border-t border-hairline bg-wash px-5 py-4 sm:flex-row sm:items-center sm:justify-end sm:px-6">
-            {footerNote && <p className="text-[12.5px] leading-snug text-subtle sm:mr-auto">{footerNote}</p>}
-            <DialogClose asChild>
-              <Button type="button" variant="outline" className="h-11 rounded-[12px] px-5 text-[14px] font-semibold">
-                Cancelar
-              </Button>
-            </DialogClose>
-            <Button type="submit" disabled={submitDisabled} className="h-11 rounded-[12px] px-5 text-[14px] font-semibold">
-              {submitLabel}
-            </Button>
-          </footer>
-        </form>
-      </DialogContent>
-    </Dialog>
+    <ModalShell
+      open={open}
+      onOpenChange={onOpenChange}
+      title={title}
+      description={description}
+      icon={icon ? <ModalIcon tone={iconTone}>{icon}</ModalIcon> : undefined}
+      onSubmit={onSubmit}
+      dirty={dirty}
+      phone={phone}
+      className={className}
+      footerHint={footerNote}
+      footer={
+        <>
+          <ModalCancel />
+          <Button type="submit" disabled={submitDisabled} className="h-11 rounded-[12px] px-5 text-[14px] font-semibold">
+            {submitLabel}
+          </Button>
+        </>
+      }
+    >
+      {children}
+    </ModalShell>
+  );
+}
+
+function ModalIcon({ tone, children }: { tone?: React.ComponentProps<typeof IconTile>["tone"]; children: React.ReactNode }) {
+  return (
+    <IconTile tone={tone} className="size-11 rounded-[14px] [&_svg]:size-5">
+      {children}
+    </IconTile>
   );
 }
 
@@ -272,36 +272,33 @@ export function ConfirmDialog({
   children?: React.ReactNode;
 }) {
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent showCloseButton={false} className="max-h-[calc(100dvh-2rem)] gap-0 overflow-y-auto rounded-[26px] p-0 sm:max-w-[480px]">
-        <ConfirmBody
-          title={title}
-          description={description}
-          icon={icon}
-          iconTone={iconTone}
-          rows={rows}
-          checkboxLabel={checkboxLabel}
-          confirmLabel={confirmLabel}
-          confirmDisabled={confirmDisabled}
-          destructive={destructive}
-          onConfirm={() => {
-            onConfirm();
-            onOpenChange(false);
-          }}
-        >
-          {children}
-        </ConfirmBody>
-      </DialogContent>
-    </Dialog>
+    <ModalShell
+      open={open}
+      onOpenChange={onOpenChange}
+      size="sm"
+      title={title}
+      description={description}
+      icon={icon ? <ModalIcon tone={iconTone}>{icon}</ModalIcon> : undefined}
+    >
+      <ConfirmBody
+        rows={rows}
+        checkboxLabel={checkboxLabel}
+        confirmLabel={confirmLabel}
+        confirmDisabled={confirmDisabled}
+        destructive={destructive}
+        onConfirm={() => {
+          onConfirm();
+          onOpenChange(false);
+        }}
+      >
+        {children}
+      </ConfirmBody>
+    </ModalShell>
   );
 }
 
 /** Mounted only while the dialog is open, so the checkbox resets every time. */
 function ConfirmBody({
-  title,
-  description,
-  icon,
-  iconTone,
   rows,
   checkboxLabel,
   confirmLabel,
@@ -309,27 +306,11 @@ function ConfirmBody({
   destructive,
   onConfirm,
   children,
-}: Omit<React.ComponentProps<typeof ConfirmDialog>, "open" | "onOpenChange">) {
+}: Pick<React.ComponentProps<typeof ConfirmDialog>, "rows" | "checkboxLabel" | "confirmLabel" | "confirmDisabled" | "destructive" | "onConfirm" | "children">) {
   const [checked, setChecked] = useState(false);
   return (
-    <div>
-      <div className="px-6 pb-2 pt-6">
-        <div className="flex items-start justify-between gap-4">
-          {icon && (
-            <IconTile tone={iconTone} className="size-11 rounded-[14px] [&_svg]:size-5">
-              {icon}
-            </IconTile>
-          )}
-          <DialogClose asChild>
-            <button type="button" aria-label="Cerrar" className="-mr-2 -mt-2 inline-flex size-10 items-center justify-center rounded-[12px] text-subtle transition hover:bg-muted hover:text-ink">
-              <X className="size-[18px]" />
-            </button>
-          </DialogClose>
-        </div>
-        <DialogTitle className="mt-4 font-serif text-[26px] font-medium leading-tight text-ink">{title}</DialogTitle>
-        {description && <DialogDescription className="mt-2 text-[14px] leading-relaxed text-subtle">{description}</DialogDescription>}
-      </div>
-      <dl className="mx-6 mt-4 divide-y divide-hairline rounded-[18px] border border-hairline">
+    <>
+      <dl className="mt-2 divide-y divide-hairline rounded-[18px] border border-hairline">
         {rows.map((r, i) => (
           <motion.div
             key={i}
@@ -343,17 +324,13 @@ function ConfirmBody({
           </motion.div>
         ))}
       </dl>
-      {children && <div className="mx-6 mt-4">{children}</div>}
-      <label className="mx-6 mt-5 flex min-h-11 cursor-pointer items-start gap-3 rounded-[14px] bg-soft px-4 py-3 text-[14px] text-ink">
+      {children && <div className="mt-4">{children}</div>}
+      <label className="mt-5 flex min-h-11 cursor-pointer items-start gap-3 rounded-[14px] bg-soft px-4 py-3 text-[14px] text-ink">
         <Checkbox checked={checked} onCheckedChange={(v) => setChecked(v === true)} className="mt-0.5 size-[18px] rounded-[5px]" />
         <span className="leading-snug">{checkboxLabel}</span>
       </label>
-      <div className="mt-6 flex flex-col-reverse gap-2.5 border-t border-hairline px-6 py-4 sm:flex-row sm:justify-end">
-        <DialogClose asChild>
-          <Button type="button" variant="outline" className="h-11 rounded-[12px] px-5 text-[14px] font-semibold">
-            Cancelar
-          </Button>
-        </DialogClose>
+      <ModalFooter hint={!checked && !confirmDisabled ? "Marque la casilla de confirmación" : undefined}>
+        <ModalCancel />
         <Button
           type="button"
           disabled={!checked || confirmDisabled}
@@ -362,8 +339,8 @@ function ConfirmBody({
         >
           {confirmLabel}
         </Button>
-      </div>
-    </div>
+      </ModalFooter>
+    </>
   );
 }
 
@@ -454,10 +431,10 @@ export function SearchField({
         value={value}
         onChange={(e) => onChange(e.target.value)}
         placeholder={placeholder}
-        className="h-full w-full min-w-0 bg-transparent text-[14.5px] text-ink outline-none placeholder:text-faint"
+        className="h-full w-full min-w-0 bg-transparent text-[16px] text-ink outline-none placeholder:text-faint lg:text-[14.5px]"
       />
       {value && (
-        <button type="button" onClick={() => onChange("")} aria-label="Limpiar búsqueda" className="inline-flex size-8 shrink-0 items-center justify-center rounded-full text-subtle hover:bg-muted hover:text-ink">
+        <button type="button" onClick={() => onChange("")} aria-label="Limpiar búsqueda" className="-mr-1.5 inline-flex size-10 shrink-0 items-center justify-center rounded-full text-subtle hover:bg-muted hover:text-ink">
           <X className="size-4" />
         </button>
       )}

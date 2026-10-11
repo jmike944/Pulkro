@@ -47,10 +47,14 @@ export const isCaseOpen = (c: Pick<PostSaleCase, "status">) => c.status === "abi
 /** Open case whose commitment date already passed. */
 export const isCaseOverdue = (c: Pick<PostSaleCase, "status" | "dueDate">) => isCaseOpen(c) && daysUntil(c.dueDate) < 0;
 
-/** Who may own a case: Administración + supervisores of the order's unit (doc §4.4 "responsable"). */
-export function caseOwnerCandidates(users: User[], unitId: string) {
+/**
+ * Who may own a case (doc §4.4 "responsable"): Administración of the order's unit + the order's own supervisor.
+ * Supervisors only see the orders they supervise (§2), so another supervisor could not open a case assigned to them.
+ * The store enforces the same rule (`isValidCaseOwner`).
+ */
+export function caseOwnerCandidates(users: User[], unitId: string, orderSupervisorId: string | undefined) {
   return users
-    .filter((u) => u.active && u.unitId === unitId && (u.role === "administracion" || u.role === "supervisor"))
+    .filter((u) => u.active && u.unitId === unitId && (u.role === "administracion" || (u.role === "supervisor" && u.id === orderSupervisorId)))
     .sort((a, b) => (a.role === b.role ? a.name.localeCompare(b.name) : a.role === "administracion" ? -1 : 1));
 }
 

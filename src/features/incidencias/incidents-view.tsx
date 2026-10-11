@@ -199,7 +199,7 @@ export function IncidentsView() {
       ]);
       toast.success(`Excel con ${plural(filtered.length, "incidencia", "incidencias")} descargado`);
     } catch {
-      toast.error("No se pudo generar el Excel");
+      toast.error("No se pudo generar el Excel", { description: "Intente de nuevo en unos segundos." });
     } finally {
       setExporting(false);
     }
@@ -253,7 +253,7 @@ export function IncidentsView() {
             exit={{ opacity: 0, y: -6 }}
             className="mb-6 flex items-center gap-3 rounded-[16px] bg-amber-soft py-2 pl-4 pr-1.5 text-[14px] text-amber-ink"
           >
-            <span className="min-w-0 flex-1">La incidencia solicitada no existe o no está en tu alcance.</span>
+            <span className="min-w-0 flex-1">La incidencia solicitada no existe o no está en su alcance.</span>
             <button type="button" onClick={closeIncident} aria-label="Cerrar aviso" className="inline-flex size-10 shrink-0 items-center justify-center rounded-full hover:bg-surface/70">
               <X className="size-4" />
             </button>
@@ -311,11 +311,11 @@ export function IncidentsView() {
             {filtered.length === 0 ? (
               active ? (
                 <EmptyState icon={<SearchX />} title="Nada con estos filtros" action={<ClearFilters onClick={() => update(EMPTY)} />}>
-                  Prueba con otro tipo, severidad, supervisor o cliente.
+                  Pruebe con otro tipo, severidad, supervisor o cliente.
                 </EmptyState>
               ) : (
                 <EmptyState icon={<Sparkles />} title={tab === "abiertas" ? "Sin incidencias abiertas" : "Sin incidencias"}>
-                  {tab === "abiertas" ? "Todo lo registrado en campo ya está resuelto. ¡Impecable!" : "Aún no hay incidencias registradas en tu alcance."}
+                  {tab === "abiertas" ? "Todo lo registrado en campo ya está resuelto. ¡Impecable!" : "Aún no hay incidencias registradas. Se registran desde la jornada en campo, con fotos."}
                 </EmptyState>
               )
             ) : (

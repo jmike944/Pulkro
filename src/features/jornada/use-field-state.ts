@@ -66,7 +66,7 @@ function buildState(b: FieldBundle, role: ReturnType<typeof useCurrentUser>["rol
     : locked
       ? locked
       : !jornada.checkIn
-        ? "Registra la entrada para habilitar las fotos de esta jornada."
+        ? "Registre la entrada para habilitar las fotos de esta jornada."
         : null;
   /** Reason incidents / notes are unavailable. */
   const recordBlock = !permissions.capture ? `Solo el supervisor registra incidencias y notas · ${roleLabel} tiene acceso de consulta.` : locked;
@@ -82,7 +82,7 @@ function buildState(b: FieldBundle, role: ReturnType<typeof useCurrentUser>["rol
     : locked
       ? locked
       : otherLive
-        ? `Primero registra la salida de la Jornada ${otherLive.dayIndex}: no puede haber dos jornadas abiertas.`
+        ? `Primero registre la salida de la Jornada ${otherLive.dayIndex}: no puede haber dos jornadas abiertas.`
         : null;
   const breakdownBlock = !permissions.capture
     ? `Solo el supervisor registra el desglose de horas · ${roleLabel} tiene acceso de consulta.`

@@ -109,7 +109,7 @@ export function TodayMobile() {
         <motion.div initial={{ opacity: 0, y: -6 }} animate={{ opacity: 1, y: 0 }} className="mb-5 flex items-center gap-3 rounded-[16px] bg-amber-soft px-4 py-3 text-[14px] text-amber-ink">
           <WifiOff className="size-4 shrink-0" />
           <span>
-            <b className="font-semibold">Sin conexión.</b> Todo lo que captures se guarda aquí{pending.length ? ` (${pending.length} por enviar)` : ""}.
+            <b className="font-semibold">Sin conexión.</b> Todo lo que capture se guarda aquí{pending.length ? ` (${pending.length} por enviar)` : ""}.
           </span>
         </motion.div>
       )}
@@ -182,7 +182,7 @@ export function TodayMobile() {
       ) : (
         <AuroraStat
           className="mt-9"
-          label="Tu evidencia este año"
+          label="Su evidencia este año"
           value={
             <span className="flex items-baseline gap-2">
               <AnimatedNumber value={myPhotos} />
@@ -253,14 +253,14 @@ function ItemCard({
   const author = nudge ? lk.users.get(nudge.by) : undefined;
 
   const copy: Record<PendingItem["kind"], { msg: React.ReactNode; cta: string; value?: React.ReactNode }> = {
-    cierre: { msg: <>{c?.shortName} · {o?.title}: las jornadas y las fotos ANTES y DESPUÉS están completas. Valida el cierre para generar el reporte.</>, cta: "Validar cierre", value: o?.folio },
+    cierre: { msg: <>{c?.shortName} · {o?.title}: las jornadas y las fotos ANTES y DESPUÉS están completas. Valide el cierre para generar el reporte.</>, cta: "Validar cierre", value: o?.folio },
     evidencia: { msg: <>{it.title.replace(" · ", " de la ")} en {o?.folio} ({c?.shortName}) antes de poder validar el cierre.</>, cta: it.title.includes("DESPUÉS") ? "Tomar foto DESPUÉS" : "Tomar foto ANTES", value: <Camera className="size-5 text-amber-fg" /> },
-    entrada: { msg: <>La cuadrilla para {c?.shortName} · {site?.name} empieza a las {j ? fmtTime(j.plannedStart) : ""}. Registra la entrada con GPS al llegar.</>, cta: "Registrar entrada", value: j ? fmtTime(j.plannedStart) : undefined },
-    incidencia: { msg: <>{it.title} Resuélvela para continuar con el cierre.</>, cta: "Resolver incidencia", value: o?.folio },
-    reporte: { msg: <>El cierre de {o?.folio} está validado. Genera el reporte con fotos y compártelo con {o?.siteContact.name}.</>, cta: it.title.startsWith("Compartir") ? "Compartir reporte" : "Generar reporte", value: o?.folio },
+    entrada: { msg: <>La cuadrilla para {c?.shortName} · {site?.name} empieza a las {j ? fmtTime(j.plannedStart) : ""}. Registre la entrada con GPS al llegar.</>, cta: "Registrar entrada", value: j ? fmtTime(j.plannedStart) : undefined },
+    incidencia: { msg: <>{it.title} Resuélvala para continuar con el cierre.</>, cta: "Resolver incidencia", value: o?.folio },
+    reporte: { msg: <>El cierre de {o?.folio} está validado. Genere el reporte con fotos y compártalo con {o?.siteContact.name}.</>, cta: it.title.startsWith("Compartir") ? "Compartir reporte" : "Generar reporte", value: o?.folio },
     asignar: { msg: <>{o?.folio} · {c?.shortName} aún no tiene cuadrilla ni fechas confirmadas.</>, cta: "Asignar cuadrilla", value: o?.folio },
     caso: { msg: <>{it.title}</>, cta: "Atender caso", value: it.sub.split(" · ")[0] },
-    encuesta: { msg: <>Pide a {c?.shortName} que califique el servicio {o?.folio}. La encuesta se abre sin instalar nada.</>, cta: "Enviar encuesta", value: o?.folio },
+    encuesta: { msg: <>Pida a {c?.shortName} que califique el servicio {o?.folio}. La encuesta se abre sin instalar nada.</>, cta: "Enviar encuesta", value: o?.folio },
   };
   const k = copy[it.kind];
   return (

@@ -102,7 +102,7 @@ export function PendingTab({
           <StatSub>
             {stats.overdue > 0 ? (
               <span className="inline-flex items-center gap-1.5 font-medium text-red-fg">
-                <StatusDot tone="red" live /> {user.role === "supervisor" ? "Súbelas hoy" : "Recordar hoy"}
+                <StatusDot tone="red" live /> {user.role === "supervisor" ? "Súbalas hoy" : "Recordar hoy"}
               </span>
             ) : (
               "Ninguna fuera de plazo"

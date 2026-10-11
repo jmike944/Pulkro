@@ -144,7 +144,7 @@ export function GpsFlow({
     if (mode === "salida" && f.despues.length === 0)
       next.push({ key: "despues", icon: <Sparkles />, title: "Tomar fotos DESPUÉS", meta: "Mismo ángulo que las fotos ANTES · obligatorias" });
     if (mode === "salida" && f.order.activities.length > 0)
-      next.push({ key: "desglose", icon: <Timer />, title: "Desglose de horas", meta: "Reparte el tiempo entre actividades · opcional" });
+      next.push({ key: "desglose", icon: <Timer />, title: "Desglose de horas", meta: "Repartir el tiempo entre actividades · opcional" });
 
     return (
       <FlowScreen
@@ -225,7 +225,7 @@ export function GpsFlow({
         <AnimatePresence>
           {slow && (
             <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="mt-2 flex flex-col items-center gap-2 text-center">
-              <p className="text-[13.5px] text-subtle">¿El teléfono no responde? Revisa el permiso de ubicación o continúa con una justificación.</p>
+              <p className="text-[13.5px] text-subtle">¿El teléfono no responde? Revise el permiso de ubicación o continúe con una justificación.</p>
               <button
                 type="button"
                 onClick={() =>
@@ -265,7 +265,7 @@ export function GpsFlow({
   else if (reading) {
     if (reading.error) issues.push(`${reading.error}: la posición es aproximada.`);
     if (reading.simulated && !reading.error) issues.push("El dispositivo no entregó una lectura GPS real; la posición es aproximada.");
-    if (distance > MAX_SITE_DISTANCE) issues.push(`Estás a ${fmtDistance(distance)} del sitio (máximo ${MAX_SITE_DISTANCE} m).`);
+    if (distance > MAX_SITE_DISTANCE) issues.push(`Está a ${fmtDistance(distance)} del sitio (máximo ${MAX_SITE_DISTANCE} m).`);
   }
   const needsNote = remote || issues.length > 0;
   const noteOk = note.trim().length >= GEO_NOTE_MIN;
@@ -288,6 +288,7 @@ export function GpsFlow({
       onOpenChange={onOpenChange}
       title={copy.screen}
       description={`${copy.title} en ${site.name}`}
+      dirty={note.trim().length > 0}
       footer={
         <BigButton onClick={confirm} disabled={!canConfirm}>
           <LocateFixed /> {copy.confirm}
@@ -492,7 +493,7 @@ export function Radar() {
         </span>
       </div>
       <p className="mt-6 text-[17px] font-semibold text-ink">Obteniendo ubicación…</p>
-      <p className="mt-1 max-w-[300px] text-center text-[14px] leading-relaxed text-subtle">Mantén el teléfono a cielo abierto unos segundos. Si no hay señal, podrás justificarlo.</p>
+      <p className="mt-1 max-w-[300px] text-center text-[14px] leading-relaxed text-subtle">Mantenga el teléfono a cielo abierto unos segundos. Si no hay señal, podrá justificarlo.</p>
     </div>
   );
 }

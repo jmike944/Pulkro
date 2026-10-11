@@ -4,53 +4,13 @@ import { motion } from "motion/react";
 import { cn } from "@/lib/utils";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 
-/** Required "motivo" (doc §3: every change records user, date and reason) with quick suggestions. */
-export function MotivoField({
-  id,
-  value,
-  onChange,
-  suggestions,
-  placeholder = "¿Por qué se hace el cambio?",
-}: {
-  id: string;
-  value: string;
-  onChange: (v: string) => void;
-  suggestions: string[];
-  placeholder?: string;
-}) {
-  return (
-    <div>
-      <Label htmlFor={id} className="mb-2 block text-[13px] text-subtle">
-        Motivo <span className="text-red-fg">*</span>
-      </Label>
-      <div className="mb-2.5 flex flex-wrap gap-1.5">
-        {suggestions.map((s) => {
-          const on = value === s;
-          return (
-            <motion.button
-              key={s}
-              type="button"
-              whileTap={{ scale: 0.95 }}
-              onClick={() => onChange(s)}
-              aria-pressed={on}
-              className={cn(
-                "h-10 rounded-full border px-3.5 text-[13px] transition-colors sm:h-9",
-                on ? "border-ink bg-ink text-on-ink" : "border-hairline bg-surface text-ink hover:bg-muted",
-              )}
-            >
-              {s}
-            </motion.button>
-          );
-        })}
-      </div>
-      <Textarea id={id} value={value} onChange={(e) => onChange(e.target.value)} placeholder={placeholder} className="min-h-[76px] rounded-[14px] text-[15px]" />
-      <p className="mt-1.5 text-[12px] text-subtle">Queda en la bitácora de la orden con tu usuario y la fecha.</p>
-    </div>
-  );
-}
+/**
+ * Required "motivo" (doc §3). Now the shared field (`@/components/pk/reason-field`): one rule for the whole app,
+ * at least `REASON_MIN` (5) characters — gate the submit with `reasonOk(motivo)` so field and button agree.
+ */
+export { ReasonField as MotivoField, reasonOk, REASON_MIN } from "@/components/pk/reason-field";
 
 /** Explicit confirmation checkbox (the "Submit claim" pattern). */
 export function ConfirmCheck({ id, checked, onChange, children }: { id: string; checked: boolean; onChange: (v: boolean) => void; children: React.ReactNode }) {
@@ -70,9 +30,9 @@ export function FieldLabel({ htmlFor, children }: { htmlFor: string; children: R
   );
 }
 
-/** Native date/time inputs — the phone's own pickers are the best UX in the field. */
+/** Native date/time inputs — the phone's own pickers are the best UX in the field (16px below lg: no iOS zoom). */
 export function DateTimeInput({ className, invalid, ...props }: React.ComponentProps<typeof Input> & { invalid?: boolean }) {
-  return <Input {...props} aria-invalid={invalid || undefined} className={cn("h-11 rounded-[12px] bg-surface text-[15px] tabular", className)} />;
+  return <Input {...props} aria-invalid={invalid || undefined} className={cn("h-11 rounded-[12px] bg-surface text-[16px] tabular md:text-[16px] lg:text-[15px]", className)} />;
 }
 
 export function FieldError({ children }: { children?: React.ReactNode }) {

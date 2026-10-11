@@ -24,10 +24,10 @@ export function UnitPickerSheet({ open, onOpenChange }: { open: boolean; onOpenC
     onOpenChange(false);
     if (id === unitFilter) return;
     setUnitFilter(id);
-    toast.success(id === "all" ? "Ahora ves todas las unidades" : `Ahora ves solo ${units.find((u) => u.id === id)?.name ?? "la unidad"} en toda la app`);
+    toast.success(id === "all" ? "Ahora ve todas las unidades" : `Ahora ve solo ${units.find((u) => u.id === id)?.name ?? "la unidad"} en toda la app`);
   };
   return (
-    <BottomSheet open={open} onOpenChange={onOpenChange} title="Unidad" description="Elige qué unidad ver. Aplica a todas las secciones de la app.">
+    <BottomSheet open={open} onOpenChange={onOpenChange} title="Unidad" description="Elija qué unidad ver. Aplica a todas las secciones de la app.">
       <ul role="radiogroup" aria-label="Unidad" className="space-y-0.5">
         <UnitOption code="PK" title="Todas las unidades" sub={`${units.length} unidades`} active={unitFilter === "all"} onPick={() => pick("all")} />
         {units.map((u) => (

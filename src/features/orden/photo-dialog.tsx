@@ -1,67 +1,46 @@
 "use client";
 
-import { useAppStore } from "@/lib/store";
-import { fmtCoords, fmtDateTime } from "@/lib/format";
-import { PHOTO_KIND } from "@/lib/status";
-import { PhotoImage } from "@/components/pk/scene-photo";
-import { photoProvenanceRows } from "@/components/pk/photo-flags";
-import { SoftBadge } from "@/components/pk/status";
-import { Switch } from "@/components/ui/switch";
+import { useMemo, useState } from "react";
+import type { Jornada, Photo, PhotoKind } from "@/lib/types";
+import { LightboxReportToggle, PhotoLightbox } from "@/features/evidencias/photo-lightbox";
 import { useOrder } from "./order-context";
-import { Gated, OrderDialog, SummaryRows } from "./ui";
 
-/** Photo detail with its capture metadata (doc §4.2: coordinates, device time, user). */
+const KIND_ORDER: Record<PhotoKind, number> = { antes: 0, despues: 1, incidencia: 2, postventa: 3 };
+
+/** Order of the evidence tab: jornada by jornada (ANTES, then DESPUÉS), then incident and post-sale photos, each by capture time. */
+function inOrderOfEvidence(photos: Photo[], jornadas: Jornada[]): Photo[] {
+  const day = new Map(jornadas.map((j) => [j.id, j.dayIndex] as const));
+  const dayOf = (p: Photo) => (p.jornadaId ? (day.get(p.jornadaId) ?? Number.MAX_SAFE_INTEGER - 1) : Number.MAX_SAFE_INTEGER);
+  return [...photos].sort((a, b) => dayOf(a) - dayOf(b) || KIND_ORDER[a.kind] - KIND_ORDER[b.kind] || a.takenAt.localeCompare(b.takenAt));
+}
+
+/**
+ * Photo detail of an order: the app's one lightbox (prev/next through the order's photos, capture metadata with
+ * coordinates, device time and user — doc §4.2) plus "Incluir en el reporte" behind the order's photo gate.
+ * The page only tells us which photo was tapped, so prev/next move a local cursor that restarts when it changes.
+ */
 export function PhotoDialog({ photoId, onOpenChange }: { photoId: string | null; onOpenChange: (v: boolean) => void }) {
   const { d } = useOrder();
-  const toggle = useAppStore((s) => s.togglePhotoForReport);
-  const photo = photoId ? d.photos.find((p) => p.id === photoId) : undefined;
-  const j = photo?.jornadaId ? d.jornadas.find((x) => x.id === photo.jornadaId) : undefined;
-  const inc = photo?.incidentId ? d.incidents.find((x) => x.id === photo.incidentId) : undefined;
-  const kind = photo ? PHOTO_KIND[photo.kind] : undefined;
+  const photos = useMemo(() => inOrderOfEvidence(d.photos, d.jornadas), [d.photos, d.jornadas]);
+  const [cursor, setCursor] = useState<{ from: string | null; id: string | null }>({ from: photoId, id: photoId });
+  if (cursor.from !== photoId) setCursor({ from: photoId, id: photoId });
+
+  const current = cursor.from === photoId ? cursor.id : photoId;
+  const found = current ? photos.findIndex((p) => p.id === current) : -1;
+  const gate = d.gates.photos;
 
   return (
-    <OrderDialog
-      open={!!photo}
-      onOpenChange={onOpenChange}
-      size="lg"
-      eyebrow={kind ? `Foto ${kind.label.toUpperCase()}${j ? ` · Jornada ${j.dayIndex}` : ""}` : undefined}
-      title={photo?.area ?? "Foto"}
-    >
-      {photo && (
-        <div className="space-y-4">
-          <div className="relative aspect-[4/3] overflow-hidden rounded-[20px] bg-well ring-1 ring-edge">
-            <PhotoImage photo={photo} />
-            {d.pendingIds.has(photo.id) && (
-              <SoftBadge tone="amber" className="absolute right-3 top-3">
-                Pendiente de sincronizar
-              </SoftBadge>
-            )}
-          </div>
-          <SummaryRows
-            rows={[
-              { k: "Tomada", v: fmtDateTime(photo.takenAt) },
-              { k: "Capturó", v: d.lk.users.get(photo.by)?.name ?? "Usuario" },
-              { k: "Ubicación", v: photo.lat != null && photo.lng != null ? fmtCoords(photo.lat, photo.lng) : "Sin coordenadas" },
-              // Evidence provenance (real captures only): camera or gallery, where the time and the position come from.
-              ...photoProvenanceRows(photo),
-              ...(inc ? [{ k: "Incidencia", v: inc.folio }] : []),
-              { k: "Sincronización", v: d.pendingIds.has(photo.id) ? "Pendiente" : "Sincronizada", tone: d.pendingIds.has(photo.id) ? ("warn" as const) : ("ok" as const) },
-            ]}
-          />
-          {photo.note && <p className="rounded-[14px] bg-soft px-4 py-3 text-[14px] text-ink">{photo.note}</p>}
-          {photo.kind !== "postventa" && (
-            <Gated gate={d.gates.photos} className="flex w-full">
-              <label className="flex min-h-12 w-full cursor-pointer items-center justify-between gap-3 rounded-[16px] border border-hairline px-4 py-3">
-                <span className="text-[14px]">
-                  <span className="block font-semibold text-ink">Incluir en el reporte</span>
-                  <span className="text-[12.5px] text-subtle">Las fotos seleccionadas aparecen en el PDF del cliente.</span>
-                </span>
-                <Switch checked={photo.selectedForReport} disabled={!d.gates.photos.ok} onCheckedChange={() => toggle(photo.id)} aria-label="Incluir en el reporte" />
-              </label>
-            </Gated>
-          )}
-        </div>
-      )}
-    </OrderDialog>
+    <PhotoLightbox
+      photos={photos}
+      index={found >= 0 ? found : null}
+      onIndexChange={(i) => {
+        if (i === null) onOpenChange(false);
+        else setCursor({ from: photoId, id: photos[i]?.id ?? null });
+      }}
+      pairPool={d.photos}
+      scope="orden"
+      // post-sale photos are not report material
+      actions={(photo) => (photo.kind === "postventa" ? null : <LightboxReportToggle photo={photo} blockedReason={gate.ok ? null : (gate.reason ?? "No puede cambiar esto ahora.")} />)}
+    />
   );
 }

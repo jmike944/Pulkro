@@ -30,7 +30,7 @@ export function PersonCard({ m }: { m: RequestModel }) {
       <div className="min-w-0 flex-1">
         <p className="truncate text-[15px] font-semibold text-ink">
           {sup.name}
-          {m.isMine && <span className="ml-1.5 text-[12.5px] font-medium text-subtle">(tú)</span>}
+          {m.isMine && <span className="ml-1.5 text-[12.5px] font-medium text-subtle">(usted)</span>}
         </p>
         <p className="truncate text-[13px] text-subtle">
           {m.roleWord} · {m.unit.name} · captura en la app
@@ -115,7 +115,7 @@ export function NeededBox({
           ) : (
             <>
               Una foto <b>ANTES</b> del área tal como se encontró al iniciar la jornada {jornada.dayIndex}.
-              {jornada.checkOut && <> Si el área ya se limpió, no la recrees: documenta el motivo y solicita una excepción autorizada al validar el cierre.</>}
+              {jornada.checkOut && <> Si el área ya se limpió, no la recree: documente el motivo y solicite una excepción autorizada al validar el cierre.</>}
             </>
           )}
         </p>
@@ -138,7 +138,7 @@ export function NeededBox({
         )}
         <ul className="mt-4 space-y-1.5 text-[13px] text-subtle">
           {[
-            request.kind === "despues" ? "Misma área y ángulo que la foto ANTES" : "Toma general del área antes de intervenir",
+            request.kind === "despues" ? "Misma área y ángulo que la foto ANTES" : "Vista general del área antes de intervenir",
             "Con buena luz y sin personas en primer plano",
             "Se guarda con hora y usuario; se sincroniza al recuperar señal",
           ].map((t) => (

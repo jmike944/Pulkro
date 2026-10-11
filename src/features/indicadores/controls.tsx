@@ -128,7 +128,7 @@ export function Controls({
 function GatedExport({ allowed, children }: { allowed: boolean; children: React.ReactElement }) {
   if (allowed) return children;
   return (
-    <ReasonTip side="bottom" reason="Los indicadores se exportan desde las cuentas de Dirección y Administración (doc §2)." contentClassName="max-w-[260px] text-[12.5px] leading-snug">
+    <ReasonTip side="bottom" reason="Los indicadores se exportan desde las cuentas de Dirección y Administración." contentClassName="max-w-[260px] text-[12.5px] leading-snug">
       <span tabIndex={0} className="inline-flex rounded-[12px] outline-none focus-visible:ring-2 focus-visible:ring-sky">
         {children}
       </span>

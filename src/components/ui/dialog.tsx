@@ -47,17 +47,27 @@ function DialogOverlay({
   )
 }
 
+/**
+ * Close control shared by Dialog and Sheet: 44px tap target, top-right, Spanish label. Keep the two copies
+ * (here and in sheet.tsx) identical so every stock surface closes the same way.
+ */
+const CLOSE_BUTTON_CLASS =
+  "absolute top-3 right-3 z-10 inline-flex size-11 items-center justify-center rounded-full bg-sand text-ink transition outline-none hover:bg-sand-deep focus-visible:ring-3 focus-visible:ring-ring/50 active:scale-95 [&_svg]:size-[18px]"
+
 function DialogContent({
   className,
   children,
   showCloseButton = true,
+  overlayClassName,
   ...props
 }: React.ComponentProps<typeof DialogPrimitive.Content> & {
   showCloseButton?: boolean
+  /** extra classes for the scrim behind the dialog */
+  overlayClassName?: string
 }) {
   return (
     <DialogPortal>
-      <DialogOverlay />
+      <DialogOverlay className={overlayClassName} />
       <DialogPrimitive.Content
         data-slot="dialog-content"
         className={cn(
@@ -68,16 +78,9 @@ function DialogContent({
       >
         {children}
         {showCloseButton && (
-          <DialogPrimitive.Close data-slot="dialog-close" asChild>
-            <Button
-              variant="ghost"
-              className="absolute top-2 right-2"
-              size="icon-sm"
-            >
-              <XIcon
-              />
-              <span className="sr-only">Close</span>
-            </Button>
+          <DialogPrimitive.Close data-slot="dialog-close" className={CLOSE_BUTTON_CLASS}>
+            <XIcon aria-hidden />
+            <span className="sr-only">Cerrar</span>
           </DialogPrimitive.Close>
         )}
       </DialogPrimitive.Content>
@@ -115,7 +118,7 @@ function DialogFooter({
       {children}
       {showCloseButton && (
         <DialogPrimitive.Close asChild>
-          <Button variant="outline">Close</Button>
+          <Button variant="outline">Cerrar</Button>
         </DialogPrimitive.Close>
       )}
     </div>

@@ -38,7 +38,7 @@ export function HelpView() {
         title="Centro de ayuda"
         description={
           <>
-            <b>15 pasos</b> desde el trabajo autorizado hasta la postventa, con <b>2 decisiones</b> que controlan el cierre. Toca un paso para ver quién lo hace, dónde
+            <b>15 pasos</b> desde el trabajo autorizado hasta la postventa, con <b>2 decisiones</b> que controlan el cierre. Toque un paso para ver quién lo hace, dónde
             y bajo qué regla.
           </>
         }
@@ -79,17 +79,17 @@ export function HelpView() {
       </section>
 
       <section id="reglas" className="mt-14 scroll-mt-6">
-        <SectionHeader title={`Reglas de negocio · ${BUSINESS_RULES.length}`} subtitle="Doc §8 · cada regla y cómo la aplica el prototipo." />
+        <SectionHeader title={`Reglas de negocio · ${BUSINESS_RULES.length}`} subtitle="Cada regla del negocio y cómo la aplica el prototipo." />
         <BusinessRules />
       </section>
 
       <section id="criterios" className="mt-14 scroll-mt-6">
-        <SectionHeader title="Criterios de aceptación" subtitle="Doc §10 · dónde probar cada criterio, con un ejemplo real de tus datos." />
+        <SectionHeader title="Criterios de aceptación" subtitle="Dónde probar cada criterio, con un ejemplo real de sus datos." />
         <AcceptanceCriteria />
       </section>
 
       <section id="pendientes" className="mt-14 scroll-mt-6">
-        <SectionHeader title={`Decisiones pendientes · ${PENDING_QUESTIONS.length}`} subtitle="Doc §11 · preguntas para la reunión con el desarrollador y lo que hoy supone el prototipo." />
+        <SectionHeader title={`Decisiones pendientes · ${PENDING_QUESTIONS.length}`} subtitle="Preguntas para la reunión con el desarrollador y lo que hoy supone el prototipo." />
         <PendingQuestions />
       </section>
 

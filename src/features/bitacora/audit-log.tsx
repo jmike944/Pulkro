@@ -299,7 +299,7 @@ export function AuditLog() {
             </ul>
           </div>
           <Insight icon={<ShieldCheck />} className="sm:col-span-2 xl:col-span-1">
-            Las ediciones posteriores al cierre generan <b className="font-semibold">nueva versión</b> del reporte y quedan aquí con su motivo (doc §8).
+            Las ediciones posteriores al cierre generan <b className="font-semibold">nueva versión</b> del reporte y quedan aquí con su motivo.
           </Insight>
         </div>
       </aside>

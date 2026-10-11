@@ -301,7 +301,7 @@ export function StepClient({ draft, setDraft, issues, errorOf, touch, clients, o
                     id="no-ref-msg"
                     error={errorOf("commercialRef")}
                     warning={issues.warnings.commercialRefDup ?? (draft.commercialRef ? issues.warnings.commercialRef : undefined)}
-                    hint="Vincula la orden con la cotización autorizada. Pulkro Cuadrillas no cotiza ni autoriza trabajos."
+                    hint="Sirve para vincular la orden con la cotización autorizada. Pulkro Cuadrillas no cotiza ni autoriza trabajos."
                   />
                 </div>
                 <div>

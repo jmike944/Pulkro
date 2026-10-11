@@ -72,7 +72,7 @@ export function FlowChart() {
     <AuroraPanel className="p-3 sm:p-6 lg:p-8" bubbles>
       <div className="flex flex-wrap items-end justify-between gap-4 px-2 pt-2 sm:px-0 sm:pt-0">
         <div className="min-w-0">
-          <p className="text-[14px] font-medium text-ink/70">Flujo principal confirmado · doc §3</p>
+          <p className="text-[14px] font-medium text-ink/70">Flujo principal confirmado</p>
           <h2 className="mt-1 font-serif text-[28px] font-medium leading-tight text-ink sm:text-[34px]">Flujo operativo y postventa</h2>
         </div>
         <button

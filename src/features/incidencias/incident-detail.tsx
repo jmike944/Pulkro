@@ -77,7 +77,8 @@ function DesktopIncident({ incidentId }: { incidentId: string }) {
 
   return (
     <>
-      <SheetHeader className="gap-0 border-b border-hairline p-6 pr-14">
+      {/* 68px on the right keeps the title clear of the 44px close button */}
+      <SheetHeader className="gap-0 border-b border-hairline p-6 pr-[68px]">
         <div className="flex items-center gap-3">
           <TypeTile type={inc.type} size={36} />
           <span className="text-[13px] text-subtle tabular">
@@ -189,7 +190,7 @@ function PhoneIncident({
           className="mt-4"
           label="Incidencias abiertas"
           value={<AnimatedNumber value={left} />}
-          sub={left ? `${plural(left, "sigue abierta", "siguen abiertas")} en tu alcance.` : "Sin incidencias abiertas. ¡Todo en orden!"}
+          sub={left ? `${plural(left, "sigue abierta", "siguen abiertas")} en su alcance.` : "Sin incidencias abiertas. ¡Todo en orden!"}
         />
       </FlowScreen>
     );
@@ -201,6 +202,7 @@ function PhoneIncident({
       onOpenChange={handleOpenChange}
       title="Incidencia"
       description={`${inc.folio} · ${type.label}`}
+      dirty={isOpen && text.trim().length > 0}
       footer={
         <div className="space-y-2.5">
           {isOpen ? (
@@ -436,7 +438,7 @@ function ResolutionForm({ value, onChange }: { value: string; onChange: (v: stri
         placeholder="¿Qué se hizo y con quién se acordó?"
         className="min-h-[104px] rounded-[14px] text-[15px]"
       />
-      <p className="mt-2 text-[12.5px] text-subtle">Queda en la bitácora con tu nombre y la hora; si la orden estaba detenida, se libera.</p>
+      <p className="mt-2 text-[12.5px] text-subtle">Queda en la bitácora con su nombre y la hora; si la orden estaba detenida, se libera.</p>
     </motion.section>
   );
 }

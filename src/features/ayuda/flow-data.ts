@@ -41,7 +41,7 @@ export const FLOW_STEPS: FlowStep[] = [
     title: "Inicio: trabajo autorizado",
     who: "Administración recibe un servicio ya autorizado por el sistema comercial externo. La app no cotiza ni autoriza.",
     where: [{ label: "Nueva orden", href: "/ordenes/nueva" }],
-    rule: "El ciclo inicia con un servicio autorizado; captación, cotización y autorización comercial quedan fuera del alcance (doc §1).",
+    rule: "El ciclo inicia con un servicio autorizado; captación, cotización y autorización comercial quedan fuera del alcance.",
   },
   {
     n: 2,
@@ -63,12 +63,12 @@ export const FLOW_STEPS: FlowStep[] = [
       { label: "Agenda", href: "/agenda" },
       { label: "Equipo", href: "/equipo" },
     ],
-    rule: "Cuadrillas variables por servicio. Cada cambio de personal queda en el historial con fecha, usuario y motivo (doc §8).",
+    rule: "Cuadrillas variables por servicio. Cada cambio de personal queda en el historial con fecha, usuario y motivo.",
   },
   {
     n: 4,
     role: "Supervisor",
-    title: "Programar jornada(s) y recursos",
+    title: "Programar jornadas y recursos",
     who: "El supervisor define días, horarios y materiales. Un servicio puede durar uno o varios días.",
     where: [{ label: "Agenda", href: "/agenda" }],
     rule: "Una orden puede tener varias jornadas; cada una conserva su registro independiente y hay un único cierre definitivo.",
@@ -98,7 +98,7 @@ export const FLOW_STEPS: FlowStep[] = [
     title: "Ejecución y registro de incidencias",
     who: "Durante el trabajo se registran daños, faltantes de material o personal, trabajos adicionales, retrasos y quejas, con fotos.",
     where: [{ label: "Incidencias", href: "/incidencias" }],
-    rule: "Si hay una incidencia abierta, el supervisor decide si impide el cierre. Los criterios están PENDIENTES de definir (doc §8).",
+    rule: "Si hay una incidencia abierta, el supervisor decide si impide el cierre. Los criterios para decidirlo están por definir.",
   },
   {
     n: 8,
@@ -106,7 +106,7 @@ export const FLOW_STEPS: FlowStep[] = [
     title: "Registro de salida: hora + GPS",
     who: "Al terminar la jornada, el supervisor marca la salida.",
     where: [{ label: "Agenda", href: "/agenda" }],
-    rule: "La salida debe ser posterior a la entrada de la misma jornada. Las horas reales suman los intervalos de cada jornada (doc §5).",
+    rule: "La salida debe ser posterior a la entrada de la misma jornada. Las horas reales suman los intervalos de cada jornada.",
   },
   {
     n: 9,
@@ -122,9 +122,9 @@ export const FLOW_STEPS: FlowStep[] = [
     title: "¿Quedan jornadas pendientes?",
     who: "La app lo resuelve con la agenda de la orden: si quedan días programados, la orden pasa a «Jornada cerrada».",
     where: [{ label: "Órdenes", href: "/ordenes" }],
-    rule: "Varios días = registros independientes por jornada y un único cierre definitivo (doc §3).",
+    rule: "Varios días = registros independientes por jornada y un único cierre definitivo.",
     branches: [
-      { label: "Sí", to: 5, text: "Regresar al registro de entrada de la siguiente jornada." },
+      { label: "Sí", to: 5, text: "Volver al registro de entrada de la siguiente jornada." },
       { label: "No", to: 11, text: "La orden queda pendiente de validación." },
     ],
   },
@@ -176,7 +176,7 @@ export const FLOW_STEPS: FlowStep[] = [
       { label: "Indicadores", href: "/indicadores" },
       { label: "Bitácora", href: "/bitacora" },
     ],
-    rule: "Costos, productividad individual y consumo de materiales requieren captura adicional antes de prometerse (doc §5).",
+    rule: "Costos, productividad individual y consumo de materiales requieren captura adicional antes de prometerse.",
   },
 ];
 
