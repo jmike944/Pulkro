@@ -1,6 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
+import { isSameDay, parseISO } from "date-fns";
 import { toast } from "sonner";
 import { useAppStore, useCan, useCurrentUser, useJornadaBundle, useLookups, useNow } from "@/lib/hooks";
 import { GEO_SOURCE_LABEL, closureBlockers, jornadaMinutes, orderEvidence, orderMinutes, whatsappLink } from "@/lib/domain";
@@ -9,9 +10,7 @@ import type { Tone } from "@/lib/status";
 import { useUi } from "@/lib/ui-store";
 import type { Photo, User } from "@/lib/types";
 import { areaSuggestions } from "@/components/pk/photo-capture";
-import { KIND_LABEL, findPair, type EvidenceRequest } from "./evidence-data";
-
-export const REMINDER_PREFIX = "Recordatorio de evidencia";
+import { KIND_LABEL, findPair, jornadaReminders, type EvidenceRequest } from "./evidence-data";
 
 export type HistoryItem = { id: string; at: string; title: string; detail?: string; tone: Tone };
 
@@ -40,7 +39,8 @@ function buildModel(request: EvidenceRequest, bundle: Bundle, user: User, now: D
   const areaChoices = unique([...refAreas, ...areaSuggestions(order.serviceTypeId)]).slice(0, 6);
   const blocks = closureBlockers(order, jornadas, photos, incidents).filter((b) => b.severity === "block");
   const evidence = orderEvidence(order, jornadas, photos);
-  const reminders = jornada.log.filter((l) => l.text.startsWith(REMINDER_PREFIX));
+  // Audit-only (store `logReminder`): a reminder never goes into the jornada's bitácora.
+  const reminders = jornadaReminders(bundle.audit, jornada.id);
 
   const history: HistoryItem[] = [];
   if (jornada.checkIn)
@@ -91,6 +91,8 @@ function buildModel(request: EvidenceRequest, bundle: Bundle, user: User, now: D
     evidenceComplete: evidence.complete,
     readyToClose: !order.closure && blocks.length === 0 && (order.status === "pendiente_validacion" || order.status === "reabierta"),
     history,
+    /** A reminder for this jornada was already sent today: the button reads "Recordado hoy" until tomorrow. */
+    remindedToday: reminders.some((r) => isSameDay(parseISO(r.at), now)),
     roleWord: supervisor?.title.split(" de ")[0] || "Supervisor",
     supFirst: supervisor ? firstName(supervisor.name) : "supervisor",
     statusTone: (resolved ? "teal" : request.overdue ? "red" : "amber") as Tone,
@@ -107,23 +109,28 @@ export function useRequestModel(request: EvidenceRequest) {
   const canCapture = useCan("field.capture");
   const canClose = useCan("closure.authorize");
   const lk = useLookups();
-  const addJornadaNote = useAppStore((s) => s.addJornadaNote);
+  const logReminder = useAppStore((s) => s.logReminder);
   const router = useRouter();
   const now = useNow(60_000);
 
   const model = bundle ? buildModel(request, bundle, user, now, (id) => lk.users.get(id)?.name ?? "Usuario") : null;
 
-  /** Manual nudge (no automatic alerts in the MVP): opens WhatsApp and logs it in the jornada bitácora. */
+  /**
+   * Manual nudge (no automatic alerts in the MVP): records an audit-only reminder (`logReminder`: the Bitácora, never
+   * the jornada's own bitácora), then opens WhatsApp. A refusal is toasted by the store and nothing opens.
+   */
   const remind = () => {
-    if (!model?.supervisor?.phone) return false;
+    if (!model?.supervisor?.phone || model.remindedToday) return false;
     const { order, jornada, client, kindLabel, supFirst } = model;
+    const lastAudit = useAppStore.getState().audit[0];
+    logReminder(order.id, jornada.id, `Falta la foto ${kindLabel} · WhatsApp manual`);
+    if (useAppStore.getState().audit[0] === lastAudit) return false;
     const text =
       `Hola ${supFirst}, falta la foto ${kindLabel} de la jornada ${jornada.dayIndex} en ${order.folio} (${client.shortName}). ` +
       `¿Podría subirla en Pulkro Cuadrillas? Es requisito para validar el cierre. Gracias.`;
     window.open(whatsappLink(model.supervisor.phone, text), "_blank", "noopener,noreferrer");
-    addJornadaNote(jornada.id, `${REMINDER_PREFIX} enviado por ${user.name}`);
     toast.success(`Recordatorio para ${supFirst} iniciado`, {
-      description: "Se abrió WhatsApp y quedó en la bitácora de la jornada. Envío manual, sin confirmación de entrega.",
+      description: "Se abrió WhatsApp y el recordatorio quedó en la Bitácora. Envío manual, sin confirmación de entrega.",
     });
     return true;
   };

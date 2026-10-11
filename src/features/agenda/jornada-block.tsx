@@ -118,7 +118,7 @@ export function JornadaBlock({
               )}
               <span className="flex items-center gap-1">
                 {item.conflictIds.length > 0 && (
-                  <span title="Doble asignación" className={cn("inline-flex items-center gap-0.5 text-[11px] font-semibold", live ? "text-[#ffd48a]" : "text-amber-fg")}>
+                  <span title="Doble asignación" className={cn("inline-flex items-center gap-0.5 text-[11px] font-semibold", live ? "text-amber-glow" : "text-amber-fg")}>
                     <TriangleAlert className="size-3.5" />
                     {item.conflictIds.length}
                   </span>

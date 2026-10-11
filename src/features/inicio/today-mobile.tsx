@@ -15,6 +15,7 @@ import { AuroraStat, BigButton, MobileGreeting, MobileRow, NextStepCard } from "
 import { staggerContainer } from "@/components/pk/motion";
 import { MobileToolbar, useUnitScope } from "@/components/shell/header-tools";
 import { useCanSeeRoute } from "@/components/shell/use-can-see-route";
+import { jornadaReminders } from "@/features/evidencias/evidence-data";
 import { usePendingItems, type PendingItem } from "@/features/pendientes/use-pending-items";
 import { AttentionRow, ClosureBlockers, JornadaRow, MoreLink, PipelineTiles, SectionTitle, ServicesHero } from "./today-parts";
 import { useAttention, useHoyStats, useIncidentYear } from "./use-hoy-stats";
@@ -30,7 +31,7 @@ const ATTENTION_MAX = 5;
  */
 export function TodayMobile() {
   const data = useScopedData();
-  const { user, orders, jornadas, photos, incidents, reports } = data;
+  const { user, orders, jornadas, photos, incidents, reports, audit } = data;
   const lk = useLookups();
   const now = useNow(30_000);
   const offline = useIsOffline();
@@ -115,7 +116,7 @@ export function TodayMobile() {
       )}
 
       {card?.type === "live" && <LiveCard j={card.j} now={now} lk={lk} orders={orders} photosCount={photoCount.get(card.j.id)?.antes ?? 0} />}
-      {card?.type === "item" && <ItemCard it={card.it} lk={lk} data={{ orders, jornadas, incidents, reports }} />}
+      {card?.type === "item" && <ItemCard it={card.it} lk={lk} data={{ orders, jornadas, incidents, reports, audit }} />}
 
       <section className="mt-8">
         <SectionTitle title="Jornadas de hoy" count={today.length} href={dayLink.href} linkLabel={dayLink.label} />
@@ -240,7 +241,7 @@ function ItemCard({
 }: {
   it: PendingItem;
   lk: ReturnType<typeof useLookups>;
-  data: Pick<ReturnType<typeof useScopedData>, "orders" | "jornadas" | "incidents" | "reports">;
+  data: Pick<ReturnType<typeof useScopedData>, "orders" | "jornadas" | "incidents" | "reports" | "audit">;
 }) {
   const o = data.orders.find((x) => x.id === it.orderId);
   const c = o ? lk.clients.get(o.clientId) : undefined;
@@ -248,8 +249,8 @@ function ItemCard({
   const jornadaId = it.href.startsWith("/jornada/") ? it.href.split("/")[2] : undefined;
   const j = jornadaId ? data.jornadas.find((x) => x.id === jornadaId) : undefined;
 
-  // A manual nudge from the office (logged by Evidencias → "Recordar") becomes the card's author.
-  const nudge = j?.log.filter((l) => /recordatorio/i.test(l.text)).at(-1);
+  // A manual nudge from the office (Evidencias → "Recordar", an audit-only reminder, newest first) becomes the card's author.
+  const nudge = j ? jornadaReminders(data.audit, j.id)[0] : undefined;
   const author = nudge ? lk.users.get(nudge.by) : undefined;
 
   const copy: Record<PendingItem["kind"], { msg: React.ReactNode; cta: string; value?: React.ReactNode }> = {

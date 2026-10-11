@@ -29,7 +29,8 @@ export function DrillSheet({ drill, onClose }: { drill: Drill | null; onClose: (
         side={isDesktop ? "right" : "bottom"}
         className={cn("gap-0 p-0", isDesktop ? "w-full sm:max-w-[480px]" : "max-h-[88dvh] rounded-t-[24px]")}
       >
-        <SheetHeader className="border-b border-hairline p-6 pr-12">
+        {/* 68px on the right keeps the title clear of the 44px close button */}
+        <SheetHeader className="border-b border-hairline p-6 pr-[68px]">
           <SheetTitle className="font-serif text-[26px] font-medium leading-tight text-ink">{drill?.title}</SheetTitle>
           <SheetDescription className="text-[14px] text-subtle">
             {drill?.description} · {plural(orders.length, "orden", "órdenes")}
