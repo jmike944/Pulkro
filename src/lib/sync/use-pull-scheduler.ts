@@ -3,6 +3,7 @@
 import { useEffect } from "react";
 import { getSupabaseBrowserClient, isSupabaseConfigured } from "@/lib/supabase/client";
 import { isOffline, useAppStore } from "@/lib/store";
+import { syncFromDevice } from "@/lib/device-storage";
 import { flagReauth, verifyAccount } from "./pull";
 
 const INTERVAL_MS = 60_000;
@@ -23,9 +24,12 @@ export function usePullScheduler() {
   useEffect(() => {
     if (!hydrated || !account || !isSupabaseConfigured) return;
     const pull = (manual = false) => {
-      // Unsent changes first (a no-op when nothing is ready), then the server's.
-      void useAppStore.getState().processSyncQueue();
-      void useAppStore.getState().pullNow({ manual });
+      // What other tabs of this account wrote while this one was in the background comes first (lib/device-storage), then
+      // the unsent changes (a no-op when nothing is ready), then the server's.
+      void syncFromDevice().finally(() => {
+        void useAppStore.getState().processSyncQueue();
+        void useAppStore.getState().pullNow({ manual });
+      });
     };
     const visible = () => document.visibilityState === "visible";
 

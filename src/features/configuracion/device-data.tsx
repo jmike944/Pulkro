@@ -146,6 +146,12 @@ export function DeviceData() {
                 </Button>
               )}
             </div>
+            {persisted === false && (
+              <p role="note" className="mt-3 rounded-[14px] bg-amber-soft px-4 py-3 text-[13.5px] leading-snug text-amber-olive-ink">
+                Los datos sin enviar podrían borrarse si el teléfono se queda sin espacio o si no abre la app en varios días. Instale la app
+                en el teléfono (en iPhone: Compartir › Agregar a pantalla de inicio) y envíe lo capturado en cuanto tenga conexión.
+              </p>
+            )}
           </>
         ) : (
           <p className="rounded-[14px] bg-soft px-4 py-3 text-[13.5px] text-subtle">Este navegador no informa el espacio usado.</p>

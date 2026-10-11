@@ -23,11 +23,14 @@ import { Button } from "@/components/ui/button";
  * keeps its weight. Either way it is the same button and opens the sync sheet.
  */
 export function SyncChip({ collapsed, compact, slim }: { collapsed?: boolean; compact?: boolean; slim?: boolean }) {
-  const { offline, pending, syncing, lastSyncAt, pulling, pullInitial, pullError, needsReauth } = useSyncSummary();
+  const { offline, pending, syncing, lastSyncAt, pulling, pullInitial, pullError, needsReauth, saveError } = useSyncSummary();
   const setOpen = useUi((s) => s.setSyncOpen);
   useNow(30_000);
-  // Account sessions add the pull: first download, a failed update, a session to renew.
-  const state = offline
+  // Account sessions add the pull: first download, a failed update, a session to renew. A device that cannot store the
+  // data comes first: captures would be lost if the app closed.
+  const state = saveError
+    ? "unsaved"
+    : offline
     ? "offline"
     : needsReauth
       ? "reauth"
@@ -38,7 +41,7 @@ export function SyncChip({ collapsed, compact, slim }: { collapsed?: boolean; co
           : pullError
             ? "stale"
             : "ok";
-  const warn = state === "offline" || state === "reauth" || state === "stale";
+  const warn = state === "offline" || state === "reauth" || state === "stale" || state === "unsaved";
   const busy = state === "syncing" || state === "downloading";
   const row = !!slim && state === "ok";
   // Collapsed, only the dot shows: the name carries the state. Otherwise the visible text names the button.
@@ -49,6 +52,7 @@ export function SyncChip({ collapsed, compact, slim }: { collapsed?: boolean; co
     downloading: "Descargando datos de su cuenta",
     stale: `Sin actualizar, ${fmtAgo(lastSyncAt)}`,
     reauth: "Vuelva a entrar, sin sincronizar",
+    unsaved: "Sin guardar en el dispositivo",
   }[state];
   return (
     <button
@@ -124,6 +128,12 @@ export function SyncChip({ collapsed, compact, slim }: { collapsed?: boolean; co
                 {!compact && <span className="truncate text-subtle">sin sincronizar</span>}
               </>
             )}
+            {state === "unsaved" && (
+              <>
+                <span className="shrink-0 font-semibold text-ink">Sin guardar</span>
+                {!compact && <span className="truncate text-subtle">libere espacio</span>}
+              </>
+            )}
           </motion.span>
         </AnimatePresence>
       )}
@@ -137,11 +147,12 @@ export function SyncChip({ collapsed, compact, slim }: { collapsed?: boolean; co
  * only shows once the queue has been busy for a moment instead of flashing after every capture.
  */
 export function MobileSyncPill({ hidden }: { hidden?: boolean }) {
-  const { offline, pending, syncing, queue } = useSyncSummary();
+  const { offline, pending, syncing, queue, saveError } = useSyncSummary();
   const setOpen = useUi((s) => s.setSyncOpen);
   const count = pending.length + syncing.length;
   const failed = queue.some((q) => q.state === "error");
   const busy = !offline && count > 0;
+  const unsaved = !!saveError;
   const [lingers, setLingers] = useState(false);
   useEffect(() => {
     if (!busy) return;
@@ -151,10 +162,18 @@ export function MobileSyncPill({ hidden }: { hidden?: boolean }) {
       setLingers(false);
     };
   }, [busy]);
-  const show = !hidden && (offline || (busy && (lingers || failed)));
-  const warn = offline || failed;
-  const label = offline ? "Sin conexión" : failed ? "Error de envío" : "Enviando";
-  const detail = offline ? (count ? `${plural(count, "registro", "registros")} por enviar` : "se guarda en el dispositivo") : failed ? `${plural(count, "registro", "registros")} sin enviar` : plural(count, "registro", "registros");
+  const show = !hidden && (unsaved || offline || (busy && (lingers || failed)));
+  const warn = unsaved || offline || failed;
+  const label = unsaved ? "Sin guardar" : offline ? "Sin conexión" : failed ? "Error de envío" : "Enviando";
+  const detail = unsaved
+    ? "el teléfono no tiene espacio"
+    : offline
+      ? count
+        ? `${plural(count, "registro", "registros")} por enviar`
+        : "se guarda en el dispositivo"
+      : failed
+        ? `${plural(count, "registro", "registros")} sin enviar`
+        : plural(count, "registro", "registros");
 
   return (
     <div role="status" aria-live="polite" className="pointer-events-none absolute inset-x-0 bottom-full flex justify-center px-4 pb-2">
@@ -246,7 +265,7 @@ export function SyncSheet() {
 }
 
 function SyncPanel() {
-  const { offline, queue, lastSyncAt, account, lastPullAt, pulling, pullInitial, pullError, needsReauth } = useSyncSummary();
+  const { offline, queue, lastSyncAt, account, lastPullAt, pulling, pullInitial, pullError, needsReauth, saveError } = useSyncSummary();
   const pullNow = useAppStore((s) => s.pullNow);
   const forced = useAppStore((s) => s.sync.forcedOffline);
   const browserOffline = useAppStore((s) => s.sync.browserOffline);
@@ -260,7 +279,9 @@ function SyncPanel() {
   useNow(30_000); // keeps "hace 2 min" honest while the sheet stays open
   const switchId = useId();
 
-  const status: { tone: "amber" | "red" | "blue"; icon: React.ReactNode; title: string; detail: string } = offline
+  const status: { tone: "amber" | "red" | "blue"; icon: React.ReactNode; title: string; detail: string } = saveError
+    ? { tone: "red" as const, icon: <TriangleAlert className="size-5" />, title: "No se pudo guardar en el dispositivo", detail: saveError }
+    : offline
     ? {
         tone: "amber" as const,
         icon: <WifiOff className="size-5" />,

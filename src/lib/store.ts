@@ -32,8 +32,9 @@ import {
 import { plural } from "./format";
 import { DONE_STATUSES, OPEN_STATUSES } from "./status";
 import { DEMO_ENABLED, DEMO_SIGN_IN } from "./demo";
-import { clearPhotoFiles, deletePhotoFile } from "./photo-store";
+import { clearPhotoFiles, deletePhotoFile, evictKeptPhotos } from "./photo-store";
 import { createDeviceStorage, flushWrite, ownerOf, registerTab } from "./device-storage";
+import { mergeSnapshots, type Snapshot } from "./device-merge";
 import { requestPull, verifyAccount, type PullRequest, type PullState } from "./sync/pull";
 import { breakdownArg, daysArg, diffPatch, localDay, materialsArg, orderPatch, rpcOp, type MutationRpc, type RpcArgs } from "./sync/ops";
 import { discardItems, pushQueue, releaseBlobs, resumeAfterReconnect, retryItems } from "./sync/push";
@@ -196,6 +197,11 @@ type SyncSlice = {
   queue: SyncItem[];
   lastSyncAt: string;
   processing: boolean;
+  /**
+   * The device could not store the data (storage full…): what this tab shows lives only in its memory until a write works
+   * again. Not persisted; the shell warns while it is set.
+   */
+  saveError?: string;
 };
 
 export type AppState = DataSnapshot & {
@@ -334,8 +340,17 @@ export const unsentIds = (queue: SyncItem[]) => queue.filter((q) => q.state !== 
 
 const signedOutSession = (): Session => ({ signedIn: false, userId: DEMO_USER_BY_ROLE.supervisor, unitFilter: "all", mode: "demo" });
 
-/** Items that were mid-upload when the app closed go back to "pendiente" so the engine retries them. */
-const unstick = (queue: SyncItem[]) => queue.map((q) => (q.state === "sincronizando" ? { ...q, state: "pendiente" as const } : q));
+/** Items that were mid-upload when the app closed go back to "pendiente" so the engine retries them (same array when none was). */
+const unstick = (queue: SyncItem[]) =>
+  queue.some((q) => q.state === "sincronizando") ? queue.map((q) => (q.state === "sincronizando" ? { ...q, state: "pendiente" as const } : q)) : queue;
+
+/** Asks the browser to keep this site's storage (the unsent captures are the only copy until they are sent). Once per tab. */
+let persistAsked = false;
+export function requestPersistentStorage() {
+  if (persistAsked || typeof navigator === "undefined") return;
+  persistAsked = true;
+  void navigator.storage?.persist?.().catch(() => undefined);
+}
 
 export const useAppStore = create<AppState>()(
   persist(
@@ -616,6 +631,7 @@ export const useAppStore = create<AppState>()(
           // Written now; once committed, the other open tabs are told the device changed hands (lib/device-storage).
           void flushWrite();
           void clearPhotoFiles();
+          requestPersistentStorage();
           // First load of the account's catalogs and orders in scope, then the incremental cursors (sync/pull.ts).
           setTimeout(() => void getState().pullNow({ manual: true }), 0);
         },
@@ -1744,7 +1760,7 @@ export const useAppStore = create<AppState>()(
       partialize: (s) => {
         const out: Record<string, unknown> = {};
         for (const k of DATA_KEYS) out[k] = s[k];
-        out.sync = { ...s.sync, queue: unstick(s.sync.queue), processing: false, browserOffline: false };
+        out.sync = { ...s.sync, queue: unstick(s.sync.queue), processing: false, browserOffline: false, saveError: undefined };
         return out as Partial<AppState>;
       },
       // A seed version bump reseeds the demo. An account's data (and its unsent queue) is never thrown away for it.
@@ -1765,6 +1781,27 @@ registerTab({
       session: signedOutSession(),
       sync: { ...st.sync, queue: [], processing: false },
     })),
+  // Another tab of this account wrote the device: its records and queue items join this tab's (whose own changes stay).
+  adopt: (theirs, base) =>
+    useAppStore.setState((cur) => {
+      const merged = mergeSnapshots(base, cur as unknown as Snapshot, theirs) as unknown as Partial<AppState>;
+      const sync = { ...cur.sync, ...(merged.sync ?? {}), processing: cur.sync.processing, browserOffline: cur.sync.browserOffline, saveError: cur.sync.saveError };
+      return { ...merged, sync: { ...sync, queue: unstick(sync.queue) } };
+    }),
+  saveFailed: (error) => {
+    if (error === null) {
+      useAppStore.setState((st) => (st.sync.saveError ? { sync: { ...st.sync, saveError: undefined } } : st));
+      toast.dismiss("pk-save-error");
+      return;
+    }
+    const full = !!error && typeof error === "object" && (error as { name?: string }).name === "QuotaExceededError";
+    const message = full
+      ? "El almacenamiento del teléfono está lleno: libere espacio. Lo capturado sigue en esta pantalla, pero se perderá si se cierra la app."
+      : "No se pudieron guardar los datos en el dispositivo. Lo capturado sigue en esta pantalla: no cierre la app mientras se reintenta.";
+    useAppStore.setState((st) => (st.sync.saveError === message ? st : { sync: { ...st.sync, saveError: message } }));
+    toast.error("No se pudo guardar en el dispositivo", { id: "pk-save-error", description: message, duration: Infinity });
+  },
+  evict: () => evictKeptPhotos(),
 });
 
 let booting: Promise<void> | undefined;
@@ -1786,8 +1823,10 @@ async function boot() {
   // Sessions saved before account sign-in existed have no mode: they are demo sessions.
   useAppStore.setState((st) => ({
     session: { ...st.session, mode: st.session.mode === "supabase" ? "supabase" : "demo" },
-    sync: { ...st.sync, processing: false, queue: unstick(st.sync.queue) },
+    sync: { ...st.sync, processing: false, saveError: undefined, queue: unstick(st.sync.queue) },
   }));
+  // An account's unsent captures are the only copy until they are sent: ask the browser not to evict them.
+  if (useAppStore.getState().session.mode === "supabase") requestPersistentStorage();
   useAppStore.getState().ensureSeeded();
   useAppStore.setState({ hydrated: true });
   if (typeof navigator !== "undefined") useAppStore.getState().setBrowserOffline(!navigator.onLine);
