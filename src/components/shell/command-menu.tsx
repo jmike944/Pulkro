@@ -128,7 +128,13 @@ export function CommandMenu() {
     const onKey = (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") {
         e.preventDefault();
-        setOpen(!useUi.getState().commandOpen);
+        const wasOpen = useUi.getState().commandOpen;
+        setOpen(!wasOpen);
+        // Closing with the shortcut must reset like every other close path (Esc, Cancelar, a result).
+        if (wasOpen) {
+          setQuery("");
+          setSelected("");
+        }
       }
     };
     window.addEventListener("keydown", onKey);
