@@ -11,6 +11,9 @@
  *  - Scope gain: an order new to the device, or whose scope_changed_at is newer than the orders cursor, and the order of any
  *    child row whose parent the device lacks, gets its subtree fetched by order_id (queued in `pull.subtrees`, persisted,
  *    so an interrupted pull resumes). Referenced clients, sites, people, workers… the device lacks are fetched by id.
+ *  - A subtree read in full replaces what the device has of that order (merge.ts `whole`): records whose operation was
+ *    discarded from the queue, or that the server refused, go. Catalog / people records whose edit was discarded are read
+ *    again by id (`pull.refetch`).
  *  - Scope loss: sync_reconcile tells which local ids are still visible; the rest go (orders with their records).
  *  - Offline → nothing is tried; network failure → the data stays, retried later; an expired session, no session or another
  *    account's session in the browser → stop, flag `session.needsReauth` ("Vuelva a entrar"), keep everything on the device;
@@ -23,7 +26,7 @@ import { endSessionOnDevice, getSupabaseBrowserClient, isSupabaseConfigured, typ
 import { OPEN_STATUSES } from "@/lib/status";
 import type { DataSnapshot, Role } from "@/lib/types";
 import { mapProfile } from "./map";
-import { dropRows, mergeRows, missingRefs, pendingIndex, type Drops } from "./merge";
+import { dropRows, mergeRows, missingRefs, pendingIndex, type CatalogTable, type Drops } from "./merge";
 import { usePullStatus } from "./status";
 import {
   CATALOG_TABLES,
@@ -61,8 +64,15 @@ export type PullState = {
   /** Orders whose whole subtree must still be fetched (scope gain, first load, held back while they had unsent work). */
   subtrees: string[];
   lastPullAt?: string;
+  /** When the last successful pull started: everything the server had committed before this moment is on the device. */
+  lastPullFrom?: string;
   reconciledAt?: string;
   ordersReconciledAt?: string;
+  /**
+   * Catalog / people records to read again by id (an edit of them was discarded from the queue): the server's row replaces
+   * the device's, and a record the server does not return is removed.
+   */
+  refetch?: Partial<Record<CatalogTable, string[]>>;
 };
 
 /* ───────────── tuning ───────────── */
@@ -203,7 +213,8 @@ async function commit(ctx: Ctx, batch: RowsByTable, opts: CommitOptions = {}) {
     }
     const pull = st.session.pull!;
     const pending = pendingIndex(st.sync.queue);
-    const merged = mergeRows(dataOf(st), combined, pending);
+    // A subtree read in full is the server's whole truth for that order (merge.ts: `whole`).
+    const merged = mergeRows(dataOf(st), combined, pending, { whole: opts.subtreesDone });
     const subtrees = new Set(pull.subtrees);
     const done = new Set(opts.subtreesDone ?? []);
     for (const id of done) if (!merged.held.has(id)) subtrees.delete(id);
@@ -442,7 +453,45 @@ async function checkSession(ctx: Ctx): Promise<Row<"profiles">> {
   return me;
 }
 
+/** Catalog / people records queued for a fresh read (`pull.refetch`): replaced by the server's row, or removed. */
+async function refetchRecords(ctx: Ctx) {
+  const want = ctx.store.getState().session.pull?.refetch;
+  if (!want || !Object.values(want).some((ids) => ids?.length)) return;
+  const batch: RowsByTable = {};
+  const gone: Drops = {};
+  for (const t of CATALOG_TABLES) {
+    const ids = (want[t] ?? []).filter(isUuid);
+    if (!ids.length) continue;
+    const rows: RowOf<SyncTable>[] = [];
+    for (let i = 0; i < ids.length; i += ID_CHUNK) {
+      rows.push(...(await run<RowOf<SyncTable>[]>(ctx.db.from(t).select(COLUMNS[t]).in("id", ids.slice(i, i + ID_CHUNK)))));
+    }
+    (batch as Record<string, unknown[]>)[t] = rows;
+    const got = new Set(rows.map((r) => (r as { id: string }).id));
+    const missing = ids.filter((id) => !got.has(id));
+    if (missing.length) gone[t] = missing;
+  }
+  ctx.store.setState((st) => {
+    if (!sameSession(st, ctx.userId)) return st;
+    const pending = pendingIndex(st.sync.queue);
+    const merged = mergeRows(dataOf(st), batch, pending);
+    const me = st.users.find((u) => u.id === ctx.userId);
+    const dropped = dropRows(merged.data, gone, pending, new Set([ctx.userId, me?.unitId ?? ""]));
+    const pull = st.session.pull!;
+    const rest: PullState["refetch"] = {};
+    for (const t of CATALOG_TABLES) {
+      const left = (pull.refetch?.[t] ?? []).filter((id) => !(want[t] ?? []).includes(id));
+      if (left.length) rest[t] = left;
+    }
+    return {
+      ...(merged.changed || dropped.changed ? dropped.data : {}),
+      session: { ...st.session, pull: { ...pull, refetch: rest } },
+    };
+  });
+}
+
 async function cycle(store: PullStore, opts: { full?: boolean }) {
+  const startedAt = new Date().toISOString();
   const st0 = store.getState();
   const client = getSupabaseBrowserClient();
   const ctx: Ctx = { store, client, db: client as unknown as LooseClient, userId: st0.session.userId };
@@ -488,6 +537,7 @@ async function cycle(store: PullStore, opts: { full?: boolean }) {
   } else {
     for (const t of SYNC_TABLES) await pullTable(ctx, t);
   }
+  await refetchRecords(ctx);
   await pullSubtrees(ctx);
 
   const after = store.getState().session.pull!;
@@ -499,7 +549,9 @@ async function cycle(store: PullStore, opts: { full?: boolean }) {
   }
 
   store.setState((st) =>
-    sameSession(st, ctx.userId) ? { session: { ...st.session, pull: { ...st.session.pull!, lastPullAt: new Date().toISOString() } } } : st,
+    sameSession(st, ctx.userId)
+      ? { session: { ...st.session, pull: { ...st.session.pull!, lastPullAt: new Date().toISOString(), lastPullFrom: startedAt } } }
+      : st,
   );
 }
 
@@ -602,8 +654,11 @@ let refreshTried = 0;
 const isNoProfileRefusal = (error: unknown) =>
   typeof error === "object" && error !== null && (error as { status?: unknown }).status === 403 && !(error as { code?: unknown }).code;
 
-/** "ok" → the session is alive again; "dead" → sign in again; "inactive" → no active profile; "offline" → try later. */
-async function tryRefresh(store: PullStore): Promise<"ok" | "dead" | "inactive" | "offline"> {
+/**
+ * "ok" → the session is alive again; "dead" → sign in again; "inactive" → no active profile; "offline" → try later. Shared
+ * with the push engine (one attempt per minute for both).
+ */
+export async function tryRefresh(store: PullStore): Promise<"ok" | "dead" | "inactive" | "offline"> {
   // At most one refresh attempt per minute (a server that keeps answering 401 must not loop).
   if (Date.now() - refreshTried < 60_000) return "dead";
   refreshTried = Date.now();
@@ -630,7 +685,7 @@ export function flagReauth(store: PullStore, { noAccess = false }: { noAccess?: 
 }
 
 /** A deactivated (or deleted) profile: block the app first, then end the Supabase session on this device. */
-async function endInactive(store: PullStore) {
+export async function endInactive(store: PullStore) {
   flagReauth(store, { noAccess: true });
   await endSessionOnDevice({ timeoutMs: 5000 });
 }

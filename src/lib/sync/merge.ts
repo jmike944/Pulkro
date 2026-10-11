@@ -9,6 +9,14 @@
  *
  * Child rows whose parent is not on the device (a check-in of an unknown jornada, a share of an unknown report…) are not
  * applied: their order is reported in `orphans` and the engine fetches that order's whole subtree.
+ *
+ * The server's truth replaces the device's guesses (write path, push.ts):
+ *  - a Bitácora line the server wrote for an operation (audit_log.op_id) replaces the lines this device wrote for it;
+ *  - crew history and case timeline entries written here have no server id: once the order has no unsent work, the
+ *    server's entries (which include the ones this device sent) replace them as they arrive;
+ *  - `whole`: orders whose batch is their complete server subtree (subtree fetches). Whatever of such an order is only on
+ *    the device — a record whose operation was discarded, a check-in the server refused — goes, and an order the server
+ *    did not return goes with its records. Orders with unsent work are held as always.
  */
 import type { DataSnapshot, Order, SyncItem } from "@/lib/types";
 import {
@@ -154,8 +162,16 @@ const CATALOG_ENTITY: Partial<Record<SyncTable, string>> = {
   units: "catalogo",
 };
 
+/** Entries written on this device (no server id yet) give way to the server's list once the order has no unsent work. */
+const serverOnly = <T extends { id?: string }>(list: T[]) => (list.some((x) => !x.id) ? list.filter((x) => x.id) : list);
+
+export type MergeOptions = {
+  /** Orders whose rows in this batch are their whole server subtree (the device keeps nothing else of them). */
+  whole?: Iterable<string>;
+};
+
 /** Applies `batch` (any tables, applied parents first) to `data`. */
-export function mergeRows(data: DataSnapshot, batch: RowsByTable, pending: PendingIndex = NO_PENDING): MergeResult {
+export function mergeRows(data: DataSnapshot, batch: RowsByTable, pending: PendingIndex = NO_PENDING, opts: MergeOptions = {}): MergeResult {
   const w = new Work(data);
   const added = new Set<string>();
   const held = new Set<string>();
@@ -222,7 +238,7 @@ export function mergeRows(data: DataSnapshot, batch: RowsByTable, pending: Pendi
       case "crew_changes":
         for (const r of batch.crew_changes!) {
           if (!orderOk(r.order_id)) continue;
-          patchOrder(r.order_id, (o) => ({ ...o, crewHistory: upsertById(o.crewHistory, mapCrewChange(r)) }));
+          patchOrder(r.order_id, (o) => ({ ...o, crewHistory: upsertById(serverOnly(o.crewHistory), mapCrewChange(r)) }));
         }
         break;
       case "jornada_checks":
@@ -261,7 +277,7 @@ export function mergeRows(data: DataSnapshot, batch: RowsByTable, pending: Pendi
             orphans.add(r.order_id);
             continue;
           }
-          w.put("cases", { ...c, timeline: upsertById(c.timeline, mapCaseEvent(r)) });
+          w.put("cases", { ...c, timeline: upsertById(serverOnly(c.timeline), mapCaseEvent(r)) });
         }
         break;
       case "photos":
@@ -306,7 +322,8 @@ export function mergeRows(data: DataSnapshot, batch: RowsByTable, pending: Pendi
           if (s.token !== r.token) w.put("surveys", { ...s, token: r.token });
         }
         break;
-      case "audit_log":
+      case "audit_log": {
+        const ops = new Set<string>();
         for (const r of batch.audit_log!) {
           // A line of an order the device does not have: fetch that order (it changed, so it matters now).
           if (r.order_id && !w.has("orders", r.order_id)) {
@@ -314,12 +331,85 @@ export function mergeRows(data: DataSnapshot, batch: RowsByTable, pending: Pendi
             continue;
           }
           w.put("audit", mapAudit(r));
+          if (r.op_id) ops.add(r.op_id);
         }
+        // The server's lines of an operation replace the ones this device wrote for it.
+        if (ops.size) for (const a of data.audit) if (a.opId && ops.has(a.opId)) w.remove("audit", a.id);
         break;
+      }
     }
   }
 
+  const whole = [...(opts.whole ?? [])].filter((id) => !pending.orders.has(id));
+  if (whole.length) replaceSubtrees(w, batch, whole);
+
   return finish(data, w, pending, { added, held, orphans });
+}
+
+/** Removes an order and every record that hangs from it (Bitácora lines included). */
+function removeOrder(w: Work, orderId: string) {
+  w.remove("orders", orderId);
+  for (const key of ["jornadas", "photos", "incidents", "reports", "cases", "surveys", "audit"] as const) {
+    for (const x of w.list(key) as { id: string; orderId?: string }[]) if (x.orderId === orderId) w.remove(key, x.id);
+  }
+}
+
+/**
+ * `whole` orders (not held): the batch holds everything the server has of them, so the device keeps exactly that. Nested
+ * lists lose the entries the batch does not have; records the batch does not have go; an order the batch does not have goes.
+ */
+function replaceSubtrees(w: Work, batch: RowsByTable, whole: string[]) {
+  const ids = <R>(rows: R[] | undefined, pick: (r: R) => string) => new Set((rows ?? []).map(pick));
+  const orders = ids(batch.orders, (r) => r.id);
+  const jornadas = ids(batch.jornadas, (r) => r.id);
+  const crew = ids(batch.crew_changes, (r) => r.id);
+  const checks = ids(batch.jornada_checks, (r) => `${r.jornada_id}:${r.kind}`);
+  const notes = ids(batch.jornada_notes, (r) => r.id);
+  const incidents = ids(batch.incidents, (r) => r.id);
+  const cases = ids(batch.post_sale_cases, (r) => r.id);
+  const events = ids(batch.case_events, (r) => r.id);
+  const photos = ids(batch.photos, (r) => r.id);
+  const reports = ids(batch.reports, (r) => r.id);
+  const shares = ids(batch.report_shares, (r) => r.id);
+  const surveys = ids(batch.surveys, (r) => r.id);
+  const closures = new Map<string, Order["closure"]>();
+  for (const r of batch.order_closures ?? []) closures.set(r.order_id, newerClosure(closures.get(r.order_id), mapClosure(r)));
+  const keep = <T extends { id?: string }>(list: T[], known: Set<string>) => (list.every((x) => x.id && known.has(x.id)) ? list : list.filter((x) => x.id && known.has(x.id)));
+
+  for (const orderId of whole) {
+    if (!orders.has(orderId)) {
+      if (w.has("orders", orderId)) removeOrder(w, orderId);
+      continue;
+    }
+    const o = w.get("orders", orderId);
+    if (o) w.put("orders", { ...o, crewHistory: keep(o.crewHistory, crew), closure: closures.get(orderId) });
+    for (const j of w.list("jornadas")) {
+      if (j.orderId !== orderId) continue;
+      if (!jornadas.has(j.id)) {
+        w.remove("jornadas", j.id);
+        continue;
+      }
+      w.put("jornadas", {
+        ...j,
+        checkIn: checks.has(`${j.id}:entrada`) ? j.checkIn : undefined,
+        checkOut: checks.has(`${j.id}:salida`) ? j.checkOut : undefined,
+        log: keep(j.log, notes),
+      });
+    }
+    for (const p of w.list("photos")) if (p.orderId === orderId && !photos.has(p.id)) w.remove("photos", p.id);
+    for (const i of w.list("incidents")) if (i.orderId === orderId && !incidents.has(i.id)) w.remove("incidents", i.id);
+    for (const c of w.list("cases")) {
+      if (c.orderId !== orderId) continue;
+      if (!cases.has(c.id)) w.remove("cases", c.id);
+      else w.put("cases", { ...c, timeline: keep(c.timeline, events) });
+    }
+    for (const r of w.list("reports")) {
+      if (r.orderId !== orderId) continue;
+      if (!reports.has(r.id)) w.remove("reports", r.id);
+      else w.put("reports", { ...r, shares: keep(r.shares, shares) });
+    }
+    for (const s of w.list("surveys")) if (s.orderId === orderId && !surveys.has(s.id)) w.remove("surveys", s.id);
+  }
 }
 
 /** Derived fields and array order, then the new snapshot. */
@@ -373,7 +463,7 @@ function finish(
 
 /* ───────────── scope loss ───────────── */
 
-export type Drops = Partial<Record<"orders" | "units" | "profiles" | "workers" | "clients" | "sites", string[]>>;
+export type Drops = Partial<Record<"orders" | "units" | "profiles" | "workers" | "clients" | "sites" | "service_types" | "materials", string[]>>;
 
 /**
  * Removes what the account no longer sees (sync_reconcile): orders with everything that hangs from them, and catalog / people
@@ -390,7 +480,9 @@ export function dropRows(data: DataSnapshot, drops: Drops, pending: PendingIndex
   const workers = ids("workers", "catalogo");
   const clients = ids("clients", "catalogo");
   const sites = ids("sites", "catalogo");
-  const total = orderIds.size + units.size + users.size + workers.size + clients.size + sites.size;
+  const serviceTypes = ids("service_types", "catalogo");
+  const materials = ids("materials", "catalogo");
+  const total = orderIds.size + units.size + users.size + workers.size + clients.size + sites.size + serviceTypes.size + materials.size;
   if (!total) return { data, changed: false, ...none };
   const byOrder = <T extends { orderId?: string }>(xs: T[]) => (orderIds.size ? xs.filter((x) => !x.orderId || !orderIds.has(x.orderId)) : xs);
   const byId = <T extends { id: string }>(xs: T[], gone: Set<string>) => (gone.size ? xs.filter((x) => !gone.has(x.id)) : xs);
@@ -413,6 +505,8 @@ export function dropRows(data: DataSnapshot, drops: Drops, pending: PendingIndex
       c.siteIds.every((id) => siteIds.has(id)) ? c : { ...c, siteIds: c.siteIds.filter((id) => siteIds.has(id)) },
     ),
     sites: nextSites,
+    serviceTypes: byId(data.serviceTypes, serviceTypes),
+    materials: byId(data.materials, materials),
   };
   return { data: next, changed: true, ...none };
 }
