@@ -250,13 +250,14 @@ export function useSyncSummary() {
   const pullError = usePullStatus((s) => s.error);
   // The device could not store the data (storage full…): captures live only in memory until a write works again.
   const saveError = useAppStore((s) => s.sync.saveError);
+  const saveFull = useAppStore((s) => !!s.sync.saveFull);
   const offline = useIsOffline();
   return useMemo(() => {
     const pending = queue.filter((q) => q.state === "pendiente" || q.state === "error");
     const syncing = queue.filter((q) => q.state === "sincronizando");
     const lastSyncAt = account ? (lastPullAt ?? queueSyncAt) : queueSyncAt;
-    return { offline, pending, syncing, lastSyncAt, queue, account, lastPullAt, pulling: account && pulling, pullInitial, pullError: account ? pullError : undefined, needsReauth, saveError };
-  }, [queue, queueSyncAt, offline, account, lastPullAt, pulling, pullInitial, pullError, needsReauth, saveError]);
+    return { offline, pending, syncing, lastSyncAt, queue, account, lastPullAt, pulling: account && pulling, pullInitial, pullError: account ? pullError : undefined, needsReauth, saveError, saveFull };
+  }, [queue, queueSyncAt, offline, account, lastPullAt, pulling, pullInitial, pullError, needsReauth, saveError, saveFull]);
 }
 
 /**

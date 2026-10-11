@@ -35,7 +35,7 @@ import { SaveCapturesBox, useCaptureFiles } from "./discard-photos";
  * keeps its weight. Either way it is the same button and opens the sync sheet.
  */
 export function SyncChip({ collapsed, compact, slim }: { collapsed?: boolean; compact?: boolean; slim?: boolean }) {
-  const { offline, pending, syncing, lastSyncAt, pulling, pullInitial, pullError, needsReauth, saveError } = useSyncSummary();
+  const { offline, pending, syncing, lastSyncAt, pulling, pullInitial, pullError, needsReauth, saveError, saveFull } = useSyncSummary();
   const setOpen = useUi((s) => s.setSyncOpen);
   useNow(30_000);
   // Account sessions add the pull: first download, a failed update, a session to renew. A device that cannot store the
@@ -143,7 +143,7 @@ export function SyncChip({ collapsed, compact, slim }: { collapsed?: boolean; co
             {state === "unsaved" && (
               <>
                 <span className="shrink-0 font-semibold text-ink">Sin guardar</span>
-                {!compact && <span className="truncate text-subtle">libere espacio</span>}
+                {!compact && <span className="truncate text-subtle">{saveFull ? "libere espacio" : "no cierre la app"}</span>}
               </>
             )}
           </motion.span>
@@ -159,7 +159,7 @@ export function SyncChip({ collapsed, compact, slim }: { collapsed?: boolean; co
  * only shows once the queue has been busy for a moment instead of flashing after every capture.
  */
 export function MobileSyncPill({ hidden }: { hidden?: boolean }) {
-  const { offline, pending, syncing, queue, saveError } = useSyncSummary();
+  const { offline, pending, syncing, queue, saveError, saveFull } = useSyncSummary();
   const setOpen = useUi((s) => s.setSyncOpen);
   const count = pending.length + syncing.length;
   const failed = queue.some((q) => q.state === "error");
@@ -178,7 +178,9 @@ export function MobileSyncPill({ hidden }: { hidden?: boolean }) {
   const warn = unsaved || offline || failed;
   const label = unsaved ? "Sin guardar" : offline ? "Sin conexión" : failed ? "Error de envío" : "Enviando";
   const detail = unsaved
-    ? "el teléfono no tiene espacio"
+    ? saveFull
+      ? "el teléfono no tiene espacio"
+      : "no cierre la app"
     : offline
       ? count
         ? `${plural(count, "registro", "registros")} por enviar`
@@ -472,6 +474,8 @@ function DiscardDialog({ item, onClose }: { item: SyncItem | null; onClose: () =
   const files = useCaptureFiles(pictures, folios);
   const [savedFor, setSavedFor] = useState<string | null>(null);
   const saved = !!item && savedFor === item.id && files.length > 0;
+  // A save under way (the share sheet open): the confirmation waits for it.
+  const [saving, setSaving] = useState(false);
   // The item is being sent again (or went through) while the dialog was open: close it for good, never reopen by itself.
   useEffect(() => {
     if (item && !set.length) onClose();
@@ -495,10 +499,14 @@ function DiscardDialog({ item, onClose }: { item: SyncItem | null; onClose: () =
       ]}
       checkboxLabel={
         captures
-          ? `Entiendo que ${lost} al servidor y que se borrarán de la app: ${captures}.${saved ? " Las fotos guardadas siguen en la galería o en Descargas del teléfono." : ""}`
+          ? `Entiendo que ${lost} al servidor y que ${sum.photos + sum.checks + sum.notes === 1 ? "se borrará" : "se borrarán"} de la app: ${captures}.${
+              saved ? (files.length === 1 ? " La foto guardada sigue en la galería o en Descargas del teléfono." : " Las fotos guardadas siguen en la galería o en Descargas del teléfono.") : ""
+            }`
           : `Entiendo que ${lost} al servidor.`
       }
       confirmLabel={more > 0 ? `Descartar ${set.length} cambios` : "Descartar"}
+      confirmDisabled={saving}
+      disabledHint="Termine de guardar las fotos"
       destructive
       onConfirm={() => {
         const n = item ? discard(item.id) : 0;
@@ -545,7 +553,9 @@ function DiscardDialog({ item, onClose }: { item: SyncItem | null; onClose: () =
           </p>
         </div>
       )}
-      {files.length > 0 && <SaveCapturesBox files={files} saved={saved} onSaved={() => item && setSavedFor(item.id)} />}
+      {files.length > 0 && item && (
+        <SaveCapturesBox key={item.id} files={files} saved={saved} onSaved={() => setSavedFor(item.id)} onBusy={setSaving} />
+      )}
     </ConfirmDialog>
   );
 }

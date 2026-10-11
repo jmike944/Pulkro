@@ -35,7 +35,7 @@ import { plural } from "./format";
 import { DONE_STATUSES, OPEN_STATUSES } from "./status";
 import { DEMO_ENABLED, DEMO_SIGN_IN } from "./demo";
 import { clearPhotoFiles, deletePhotoFile, evictKeptPhotos } from "./photo-store";
-import { becomeWriter, createDeviceStorage, flushWrite, registerTab } from "./device-storage";
+import { becomeWriter, createDeviceStorage, flushWrite, isQuotaError, registerTab } from "./device-storage";
 import { requestPull, verifyAccount, type PullRequest, type PullState } from "./sync/pull";
 import { breakdownArg, daysArg, diffPatch, localDay, materialsArg, orderPatch, rpcOp, type MutationRpc, type RpcArgs } from "./sync/ops";
 import { discardItems, pushQueue, releaseBlobs, resumeAfterReconnect, retryItems } from "./sync/push";
@@ -206,6 +206,8 @@ type SyncSlice = {
    * again. Not persisted; the shell warns while it is set.
    */
   saveError?: string;
+  /** With saveError: the storage is full (the shell says to free space; otherwise, not to close the app). Not persisted. */
+  saveFull?: boolean;
   /**
    * How far the phone's clock is from the server's (sync/clock.ts), from server times the app receives. A property of the
    * device, not of an account: a sign-out keeps it. The capture screens warn while it is beyond 5 minutes (ClockWarning).
@@ -1863,7 +1865,7 @@ export const useAppStore = create<AppState>()(
         const out: Record<string, unknown> = {};
         for (const k of DATA_KEYS) out[k] = s[k];
         // Only what is persisted: a transient key left in (even as undefined) makes every update look like a change.
-        out.sync = { ...omit(s.sync, ["saveError"]), queue: unstick(s.sync.queue), processing: false, browserOffline: false };
+        out.sync = { ...omit(s.sync, ["saveError", "saveFull"]), queue: unstick(s.sync.queue), processing: false, browserOffline: false };
         return out as Partial<AppState>;
       },
       // A seed version bump reseeds the demo. An account's data (and its unsent queue) is never thrown away for it.
@@ -1894,15 +1896,16 @@ registerTab({
   },
   saveFailed: (error) => {
     if (error === null) {
-      useAppStore.setState((st) => (st.sync.saveError ? { sync: { ...st.sync, saveError: undefined } } : st));
+      useAppStore.setState((st) => (st.sync.saveError ? { sync: { ...st.sync, saveError: undefined, saveFull: undefined } } : st));
       toast.dismiss("pk-save-error");
       return;
     }
-    const full = !!error && typeof error === "object" && (error as { name?: string }).name === "QuotaExceededError";
+    // The same test device-storage uses to free space first (a quota error, by name or by message).
+    const full = isQuotaError(error);
     const message = full
       ? "El almacenamiento del teléfono está lleno: libere espacio. Lo capturado sigue en esta pantalla, pero se perderá si se cierra la app."
       : "No se pudieron guardar los datos en el dispositivo. Lo capturado sigue en esta pantalla: no cierre la app mientras se reintenta.";
-    useAppStore.setState((st) => (st.sync.saveError === message ? st : { sync: { ...st.sync, saveError: message } }));
+    useAppStore.setState((st) => (st.sync.saveError === message ? st : { sync: { ...st.sync, saveError: message, saveFull: full || undefined } }));
     toast.error("No se pudo guardar en el dispositivo", { id: "pk-save-error", description: message, duration: Infinity });
   },
   evict: () => evictKeptPhotos(),
@@ -1930,7 +1933,7 @@ async function boot() {
   // Sessions saved before account sign-in existed have no mode: they are demo sessions.
   useAppStore.setState((st) => ({
     session: { ...st.session, mode: st.session.mode === "supabase" ? "supabase" : "demo" },
-    sync: { ...st.sync, processing: false, saveError: undefined, queue: unstick(st.sync.queue) },
+    sync: { ...st.sync, processing: false, saveError: undefined, saveFull: undefined, queue: unstick(st.sync.queue) },
   }));
   // An account's unsent captures are the only copy until they are sent: ask the browser not to evict them.
   if (useAppStore.getState().session.mode === "supabase") requestPersistentStorage();
