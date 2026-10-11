@@ -247,7 +247,7 @@ async function send(store: Store, client: SupabaseBrowserClient, item: SyncItem,
     if (!item.tried) patchItem(store, item.id, { tried: true });
     const outcome = await call(client, op.rpc, op.args);
     if (noPicture && outcome.kind === "retry" && outcome.reupload)
-      return await settle(store, item, { kind: "error", problem: { kind: "error", message: LOST_PHOTO_MESSAGE, code: outcome.problem.code, hint: outcome.problem.hint } });
+      return await settle(store, item, { kind: "error", problem: { kind: "error", message: LOST_PHOTO_MESSAGE, code: outcome.problem.code, hint: "photo_lost" } });
     return await settle(store, item, outcome);
   } catch (e) {
     // Never leave an item "sincronizando" (it would hold its order until a reload): back in line, retried with backoff.

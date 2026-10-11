@@ -247,7 +247,7 @@ export function discardSet(queue: readonly SyncItem[], id: string): SyncItem[] {
 }
 
 /** Server answers after which retrying the same request cannot help (only discarding it does). */
-export const NO_RETRY_HINTS = new Set(["op_id_reused", "duplicate_check", "already_resolved", "already_provisioned"]);
+export const NO_RETRY_HINTS = new Set(["op_id_reused", "duplicate_check", "already_resolved", "already_provisioned", "photo_lost"]);
 
 /**
  * The person decides about it (the sync sheet offers Reintentar / Descartar): stopped items, and items being retried after
