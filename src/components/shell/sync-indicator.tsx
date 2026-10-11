@@ -3,13 +3,16 @@
 import { useEffect, useId, useMemo, useState } from "react";
 import { AnimatePresence, motion } from "motion/react";
 import Link from "next/link";
-import { Check, ChevronRight, CloudDownload, CloudOff, CloudUpload, KeyRound, Loader2, RefreshCw, TriangleAlert, WifiOff } from "lucide-react";
+import { Check, ChevronRight, CloudDownload, CloudOff, CloudUpload, KeyRound, Loader2, RefreshCw, Trash2, TriangleAlert, WifiOff } from "lucide-react";
+import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { useAppStore, useNow, useSyncSummary } from "@/lib/hooks";
 import { useUi } from "@/lib/ui-store";
 import { fmtAgo, fmtTime, plural } from "@/lib/format";
 import type { SyncItem } from "@/lib/types";
+import { NO_RETRY_HINTS, discardSet, waitsFor } from "@/lib/sync/queue";
 import { ModalShell } from "@/components/pk/modal-shell";
+import { ConfirmDialog } from "@/features/configuracion/shared";
 import { Switch } from "@/components/ui/switch";
 import { Button } from "@/components/ui/button";
 
@@ -184,6 +187,20 @@ const STATE_WORD: Record<SyncItem["state"], string> = {
   error: "No se pudo enviar",
 };
 
+/** What a queue row says under its label: why it waits, or why the server did not apply it (usted). */
+function rowDetail(q: SyncItem, waitFor: SyncItem | undefined, offline: boolean, account: boolean): string {
+  if (q.state === "sincronizado" || q.state === "sincronizando") return STATE_WORD[q.state];
+  if (q.state === "error") {
+    if (!q.problem) return STATE_WORD.error;
+    return q.problem.kind === "conflicto" ? `No se aplicó: ${q.problem.message}` : `No se pudo enviar: ${q.problem.message}`;
+  }
+  if (offline) return STATE_WORD.pendiente;
+  if (waitFor)
+    return waitFor.state === "error" ? `Bloqueado por «${waitFor.label}», que no se pudo enviar` : `En espera de «${waitFor.label}»`;
+  if (q.problem && q.nextAt) return `${q.problem.message} (${fmtTime(q.nextAt)})`;
+  return account ? "En cola" : STATE_WORD.pendiente;
+}
+
 /**
  * Sync queue: right sheet on desktop, bottom sheet below lg (same chrome as every other modal). Status first, then
  * the queue newest-first; the retry button lives in the sticky footer so it is reachable however long the queue is.
@@ -225,6 +242,8 @@ function SyncPanel() {
   const browserOffline = useAppStore((s) => s.sync.browserOffline);
   const setForced = useAppStore((s) => s.setForcedOffline);
   const items = useMemo(() => [...queue].reverse(), [queue]);
+  const blockedBy = useMemo(() => waitsFor(queue), [queue]);
+  const [discarding, setDiscarding] = useState<SyncItem | null>(null);
   const waiting = queue.filter((q) => q.state !== "sincronizado").length;
   const failed = queue.filter((q) => q.state === "error").length;
   useNow(30_000); // keeps "hace 2 min" honest while the sheet stays open
@@ -251,7 +270,9 @@ function SyncPanel() {
           tone: "red" as const,
           icon: <TriangleAlert className="size-5" />,
           title: "Hay registros sin enviar",
-          detail: `${plural(failed, "registro", "registros")} con error. Reintente el envío o revise la conexión.`,
+          detail: account
+            ? `El servidor no aplicó ${plural(failed, "registro", "registros")}. Se conservan en el dispositivo: revise cada uno abajo para reintentarlo o descartarlo.`
+            : `${plural(failed, "registro", "registros")} con error. Reintente el envío o revise la conexión.`,
         }
       : pulling && pullInitial
         ? {
@@ -358,18 +379,73 @@ function SyncPanel() {
         ) : (
           <ul className="-mx-2">
             {items.map((q) => (
-              <QueueRow key={q.id} item={q} />
+              <QueueRow key={q.id} item={q} waitFor={blockedBy.get(q.id)} offline={offline} account={account} onDiscard={() => setDiscarding(q)} />
             ))}
           </ul>
         )}
       </section>
+      {account && <DiscardDialog item={discarding} onClose={() => setDiscarding(null)} />}
     </div>
   );
 }
 
-function QueueRow({ item: q }: { item: SyncItem }) {
+/** "Descartar": the change leaves the queue for good; the device goes back to what the server has. */
+function DiscardDialog({ item, onClose }: { item: SyncItem | null; onClose: () => void }) {
+  const queue = useAppStore((s) => s.sync.queue);
+  const discard = useAppStore((s) => s.discardSyncItem);
+  const set = item ? discardSet(queue, item.id) : [];
+  const more = set.length - 1;
+  const photo = set.some((q) => q.op?.rpc === "add_photo");
   return (
-    <li className="flex items-center gap-3 rounded-[12px] px-2 py-2.5 text-[13.5px]">
+    <ConfirmDialog
+      open={!!item && set.length > 0}
+      onOpenChange={(v) => !v && onClose()}
+      icon={<Trash2 />}
+      iconTone="amber"
+      title="Descartar este cambio"
+      description="No se enviará al servidor. Lo que este dispositivo muestra de ese registro vuelve a ser lo que tiene el servidor."
+      rows={[
+        { k: "Cambio", v: item?.label ?? "" },
+        ...(more > 0 ? [{ k: "Cambios de la misma orden", v: `${more} más` }] : []),
+      ]}
+      checkboxLabel={photo ? "Entiendo que el cambio no llegará al servidor y que la foto se borrará de este dispositivo." : "Entiendo que este cambio no llegará al servidor."}
+      confirmLabel={more > 0 ? `Descartar ${set.length} cambios` : "Descartar"}
+      destructive
+      onConfirm={() => {
+        const n = item ? discard(item.id) : 0;
+        if (n) toast.success(n === 1 ? "Cambio descartado" : `${n} cambios descartados`, { description: "Se vuelve a leer del servidor." });
+        onClose();
+      }}
+    >
+      {item?.problem && <p className="rounded-[14px] bg-soft px-4 py-3 text-[13.5px] leading-snug text-ink">{item.problem.message}</p>}
+      {more > 0 && (
+        <p className="mt-3 text-[13.5px] leading-snug text-subtle">
+          La orden no llegó al servidor, así que los demás cambios capturados en ella tampoco pueden enviarse.
+        </p>
+      )}
+    </ConfirmDialog>
+  );
+}
+
+function QueueRow({
+  item: q,
+  waitFor,
+  offline,
+  account,
+  onDiscard,
+}: {
+  item: SyncItem;
+  waitFor?: SyncItem;
+  offline: boolean;
+  account: boolean;
+  onDiscard: () => void;
+}) {
+  const retry = useAppStore((s) => s.retrySyncItem);
+  const detail = rowDetail(q, waitFor, offline, account);
+  const stopped = account && q.state === "error";
+  const canRetry = stopped && !!q.op && !NO_RETRY_HINTS.has(q.problem?.hint ?? "");
+  return (
+    <li className="flex items-start gap-3 rounded-[12px] px-2 py-2.5 text-[13.5px]">
       <span
         className={cn(
           "inline-flex size-7 shrink-0 items-center justify-center rounded-full",
@@ -386,17 +462,29 @@ function QueueRow({ item: q }: { item: SyncItem }) {
       </span>
       <span className="min-w-0 flex-1">
         <span className="line-clamp-2 text-ink">
-          <span className="sr-only">{STATE_WORD[q.state]}: </span>
+          <span className="sr-only">{detail}: </span>
           {q.label}
         </span>
         {/* the icon alone must not carry the state: say it for everything that has not gone out yet */}
         {q.state !== "sincronizado" && (
-          <span aria-hidden className={cn("block text-[12px]", q.state === "error" ? "text-red-fg" : "text-subtle")}>
-            {STATE_WORD[q.state]}
+          <span aria-hidden className={cn("block text-[12px] leading-snug", q.state === "error" ? "text-red-fg" : "text-subtle")}>
+            {detail}
+          </span>
+        )}
+        {stopped && (
+          <span className="mt-1.5 flex flex-wrap gap-2">
+            {canRetry && (
+              <Button variant="outline" size="sm" className="h-8 rounded-[10px] border-line px-3 text-[12.5px] font-semibold" disabled={offline} onClick={() => retry(q.id)}>
+                <RefreshCw /> Reintentar
+              </Button>
+            )}
+            <Button variant="outline" size="sm" className="h-8 rounded-[10px] border-line px-3 text-[12.5px] font-semibold" onClick={onDiscard}>
+              <Trash2 /> Descartar
+            </Button>
           </span>
         )}
       </span>
-      <span className="shrink-0 text-[12px] text-subtle tabular">{fmtTime(q.at)}</span>
+      <span className="shrink-0 pt-1 text-[12px] text-subtle tabular">{fmtTime(q.at)}</span>
     </li>
   );
 }

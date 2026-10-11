@@ -254,9 +254,12 @@ function QueueActivity({ queue, offline }: { queue: SyncItem[]; offline: boolean
                   <div className="min-w-0 flex-1">
                     <p className="truncate text-[14.5px] font-medium text-ink">{q.label}</p>
                     <p className="text-[12.5px] text-subtle">
-                      {m.label}
+                      {q.state === "error" && q.problem ? (q.problem.kind === "conflicto" ? "No se aplicó" : "Error") : m.label}
                       {q.bytes ? ` · ${fmtBytes(q.bytes)}` : ""}
                     </p>
+                    {q.problem && q.state !== "sincronizado" && (
+                      <p className={cn("text-[12.5px] leading-snug", q.state === "error" ? "text-red-fg" : "text-subtle")}>{q.problem.message}</p>
+                    )}
                   </div>
                   <span className="shrink-0 text-right text-[12.5px] text-subtle tabular">
                     {fmtRelativeDay(q.at)}
