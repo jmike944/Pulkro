@@ -1767,8 +1767,19 @@ registerTab({
     })),
 });
 
-/** Called once on the client: rehydrate from IndexedDB, then seed / re-anchor. */
-export async function bootstrapStore() {
+let booting: Promise<void> | undefined;
+
+/**
+ * Called on the client: rehydrate from IndexedDB, then seed / re-anchor. Single-flight: React runs effects twice in
+ * development (and a remount can call it again), and a second `rehydrate()` supersedes the first — zustand drops the earlier
+ * read — so two overlapping calls would mark the store hydrated with nothing in it and send a signed-in device to /login.
+ */
+export function bootstrapStore(): Promise<void> {
+  booting ??= boot();
+  return booting;
+}
+
+async function boot() {
   if (useAppStore.getState().hydrated) return;
   await useAppStore.persist.rehydrate();
   // A reload in the middle of an upload leaves items "sincronizando": put them back in line (retried once online below).
