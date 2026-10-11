@@ -233,6 +233,21 @@ export function rememberStoragePhoto(path: string, signedUrl: string) {
   })();
 }
 
+/**
+ * A capture that just reached Storage (push engine, add_photo): its blob is also kept as the copy of `path`, so the photo —
+ * now `{ type: "storage", path }` — still shows offline without a download. The capture's own key is freed later (after a
+ * pull confirmed the photo). Best effort, never throws.
+ */
+export async function keepCaptureAs(key: string, path: string): Promise<void> {
+  if (!store) return;
+  try {
+    const blob = await get<Blob>(key, store);
+    if (blob) await keepBlob(path, blob);
+  } catch {
+    // quota or a closed database: the photo shows through its signed URL online
+  }
+}
+
 /** The picture itself (report PDF): the kept copy, else a download with the account's session (then kept). */
 export async function getStoragePhotoBlob(path: string): Promise<Blob | null> {
   if (store) {
