@@ -447,7 +447,10 @@ One RPC per queue item keeps generated TypeScript types for every argument (a ba
   be discarded when that happens.
 - **Whose session**: a push burst and a pull cycle check once that the browser's session is the account's on the device,
   then send every request with that session's access token (`getTokenClient`): the cookies are shared by every tab, and
-  an e-mail link or a sign-in in another tab may replace them mid-run.
+  an e-mail link or a sign-in in another tab may replace them mid-run. What an answer says about the account ("no
+  access", "the session is gone") applies to the account the burst or cycle ran for, and only while the store still holds
+  it: a request that stalled while the next person signed in on the phone never flags or signs out that person.
+  Ending a deactivated account's session never revokes another account's (`endSessionOnDevice({ userId })`).
 - **Conflicts**: field-level patches (`update_order`, `update_photo`, `update_incident`, `update_case` send only the
   touched keys) so Administración (general data) and the supervisor (operational data) never overwrite each other; the
   same field edited twice → last server arrival wins, both edits stay in the audit log. State conflicts (check-in on an
@@ -505,7 +508,8 @@ One RPC per queue item keeps generated TypeScript types for every argument (a ba
   Now one tab holds the data:
   - **Writer epoch**: `writer-epoch` is stored next to `device-owner`. A tab becomes the writer by incrementing it in one
     transaction and remembering its value; it never acts as the writer before that write is stored (a full device: the
-    blocker asks to free space and the claim is retried). Every save checks the epoch and the owner in the same readwrite transaction as
+    blocker asks to free space and the claim is retried; any other refusal — site data blocked, a broken database — says
+    the data could not be read). Every save checks the epoch and the owner in the same readwrite transaction as
     the save, and is refused unless both are still what this tab expects. A refused tab stops writing for good, drops its
     data from memory and shows the blocker, so a tab that was frozen while another took over is harmless when it wakes up.
     The push and pull engines check the epoch too, before every RPC and every pull cycle (`sync/writer.ts`): a tab that lost
@@ -516,19 +520,45 @@ One RPC per queue item keeps generated TypeScript types for every argument (a ba
     pending write, shows the blocker and starts over behind it. If it does not answer within 1.5 s (or does not finish
     within 10 s), the new tab takes over anyway (`steal`, then a new epoch, which refuses any late save of the old tab). A
     writer that cannot save what it holds (storage full) answers that it keeps the device: its captures exist only in its
-    memory, so there is no takeover until it has saved them.
+    memory, so there is no takeover until it has saved them. While its saves fail it also marks the origin
+    (`pulkro-unsaved`, localStorage): when it does not answer at all (frozen in the background) and the mark is set, the
+    new tab does not take over silently — it says the other window does not answer and holds unsaved changes, and offers
+    «Usar aquí de todos modos» (those changes are lost then). A browser that refuses Web Locks (site data blocked) falls
+    back to the epoch alone, below.
   - Without Web Locks (older browsers, insecure origins): the epoch alone, plus a "writer?" question and a "writer"
     announcement on the channel. A writer that hears a newer epoch has lost; a waiting tab asks again when the writer's page
-    goes away or when it becomes visible.
+    goes away or when it becomes visible. The writer also stamps the origin every 1.5 s (`pulkro-writer-alive`, removed
+    when its page goes away): a tab that gets no answer claims only once the stamp is 5 s old, so a writer busy for a few
+    seconds (a PDF, a large save) keeps the device and the write waiting in its debounce. A tab that holds no data but keeps
+    claiming (a full or unreadable device) starts over behind the blocker when another tab announces itself. Without
+    BroadcastChannel either (Safari < 15.4), a recent stamp is the only sign of a writer: a new tab waits behind the
+    blocker, and «Usar aquí» there cannot ask the writer to save first (its unsaved write is lost) — two windows of the
+    app at once are not supported on those browsers.
   - Only once it holds the epoch does a tab read IndexedDB and hydrate the store; a read that keeps failing is never
     hydrated over (the blocker offers to retry). The other tabs never read, persist, push or pull. A writer that steps
-    aside shows the blocker at once and saves until nothing is pending, so a capture landing meanwhile goes with it.
+    aside shows the blocker at once and saves until nothing is pending, so a capture landing meanwhile goes with it; a
+    photo batch still being stored (compressing, waiting for the position) is waited for too, and the requester is told the
+    writer is still saving (its 10-second wait starts again). Only the writer keeps copies of server photos: a tab that lost the device
+    while downloading one writes nothing afterwards.
     With one writer there is no cross-tab push lock: during a takeover the old tab stops at its next epoch check, and a
     request already in flight is deduplicated by its op id.
   - A sign-out, or another account's sign-in, counts this tab's unsent items plus the queue saved on the device (and, when
-    this tab holds no account, the account saved there — a save that failed may have left it). The previous account's photo
-    blobs are deleted only once the save that hands the device to the new account has committed.
-  - The public survey page (§9) takes part like any other page of the app.
+    this tab holds no account, the account saved there — a save that failed may have left it). Both first wait for photo
+    batches still being stored (a photo is no queue item until then), and never wipe while one is. A sign-out says the
+    account's data was erased only once the device stored the wipe; otherwise it says the data is still on the device (the
+    wipe is retried). The photo blobs on the device when it changes hands are listed then and deleted once a save of the
+    new owner's data commits — that save or a retry of it — so a refused or failed save leaves them with the data that
+    names them, and the next account's own captures stay. A sign-out on a full device deletes them first (the person agreed
+    to lose them) and tries the wipe again.
+  - The public survey page (§9) takes part like any other page of the app, except that in an account build it never
+    depends on the device: when the tab cannot hold the data (full, unreadable), the page is read and answered on the
+    server without the store (the server still refuses a staff session it sees in the cookies).
+  - **Deploying it** (owner decision 2026-10-11): no build before the writer epoch was deployed to users. Builds before it
+    (the demo build, the record-by-record merge) neither check nor bump `writer-epoch`, so a tab still running one would
+    write the dataset unchecked over the writer's: the first deploy of this build must not coexist with open tabs of an
+    older build (close them, or reload every window once, before using the new one). From this build on the epoch is the
+    fence: every later build keeps `writer-epoch`, `device-owner`, the lock and the channel `pulkro-writer` (a build that
+    changes them carries its own fence), so a tab left open on an older epoch-aware build is refused like any stale tab.
 - **Initial load**: catalogs (small) + orders in scope that are open or updated in the last N months (Dirección: N
   chosen in §14) + their children by `order_id in (…)`; `audit_log` only for a recent window (it is not reconciled).
 - Server-assigned values (folios, `server_at`, versions, snapshots, `scope_changed_at`) reach the device through the RPC
@@ -549,7 +579,9 @@ tokens → `PT404`. Tokens are 256-bit (32 random bytes, base64url, generated wi
 
 The page is a page of the app for the one-writer rule (§8). A client's phone only ever has this page open, so it is the
 writer there and the client never sees the blocker; in account builds it answers through `submit_survey`, and the device
-store it hydrates holds no staff session, so nothing more is written. On a staff device where the app is open in another
+store it hydrates holds no staff session, so nothing more is written. It never depends on the device there: when the tab
+cannot hold the app's data (storage full, site data blocked, a broken database), the page renders the server survey
+without the store, and the server's `42501` still catches a staff session in the cookies. On a staff device where the app is open in another
 window, the page shows the same blocker («Usar aquí»): it needs the writer's data to know whether a staff session is open
 on the device (it asks to sign out first, and only the writer may sign out and wipe the device), and the demo answers its
 own surveys into the device's store.
