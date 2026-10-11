@@ -170,9 +170,17 @@ const shift = (value: string, delta: number) => new Date(ms(value) + delta).toIS
 const quoted = (value: string) => `"${value.replace(/"/g, '\\"')}"`;
 const pkValue = (table: SyncTable, row: RowOf<SyncTable>) => String((row as Record<string, unknown>)[pkOf(table)]);
 
-/** The account session this run belongs to is still the one on the device. */
+/**
+ * The account session this run belongs to is still the one on the device, and its Supabase session is still this
+ * account's. Once re-authentication is due (the auth listener saw another account's session: an invite / recovery link
+ * opened here) nothing more is written: the requests of a run already under way would carry that other account's JWT.
+ */
 const sameSession = (st: AppState, userId: string) =>
-  st.session.mode === "supabase" && st.session.signedIn && st.session.userId === userId && st.session.pull?.userId === userId;
+  st.session.mode === "supabase" &&
+  st.session.signedIn &&
+  !st.session.needsReauth &&
+  st.session.userId === userId &&
+  st.session.pull?.userId === userId;
 
 /* ───────────── commits ───────────── */
 
@@ -349,7 +357,7 @@ async function firstLoad(ctx: Ctx, me: Row<"profiles">) {
   for (const t of ORDER_TABLES) heads[t] = await head(ctx, t);
   let aborted = false;
   ctx.store.setState((st) => {
-    if (st.session.mode !== "supabase" || !st.session.signedIn || st.session.userId !== ctx.userId) {
+    if (st.session.mode !== "supabase" || !st.session.signedIn || st.session.userId !== ctx.userId || st.session.needsReauth) {
       aborted = true;
       return st;
     }
@@ -456,7 +464,7 @@ async function cycle(store: PullStore, opts: { full?: boolean }) {
   const scopeChanged = !!pull0 && (pull0.role !== me.role || pull0.unitId !== me.unit_id);
   let aborted = false;
   store.setState((st) => {
-    if (st.session.mode !== "supabase" || st.session.userId !== ctx.userId) {
+    if (st.session.mode !== "supabase" || st.session.userId !== ctx.userId || st.session.needsReauth) {
       aborted = true;
       return st;
     }
