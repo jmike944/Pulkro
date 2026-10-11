@@ -19,3 +19,53 @@ export function getSupabaseBrowserClient(): SupabaseBrowserClient {
   client ??= createBrowserClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY);
   return client;
 }
+
+/** supabase-js' storage key (`sb-<first label of the project host>-auth-token`): the session cookie and the ones derived from it. */
+const AUTH_COOKIE_PREFIX = (() => {
+  if (!isSupabaseConfigured) return "";
+  try {
+    return `sb-${new URL(SUPABASE_URL).hostname.split(".")[0]}-auth-token`;
+  } catch {
+    return "";
+  }
+})();
+
+/**
+ * Removes this project's Supabase session from the browser by hand: the `sb-<ref>-auth-token` cookie, its `.0…n` chunks, the
+ * PKCE `-code-verifier` cookies and any `-user` copy (same path and SameSite as @supabase/ssr sets them).
+ */
+export function removeAuthCookies() {
+  if (!AUTH_COOKIE_PREFIX || typeof document === "undefined") return;
+  const secure = window.location.protocol === "https:" ? "; Secure" : "";
+  for (const pair of document.cookie.split(";")) {
+    const name = pair.split("=", 1)[0].trim();
+    if (name.startsWith(AUTH_COOKIE_PREFIX)) document.cookie = `${name}=; Max-Age=0; Path=/; SameSite=Lax${secure}`;
+  }
+}
+
+/**
+ * Ends the Supabase session on this device only (scope "local": the account's other devices keep their sessions).
+ *  - Online, signOut() asks Auth to revoke this session's refresh token, waiting at most `timeoutMs`. Offline (or with
+ *    `revoke: false`) it is not tried: there is nobody to tell.
+ *  - Then the session is always removed here. signOut() does not throw when it cannot first refresh an expired access token
+ *    (offline for over an hour, Auth unreachable): it resolves with that error and leaves every auth cookie in place.
+ */
+export async function endSessionOnDevice({ revoke = true, timeoutMs = 8000 }: { revoke?: boolean; timeoutMs?: number } = {}): Promise<void> {
+  if (!isSupabaseConfigured) return;
+  if (revoke && (typeof navigator === "undefined" || navigator.onLine !== false)) {
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    try {
+      const outcome = await Promise.race([
+        getSupabaseBrowserClient().auth.signOut({ scope: "local" }),
+        new Promise<"timeout">((resolve) => (timer = setTimeout(() => resolve("timeout"), timeoutMs))),
+      ]);
+      // `{ error }` (or no answer in time): the session is still in the cookies — removed below.
+      if (outcome !== "timeout" && outcome.error) console.warn("[auth] signOut:", outcome.error.message);
+    } catch {
+      // removed below
+    } finally {
+      clearTimeout(timer);
+    }
+  }
+  removeAuthCookies();
+}
