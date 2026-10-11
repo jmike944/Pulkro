@@ -28,6 +28,7 @@ import { noteServerTime } from "./clock";
 import { iso } from "./map";
 import { dropRows, pendingIndex, type CatalogTable } from "./merge";
 import { endInactive, flagReauth, requestPull, tryRefresh, type PullStore } from "./pull";
+import { stillWriter, syncHalted } from "./writer";
 import {
   CATALOG_RPC,
   MAX_ATTEMPTS,
@@ -60,7 +61,7 @@ const LOST_PHOTO_MESSAGE = "La foto ya no está guardada en este dispositivo: no
 type Store = PullStore;
 
 const offline = (st: AppState) => st.sync.forcedOffline || st.sync.browserOffline;
-const canPush = (st: AppState) => st.session.mode === "supabase" && st.session.signedIn && !st.session.needsReauth && !offline(st);
+const canPush = (st: AppState) => !syncHalted() && st.session.mode === "supabase" && st.session.signedIn && !st.session.needsReauth && !offline(st);
 const nowIso = () => new Date().toISOString();
 
 /* ───────────── queue edits ───────────── */
@@ -150,7 +151,10 @@ export function retryItems(store: Store, ids?: string[]) {
   return pushQueue(store);
 }
 
-/** Bursts of the same account in several tabs run one after the other (Web Locks where available). */
+/**
+ * Bursts run one after the other (Web Locks where available). One tab per device sends (lib/device-storage); during a
+ * takeover the old writer's last burst may still be under way while the new one starts: the lock keeps them apart.
+ */
 async function exclusive(store: Store, run: () => Promise<void>) {
   const locks = typeof navigator !== "undefined" ? (navigator as Navigator & { locks?: LockManager }).locks : undefined;
   if (!locks?.request) return run();
@@ -224,6 +228,8 @@ type Step = "sent" | "next" | "stop";
 
 async function send(store: Store, client: SupabaseBrowserClient, item: SyncItem, userId: string): Promise<Step> {
   const op = item.op!;
+  // Another tab may hold the device now (it may have discarded this item): nothing more leaves this one.
+  if (!(await stillWriter())) return "stop";
   patchItem(store, item.id, { state: "sincronizando" });
   try {
     // 1 · the picture (add_photo), once: a retry after the upload resumes at the RPC.
@@ -241,9 +247,10 @@ async function send(store: Store, client: SupabaseBrowserClient, item: SyncItem,
       }
     }
     // The upload can take minutes: the account may have signed out (or the device changed hands) meanwhile. What the person
-    // agreed to drop is not sent.
+    // agreed to drop is not sent. Nor is anything this tab holds once another tab took the device over (sync/writer.ts): the
+    // new writer may have discarded it.
     const now = store.getState();
-    if (!canPush(now) || now.session.userId !== userId || !now.sync.queue.some((q) => q.id === item.id)) {
+    if (!canPush(now) || now.session.userId !== userId || !now.sync.queue.some((q) => q.id === item.id) || !(await stillWriter())) {
       patchItem(store, item.id, { state: "pendiente" });
       return "stop";
     }

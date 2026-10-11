@@ -2,7 +2,7 @@
 
 import type { SupabaseBrowserClient } from "@/lib/supabase/client";
 import { unsentIds, useAppStore } from "@/lib/store";
-import { askOtherTabsUnsent, ownerOf, persistedUnsent, type DeviceOwner } from "@/lib/device-storage";
+import { ownerOf, persistedUnsent, savedAccount, type DeviceOwner } from "@/lib/device-storage";
 import { mapProfile, mapUnit } from "@/lib/sync/map";
 import type { Unit, User } from "@/lib/types";
 import { NETWORK_MESSAGE, NO_PROFILE_MESSAGE, isNetworkFailure } from "./auth-errors";
@@ -49,24 +49,33 @@ export function accountOnDevice(): { userId: string; name: string } | null {
 }
 
 /**
- * The unsent changes of `owner` on this device: this tab's queue, the queues of its other open tabs (their memory may be
- * ahead of the device) and the queue saved on the device (tabs that are closed, frozen in the background or discarded).
+ * The unsent changes of `owner` on this device: this tab's queue and the queue saved on the device. One tab per device holds
+ * the data (lib/device-storage), so no other tab holds any; the saved queue adds what a write of this tab that failed left
+ * there.
  */
 export async function deviceUnsent(owner: DeviceOwner): Promise<ReadonlySet<string>> {
   const s = useAppStore.getState();
   const ids = new Set(ownerOf(s.session) === owner ? unsentIds(s.sync.queue) : []);
-  const [others, saved] = await Promise.all([askOtherTabsUnsent(owner), persistedUnsent(owner)]);
-  for (const id of [...others, ...saved]) ids.add(id);
+  for (const id of await persistedUnsent(owner)) ids.add(id);
   return ids;
 }
 
-/** Another account's session on this device that still holds unsent changes (they would be lost by signing in). */
+/**
+ * Another account on this device that still holds unsent changes (they would be lost by signing in): the one this tab holds,
+ * or — when this tab holds none (signed out, the demo) — the one saved on the device, which a write of this tab that the
+ * device refused may have left there (a sign-out whose wipe failed, an account whose first write never landed).
+ */
 export async function otherAccountOnDevice(userId: string): Promise<{ name: string; ids: ReadonlySet<string> } | null> {
   const s = useAppStore.getState();
-  if (s.session.mode !== "supabase" || s.session.userId === userId) return null;
-  const ids = await deviceUnsent(ownerOf(s.session));
-  if (!ids.size) return null;
-  return { name: s.users.find((u) => u.id === s.session.userId)?.name ?? "otra cuenta", ids };
+  if (s.session.mode === "supabase") {
+    if (s.session.userId === userId) return null;
+    const ids = await deviceUnsent(ownerOf(s.session));
+    if (!ids.size) return null;
+    return { name: s.users.find((u) => u.id === s.session.userId)?.name ?? "otra cuenta", ids };
+  }
+  const saved = await savedAccount();
+  if (!saved || saved.userId === userId || !saved.ids.length) return null;
+  return { name: saved.name ?? "otra cuenta", ids: new Set(saved.ids) };
 }
 
 /** Demo-only controls (role switch, demo reset): never for an account session, whatever the build. */

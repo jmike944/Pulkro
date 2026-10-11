@@ -29,6 +29,7 @@ import { noteServerTime } from "./clock";
 import { mapProfile } from "./map";
 import { catalogKey, dropRows, mergeRows, missingRefs, pendingIndex, type CatalogTable, type Drops } from "./merge";
 import { usePullStatus } from "./status";
+import { stillWriter, syncHalted } from "./writer";
 import {
   CATALOG_TABLES,
   COLUMNS,
@@ -190,6 +191,7 @@ const pkValue = (table: SyncTable, row: RowOf<SyncTable>) => String((row as Reco
  * opened here) nothing more is written: the requests of a run already under way would carry that other account's JWT.
  */
 const sameSession = (st: AppState, userId: string) =>
+  !syncHalted() &&
   st.session.mode === "supabase" &&
   st.session.signedIn &&
   !st.session.needsReauth &&
@@ -545,6 +547,8 @@ async function refetchRecords(ctx: Ctx) {
 }
 
 async function cycle(store: PullStore, opts: { full?: boolean }) {
+  // Another tab may hold the device now (lib/device-storage): this one reads nothing more for it.
+  if (!(await stillWriter())) throw new PullError("aborted", "Otra ventana usa los datos de este dispositivo.");
   const startedAt = new Date().toISOString();
   const st0 = store.getState();
   const client = getSupabaseBrowserClient();
@@ -634,7 +638,7 @@ export type PullRequest = {
  */
 export function requestPull(store: PullStore, req: PullRequest = {}): Promise<void> {
   const st = store.getState();
-  if (!isSupabaseConfigured || st.session.mode !== "supabase" || !st.session.signedIn || st.session.needsReauth) return Promise.resolve();
+  if (!isSupabaseConfigured || syncHalted() || st.session.mode !== "supabase" || !st.session.signedIn || st.session.needsReauth) return Promise.resolve();
   if (st.sync.forcedOffline || st.sync.browserOffline) return Promise.resolve();
   if (inflight) {
     again = true;
@@ -653,7 +657,7 @@ export function requestPull(store: PullStore, req: PullRequest = {}): Promise<vo
         await once(store, full);
         full = againFull;
         againFull = false;
-      } while (again && !store.getState().session.needsReauth);
+      } while (again && !store.getState().session.needsReauth && !syncHalted());
     } finally {
       inflight = null;
     }

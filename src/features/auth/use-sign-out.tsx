@@ -13,7 +13,7 @@ import { ConfirmDialog } from "@/features/configuracion/shared";
 import { BusyDialog } from "./busy-dialog";
 import { deviceUnsent } from "./session";
 
-/** The account's unsent changes on this device: this tab's, its other open tabs' and what is saved on the device. */
+/** The account's unsent changes on this device: this tab's and what is saved on the device. */
 const collectUnsent = (): Promise<ReadonlySet<string>> => deviceUnsent(ownerOf(useAppStore.getState().session));
 
 /** Changes that were not in the set the person agreed to lose. */
@@ -24,9 +24,9 @@ const NONE: ReadonlySet<string> = new Set();
 /**
  * "Cerrar sesión" for both kinds of session.
  *  - Demo: as before (the store session ends, the device keeps the demo data).
- *  - Account: when the queue (of any open tab) still holds unsent changes, warn first and keep everything unless the person
- *    confirms. Then, behind a blocking "Cerrando sesión…": end the Supabase session on this device and wipe the account's data
- *    (store, IndexedDB, photo blobs; the other tabs drop theirs). Changes that appear meanwhile stop the wipe.
+ *  - Account: when the queue still holds unsent changes, warn first and keep everything unless the person confirms. Then,
+ *    behind a blocking "Cerrando sesión…": end the Supabase session on this device and wipe the account's data (store,
+ *    IndexedDB, photo blobs). Changes that appear meanwhile stop the wipe.
  * Render `signOutDialog` next to the control that calls `requestSignOut`.
  */
 export function useSignOut({ redirectTo = "/login" }: { redirectTo?: string | null } = {}) {
@@ -43,7 +43,7 @@ export function useSignOut({ redirectTo = "/login" }: { redirectTo?: string | nu
 
   /** "ok": signed out and wiped. "again": new unsent changes, nothing changed. "kept": session ended, data kept (re-auth). */
   const run = async (accepted: ReadonlySet<string>): Promise<{ result: "ok" | "kept" } | { result: "again"; ids: ReadonlySet<string> }> => {
-    // Changes made since the person confirmed (here or in another tab) are not part of what they agreed to lose.
+    // Changes made since the person confirmed (a push answer, a capture) are not part of what they agreed to lose.
     const before = await collectUnsent();
     if (newSince(before, accepted)) return { result: "again", ids: before };
     // This device only. Online, Auth revokes this session's refresh token; the cookies are removed here in any case, because

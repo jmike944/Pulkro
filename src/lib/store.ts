@@ -35,13 +35,13 @@ import { plural } from "./format";
 import { DONE_STATUSES, OPEN_STATUSES } from "./status";
 import { DEMO_ENABLED, DEMO_SIGN_IN } from "./demo";
 import { clearPhotoFiles, deletePhotoFile, evictKeptPhotos } from "./photo-store";
-import { createDeviceStorage, flushWrite, ownerOf, registerTab } from "./device-storage";
-import { mergeSnapshots, type Snapshot } from "./device-merge";
+import { becomeWriter, createDeviceStorage, flushWrite, registerTab } from "./device-storage";
 import { requestPull, verifyAccount, type PullRequest, type PullState } from "./sync/pull";
 import { breakdownArg, daysArg, diffPatch, localDay, materialsArg, orderPatch, rpcOp, type MutationRpc, type RpcArgs } from "./sync/ops";
 import { discardItems, pushQueue, releaseBlobs, resumeAfterReconnect, retryItems } from "./sync/push";
 import { isUnsent } from "./sync/queue";
 import { noteServerTime, setClockSink, type ClockOffset } from "./sync/clock";
+import { haltSync } from "./sync/writer";
 import { provisionalFolio } from "./folio";
 import type {
   AuditEntity,
@@ -642,9 +642,11 @@ export const useAppStore = create<AppState>()(
             session: { signedIn: true, userId: user.id, unitFilter: "all", mode: "supabase" },
             sync: { ...st.sync, queue: [], lastSyncAt: nowIso(), processing: false },
           }));
-          // Written now; once committed, the other open tabs are told the device changed hands (lib/device-storage).
-          void flushWrite();
-          void clearPhotoFiles();
+          // Written now. The previous owner's photo blobs go only once the device has changed hands: a write the device
+          // refused or could not store (full) leaves that owner's data — and the captures it names — where they were.
+          void flushWrite().then((saved) => {
+            if (saved === "committed") void clearPhotoFiles();
+          });
           requestPersistentStorage();
           // First load of the account's catalogs and orders in scope, then the incremental cursors (sync/pull.ts).
           setTimeout(() => void getState().pullNow({ manual: true }), 0);
@@ -661,8 +663,7 @@ export const useAppStore = create<AppState>()(
             session: signedOutSession(),
             sync: { forcedOffline: false, browserOffline: st.sync.browserOffline, queue: [], lastSyncAt: nowIso(), processing: false, clock: st.sync.clock },
           }));
-          // Write the empty state now (not after the debounce): the account's records leave IndexedDB with the sign-out, and
-          // once that is committed the other open tabs of the account drop theirs and start over at /login.
+          // Write the empty state now (not after the debounce): the account's records leave IndexedDB with the sign-out.
           void flushWrite();
           void clearPhotoFiles();
           // The login screen's demo picker needs the demo dataset back (when the build offers it).
@@ -1851,7 +1852,8 @@ export const useAppStore = create<AppState>()(
       partialize: (s) => {
         const out: Record<string, unknown> = {};
         for (const k of DATA_KEYS) out[k] = s[k];
-        out.sync = { ...s.sync, queue: unstick(s.sync.queue), processing: false, browserOffline: false, saveError: undefined };
+        // Only what is persisted: a transient key left in (even as undefined) makes every update look like a change.
+        out.sync = { ...omit(s.sync, ["saveError"]), queue: unstick(s.sync.queue), processing: false, browserOffline: false };
         return out as Partial<AppState>;
       },
       // A seed version bump reseeds the demo. An account's data (and its unsent queue) is never thrown away for it.
@@ -1865,23 +1867,21 @@ export const useAppStore = create<AppState>()(
 setClockSink((sample) => noteServerTime(useAppStore, sample));
 
 registerTab({
-  owner: () => ownerOf(useAppStore.getState().session),
-  unsent: () => unsentIds(useAppStore.getState().sync.queue),
-  // Another tab signed this account out or replaced it: nothing of it stays in this tab's memory (writes are already off).
+  // Another tab holds the device now, or another owner's data is on it: nothing of it stays in this tab's memory (writes
+  // are already off). Not hydrated any more: the shell waits (behind the blocker) instead of sending this tab to /login.
   drop: () =>
     useAppStore.setState((st) => ({
       ...emptyData,
       meta: { seededAt: "", seedVersion: 0 },
       session: signedOutSession(),
       sync: { ...st.sync, queue: [], processing: false },
+      hydrated: false,
     })),
-  // Another tab of this account wrote the device: its records and queue items join this tab's (whose own changes stay).
-  adopt: (theirs, base) =>
-    useAppStore.setState((cur) => {
-      const merged = mergeSnapshots(base, cur as unknown as Snapshot, theirs) as unknown as Partial<AppState>;
-      const sync = { ...cur.sync, ...(merged.sync ?? {}), processing: cur.sync.processing, browserOffline: cur.sync.browserOffline, saveError: cur.sync.saveError };
-      return { ...merged, sync: { ...sync, queue: unstick(sync.queue) } };
-    }),
+  // A handover: nothing is sent or read while this tab saves what it holds; it goes on if it could not (and stays the writer).
+  halt: (on) => {
+    haltSync(on);
+    if (!on) void useAppStore.getState().processSyncQueue();
+  },
   saveFailed: (error) => {
     if (error === null) {
       useAppStore.setState((st) => (st.sync.saveError ? { sync: { ...st.sync, saveError: undefined } } : st));
@@ -1912,6 +1912,9 @@ export function bootstrapStore(): Promise<void> {
 
 async function boot() {
   if (useAppStore.getState().hydrated) return;
+  // One tab per device holds the data (lib/device-storage): this one reads it only once it is that tab. Until then the
+  // blocker shows («Pulkro está abierta en otra ventana»), and nothing here reads, writes, sends or pulls.
+  await becomeWriter();
   await useAppStore.persist.rehydrate();
   // A reload in the middle of an upload leaves items "sincronizando": put them back in line (retried once online below).
   // Sessions saved before account sign-in existed have no mode: they are demo sessions.

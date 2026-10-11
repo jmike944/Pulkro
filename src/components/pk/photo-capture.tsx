@@ -110,7 +110,7 @@ export async function captureFiles(files: FileList | File[], meta: CaptureMeta, 
       });
     }
     // "Guardada en el dispositivo" only once the device has it (a full phone refuses the write; the shell says so).
-    if (ids.length && !(await flushWrite()))
+    if (ids.length && (await flushWrite()) !== "committed")
       toast.error(ids.length === 1 ? "La foto no se pudo guardar en el dispositivo" : "Las fotos no se pudieron guardar en el dispositivo", {
         description: "Libere espacio en el teléfono y no cierre la app: se reintenta guardar.",
       });

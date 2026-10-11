@@ -478,10 +478,36 @@ One RPC per queue item keeps generated TypeScript types for every argument (a ba
   quarantine (above), not to the trash; an order kept that way keeps the client, site, people and crew it names. A read
   (page, subtree, reconcile) that started before an item reached the server treats that item's order as still unsent, so
   it never wipes what was just sent; catalog / profile rows held for an unsent edit are read again by id afterwards.
-- **Tabs**: every tab of an account holds the dataset in memory and saves it whole to IndexedDB with a revision; a tab
-  whose last read or write is older merges its changes into what another tab saved (record by record, the queue by item)
-  instead of replacing it, and every save is announced so the other tabs merge it. A sign-out or another account's
-  sign-in counts the unsent items of every live tab and of the saved queue before it wipes anything.
+- **One writer per device** (owner decision 2026-10-11; `src/lib/device-storage.ts`). A tab holds the whole dataset in
+  memory and saves it whole to IndexedDB, so two tabs saving would replace each other's captures. An earlier build merged
+  the tabs' saves record by record (a revision next to the data, a three-way merge, every save announced and merged into
+  the other tabs). Review found that merge fragile — another owner's data merged into a tab that had changed hands, a save
+  queued behind a merge overwriting it, two tabs rewriting the dataset to each other forever, a tab's own in-flight item
+  reset so «Descartar» showed mid-send, the queue re-sorted by the phone's clock (dependents ahead of their parents),
+  discards that did not stick, pull cursors moved past rows a tab never applied, re-read lists erased — so it was dropped.
+  Now one tab holds the data:
+  - **Writer epoch**: `writer-epoch` is stored next to `device-owner`. A tab becomes the writer by incrementing it in one
+    transaction and remembering its value. Every save checks the epoch and the owner in the same readwrite transaction as
+    the save, and is refused unless both are still what this tab expects. A refused tab stops writing for good, drops its
+    data from memory and shows the blocker, so a tab that was frozen while another took over is harmless when it wakes up.
+    The push and pull engines check the epoch too, before every RPC and every pull cycle (`sync/writer.ts`): a tab that lost
+    the device never sends an item the new writer may have discarded meanwhile.
+  - **Web Lock** `pulkro-writer`: the first tab takes it and holds it. Every other tab of the app shows a full-screen
+    blocker, «Pulkro está abierta en otra ventana», with «Usar aquí», and becomes the writer by itself when the writer's
+    tab closes. «Usar aquí» asks the writer over a BroadcastChannel to step aside: it stops pushing and pulling, saves its
+    pending write, shows the blocker and starts over behind it. If it does not answer within 1.5 s (or does not finish
+    within 10 s), the new tab takes over anyway (`steal`, then a new epoch, which refuses any late save of the old tab). A
+    writer that cannot save what it holds (storage full) answers that it keeps the device: its captures exist only in its
+    memory, so there is no takeover until it has saved them.
+  - Without Web Locks (older browsers, insecure origins): the epoch alone, plus a "writer?" question and a "writer"
+    announcement on the channel. A writer that hears a newer epoch has lost; a waiting tab asks again when the writer's page
+    goes away or when it becomes visible.
+  - Only once it holds the epoch does a tab read IndexedDB and hydrate the store. The other tabs never read, persist, push
+    or pull.
+  - A sign-out, or another account's sign-in, counts this tab's unsent items plus the queue saved on the device (and, when
+    this tab holds no account, the account saved there — a save that failed may have left it). The previous account's photo
+    blobs are deleted only once the save that hands the device to the new account has committed.
+  - The public survey page (§9) takes part like any other page of the app.
 - **Initial load**: catalogs (small) + orders in scope that are open or updated in the last N months (Dirección: N
   chosen in §14) + their children by `order_id in (…)`; `audit_log` only for a recent window (it is not reconciled).
 - Server-assigned values (folios, `server_at`, versions, snapshots, `scope_changed_at`) reach the device through the RPC
@@ -499,6 +525,13 @@ sign out, as today). Staff hold the links, so a staff member could still answer 
 audited as `cliente` and the link is only shared through the client's channel — accepted risk, see §14. Malformed/unknown
 tokens → `PT404`. Tokens are 256-bit (32 random bytes, base64url, generated with `crypto.getRandomValues` in
 `store.ts`); short or low-entropy tokens are refused (`weak_token`). Rate limiting/expiry: §14.
+
+The page is a page of the app for the one-writer rule (§8). A client's phone only ever has this page open, so it is the
+writer there and the client never sees the blocker; in account builds it answers through `submit_survey`, and the device
+store it hydrates holds no staff session, so nothing more is written. On a staff device where the app is open in another
+window, the page shows the same blocker («Usar aquí»): it needs the writer's data to know whether a staff session is open
+on the device (it asks to sign out first, and only the writer may sign out and wipe the device), and the demo answers its
+own surveys into the device's store.
 
 ## 10. API keys and environment
 
@@ -525,7 +558,7 @@ of the integration (phase 1 of §12); the app still runs on its local demo store
   database still decides. Use `supabase.auth.getClaims()` there and in server code, never `getSession()`.
 - Login (`/login`, to rewire from the demo role picker): `signInWithPassword`; invite landing
   (`/acceso/definir-contrasena`, to create): verify the invite link, then `updateUser({ password })`. Sign-out clears
-  IndexedDB only after the queue is empty (or warns), counting every open tab and the saved queue.
+  IndexedDB only after the queue is empty (or warns), counting the writer tab's queue and the saved queue (§8).
 - Do not use the deprecated `@supabase/server` framework adapters; `@supabase/server` (`withSupabase`) is for the Edge
   Function only.
 - `src/lib/supabase/database.types.ts` (exists) is generated; regenerate after every migration.

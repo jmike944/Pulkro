@@ -52,7 +52,7 @@ export function useEnterAccount({ onEntered, onCancelled }: { onEntered: () => v
         return { status: "refused", message: profile.message };
       }
       await whenHydrated();
-      // Every tab and the device itself: a tab that never saw the other account's latest captures must not wipe them unasked.
+      // This tab's memory and what is saved on the device: a write of this tab that failed may have left another account there.
       const other = await otherAccountOnDevice(profile.user.id);
       if (other) {
         confirmed.current = false;
@@ -100,7 +100,7 @@ export function useEnterAccount({ onEntered, onCancelled }: { onEntered: () => v
       destructive
       onConfirm={async () => {
         if (!pending) return;
-        // Changes made since the dialog opened (here or in another tab) are not part of what the person agreed to lose.
+        // Changes made since the dialog opened are not part of what the person agreed to lose.
         const now = await otherAccountOnDevice(pending.user.id);
         if (now && [...now.ids].some((id) => !pending.other.ids.has(id))) {
           setPending({ ...pending, other: now });

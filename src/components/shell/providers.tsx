@@ -12,10 +12,11 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { Toaster } from "@/components/ui/sonner";
 import { Celebrate } from "@/components/pk/feedback";
 import { PwaRegistrar } from "./pwa";
+import { WriterGate } from "./writer-gate";
 
 /**
- * Global client providers: theme (Claro / Oscuro / Sistema), store bootstrap (IndexedDB), connectivity, the account pull
- * schedule, motion prefs, toasts.
+ * Global client providers: theme (Claro / Oscuro / Sistema), store bootstrap (IndexedDB — only in the one tab per device that
+ * holds the data; the others show WriterGate's blocker), connectivity, the account pull schedule, motion prefs, toasts.
  */
 export function Providers({ children }: { children: React.ReactNode }) {
   useEffect(() => {
@@ -32,7 +33,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
           <ConnectivityWatcher />
           <PullScheduler />
           <PwaRegistrar />
-          {children}
+          <WriterGate>{children}</WriterGate>
           <GlobalCelebrate />
           <Toaster position="top-center" richColors={false} closeButton />
         </TooltipProvider>
