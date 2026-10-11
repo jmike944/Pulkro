@@ -4,7 +4,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { AnimatePresence, LayoutGroup, motion } from "motion/react";
-import { Check, ChevronDown, ChevronRight, EllipsisVertical, LogOut, PanelLeft, Plus, RotateCcw, UserRound } from "lucide-react";
+import { Check, ChevronDown, ChevronRight, EllipsisVertical, LogOut, PanelLeftClose, PanelLeftOpen, Plus, RotateCcw, UserRound } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { useAppStore, useCan, useCurrentUser } from "@/lib/hooks";
@@ -45,6 +45,50 @@ function readCollapsed() {
 /** Keyboard focus ring for sidebar rows. Inset: the scrolling nav would clip a ring drawn outside the row. */
 const ROW_FOCUS = "outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-azure/60";
 
+/**
+ * The logo row is the collapse/expand control. Expanded: emblem + letters, with a "collapse" icon fading in at the
+ * right on hover/focus. Collapsed: the emblem cross-fades into an "expand" icon in the same spot. Opacity-only
+ * transitions, so nothing shifts while the sidebar's width animates.
+ */
+function LogoToggle({ collapsed, onToggle }: { collapsed: boolean; onToggle: () => void }) {
+  const label = collapsed ? "Expandir menú" : "Contraer menú";
+  const Icon = collapsed ? PanelLeftOpen : PanelLeftClose;
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <button
+          type="button"
+          onClick={onToggle}
+          aria-label={label}
+          aria-expanded={!collapsed}
+          className={cn(
+            "group/logo relative flex h-11 w-full items-center gap-3 rounded-[14px] px-1.5 text-brand-ink transition-colors hover:bg-surface",
+            ROW_FOCUS,
+            collapsed && "justify-center px-0",
+          )}
+        >
+          <span className="relative grid size-9 shrink-0 place-items-center">
+            <PulkroEmblem className={cn("transition-opacity duration-200", collapsed && "group-hover/logo:opacity-0 group-focus-visible/logo:opacity-0")} />
+            {collapsed && (
+              <Icon aria-hidden className="absolute size-[20px] text-ink opacity-0 transition-opacity duration-200 group-hover/logo:opacity-100 group-focus-visible/logo:opacity-100" />
+            )}
+          </span>
+          {!collapsed && (
+            <>
+              <PulkroLetters />
+              <Icon
+                aria-hidden
+                className="ml-auto mr-1 size-[18px] text-subtle opacity-0 transition-opacity duration-200 group-hover/logo:opacity-100 group-focus-visible/logo:opacity-100"
+              />
+            </>
+          )}
+        </button>
+      </TooltipTrigger>
+      <TooltipContent side={collapsed ? "right" : "bottom"}>{label}</TooltipContent>
+    </Tooltip>
+  );
+}
+
 export function Sidebar() {
   const pathname = usePathname();
   const role = useCurrentUser().role;
@@ -65,15 +109,7 @@ export function Sidebar() {
       transition={{ type: "spring", stiffness: 380, damping: 38 }}
       className="sticky top-0 hidden h-dvh shrink-0 flex-col overflow-hidden px-4 pb-3 pt-4 lg:flex print:hidden"
     >
-      <div className={cn("flex items-center justify-between px-1.5", collapsed && "flex-col gap-2")}>
-        <Link href="/" className="flex items-center gap-3">
-          <PulkroEmblem className="text-brand-ink" />
-          {!collapsed && <PulkroLetters className="text-brand-ink" />}
-        </Link>
-        <button onClick={toggle} className="rounded-lg p-1.5 text-subtle transition hover:bg-surface hover:text-ink" aria-label="Contraer menú">
-          <PanelLeft className="size-[18px]" />
-        </button>
-      </div>
+      <LogoToggle collapsed={collapsed} onToggle={toggle} />
 
       <div className="mt-3 space-y-1.5">
         <UnitSwitcher collapsed={collapsed} />
