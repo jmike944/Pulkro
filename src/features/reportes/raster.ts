@@ -4,7 +4,9 @@
  * Photo rasterization for the PDF. react-pdf only embeds JPG/PNG, so:
  *  · procedural seed scenes (inline <svg>) are serialized with XMLSerializer → <img> → <canvas> → JPEG data URL
  *    (JPEG keeps a 12-photo report light enough for WhatsApp; the grime/noise filters make PNGs huge);
- *  · real captures stored in IndexedDB are read back as data URLs.
+ *  · real captures stored in IndexedDB are read back as data URLs;
+ *  · evidence on the server (Storage) comes from the copy kept on the device or a download with the account's session
+ *    (re-encoded to JPEG when it is not JPEG/PNG).
  * The rendered preview is the first source of SVGs (`[data-raster="<photoId>"] svg`); photos that are not
  * mounted (older versions, the reports hub) are rendered offscreen with the same <ScenePhoto> component.
  */
@@ -12,7 +14,7 @@ import { createElement } from "react";
 import { flushSync } from "react-dom";
 import { createRoot } from "react-dom/client";
 import { ScenePhoto } from "@/components/pk/scene-photo";
-import { getPhotoBlob } from "@/lib/photo-store";
+import { getPhotoBlob, getStoragePhotoBlob } from "@/lib/photo-store";
 import type { Photo } from "@/lib/types";
 
 const SVG_NS = "http://www.w3.org/2000/svg";
@@ -85,10 +87,28 @@ function renderSceneOffscreen(photo: Photo): SVGSVGElement | null {
   }
 }
 
+/** react-pdf embeds JPEG and PNG only: anything else (WebP evidence) is re-encoded. */
+async function pdfSafeDataUrl(blob: Blob) {
+  if (blob.type === "image/jpeg" || blob.type === "image/png") return blobToDataUrl(blob);
+  const bitmap = await createImageBitmap(blob);
+  const canvas = document.createElement("canvas");
+  canvas.width = bitmap.width;
+  canvas.height = bitmap.height;
+  const ctx = canvas.getContext("2d");
+  if (!ctx) throw new Error("Canvas no disponible");
+  ctx.drawImage(bitmap, 0, 0);
+  bitmap.close?.();
+  return canvas.toDataURL("image/jpeg", 0.86);
+}
+
 export async function photoToDataUrl(photo: Photo, root?: ParentNode | null): Promise<string | null> {
   if (photo.source.type === "idb") {
     const blob = await getPhotoBlob(photo.source.key);
     return blob ? blobToDataUrl(blob) : null;
+  }
+  if (photo.source.type === "storage") {
+    const blob = await getStoragePhotoBlob(photo.source.path);
+    return blob ? pdfSafeDataUrl(blob) : null;
   }
   const mounted = root?.querySelector<SVGSVGElement>(`[data-raster="${photo.id}"] svg`);
   const svg = mounted ?? renderSceneOffscreen(photo);

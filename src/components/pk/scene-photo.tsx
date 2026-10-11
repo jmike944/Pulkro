@@ -4,7 +4,8 @@ import { useEffect, useId, useRef, useState } from "react";
 import { animate, motion, useMotionValue, useTransform } from "motion/react";
 import { CloudOff } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { getPhotoUrl } from "@/lib/photo-store";
+import { forgetSignedUrl, getPhotoUrl, getStoragePhotoUrl, rememberStoragePhoto } from "@/lib/photo-store";
+import { isOffline, useAppStore } from "@/lib/store";
 import { fmtTime } from "@/lib/format";
 import { PHOTO_KIND, toneDot } from "@/lib/status";
 import type { Jornada, Photo, SceneKind } from "@/lib/types";
@@ -271,22 +272,74 @@ export function ScenePhoto({
   );
 }
 
-/* ───────────── photo renderer (scene or IndexedDB capture) ───────────── */
+/* ───────────── photo renderer (scene, capture on the device, or evidence on the server) ───────────── */
 
 export function PhotoImage({ photo, className }: { photo: Pick<Photo, "source" | "kind" | "area">; className?: string }) {
-  const [url, setUrl] = useState<string | null>(null);
+  const source = photo.source;
+  if (source.type === "scene")
+    return <ScenePhoto scene={source.scene} seed={source.seed} dirty={photo.kind === "antes" || photo.kind === "incidencia"} className={className} />;
+  if (source.type === "storage") return <StorageImage path={source.path} alt={photo.area} className={className} />;
+  return <DeviceImage idbKey={source.key} alt={photo.area} className={className} />;
+}
+
+/** A capture still on this device (IndexedDB blob). */
+function DeviceImage({ idbKey, alt, className }: { idbKey: string; alt: string; className?: string }) {
+  const [loaded, setLoaded] = useState<{ key: string; url: string | null } | null>(null);
   useEffect(() => {
     let alive = true;
-    if (photo.source.type === "idb") getPhotoUrl(photo.source.key).then((u) => alive && setUrl(u));
+    getPhotoUrl(idbKey).then((url) => alive && setLoaded({ key: idbKey, url }));
     return () => {
       alive = false;
     };
-  }, [photo.source]);
-  if (photo.source.type === "scene")
-    return <ScenePhoto scene={photo.source.scene} seed={photo.source.seed} dirty={photo.kind === "antes" || photo.kind === "incidencia"} className={className} />;
+  }, [idbKey]);
+  const url = loaded?.key === idbKey ? loaded.url : null;
   if (!url) return <div className={cn("h-full w-full shimmer", className)} />;
   // eslint-disable-next-line @next/next/no-img-element
-  return <img src={url} alt={photo.area} className={cn("h-full w-full object-cover", className)} />;
+  return <img src={url} alt={alt} className={cn("h-full w-full object-cover", className)} />;
+}
+
+/**
+ * Evidence stored on the server (bucket `evidencias`): the copy kept on this device, else a signed URL. Once shown, a copy
+ * stays on the device for offline viewing. Offline and never shown here → a placeholder that says so (retried on reconnect).
+ */
+function StorageImage({ path, alt, className }: { path: string; alt: string; className?: string }) {
+  const offline = useAppStore((s) => isOffline(s));
+  const [attempt, setAttempt] = useState(0);
+  const [resolved, setResolved] = useState<{ path: string; url: string | null } | null>(null);
+  useEffect(() => {
+    let alive = true;
+    void getStoragePhotoUrl(path, !offline).then((url) => alive && setResolved({ path, url }));
+    return () => {
+      alive = false;
+    };
+  }, [path, offline, attempt]);
+  const url = resolved?.path === path ? resolved.url : undefined;
+  if (url === undefined) return <div className={cn("h-full w-full shimmer", className)} />;
+  if (url === null)
+    return (
+      <div className={cn("flex h-full w-full flex-col items-center justify-center gap-1 bg-well px-2 text-center text-subtle", className)} role="img" aria-label={`${alt}: ${offline ? "disponible con conexión" : "no disponible"}`}>
+        <CloudOff className="size-5" aria-hidden />
+        <span className="text-[11px] leading-tight">{offline ? "Disponible con conexión" : "Foto no disponible"}</span>
+      </div>
+    );
+  const signed = !url.startsWith("blob:");
+  return (
+    // eslint-disable-next-line @next/next/no-img-element
+    <img
+      src={url}
+      alt={alt}
+      className={cn("h-full w-full object-cover", className)}
+      onLoad={() => {
+        if (signed) rememberStoragePhoto(path, url);
+      }}
+      onError={() => {
+        // An expired or revoked link: sign once more, then give up.
+        if (signed) forgetSignedUrl(path);
+        if (signed && attempt < 1) setAttempt((n) => n + 1);
+        else setResolved({ path, url: null });
+      }}
+    />
+  );
 }
 
 /**

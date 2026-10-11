@@ -3,9 +3,14 @@
 /**
  * Real photo captures live in IndexedDB as compressed JPEG blobs (localStorage is too small).
  * The zustand store only keeps a reference: { type: "idb", key }.
+ *
+ * Evidence already on the server ({ type: "storage", path }) lives in the private bucket `evidencias`: it is shown through a
+ * short-lived signed URL (architecture §7), and every picture that was displayed is also kept on the device (same IndexedDB
+ * store, key `st:<path>`, the most recent ones only) so it still shows offline. Nothing is downloaded before it is shown.
  */
 import { clear, createStore, del, get, set } from "idb-keyval";
 import { readCaptureMeta, type CaptureMeta } from "./exif";
+import { getSupabaseBrowserClient, isSupabaseConfigured } from "./supabase/client";
 import type { Photo, PhotoOrigin } from "./types";
 
 const store = typeof indexedDB !== "undefined" ? createStore("pulkro-photos", "blobs") : undefined;
@@ -93,9 +98,154 @@ export async function deletePhotoFile(key: string) {
   if (store) await del(key, store);
 }
 
-/** Every photo blob on the device (account sign-out, or another account's data being replaced). */
+/** Every photo blob on the device (account sign-out, or another account's data being replaced), server copies included. */
 export async function clearPhotoFiles() {
   urlCache.forEach((url) => URL.revokeObjectURL(url));
   urlCache.clear();
+  signedUrls.clear();
   if (store) await clear(store);
+}
+
+/* ───────────── server evidence (Storage bucket `evidencias`) ───────────── */
+
+const BUCKET = "evidencias";
+/** Signed URLs live 10 minutes (architecture §7: a link made before a deactivation or reassignment dies soon). */
+const SIGN_SECONDS = 600;
+/** Sign again when less than this is left, so an <img> never starts loading an about-to-expire link. */
+const RENEW_BEFORE_MS = 90_000;
+/** How many displayed server photos stay on the device for offline viewing (≈ 300 × 300 kB). */
+const KEEP_OFFLINE = 300;
+const INDEX_KEY = "st:__index";
+const blobKey = (path: string) => `st:${path}`;
+
+const signedUrls = new Map<string, { url: string; expiresAt: number }>();
+let signQueue: Map<string, ((url: string | null) => void)[]> | null = null;
+
+/** Signs every path asked for in the same tick in one request (a gallery asks for dozens at once). */
+function signSoon(path: string): Promise<string | null> {
+  return new Promise((resolve) => {
+    if (!signQueue) {
+      signQueue = new Map();
+      setTimeout(() => void flushSigning(), 20);
+    }
+    signQueue.set(path, [...(signQueue.get(path) ?? []), resolve]);
+  });
+}
+
+async function flushSigning() {
+  const batch = signQueue;
+  signQueue = null;
+  if (!batch) return;
+  const paths = [...batch.keys()];
+  const got = new Map<string, string>();
+  try {
+    const bucket = getSupabaseBrowserClient().storage.from(BUCKET);
+    for (let i = 0; i < paths.length; i += 100) {
+      const issuedAt = Date.now();
+      const { data, error } = await bucket.createSignedUrls(paths.slice(i, i + 100), SIGN_SECONDS);
+      if (error || !data) continue;
+      for (const d of data) {
+        if (!d.path || !d.signedUrl || d.error) continue;
+        signedUrls.set(d.path, { url: d.signedUrl, expiresAt: issuedAt + SIGN_SECONDS * 1000 });
+        got.set(d.path, d.signedUrl);
+      }
+    }
+  } catch {
+    // offline or not configured: the caller falls back
+  }
+  for (const [path, waiters] of batch) waiters.forEach((done) => done(got.get(path) ?? null));
+}
+
+/** A copy of the picture kept on the device, as an object URL. */
+async function keptUrl(path: string): Promise<string | null> {
+  const key = blobKey(path);
+  if (urlCache.has(key)) return urlCache.get(key)!;
+  if (!store) return null;
+  const blob = await get<Blob>(key, store).catch(() => undefined);
+  if (!blob) return null;
+  const url = URL.createObjectURL(blob);
+  urlCache.set(key, url);
+  return url;
+}
+
+/**
+ * What to put in <img src> for a server photo: the copy kept on this device, else a signed URL (reused until shortly before
+ * it expires), else null — offline and never displayed here, or not readable for this account.
+ */
+export async function getStoragePhotoUrl(path: string, online: boolean): Promise<string | null> {
+  const kept = await keptUrl(path);
+  if (kept) return kept;
+  const signed = signedUrls.get(path);
+  if (signed && signed.expiresAt - Date.now() > RENEW_BEFORE_MS) return signed.url;
+  if (!online || !isSupabaseConfigured) return null;
+  return signSoon(path);
+}
+
+/** The signed URL failed (expired early, revoked): sign again next time. */
+export function forgetSignedUrl(path: string) {
+  signedUrls.delete(path);
+}
+
+const keeping = new Set<string>();
+
+let keepChain: Promise<void> = Promise.resolve();
+
+/** Stores a server photo's copy and trims the oldest beyond KEEP_OFFLINE (serialized: the index is read-modify-write). */
+function keepBlob(path: string, blob: Blob): Promise<void> {
+  const run = keepChain.then(() => writeKept(path, blob));
+  keepChain = run.catch(() => undefined);
+  return run;
+}
+
+async function writeKept(path: string, blob: Blob) {
+  if (!store) return;
+  await set(blobKey(path), blob, store);
+  const index = ((await get<string[]>(INDEX_KEY, store)) ?? []).filter((p) => p !== path);
+  index.push(path);
+  const drop = index.splice(0, Math.max(0, index.length - KEEP_OFFLINE));
+  await set(INDEX_KEY, index, store);
+  for (const p of drop) {
+    const key = blobKey(p);
+    const url = urlCache.get(key);
+    if (url) URL.revokeObjectURL(url);
+    urlCache.delete(key);
+    await del(key, store);
+  }
+}
+
+/**
+ * After a server photo was displayed from its signed URL: keep a copy for offline viewing. The browser usually answers from
+ * its HTTP cache (same URL), so this rarely downloads twice. Best effort, never throws.
+ */
+export function rememberStoragePhoto(path: string, signedUrl: string) {
+  if (!store || keeping.has(path) || urlCache.has(blobKey(path))) return;
+  keeping.add(path);
+  void (async () => {
+    try {
+      if (await get(blobKey(path), store)) return;
+      const res = await fetch(signedUrl);
+      if (res.ok) await keepBlob(path, await res.blob());
+    } catch {
+      // offline or quota: it shows online anyway
+    } finally {
+      keeping.delete(path);
+    }
+  })();
+}
+
+/** The picture itself (report PDF): the kept copy, else a download with the account's session (then kept). */
+export async function getStoragePhotoBlob(path: string): Promise<Blob | null> {
+  if (store) {
+    const kept = await get<Blob>(blobKey(path), store).catch(() => undefined);
+    if (kept) return kept;
+  }
+  if (!isSupabaseConfigured) return null;
+  try {
+    const { data, error } = await getSupabaseBrowserClient().storage.from(BUCKET).download(path);
+    if (error || !data) return null;
+    await keepBlob(path, data).catch(() => undefined);
+    return data;
+  } catch {
+    return null;
+  }
 }
