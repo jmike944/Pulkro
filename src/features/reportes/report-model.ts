@@ -22,14 +22,16 @@ import type {
 
 /**
  * What a composed PDF of `report` prints that the sync can still change after it was composed: the order's and the
- * incidents' folios (provisional until the server assigns them), the version and photo list the server sets, the summary,
- * the jornadas' times and the closure version. A PDF composed under another fingerprint is out of date: compose it again.
+ * incidents' folios (provisional until the server assigns them), the version, issue time and photo list the server sets (the
+ * issue time is the device's until the sync brings the server's), the summary, the jornadas' times and the closure version.
+ * A PDF composed under another fingerprint is out of date: compose it again.
  */
 export function reportFingerprint(ctx: Pick<ReportContext, "order" | "incidents" | "jornadas">, report: Report): string {
   return JSON.stringify([
     ctx.order.folio,
     ctx.order.closure?.version ?? null,
     report.version,
+    report.generatedAt,
     report.photoIds,
     report.summary,
     ctx.incidents.map((i) => [i.id, i.folio, i.status]),

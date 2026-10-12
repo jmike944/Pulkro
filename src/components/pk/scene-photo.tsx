@@ -278,7 +278,8 @@ export function PhotoImage({ photo, className }: { photo: Pick<Photo, "source" |
   const source = photo.source;
   if (source.type === "scene")
     return <ScenePhoto scene={source.scene} seed={source.seed} dirty={photo.kind === "antes" || photo.kind === "incidencia"} className={className} />;
-  if (source.type === "storage") return <StorageImage path={source.path} alt={photo.area} className={className} />;
+  // Keyed by path: a slot that switches to another photo starts over (its re-sign and its backoff are that photo's).
+  if (source.type === "storage") return <StorageImage key={source.path} path={source.path} alt={photo.area} className={className} />;
   return <DeviceImage idbKey={source.key} alt={photo.area} className={className} />;
 }
 

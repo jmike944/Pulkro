@@ -482,11 +482,11 @@ function DiscardDialog({ item, onClose }: { item: SyncItem | null; onClose: () =
   // The pictures the discard deletes (only once confirmed), offered to be saved on the phone first.
   const pictures = useMemo(() => discardedCaptures(queue, set, photos), [queue, set, photos]);
   const folios = useMemo(() => new Map(orders.map((o) => [o.id, o.folio])), [orders]);
-  const files = useCaptureFiles(pictures, folios);
+  const { files, unreadable, retry } = useCaptureFiles(pictures, folios);
   // How the photos left the app (shared, or downloaded): the confirmation says what that does and does not keep. It never
-  // replaces the checkbox.
+  // replaces the checkbox. Not while some could not be read: those were never offered.
   const [keptFor, setKeptFor] = useState<{ id: string; how: CapturesKept } | null>(null);
-  const kept = item && keptFor?.id === item.id && files.length > 0 ? keptFor.how : null;
+  const kept = item && keptFor?.id === item.id && files.length > 0 && unreadable === 0 ? keptFor.how : null;
   // A save under way (the share sheet open): the confirmation waits for it.
   const [saving, setSaving] = useState(false);
   // The item is being sent again (or went through) while the dialog was open: close it for good, never reopen by itself.
@@ -564,8 +564,29 @@ function DiscardDialog({ item, onClose }: { item: SyncItem | null; onClose: () =
           </p>
         </div>
       )}
+      {unreadable > 0 && item && (
+        <div role="alert" className="mt-3 rounded-[14px] bg-amber-soft px-4 py-3 text-[13.5px] leading-snug text-amber-olive">
+          <p>
+            {unreadable === 1
+              ? "No se pudo leer una de las fotos en este teléfono, así que ahora no se puede guardar. Si descarta, se borra de todos modos."
+              : `No se pudieron leer ${unreadable} de las fotos en este teléfono, así que ahora no se pueden guardar. Si descarta, se borran de todos modos.`}
+          </p>
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => {
+              // What was shared or downloaded so far covered fewer photos: the save step starts over with all of them.
+              setKeptFor(null);
+              retry();
+            }}
+            className="mt-2.5 h-10 rounded-[12px] border-line bg-surface px-4 font-semibold text-ink"
+          >
+            <RefreshCw aria-hidden /> Reintentar
+          </Button>
+        </div>
+      )}
       {files.length > 0 && item && (
-        <SaveCapturesBox key={item.id} files={files} kept={kept} onKept={(how) => setKeptFor({ id: item.id, how })} onBusy={setSaving} />
+        <SaveCapturesBox key={`${item.id}:${files.length}`} files={files} kept={kept} onKept={(how) => setKeptFor({ id: item.id, how })} onBusy={setSaving} />
       )}
     </ConfirmDialog>
   );

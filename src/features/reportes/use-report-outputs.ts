@@ -8,6 +8,7 @@ import { useUi } from "@/lib/ui-store";
 import { mailtoLink, whatsappLink } from "@/lib/domain";
 import type { Report, ShareChannel } from "@/lib/types";
 import { buildReportPdf } from "./pdf-build";
+import { PhotosUnavailableError } from "./raster";
 import { hasProvisionalFolio, reportFileName, reportFingerprint, type ReportContext } from "./report-model";
 import { CHANNEL_TO_LABEL, DOWNLOAD_TARGET, canShareFile, downloadBlob, emailDraft, whatsappMessage } from "./share";
 
@@ -79,6 +80,12 @@ export function useReportOutputs() {
       setTimeout(() => setTask((t) => (t && t.reportId === report.id && t.step === "listo" ? null : t)), 2200);
       return blob;
     } catch (err) {
+      // A server photo that could not be read now: nothing is cached (a placeholder in its place would be shared as the report).
+      if (err instanceof PhotosUnavailableError) {
+        setTask((t) => (t && t.reportId === report.id ? { ...t, step: "error", error: err.message } : t));
+        toast.error("No se pudo componer el PDF", { description: err.message });
+        return null;
+      }
       console.error(err);
       setTask((t) => (t && t.reportId === report.id ? { ...t, step: "error", error: "No se pudo componer el PDF en este dispositivo." } : t));
       toast.error("No se pudo componer el PDF", { description: "Intente de nuevo. Si persiste, recargue la página." });
