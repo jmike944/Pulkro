@@ -48,6 +48,11 @@ export type Site = {
   municipality: string;
   lat: number;
   lng: number;
+  /**
+   * A stand-in for a site this device does not hold (lib/hooks.ts: an order whose site has not arrived yet): its lat/lng
+   * are no location — nothing maps, measures against or records them.
+   */
+  unavailable?: true;
 };
 
 export type Client = {
