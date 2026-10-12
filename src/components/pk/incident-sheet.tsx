@@ -7,6 +7,7 @@ import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { attempt, PermissionDeniedError, useAppStore } from "@/lib/store";
 import { useDemoSession } from "@/lib/hooks";
+import { useResetOnChange } from "@/lib/use-reset-on-change";
 import type { CaptureInput } from "@/lib/photo-store";
 import { useMediaQuery, useOrderBundle, type OrderBundle } from "@/lib/hooks";
 import { fmtDay, plural } from "@/lib/format";
@@ -130,23 +131,20 @@ export function IncidentSheet({
 
   // Every time the flow opens it starts from a clean draft (state adjusted during render, not in an effect).
   // Closing changes nothing, so the last screen stays intact while it animates out.
-  const [wasOpen, setWasOpen] = useState(open);
-  if (open !== wasOpen) {
-    setWasOpen(open);
-    if (open) {
-      setStep(choosing ? "orden" : "tipo");
-      setDir(1);
-      setType("faltante_material");
-      setSeverity("media");
-      setDescription("");
-      setBlocks(false);
-      setJId(jornadaId);
-      setPhotoIds([]);
-      setPicked(null);
-      setCreated(null);
-      setSwitchAsk(null);
-    }
-  }
+  useResetOnChange(open, (isOpen) => {
+    if (!isOpen) return;
+    setStep(choosing ? "orden" : "tipo");
+    setDir(1);
+    setType("faltante_material");
+    setSeverity("media");
+    setDescription("");
+    setBlocks(false);
+    setJId(jornadaId);
+    setPhotoIds([]);
+    setPicked(null);
+    setCreated(null);
+    setSwitchAsk(null);
+  });
 
   const orderKey = order?.id;
   useEffect(() => {

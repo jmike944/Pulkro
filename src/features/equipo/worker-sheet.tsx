@@ -8,6 +8,7 @@ import { addDays, format, parseISO, subDays } from "date-fns";
 import { es } from "date-fns/locale";
 import { cn } from "@/lib/utils";
 import { useLookups, useNow } from "@/lib/hooks";
+import { useResetOnChange } from "@/lib/use-reset-on-change";
 import { whatsappLink } from "@/lib/domain";
 import { firstName, fmtDay, fmtHours, fmtTime } from "@/lib/format";
 import type { Jornada } from "@/lib/types";
@@ -47,11 +48,9 @@ export function WorkerSheet({
   const draft = useWorkerDraft(workerId);
   const [editing, setEditing] = useState(false);
   // Every opening starts on the profile (reset on the way in, so the closing animation keeps showing what was on screen).
-  const [wasOpen, setWasOpen] = useState(open);
-  if (open !== wasOpen) {
-    setWasOpen(open);
-    if (open) setEditing(false);
-  }
+  useResetOnChange(open, (isOpen) => {
+    if (isOpen) setEditing(false);
+  });
   const editMode = editing && !!stat && canCatalog;
   const back = useDiscardGuard(editMode && draft.dirty, (o) => {
     if (!o) setEditing(false);

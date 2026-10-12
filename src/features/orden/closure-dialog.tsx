@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Check, CircleCheck, FileText } from "lucide-react";
 import { useMediaQuery } from "@/lib/hooks";
+import { useResetOnChange } from "@/lib/use-reset-on-change";
 import { PulkroMark } from "@/components/pk/brand";
 import { IconTile } from "@/components/pk/bits";
 import { ClockWarning } from "@/components/pk/clock-warning";
@@ -39,11 +40,9 @@ import { ClosureFlow } from "./closure-flow";
 export function ClosureDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (v: boolean) => void }) {
   // Every opening starts from a clean draft: a new session remounts it, closing keeps it mounted for the exit animation.
   const [session, setSession] = useState(0);
-  const [wasOpen, setWasOpen] = useState(open);
-  if (open !== wasOpen) {
-    setWasOpen(open);
-    if (open) setSession((s) => s + 1);
-  }
+  useResetOnChange(open, (isOpen) => {
+    if (isOpen) setSession((s) => s + 1);
+  });
   return <ClosureSession key={session} open={open} onOpenChange={onOpenChange} />;
 }
 
