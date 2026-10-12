@@ -1,8 +1,8 @@
 "use client";
 
-import { useSyncExternalStore } from "react";
+import { useEffect, useRef, useSyncExternalStore } from "react";
 import { AppWindow, HardDrive, Loader2, RefreshCw, TriangleAlert } from "lucide-react";
-import { retryClaim, subscribeWriter, takeOver, takeOverAnyway, writerState, type WriterState } from "@/lib/device-storage";
+import { canAskWriter, retryClaim, subscribeWriter, takeOver, takeOverAnyway, writerState, type WriterState } from "@/lib/device-storage";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
 import { BigButton } from "@/components/pk/mobile";
 import { AuthFrame, AuthHeading } from "@/features/auth/auth-frame";
@@ -65,12 +65,33 @@ const COPY: Partial<Record<WriterState, { title: string; body: string }>> = {
   },
 };
 
+/**
+ * Without BroadcastChannel (Safari < 15.4) this tab cannot ask the other one to save what it has pending: «Usar aquí» never
+ * takes the device silently, it says so ("unanswered") and only «Usar aquí de todos modos» takes it.
+ */
+const NO_CHANNEL_COPY: Partial<Record<WriterState, { title: string; body: string }>> = {
+  blocked: {
+    title: COPY.blocked!.title,
+    body: "Para que sus capturas no se mezclen ni se pierdan, Pulkro trabaja en una sola ventana a la vez en este dispositivo. Siga en la otra ventana, o ciérrela y vuelva aquí: Pulkro se abrirá en esta.",
+  },
+  unanswered: {
+    title: "No se puede pedir a la otra ventana que guarde",
+    body: "Este navegador no permite que esta ventana le pida a la otra que guarde lo pendiente antes de cambiar. Siga en la otra ventana, o ciérrela y vuelva aquí: Pulkro se abrirá en esta. Si usa Pulkro aquí de todos modos, lo que la otra ventana no haya guardado se perderá.",
+  },
+};
+
 /** The full-screen blocker for `state`. */
 export function WriterBlocker({ state }: { state: WriterState }) {
-  const copy = COPY[state] ?? COPY.blocked!;
+  const copy = (!canAskWriter() && NO_CHANNEL_COPY[state === "taking" || state === "kept" ? "blocked" : state]) || COPY[state] || COPY.blocked!;
   const icon = state === "full" ? <HardDrive /> : state === "unreadable" || state === "unanswered" ? <TriangleAlert /> : <AppWindow />;
+  // A modal over an inert page: the focus goes into it when it opens (AuthHeading moves it only for a later card), so
+  // keyboard and screen-reader users land on its title.
+  const dialog = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    dialog.current?.querySelector<HTMLElement>("h1")?.focus();
+  }, []);
   return (
-    <div role="dialog" aria-modal="true" aria-label={copy.title} className="fixed inset-0 z-[300] overflow-y-auto bg-canvas">
+    <div ref={dialog} role="dialog" aria-modal="true" aria-label={copy.title} className="fixed inset-0 z-[300] overflow-y-auto bg-canvas">
       <AuthFrame cardKey={state === "kept" || state === "taking" ? "blocked" : state}>
         <span className="mb-5 flex size-14 items-center justify-center rounded-[18px] bg-blue-soft text-azure-fg [&_svg]:size-6">{icon}</span>
         <AuthHeading title={copy.title}>{copy.body}</AuthHeading>

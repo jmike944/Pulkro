@@ -26,6 +26,8 @@
  *    busy for a few seconds (a PDF, a large save) answers nothing meanwhile. A tab that is still claiming, or waits on a
  *    full device, steps back when another becomes the writer. Without BroadcastChannel either (Safari < 15.4), a recent stamp
  *    is the only sign of a writer: the tab waits behind the blocker; it cannot ask that writer to save first.
+ *  Without BroadcastChannel (with or without Web Locks) «Usar aquí» cannot ask the writer anything: it never takes the device
+ *  silently — the blocker says so, and only «Usar aquí de todos modos» takes it.
  *  Only once it holds the epoch does a tab read IndexedDB and hydrate the store (bootstrapStore). The other tabs never read,
  *  write, push or pull: they hold nothing.
  * The device's owner ("demo", or "supabase:<user id>") is stored next to the data, and every write checks it too: a write
@@ -353,12 +355,14 @@ function startBeat() {
 
 /**
  * «Usar aquí»: asks the writer to save what it has pending and step aside, then takes the device. A writer that does not
- * answer (frozen, discarded) loses it anyway — unless its last save failed ("unanswered": the person decides); one that cannot
- * save what it holds keeps it ("kept").
+ * answer (frozen, discarded) loses it anyway — unless its last save failed, or this browser has no BroadcastChannel to ask it
+ * on ("unanswered": the person decides); one that cannot save what it holds keeps it ("kept").
  */
 export const takeOver = () => requestRelease(false);
 /** «Usar aquí de todos modos»: a writer that does not answer loses even what it could not save. */
 export const takeOverAnyway = () => requestRelease(true);
+/** This browser can ask the writer to save and step aside (BroadcastChannel; Safari < 15.4 has none). */
+export const canAskWriter = () => !!channel;
 
 function requestRelease(anyway: boolean) {
   if (held || (writer !== "blocked" && writer !== "kept" && writer !== "unanswered")) return;
@@ -374,8 +378,10 @@ function requestRelease(anyway: boolean) {
     clearTimeout(timer);
     channel?.removeEventListener("message", onMessage);
     if (held || writer === "lost") return;
-    // No answer at all, from a writer whose last save failed: taking over would lose what it holds. The person decides.
-    const unsaved = how === "silent" && !anyway && unsavedElsewhere();
+    // No answer at all, from a writer whose last save failed — or, without BroadcastChannel, from a writer this tab could not
+    // even ask to save (its debounced write, a photo batch still being stored): taking over would lose what it holds. The
+    // person decides.
+    const unsaved = how === "silent" && !anyway && (!channel || unsavedElsewhere());
     if (how === "kept" || unsaved) {
       setWriter(unsaved ? "unanswered" : "kept");
       if (locks()) requestLock("wait");
@@ -472,7 +478,8 @@ async function stillWriter(): Promise<boolean> {
   } catch {
     return true; // cannot read: the write's own check still holds
   }
-  if (stored === epoch) return true;
+  // Still this tab's — and still writing: a handover that began while the epoch was read ("handing") sends nothing more.
+  if (stored === epoch) return !left && writer === "writer";
   loseWriter();
   return false;
 }
