@@ -482,7 +482,7 @@ function DiscardDialog({ item, onClose }: { item: SyncItem | null; onClose: () =
   // The pictures the discard deletes (only once confirmed), offered to be saved on the phone first.
   const pictures = useMemo(() => discardedCaptures(queue, set, photos), [queue, set, photos]);
   const folios = useMemo(() => new Map(orders.map((o) => [o.id, o.folio])), [orders]);
-  const { files, unreadable, retry } = useCaptureFiles(pictures, folios);
+  const { files, filesKey, unreadable, retry } = useCaptureFiles(pictures, folios);
   // How the photos left the app (shared, or downloaded): the confirmation says what that does and does not keep. It never
   // replaces the checkbox. Not while some could not be read: those were never offered.
   const [keptFor, setKeptFor] = useState<{ id: string; how: CapturesKept } | null>(null);
@@ -585,8 +585,10 @@ function DiscardDialog({ item, onClose }: { item: SyncItem | null; onClose: () =
           </Button>
         </div>
       )}
+      {/* Keyed by the photos it offers, not their count: after «Reintentar» another photo may take an unreadable one's place,
+          and what was shared or downloaded is tracked per file. */}
       {files.length > 0 && item && (
-        <SaveCapturesBox key={`${item.id}:${files.length}`} files={files} kept={kept} onKept={(how) => setKeptFor({ id: item.id, how })} onBusy={setSaving} />
+        <SaveCapturesBox key={`${item.id}:${filesKey}`} files={files} kept={kept} onKept={(how) => setKeptFor({ id: item.id, how })} onBusy={setSaving} />
       )}
     </ConfirmDialog>
   );
