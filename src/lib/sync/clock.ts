@@ -86,15 +86,18 @@ const REMEASURE_MS = 2 * 60_000;
 /** The wall clock and the monotonic one at the last check (in memory: a reload starts over). */
 let anchor: { wall: number; mono: number } | undefined;
 let remeasuredAt = -Infinity;
+/** A reading was taken since this page loaded (the phone's clock may have been changed while the app was closed). */
+let measuredThisLoad = false;
 
 /**
  * When the app comes back to the screen, and every minute while it shows (sync/use-pull-scheduler.ts):
  *  - a wall clock that moved by more than the time that passed (performance.now(), which no clock setting touches) was set
  *    by hand: the estimate measured against the old clock is dropped — no warning on a clock that may be right now; a
  *    floor alone never says the phone is ahead, so the next pull cannot bring a false one back;
- *  - while the warning shows, or after such a jump, a fresh reading is taken (`remeasure`: a token refresh, whose `iat` is
- *    a "between" sample that replaces the estimate), at most every 2 minutes and only `online`. After a reload there is no
- *    earlier reading of the two clocks to compare: the reading while the warning shows covers a clock fixed meanwhile.
+ *  - once per page load, while the warning shows, or after such a jump, a fresh reading is taken (`remeasure`: a token
+ *    refresh, whose `iat` is a "between" sample that replaces the estimate), at most every 2 minutes and only `online`.
+ *    After a reload there is no earlier reading of the two clocks to compare, and the saved estimate may be stale: the
+ *    clock may have been set (ahead, behind, or right again) while the app was closed — the first online check reads it.
  * Some devices pause performance.now() while asleep, so waking up can look like a jump: it only costs a re-measure.
  */
 export function checkClock(store: ClockStore, remeasure: () => Promise<unknown>, online: boolean) {
@@ -105,7 +108,8 @@ export function checkClock(store: ClockStore, remeasure: () => Promise<unknown>,
   if (jumped && store.getState().sync.clock) store.setState((st) => ({ sync: { ...st.sync, clock: undefined } }));
   const showing = clockSkewMs(store.getState().sync.clock) !== undefined;
   const t = Number.isFinite(mono) ? mono : wall;
-  if (!online || !(jumped || showing) || t - remeasuredAt < REMEASURE_MS) return;
+  if (!online || !(jumped || showing || !measuredThisLoad) || t - remeasuredAt < REMEASURE_MS) return;
+  measuredThisLoad = true;
   remeasuredAt = t;
   void remeasure().catch(() => undefined);
 }

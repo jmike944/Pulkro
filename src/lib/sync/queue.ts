@@ -236,9 +236,11 @@ function createdIds(q: SyncItem): string[] {
  */
 const LOOSE_ARGS: Record<string, string[]> = { generate_report: ["p_photo_ids"] };
 
-/** The operation names one of `ids` anywhere in its arguments (or belongs to one of those orders). */
+/** The operation names one of `ids` anywhere in its arguments, depends on one (`deps`), or belongs to one of those orders. */
 function names(q: SyncItem, ids: Set<string>): boolean {
   if (q.orderId && ids.has(q.orderId)) return true;
+  // A record it depends on without naming it in its arguments (`deps`: a case note that reports the photo it came with).
+  if ((q.deps ?? []).some((k) => ids.has(k.slice(k.indexOf(":") + 1)))) return true;
   const walk = (v: unknown): boolean =>
     typeof v === "string" ? ids.has(v) : Array.isArray(v) ? v.some(walk) : !!v && typeof v === "object" && Object.values(v).some(walk);
   const loose = (q.op && LOOSE_ARGS[q.op.rpc]) ?? [];

@@ -188,7 +188,10 @@ export type GeoStamp = {
 
 export type JornadaStatus = "pendiente" | "en_curso" | "cerrada";
 
-/** `id`: server row id (jornada_notes.id) of a pulled entry; entries written on this device have none until synced. */
+/**
+ * `id`: the jornada_notes row id — set by the pull, or on this device for an account's own note (sent as `p_note_id`); demo
+ * notes have none.
+ */
 export type JornadaLogEntry = { id?: string; at: string; by: string; text: string };
 
 /** One working day of an order. Multi-day orders keep independent jornadas. */
@@ -441,7 +444,10 @@ export type SyncItem = {
   bytes?: number;
   /** Account sessions: what is sent. Demo items have none (the demo simulates the server). */
   op?: SyncOp;
-  /** Records this item needs on the server first (`${entity}:${id}` of a client, site, worker… created on this device). */
+  /**
+   * Records this item needs on the server first (`${entity}:${id}` of a client, site, worker… created on this device), or
+   * that it reports (`foto:<id>`: a case note about the photo it came with). Discarding such a record discards this item.
+   */
   deps?: string[];
   /** Server answers that asked to retry (server busy, a parent still on its way): they count toward the cap (queue.ts). */
   attempts?: number;
