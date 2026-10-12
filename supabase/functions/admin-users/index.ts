@@ -5,7 +5,7 @@
  * `users.admin` in every RPC anyway, but the check here gates the Auth admin calls (an invite e-mail cannot be unsent).
  *
  *   { action: "invite",       opId, email, name, role, unitId, title?, phone?, hue? }
- *       inviteUserByEmail (redirectTo = APP_URL/acceso/definir-contrasena), then provision_profile with the CALLER's JWT;
+ *       inviteUserByEmail (redirectTo = <the calling app's origin, else APP_URL>/acceso/definir-contrasena), then provision_profile with the CALLER's JWT;
  *       if the profile fails, the auth user this call created is deleted again.
  *   { action: "deactivate",   opId, userId }   update_profile {active:false} (caller's JWT; revokes sessions, returns
  *   { action: "reactivate",   opId, userId }   open_orders), then ban / unban through the admin API.
@@ -71,13 +71,37 @@ const originOf = (value: string): string | undefined => {
 
 /** Base URL of the app (invite landing page). No trailing slash. */
 const APP_URL = originOf(env("APP_URL") ?? "") ? env("APP_URL")!.replace(/\/+$/, "") : undefined;
-/** Browser origins allowed to call (APP_ORIGINS, comma-separated); when unset, the origin of APP_URL. */
-const APP_ORIGINS: ReadonlySet<string> = new Set(
-  (env("APP_ORIGINS") ?? APP_URL ?? "")
-    .split(",")
-    .map((value) => originOf(value.trim()))
-    .filter((value): value is string => !!value),
-);
+/**
+ * Browser origins allowed to call (APP_ORIGINS, comma-separated; when unset, the origin of APP_URL). An entry is an exact
+ * origin, or an https origin with ONE `*` standing for letters, digits and dashes inside a single DNS label (never a dot),
+ * e.g. `https://pulkro-*-ouroboros-63cf4f47.vercel.app` for every Vercel preview of the project. Keep patterns project-specific:
+ * the `*` needs fixed text on both sides within its label (`*.vercel.app` is refused); an allowed origin also receives the
+ * invitation links its Dirección sends (below), and Supabase Auth's redirect allow list must list it too, or the link falls
+ * back to the Site URL.
+ */
+type OriginRule = { exact: string } | { pattern: RegExp };
+const ORIGIN_PATTERN_RE = /^https:\/\/[a-z0-9.-]*\*[a-z0-9.-]*\.[a-z0-9-]+\.[a-z]{2,}$/;
+const escapeRe = (value: string) => value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+function originRule(raw: string): OriginRule | undefined {
+  const value = raw.trim().toLowerCase().replace(/\/+$/, "");
+  if (!value.includes("*")) {
+    const exact = originOf(value);
+    return exact ? { exact } : undefined;
+  }
+  if (value.indexOf("*") !== value.lastIndexOf("*") || !ORIGIN_PATTERN_RE.test(value)) return undefined;
+  const [before, after] = value.split("*");
+  // Fixed text on both sides inside the same label (`pulkro-*-team`): never a whole label (`*.vercel.app` = any app).
+  if (!/[a-z0-9-]$/.test(before) || !/^[a-z0-9-]/.test(after)) return undefined;
+  return { pattern: new RegExp(`^${escapeRe(before)}[a-z0-9-]+${escapeRe(after)}$`) };
+}
+const ORIGIN_RULES: readonly OriginRule[] = (env("APP_ORIGINS") ?? APP_URL ?? "")
+  .split(",")
+  .map(originRule)
+  .filter((rule): rule is OriginRule => !!rule);
+const isAllowedOrigin = (origin: string): boolean => {
+  const value = origin.toLowerCase();
+  return ORIGIN_RULES.some((rule) => ("exact" in rule ? rule.exact === value : rule.pattern.test(value)));
+};
 
 const INVITE_PATH = "/acceso/definir-contrasena";
 /** "Banned until" for a deactivated account: effectively forever; reactivation lifts it ("none"). */
@@ -291,6 +315,11 @@ type Ctx = {
   /** Secret key: used for auth.admin and for reading the caller's own profile row, nothing else. */
   admin: SupabaseContext["supabaseAdmin"];
   callerId: string;
+  /**
+   * Where invitation links land: the app the request came from (its Origin, when allowed: production, a Vercel preview or
+   * localhost), else APP_URL (calls without an Origin, e.g. curl). No trailing slash.
+   */
+  appUrl: string | undefined;
 };
 
 const PROFILE_COLUMNS = "id, name, initials, role, title, unit_id, email, phone, hue, active";
@@ -350,8 +379,8 @@ function provision(ctx: Ctx, req: InviteRequest, userId: string) {
 }
 
 async function invite(ctx: Ctx, req: InviteRequest) {
-  if (!APP_URL) {
-    console.error("admin-users: APP_URL is not set (or not an http(s) URL)");
+  if (!ctx.appUrl) {
+    console.error("admin-users: no app URL for the invitation link (APP_URL unset and no allowed Origin)");
     fail(500, "server_misconfigured", MSG.misconfigured);
   }
   // Checked before anything is e-mailed: an invitation cannot be taken back.
@@ -383,7 +412,7 @@ async function invite(ctx: Ctx, req: InviteRequest) {
   }
 
   const startedAt = Date.now();
-  const invited = await ctx.admin.auth.admin.inviteUserByEmail(req.email, { redirectTo: `${APP_URL}${INVITE_PATH}` });
+  const invited = await ctx.admin.auth.admin.inviteUserByEmail(req.email, { redirectTo: `${ctx.appUrl}${INVITE_PATH}` });
   if (invited.error || !invited.data?.user) throw authFailure(invited.error, "invite");
   const user = invited.data.user;
   // GoTrue re-sends the invitation of an existing, never-confirmed account (same id, `invited_at` moves on): only an
@@ -528,8 +557,8 @@ async function changeEmail(ctx: Ctx, req: EmailRequest) {
  * «¿Olvidó su contraseña?». Nothing is written in the database, so nothing is audited and no op is stored.
  */
 async function resendInvite(ctx: Ctx, req: ResendRequest) {
-  if (!APP_URL) {
-    console.error("admin-users: APP_URL is not set (or not an http(s) URL)");
+  if (!ctx.appUrl) {
+    console.error("admin-users: no app URL for the invitation link (APP_URL unset and no allowed Origin)");
     fail(500, "server_misconfigured", MSG.misconfigured);
   }
   const target = await ctx.db.from("profiles").select("id, active").eq("id", req.userId).maybeSingle();
@@ -546,7 +575,7 @@ async function resendInvite(ctx: Ctx, req: ResendRequest) {
   if (!authUser.invited_at || authUser.last_sign_in_at) fail(409, "already_active", MSG.alreadyActive);
   if (!authUser.email) fail(404, "auth_user_missing", "La cuenta de acceso no tiene correo.");
 
-  const invited = await ctx.admin.auth.admin.inviteUserByEmail(authUser.email, { redirectTo: `${APP_URL}${INVITE_PATH}` });
+  const invited = await ctx.admin.auth.admin.inviteUserByEmail(authUser.email, { redirectTo: `${ctx.appUrl}${INVITE_PATH}` });
   if (invited.error) {
     const code = invited.error.code;
     if (code === "email_exists" || code === "user_already_exists") fail(409, "already_active", MSG.alreadyActive);
@@ -576,7 +605,7 @@ function corsFor(req: Request): { allowed: boolean; headers: Headers } {
   const headers = new Headers({ Vary: "Origin" });
   const origin = req.headers.get("Origin");
   if (!origin) return { allowed: true, headers };
-  if (!APP_ORIGINS.has(origin)) return { allowed: false, headers };
+  if (!isAllowedOrigin(origin)) return { allowed: false, headers };
   headers.set("Access-Control-Allow-Origin", origin);
   headers.set("Access-Control-Allow-Headers", supabaseCorsHeaders["Access-Control-Allow-Headers"]);
   headers.set("Access-Control-Allow-Methods", "POST, OPTIONS");
@@ -615,7 +644,9 @@ Deno.serve(async (req: Request): Promise<Response> => {
     const callerId = context.userClaims?.id;
     if (!callerId) fail(401, "no_session", MSG.sessionExpired);
 
-    const ctx: Ctx = { db: context.supabase, admin: context.supabaseAdmin, callerId };
+    const origin = req.headers.get("Origin");
+    const appUrl = origin && isAllowedOrigin(origin) ? origin.toLowerCase() : APP_URL;
+    const ctx: Ctx = { db: context.supabase, admin: context.supabaseAdmin, callerId, appUrl };
     await requireDireccion(ctx);
     const request = parseRequest(await readBody(req));
     action = request.action;

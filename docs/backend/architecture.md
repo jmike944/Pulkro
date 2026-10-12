@@ -35,7 +35,8 @@ What is left before the pilot is listed in §12.
 | `20261011175442_admin_users_decisions` | owner decisions on account administration: an actual e-mail change also ends the person's sessions; the fail-safe trigger `pulkro_mirror_email_change` on `auth.users` copies a self-service e-mail change into `profiles.email` |
 
 Edge Function `admin-users` **deployed** (version 3, 2026-10-11: the review fixes and `resend_invite`; `verify_jwt` on;
-secrets `APP_URL` / `APP_ORIGINS` point at local development until the app has its own URL). Auth settings applied: sign-ups off, the password policy, the access-token hook
+`APP_ORIGINS` allows localhost, `https://pulkro.vercel.app` and every Vercel preview of the project, and invitation links go
+back to the origin they were sent from; `APP_URL` = localhost is only the fallback for calls without an Origin). Auth settings applied: sign-ups off, the password policy, the access-token hook
 (enabled), redirect URLs `http://localhost:3000/**` and `http://localhost:3100/**` (Site URL `http://localhost:3000`).
 
 Sources of truth mirrored here: `docs/requisitos.md`, `src/lib/types.ts`, `src/lib/permissions.ts`, `src/lib/hooks.ts`,
@@ -99,7 +100,7 @@ profile before any Auth admin call, and writes every profile change **with the c
 
 | Action | Auth admin (secret key) | RPC (caller's JWT) |
 |---|---|---|
-| `invite {opId, email, name, role, unitId, title?, phone?, hue?}` | `inviteUserByEmail` (`redirectTo` = `APP_URL/acceso/definir-contrasena`); if the profile fails, the auth user is deleted again only when this call created it (a re-sent invitation to an existing, never-confirmed account without a profile leaves that account in place) | `provision_profile` |
+| `invite {opId, email, name, role, unitId, title?, phone?, hue?}` | `inviteUserByEmail` (`redirectTo` = the calling app's allowed origin, else `APP_URL`, + `/acceso/definir-contrasena`); if the profile fails, the auth user is deleted again only when this call created it (a re-sent invitation to an existing, never-confirmed account without a profile leaves that account in place) | `provision_profile` |
 | `deactivate` / `reactivate {opId, userId}` | ban (`876000h`) / unban, mirroring the profile's `active` | `update_profile {active}` (returns `open_orders`) |
 | `change_email {opId, userId, email}` | `updateUserById {email, email_confirm: true}`; put back when the database refuses the sync (any 4xx); on no answer or a 5xx it stays changed and the same request completes it; on `email_changed` (another change of the same account won) it stays as the other request left it | `sync_profile_email` (with the request's address); when it changes the profile it **ends the person's sessions** (decision 2: they sign in again with the new address) |
 | `resend_invite {opId, userId}` | `getUserById`; only while the invitation is pending (`invited_at` set, `last_sign_in_at` empty) `inviteUserByEmail` again (GoTrue re-sends to an unconfirmed account, with a new link); otherwise, or when GoTrue refuses a confirmed account, `409 already_active` → «¿Olvidó su contraseña?» | none: reads the profile (must exist and be active, else `out_of_scope` / `409 account_inactive`); nothing written or audited, `opId` not stored |
