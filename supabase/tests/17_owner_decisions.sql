@@ -210,12 +210,17 @@ begin
   perform pg_temp.as_user(c_sup2);
   perform pg_temp.eq('the new supervisor can reopen it',
     pg_temp.ok('reopen', format($q$ select public.reopen_order(gen_random_uuid(), %L, 'Faltó una zona') ->> 'status' $q$, v_o)), 'reabierta');
-  -- archived orders stay frozen
+  -- archived and cancelled orders stay frozen
   perform pg_temp.as_owner();
   update public.orders set status = 'archivada' where id = v_o;
   perform pg_temp.as_user(c_adm1);
   perform pg_temp.err('an archived order is not reassigned',
     format($q$ select public.update_order(gen_random_uuid(), %L, %L) $q$, v_o, jsonb_build_object('supervisor_id', c_sup2)), 'PT409', 'order_closed');
+  perform pg_temp.as_owner();
+  update public.orders set status = 'cancelada' where id = v_o;
+  perform pg_temp.as_user(c_adm1);
+  perform pg_temp.err('a cancelled order is not reassigned',
+    format($q$ select public.update_order(gen_random_uuid(), %L, %L) $q$, v_o, jsonb_build_object('supervisor_id', c_sup2)), 'PT409', 'order_cancelled');
   perform pg_temp.as_owner();
 end $$;
 

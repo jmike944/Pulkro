@@ -217,7 +217,12 @@ begin
   perform pg_temp.check('sync_profile_email wrapper binds the op args and is executable by authenticated only', exists (
     select 1 from pg_proc p where p.oid = 'public.sync_profile_email(uuid, uuid, text)'::regprocedure
       and p.prosrc like '%pulkro.op_args%' and not p.prosecdef
-      and has_function_privilege('authenticated', p.oid, 'execute') and not has_function_privilege('anon', p.oid, 'execute')));
+      and has_function_privilege('authenticated', p.oid, 'execute') and not has_function_privilege('anon', p.oid, 'execute')
+      and not has_function_privilege('service_role', p.oid, 'execute')));
+  perform pg_temp.check('its private half too: authenticated only (expose_rpc grants both)',
+    has_function_privilege('authenticated', 'private.sync_profile_email(uuid, uuid, text)', 'execute')
+    and not has_function_privilege('anon', 'private.sync_profile_email(uuid, uuid, text)', 'execute')
+    and not has_function_privilege('service_role', 'private.sync_profile_email(uuid, uuid, text)', 'execute'));
 
   ----------------------------------------------------------------------------------------------------------------------
   -- Decision 3 · self-service completion (first block of the file: no RPC has set an op id in this transaction yet, as in
