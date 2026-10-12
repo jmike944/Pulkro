@@ -241,10 +241,26 @@ function names(q: SyncItem, ids: Set<string>): boolean {
   if (q.orderId && ids.has(q.orderId)) return true;
   // A record it depends on without naming it in its arguments (`deps`: a case note that reports the photo it came with).
   if ((q.deps ?? []).some((k) => ids.has(k.slice(k.indexOf(":") + 1)))) return true;
+  return namesInArgs(q, ids);
+}
+
+/** The operation's arguments name one of `ids` (what the server checks: `parent_missing` while that record is not there). */
+function namesInArgs(q: SyncItem, ids: Set<string>): boolean {
   const walk = (v: unknown): boolean =>
     typeof v === "string" ? ids.has(v) : Array.isArray(v) ? v.some(walk) : !!v && typeof v === "object" && Object.values(v).some(walk);
   const loose = (q.op && LOOSE_ARGS[q.op.rpc]) ?? [];
   return Object.entries(q.op?.args ?? {}).some(([k, v]) => !loose.includes(k) && walk(v));
+}
+
+/**
+ * The operation depends on one of `ids` without naming it (`deps` only: a case note that reports the photo it came with). The
+ * server cannot check that record for it: the note would be applied whether or not the photo ever arrived.
+ */
+function reportsUnnamed(q: SyncItem, ids: Set<string>): boolean {
+  return (q.deps ?? []).some((k) => {
+    const id = k.slice(k.indexOf(":") + 1);
+    return ids.has(id) && !namesInArgs(q, new Set([id]));
+  });
 }
 
 /**
@@ -286,18 +302,19 @@ export function cappedMessage(problem: SyncProblem, attempts: number): string {
  * The items "Descartar" removes with `id`: the item and every later unsent item that depends on a record it creates — the
  * photo edits of a discarded photo, the check-ins of discarded days, the order on a discarded client, every change of a
  * discarded new order… They could never be applied (the server would answer `parent_missing` until the retry cap).
- * An item whose outcome is unknown (outcomeUnknown) goes alone: if the server applied it, what depends on it still applies;
- * if not, those items answer `parent_missing` and can be discarded then, on a definite answer.
+ * An item whose outcome is unknown (outcomeUnknown) leaves what names it queued: if the server applied it, those still
+ * apply; if not, they answer `parent_missing` and can be discarded then, on a definite answer. What depends on it without
+ * naming it (a case note that reports the photo) goes with it all the same: the server could not tell, and would apply it.
  */
 export function discardSet(queue: readonly SyncItem[], id: string): SyncItem[] {
   const at = queue.findIndex((q) => q.id === id);
   const item = queue[at];
   if (!item || item.state === "sincronizado" || item.state === "sincronizando") return [];
   const out = [item];
-  if (outcomeUnknown(item)) return out;
+  const unknown = outcomeUnknown(item);
   const ids = new Set(createdIds(item));
   for (const q of queue.slice(at + 1)) {
-    if (!isUnsent(q) || q.state === "sincronizando" || !ids.size || !names(q, ids)) continue;
+    if (!isUnsent(q) || q.state === "sincronizando" || !ids.size || !(unknown ? reportsUnnamed(q, ids) : names(q, ids))) continue;
     out.push(q);
     for (const x of createdIds(q)) ids.add(x);
   }

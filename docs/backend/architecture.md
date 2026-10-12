@@ -439,8 +439,9 @@ One RPC per queue item keeps generated TypeScript types for every argument (a ba
   - *maybe applied*: an attempt whose answer was lost (no answer, 502/504, a device error after the request left) marks
     the item `maybeApplied` until a definite answer (applied / duplicate, a business refusal, a constraint, a privilege);
     busy answers (408/429/5xx, PostgREST, transient database states) prove nothing about it and keep the mark. While it
-    holds, «Descartar» takes the item alone (what depends on it may still apply), deletes no picture a queued item still
-    needs, and a discarded `create_order` is read back from the server by id.
+    holds, «Descartar» leaves what names the item queued (it may still apply), takes along only what depends on it without
+    naming it (see below), deletes no picture a queued item still needs, and a discarded `create_order` is read back from
+    the server by id.
   - an item the retry cap stopped is never resent by itself: its message says so (a phone clock ahead: "Corrija la fecha
     y hora del teléfono y pulse Reintentar").
   Field evidence is never dropped silently: a quarantined capture stays on the device until the person discards it, and
@@ -448,9 +449,10 @@ One RPC per queue item keeps generated TypeScript types for every argument (a ba
   sheet with the files where supported, else one download each, named `<folio>_<kind>_<yyyy-MM-dd_HH-mm-ss>`); the device
   copies are deleted only once the discard is confirmed (a picture the device fails to read is said so, with
   «Reintentar»). Discarding an item takes along the later items that name a record it creates (they could only answer
-  `parent_missing`), or depend on it (`deps`: a case's «Agregó una foto» note goes with that photo) — unless its last
-  attempt got no answer: the server may have applied it, so it goes alone (a new order discarded that way keeps the
-  pictures its still-queued photos need).
+  `parent_missing`), or depend on it (`deps`: a case's «Agregó una foto» note goes with that photo). If its last attempt
+  got no answer, the server may have applied it: what names it stays queued (the server answers `parent_missing` if it
+  never arrived; a new order discarded that way keeps the pictures its still-queued photos need), and only what depends
+  on it without naming it still goes along — the «Agregó una foto» note carries no photo id the server could check.
   Discarding a refused `validate_closure` or `check_in` also names the later `generate_report` / `log_share` of that order
   (or the `check_out` of that jornada): the server will probably refuse them too, but they are not taken along — they can
   be discarded when that happens.

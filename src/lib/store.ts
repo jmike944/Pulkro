@@ -1493,8 +1493,9 @@ export const useAppStore = create<AppState>()(
           const timeline = note ? [...c.timeline, { at, by: ok.user.id, text: note }] : c.timeline;
           setState((st) => ({ cases: st.cases.map((x) => (x.id === caseId ? { ...x, ...rest, timeline, updatedAt: at } : x)) }));
           // Only the fields that change travel; a note alone is add_case_note (photoIds follow the photos' own case_id).
-          // Photos this change adds («Agregó una foto de evidencia»): the note depends on them, so discarding a refused photo
-          // discards its note too (discardSet follows `deps`) — the timeline never reports a photo the server never got.
+          // Photos this change adds («Agregó una foto de evidencia»): the note depends on them, so discarding the photo — refused,
+          // or its answer lost — discards its note too (discardSet follows `deps`): the server cannot check the note against the
+          // photo, and the timeline never reports a photo it may never have got.
           const deps = (patch.photoIds ?? []).filter((id) => !c.photoIds.includes(id)).map((id) => `foto:${id}`);
           const serverPatch = diffPatch(c, rest, {
             category: "category", severity: "severity", channel: "channel", description: "description", ownerId: "owner_id",

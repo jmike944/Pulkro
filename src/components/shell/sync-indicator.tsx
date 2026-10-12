@@ -475,7 +475,8 @@ function DiscardDialog({ item, onClose }: { item: SyncItem | null; onClose: () =
   const more = set.length - 1;
   const captures = capturesText(set);
   const sum = discardSummary(set);
-  // The answer may have been lost after the server applied it: only the item itself goes (discardSet).
+  // The answer may have been lost after the server applied it: what names it stays queued, and only what reports it without
+  // naming it (a case note about the photo) goes with it (discardSet).
   const unknown = !!item && outcomeUnknown(item);
   // A report after a refused closure, a check-out after a refused check-in: they stay queued and are named here.
   const later = useMemo(() => (item ? likelyRefusedAfter(queue, item.id) : []), [queue, item]);
@@ -529,14 +530,16 @@ function DiscardDialog({ item, onClose }: { item: SyncItem | null; onClose: () =
       {unknown && (
         <p className="mt-3 text-[13.5px] leading-snug text-subtle">
           El último envío no tuvo respuesta: puede que el servidor ya lo haya aplicado. Si es así, este dispositivo lo volverá a
-          mostrar. Lo que depende de este cambio sigue en la cola y se enviará.
+          mostrar. Lo que depende de este cambio sigue en la cola y se enviará
+          {more > 0 ? ", salvo las notas que lo reportan: el servidor no podría comprobar si llegó." : "."}
         </p>
       )}
       {more > 0 && (
         <>
           <p className="mt-3 text-[13.5px] leading-snug text-subtle">
-            Usan lo que se descarta (la orden, la foto, la jornada, el registro nuevo…), así que tampoco podrían aplicarse y se
-            descartan con él:
+            {unknown
+              ? "Se descartan con él:"
+              : "Usan lo que se descarta (la orden, la foto, la jornada, el registro nuevo…), así que tampoco podrían aplicarse y se descartan con él:"}
           </p>
           <ul className="mt-2 max-h-40 space-y-1 overflow-y-auto rounded-[14px] border border-hairline px-4 py-2.5 text-[13px] leading-snug text-ink">
             {set.slice(1).map((q) => (
