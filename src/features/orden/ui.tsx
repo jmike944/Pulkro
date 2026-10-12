@@ -15,7 +15,7 @@ export function Gated({ gate, children, className }: { gate: Gate; children: Rea
   if (gate.ok) return <>{children}</>;
   return (
     <ReasonTip reason={gate.reason} contentClassName="max-w-[260px] text-center leading-snug">
-      <span tabIndex={0} className={cn("inline-flex cursor-not-allowed rounded-[12px] outline-none focus-visible:ring-3 focus-visible:ring-ring/50", className)} aria-label={gate.reason}>
+      <span tabIndex={0} role="button" aria-disabled="true" className={cn("inline-flex cursor-not-allowed rounded-[12px] outline-none focus-visible:ring-3 focus-visible:ring-ring/50", className)} aria-label={gate.reason}>
         {children}
       </span>
     </ReasonTip>

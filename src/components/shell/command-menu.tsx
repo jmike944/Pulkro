@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Command as Cmdk } from "cmdk";
 import { ArrowUpRight, ClipboardList, Map as MapIcon, Plus, Search, WifiOff, type LucideIcon } from "lucide-react";
@@ -112,6 +112,7 @@ export function CommandMenu() {
   const setOpen = useUi((s) => s.setCommandOpen);
   const setSyncOpen = useUi((s) => s.setSyncOpen);
   const router = useRouter();
+  const inputRef = useRef<HTMLInputElement>(null);
   const { orders, user } = useScopedData();
   const lk = useLookups();
   const catalog = useScopedCatalog();
@@ -233,6 +234,11 @@ export function CommandMenu() {
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
         showCloseButton={false}
+        // Opening the palette puts the caret in the search field.
+        onOpenAutoFocus={(e) => {
+          e.preventDefault();
+          inputRef.current?.focus();
+        }}
         className={cn(
           "flex flex-col gap-0 overflow-hidden rounded-[22px] p-0 shadow-lift",
           "top-[max(12px,env(safe-area-inset-top))] translate-y-0 max-sm:max-w-[calc(100%-1rem)] lg:top-[11vh]",
@@ -246,9 +252,9 @@ export function CommandMenu() {
           <div className="flex items-center gap-3 border-b border-hairline px-4 lg:px-5">
             <Search className="size-5 shrink-0 text-subtle" aria-hidden />
             <Cmdk.Input
+              ref={inputRef}
               value={query}
               onValueChange={setQuery}
-              autoFocus
               placeholder="Folio, cliente, sitio o persona"
               // 16px on phones: smaller input text makes iOS zoom the page on focus
               className="h-14 min-w-0 flex-1 bg-transparent text-[16px] text-ink outline-none placeholder:text-faint lg:h-16 lg:text-[17px]"

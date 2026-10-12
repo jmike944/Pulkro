@@ -218,7 +218,7 @@ function NewCaseFlow({ open, defaults, onOpenChange }: { open: boolean; defaults
           setOrderId(id);
           setPicking(false);
         }}
-        autoFocus={isDesktop}
+        focusSearch={isDesktop}
       />
 
       <div>
@@ -425,15 +425,15 @@ function OrderField({
   picking,
   setPicking,
   onPick,
-  autoFocus,
+  focusSearch,
 }: {
   closed: Order[];
   order?: Order;
   picking: boolean;
   setPicking: (v: boolean) => void;
   onPick: (id: string) => void;
-  /** desktop only: on a phone the keyboard would cover the form the moment it opens */
-  autoFocus: boolean;
+  /** the order search takes the caret when it appears — desktop only: on a phone the keyboard would cover the form */
+  focusSearch: boolean;
 }) {
   const lk = useLookups();
   const [query, setQuery] = useState("");
@@ -493,7 +493,8 @@ function OrderField({
             <div className="relative">
               <Search className="pointer-events-none absolute left-3.5 top-1/2 size-[18px] -translate-y-1/2 text-subtle" />
               <Input
-                autoFocus={autoFocus}
+                // eslint-disable-next-line jsx-a11y/no-autofocus -- the search appears because the person just opened the form or chose «Cambiar»
+                autoFocus={focusSearch}
                 value={query}
                 onChange={(e) => {
                   setQuery(e.target.value);

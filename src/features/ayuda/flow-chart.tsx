@@ -198,7 +198,7 @@ function Serpentine({ selected, onSelect }: { selected: number; onSelect: (n: nu
           </div>
         ))}
       </div>
-      <div ref={gridRef} role="group" aria-label="Pasos del flujo" onKeyDown={onKeyDown} className="relative grid grid-cols-3 grid-rows-5 gap-x-8 gap-y-7 lg:gap-x-10">
+      <div ref={gridRef} role="group" aria-label="Pasos del flujo" className="relative grid grid-cols-3 grid-rows-5 gap-x-8 gap-y-7 lg:gap-x-10">
         {paths && geo && (
           <svg aria-hidden className="pointer-events-none absolute inset-0 z-0 overflow-visible" width={geo.w} height={geo.h} viewBox={`0 0 ${geo.w} ${geo.h}`}>
             <defs>
@@ -299,6 +299,7 @@ function Serpentine({ selected, onSelect }: { selected: number; onSelect: (n: nu
             selected={selected === s.n}
             layoutKey={uid}
             onSelect={onSelect}
+            onKeyDown={onKeyDown}
             ref={(el) => {
               nodeRefs.current[s.n - 1] = el;
             }}
@@ -314,12 +315,15 @@ function FlowNode({
   selected,
   layoutKey,
   onSelect,
+  onKeyDown,
   ref,
 }: {
   step: FlowStep;
   selected: boolean;
   layoutKey: string;
   onSelect: (n: number) => void;
+  /** the arrow keys move between steps (the steps are the group's only focusable elements) */
+  onKeyDown: (e: React.KeyboardEvent) => void;
   ref: (el: HTMLButtonElement | null) => void;
 }) {
   const { col, row } = flowCell(s.n);
@@ -329,6 +333,7 @@ function FlowNode({
       ref={ref}
       type="button"
       onClick={() => onSelect(s.n)}
+      onKeyDown={onKeyDown}
       aria-pressed={selected}
       aria-label={`Paso ${pad2(s.n)}: ${s.title} · ${s.role}`}
       style={{ gridColumn: col, gridRow: row }}

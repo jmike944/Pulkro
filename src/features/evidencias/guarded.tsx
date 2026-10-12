@@ -10,7 +10,7 @@ export function Guarded({ reason, children, className }: { reason?: string | nul
   if (!reason) return <>{children}</>;
   return (
     <ReasonTip reason={reason} contentClassName="max-w-[260px] text-center text-[12.5px] leading-snug">
-      <span tabIndex={0} className={className ?? "inline-flex rounded-[12px] outline-none focus-visible:ring-3 focus-visible:ring-ring/50"}>
+      <span tabIndex={0} role="button" aria-disabled="true" className={className ?? "inline-flex rounded-[12px] outline-none focus-visible:ring-3 focus-visible:ring-ring/50"}>
         {children}
       </span>
     </ReasonTip>

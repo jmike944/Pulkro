@@ -8,7 +8,7 @@ export function WithReason({ reason, children, className }: { reason?: string | 
   if (!reason) return <>{children}</>;
   return (
     <ReasonTip reason={reason} contentClassName="max-w-[280px] text-[12.5px] leading-snug">
-      <span tabIndex={0} className={cn("inline-flex rounded-[12px] outline-none focus-visible:ring-3 focus-visible:ring-sky/50", className)}>
+      <span tabIndex={0} role="button" aria-disabled="true" className={cn("inline-flex rounded-[12px] outline-none focus-visible:ring-3 focus-visible:ring-sky/50", className)}>
         {children}
       </span>
     </ReasonTip>

@@ -129,7 +129,7 @@ function GatedExport({ allowed, children }: { allowed: boolean; children: React.
   if (allowed) return children;
   return (
     <ReasonTip side="bottom" reason="Los indicadores se exportan desde las cuentas de Dirección y Administración." contentClassName="max-w-[260px] text-[12.5px] leading-snug">
-      <span tabIndex={0} className="inline-flex rounded-[12px] outline-none focus-visible:ring-2 focus-visible:ring-sky">
+      <span tabIndex={0} role="button" aria-disabled="true" className="inline-flex rounded-[12px] outline-none focus-visible:ring-2 focus-visible:ring-sky">
         {children}
       </span>
     </ReasonTip>
@@ -147,7 +147,7 @@ function ScopePicker({ scope }: { scope: Parameters<typeof Controls>[0]["scope"]
     return (
       <>
         <ReasonTip side="bottom" reason={scope.hint} contentClassName="max-w-[260px] text-[12.5px] leading-snug">
-          <span tabIndex={0} className="hidden h-10 min-w-0 items-center gap-2 rounded-[12px] border border-hairline px-3 text-[13.5px] font-medium text-ink outline-none focus-visible:ring-2 focus-visible:ring-sky lg:inline-flex">
+          <span tabIndex={0} role="button" aria-disabled="true" className="hidden h-10 min-w-0 items-center gap-2 rounded-[12px] border border-hairline px-3 text-[13.5px] font-medium text-ink outline-none focus-visible:ring-2 focus-visible:ring-sky lg:inline-flex">
             {chip}
           </span>
         </ReasonTip>

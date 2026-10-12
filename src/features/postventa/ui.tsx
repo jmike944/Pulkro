@@ -23,7 +23,7 @@ export function Gate({ allowed, reason, children, className }: { allowed: boolea
   if (allowed) return <>{children}</>;
   return (
     <ReasonTip reason={reason} contentClassName="max-w-[260px] text-[12.5px]">
-      <span tabIndex={0} className={cn("inline-flex cursor-not-allowed rounded-[12px] outline-none focus-visible:ring-2 focus-visible:ring-sky", className)}>
+      <span tabIndex={0} role="button" aria-disabled="true" className={cn("inline-flex cursor-not-allowed rounded-[12px] outline-none focus-visible:ring-2 focus-visible:ring-sky", className)}>
         {children}
       </span>
     </ReasonTip>

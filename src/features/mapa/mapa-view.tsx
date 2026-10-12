@@ -276,7 +276,7 @@ function ProposedTag() {
       reason="Pantalla propuesta: no está en el documento de requerimientos. Apoya la supervisión presencial y remota."
       contentClassName="max-w-[260px] text-[12.5px] leading-snug"
     >
-      <span tabIndex={0} aria-label="Propuesto: pantalla fuera del documento de requerimientos" className="inline-flex rounded-md outline-none focus-visible:ring-3 focus-visible:ring-ring/50">
+      <span tabIndex={0} role="button" aria-label="Propuesto: pantalla fuera del documento de requerimientos" className="inline-flex rounded-md outline-none focus-visible:ring-3 focus-visible:ring-ring/50">
         <DocTag status="propuesto" />
       </span>
     </ReasonTip>

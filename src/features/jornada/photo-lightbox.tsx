@@ -85,6 +85,7 @@ function DeletePhoto({ photo, canDelete, reason, onDelete }: { photo: Photo; can
               <b className="font-semibold">¿Eliminar la foto de {photo.area}?</b> Se quita de la orden y del reporte. Queda registrado en la bitácora de auditoría.
             </p>
             <div className="flex gap-2">
+              {/* eslint-disable-next-line jsx-a11y/no-autofocus -- the confirmation that just replaced the actions focuses its safe choice, as DiscardDialog does */}
               <Button autoFocus variant="outline" onClick={() => setConfirming(false)} className="h-11 flex-1 rounded-[12px] bg-surface px-4 font-semibold">
                 Conservar
               </Button>

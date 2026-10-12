@@ -179,6 +179,7 @@ function IncidentCard({ inc }: { inc: Incident }) {
                   value={text}
                   onChange={(e) => setText(e.target.value)}
                   rows={3}
+                  // eslint-disable-next-line jsx-a11y/no-autofocus -- the resolution field the person just opened takes the caret
                   autoFocus
                   placeholder="Ej. Se repuso el material con entrega urgente y se informó al contacto."
                   className="w-full resize-none rounded-[14px] border border-input bg-surface px-3.5 py-3 text-[15px] leading-relaxed outline-none placeholder:text-faint focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"

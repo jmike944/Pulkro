@@ -43,16 +43,16 @@ function load(file, modules = {}) {
   const js = ts.transpileModule(fs.readFileSync(abs, 'utf8'), {
     compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 },
   }).outputText;
-  const module = { exports: {} };
+  const mod = { exports: {} };
   vm.runInThisContext(`(function (exports, require, module) {\n${js}\n})`, { filename: abs })(
-    module.exports,
+    mod.exports,
     (name) => {
       if (name in modules) return modules[name];
       throw new Error(`${file}: unexpected import ${name}`);
     },
-    module,
+    mod,
   );
-  return module.exports;
+  return mod.exports;
 }
 
 const { generateSeed, SEED_VERSION } = load('src/lib/seed.ts', { 'date-fns': dateFns });

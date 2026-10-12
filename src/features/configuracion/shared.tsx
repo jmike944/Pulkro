@@ -76,7 +76,7 @@ export function GatedButton({
   if (allowed) return button;
   return (
     <ReasonTip reason={reason} contentClassName="max-w-[260px] text-[12.5px] leading-snug">
-      <span tabIndex={0} className="inline-flex cursor-not-allowed rounded-[12px] outline-none focus-visible:ring-3 focus-visible:ring-ring/50" aria-label={reason}>
+      <span tabIndex={0} role="button" aria-disabled="true" className="inline-flex cursor-not-allowed rounded-[12px] outline-none focus-visible:ring-3 focus-visible:ring-ring/50" aria-label={reason}>
         {button}
       </span>
     </ReasonTip>
@@ -516,7 +516,7 @@ export function InlineSwitch({
   if (!disabled || !reason) return sw;
   return (
     <ReasonTip reason={reason} contentClassName="max-w-[240px] text-[12.5px] leading-snug">
-      <span tabIndex={0} className="inline-flex outline-none">
+      <span tabIndex={0} role="button" aria-disabled="true" className="inline-flex outline-none">
         {sw}
       </span>
     </ReasonTip>

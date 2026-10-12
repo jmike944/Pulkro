@@ -117,6 +117,7 @@ export function NoteFlow({ f, open, onOpenChange }: { f: FieldReady; open: boole
       <Textarea
         id="note-flow"
         value={text}
+        // eslint-disable-next-line jsx-a11y/no-autofocus -- the note flow the person just opened starts in its one field (FlowScreen would focus its close button)
         autoFocus
         onChange={(e) => setText(e.target.value)}
         maxLength={TEXT_LIMITS.jornadaNote.max}

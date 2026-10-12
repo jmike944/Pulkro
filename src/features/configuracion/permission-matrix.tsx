@@ -163,7 +163,7 @@ function Mark({ row, role, delay }: { row: PermissionRow; role: Role; delay: num
     .join(" · ");
   return (
     <ReasonTip reason={`${ROLE_LABEL[role]} · ${text}`} icon={null} contentClassName="text-[12.5px]">
-      <span tabIndex={0} aria-label={`${ROLE_LABEL[role]} · ${row.label}: ${text}`} className="inline-flex size-10 items-center justify-center rounded-full outline-none focus-visible:ring-3 focus-visible:ring-ring/50">
+      <span tabIndex={0} role="button" aria-label={`${ROLE_LABEL[role]} · ${row.label}: ${text}`} className="inline-flex size-10 items-center justify-center rounded-full outline-none focus-visible:ring-3 focus-visible:ring-ring/50">
         <MarkGlyph kind={kind} pending={pending} delay={delay} animated />
       </span>
     </ReasonTip>

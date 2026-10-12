@@ -154,6 +154,7 @@ function MaterialDialog({ material, open, onOpenChange }: { material: Material |
             options={[...UNITS.map((u) => ({ value: u as string, label: u })), { value: "otra", label: "Otra…" }]}
           />
           {unit === "otra" && (
+            // eslint-disable-next-line jsx-a11y/no-autofocus -- the field appears because the person just chose «Otra…»: the caret goes into it
             <Input value={custom} onChange={(e) => setCustom(e.target.value)} placeholder="Ej. bulto" aria-label="Otra unidad" maxLength={TEXT_LIMITS.materialUnit.max} className={`${inputCls} mt-2`} autoFocus />
           )}
         </Field>

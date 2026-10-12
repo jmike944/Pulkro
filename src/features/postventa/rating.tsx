@@ -85,6 +85,7 @@ export function StarInput({
   };
   return (
     <div className={cn("flex flex-col", size === "lg" ? "items-center" : "items-start", className)}>
+      {/* eslint-disable-next-line jsx-a11y/interactive-supports-focus -- a WAI-ARIA radio group: the radios carry the roving tab stop, never the group; it only takes their arrow keys and clears the hover preview as the pointer leaves */}
       <div
         role="radiogroup"
         aria-label={label}

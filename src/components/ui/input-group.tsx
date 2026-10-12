@@ -49,6 +49,7 @@ function InputGroupAddon({
   ...props
 }: React.ComponentProps<"div"> & VariantProps<typeof inputGroupAddonVariants>) {
   return (
+    // eslint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-noninteractive-element-interactions -- a pointer convenience (a click on the addon's icon or text puts the caret in the input); keyboard users tab to the input itself
     <div
       role="group"
       data-slot="input-group-addon"

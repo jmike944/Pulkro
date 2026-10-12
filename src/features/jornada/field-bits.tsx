@@ -54,7 +54,7 @@ export function Gate({
   if (!reason) return <>{children}</>;
   return (
     <ReasonTip reason={reason} side={side} contentClassName="max-w-[260px] text-[12.5px] leading-snug">
-      <span tabIndex={0} aria-label={reason} className={cn("inline-flex cursor-not-allowed rounded-[12px] outline-none focus-visible:ring-3 focus-visible:ring-ring/50", className)}>
+      <span tabIndex={0} role="button" aria-disabled="true" aria-label={reason} className={cn("inline-flex cursor-not-allowed rounded-[12px] outline-none focus-visible:ring-3 focus-visible:ring-ring/50", className)}>
         {children}
       </span>
     </ReasonTip>
