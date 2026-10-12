@@ -71,10 +71,12 @@ function LoginInner() {
   }, [hydrated, accountSignedIn]);
 
   // An account already signed in on this device goes straight in (it signs out from the app, which checks unsent changes) once
-  // the browser's Supabase session is its own (or cannot be checked offline); otherwise it signs in again here.
+  // the browser's Supabase session is its own (or cannot be checked offline); otherwise it signs in again here. Only from the
+  // sign-in panel: «¿Olvidó su contraseña?» (/login?recuperar=1, e.g. «Pedir un enlace nuevo» for someone else's expired
+  // link) stays open — asking for a recovery e-mail does not touch the open session.
   useEffect(() => {
-    if (hydrated && accountSignedIn && checked && !reauth && !leavingRef.current) router.replace(next);
-  }, [hydrated, accountSignedIn, checked, reauth, router, next]);
+    if (panel === "account" && hydrated && accountSignedIn && checked && !reauth && !leavingRef.current) router.replace(next);
+  }, [panel, hydrated, accountSignedIn, checked, reauth, router, next]);
   const opening = hydrated && accountSignedIn && !reauth;
 
   return (

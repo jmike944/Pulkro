@@ -256,7 +256,7 @@ function Detail({
             </p>
             <p className="mt-0.5 text-[13px] leading-snug text-subtle">{site?.address}</p>
           </div>
-          {site && (
+          {site && !site.unavailable && (
             <a
               href={mapsLink(site.lat, site.lng)}
               target="_blank"

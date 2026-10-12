@@ -11,7 +11,9 @@ import { loginHref } from "@/features/auth/safe-next";
  * "Vuelva a entrar": the browser has no Supabase session for the account on the device (expired or revoked refresh token,
  * signed out elsewhere, another account's invite / recovery link opened here). The device keeps every record and unsent
  * change and keeps working, but nothing is synced until the person signs in again. /login recognises this state, offers the
- * same account (its data kept) and comes back here.
+ * same account (its data kept) and comes back here — to this very page, its query included (an open incident, an order's
+ * closure: in-page state). Rendered inside the page's scroller, above the page, so the panes sized with `--pk-pane-h` stay
+ * exact. Client-only (the shell renders it after hydration, never during prerender): useSearchParams needs no Suspense here.
  */
 export function ReauthBanner() {
   const show = useAppStore((s) => s.session.mode === "supabase" && s.session.signedIn && !!s.session.needsReauth);
@@ -22,7 +24,7 @@ export function ReauthBanner() {
   return (
     <div
       role="status"
-      className="mx-3 mt-3 flex shrink-0 flex-wrap items-center gap-x-3 gap-y-2.5 rounded-[16px] bg-amber-soft px-4 py-3 ring-1 ring-amber-line lg:mx-4"
+      className="mb-6 flex flex-wrap items-center gap-x-3 gap-y-2.5 rounded-[16px] bg-amber-soft px-4 py-3 ring-1 ring-amber-line lg:mb-8 print:hidden"
     >
       <span className="inline-flex size-9 shrink-0 items-center justify-center rounded-[11px] bg-amber-mid text-amber-fg" aria-hidden>
         <KeyRound className="size-[18px]" />

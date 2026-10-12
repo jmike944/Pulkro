@@ -246,11 +246,13 @@ export function UsersTab() {
                             <button
                               type="button"
                               disabled={blocked}
+                              // aria-disabled, not disabled, while a request runs: the focus stays on the control (as SwitchLite).
                               aria-disabled={switchBusy || undefined}
+                              aria-busy={switchBusy || undefined}
                               onClick={() => {
                                 if (!switchBusy) void reactivateOnServer(u);
                               }}
-                              className="mt-1 text-left text-[12.5px] font-semibold text-amber-fg underline-offset-2 hover:underline disabled:opacity-50"
+                              className="mt-1 text-left text-[12.5px] font-semibold text-amber-fg underline-offset-2 hover:underline disabled:opacity-50 aria-disabled:cursor-default aria-disabled:opacity-50 aria-disabled:hover:no-underline"
                             >
                               Acceso aún bloqueado · Reintentar
                             </button>

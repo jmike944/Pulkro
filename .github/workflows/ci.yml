@@ -37,3 +37,4 @@ jobs:
       - run: npm run build
       - run: node scripts/check-safe-next.mjs
       - run: node scripts/check-permissions.mjs
+      - run: npm run check:functions

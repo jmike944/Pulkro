@@ -4,8 +4,10 @@ Status (2026-10-11, after the PR #9 review): schema, RLS, business-rule RPCs, St
 **applied** to the Supabase project "Pulkro" (ref `cbdzndpdpwtxbhshidyi`, us-east-1, Postgres 17.11) — the 22 migrations
 below. The project holds the **demo dataset** (302 orders and their history, 11 password-less demo accounts; every row
 registered in `private.demo_rows`, removed in one call by `select private.drop_demo_data();`, see `supabase/seed/README.md`);
-no real accounts or data yet, no Storage objects. The app still runs on the on-device zustand store; wiring it to this
-backend is the phased plan in §12.
+no real accounts or data yet, no Storage objects. The app is wired to it on branch `supabase-wiring` (PR #10): an account
+build (the two `NEXT_PUBLIC_SUPABASE_*` values set) signs in with Supabase Auth and syncs the on-device zustand store
+through `src/lib/sync` (pull, push queue, one writer per device: §8, §11); the demo stays on behind `NEXT_PUBLIC_DEMO`.
+What is left before the pilot is listed in §12.
 
 | Applied migration (version = file name) | Content |
 |---|---|
@@ -33,7 +35,8 @@ backend is the phased plan in §12.
 | `20261011175442_admin_users_decisions` | owner decisions on account administration: an actual e-mail change also ends the person's sessions; the fail-safe trigger `pulkro_mirror_email_change` on `auth.users` copies a self-service e-mail change into `profiles.email` |
 
 Edge Function `admin-users` **deployed** (version 3, 2026-10-11: the review fixes and `resend_invite`; `verify_jwt` on;
-secrets `APP_URL` / `APP_ORIGINS` point at local development until the app has its own URL). Auth settings applied: sign-ups off, the password policy, the access-token hook
+`APP_ORIGINS` allows localhost, `https://pulkro.vercel.app` and every Vercel preview of the project, and invitation links go
+back to the origin they were sent from; `APP_URL` = localhost is only the fallback for calls without an Origin). Auth settings applied: sign-ups off, the password policy, the access-token hook
 (enabled), redirect URLs `http://localhost:3000/**` and `http://localhost:3100/**` (Site URL `http://localhost:3000`).
 
 Sources of truth mirrored here: `docs/requisitos.md`, `src/lib/types.ts`, `src/lib/permissions.ts`, `src/lib/hooks.ts`,
@@ -97,7 +100,7 @@ profile before any Auth admin call, and writes every profile change **with the c
 
 | Action | Auth admin (secret key) | RPC (caller's JWT) |
 |---|---|---|
-| `invite {opId, email, name, role, unitId, title?, phone?, hue?}` | `inviteUserByEmail` (`redirectTo` = `APP_URL/acceso/definir-contrasena`); the auth user is deleted again if the profile fails | `provision_profile` |
+| `invite {opId, email, name, role, unitId, title?, phone?, hue?}` | `inviteUserByEmail` (`redirectTo` = the calling app's allowed origin, else `APP_URL`, + `/acceso/definir-contrasena`); if the profile fails, the auth user is deleted again only when this call created it (a re-sent invitation to an existing, never-confirmed account without a profile leaves that account in place) | `provision_profile` |
 | `deactivate` / `reactivate {opId, userId}` | ban (`876000h`) / unban, mirroring the profile's `active` | `update_profile {active}` (returns `open_orders`) |
 | `change_email {opId, userId, email}` | `updateUserById {email, email_confirm: true}`; put back when the database refuses the sync (any 4xx); on no answer or a 5xx it stays changed and the same request completes it; on `email_changed` (another change of the same account won) it stays as the other request left it | `sync_profile_email` (with the request's address); when it changes the profile it **ends the person's sessions** (decision 2: they sign in again with the new address) |
 | `resend_invite {opId, userId}` | `getUserById`; only while the invitation is pending (`invited_at` set, `last_sign_in_at` empty) `inviteUserByEmail` again (GoTrue re-sends to an unconfirmed account, with a new link); otherwise, or when GoTrue refuses a confirmed account, `409 already_active` → «¿Olvidó su contraseña?» | none: reads the profile (must exist and be active, else `out_of_scope` / `409 account_inactive`); nothing written or audited, `opId` not stored |
@@ -436,16 +439,20 @@ One RPC per queue item keeps generated TypeScript types for every argument (a ba
   - *maybe applied*: an attempt whose answer was lost (no answer, 502/504, a device error after the request left) marks
     the item `maybeApplied` until a definite answer (applied / duplicate, a business refusal, a constraint, a privilege);
     busy answers (408/429/5xx, PostgREST, transient database states) prove nothing about it and keep the mark. While it
-    holds, «Descartar» takes the item alone (what depends on it may still apply), deletes no picture a queued item still
-    needs, and a discarded `create_order` is read back from the server by id.
+    holds, «Descartar» leaves what names the item queued (it may still apply), takes along only what depends on it without
+    naming it (see below), deletes no picture a queued item still needs, and a discarded `create_order` is read back from
+    the server by id.
   - an item the retry cap stopped is never resent by itself: its message says so (a phone clock ahead: "Corrija la fecha
     y hora del teléfono y pulse Reintentar").
   Field evidence is never dropped silently: a quarantined capture stays on the device until the person discards it, and
   the "Descartar" confirmation first offers «Guardar fotos en el teléfono» for every photo it would delete (the share
   sheet with the files where supported, else one download each, named `<folio>_<kind>_<yyyy-MM-dd_HH-mm-ss>`); the device
-  copies are deleted only once the discard is confirmed. Discarding an item takes along the later items that name a
-  record it creates (they could only answer `parent_missing`) — unless its last attempt got no answer: the server may have
-  applied it, so it goes alone (a new order discarded that way keeps the pictures its still-queued photos need).
+  copies are deleted only once the discard is confirmed (a picture the device fails to read is said so, with
+  «Reintentar»). Discarding an item takes along the later items that name a record it creates (they could only answer
+  `parent_missing`), or depend on it (`deps`: a case's «Agregó una foto» note goes with that photo). If its last attempt
+  got no answer, the server may have applied it: what names it stays queued (the server answers `parent_missing` if it
+  never arrived; a new order discarded that way keeps the pictures its still-queued photos need), and only what depends
+  on it without naming it still goes along — the «Agregó una foto» note carries no photo id the server could check.
   Discarding a refused `validate_closure` or `check_in` also names the later `generate_report` / `log_share` of that order
   (or the `check_out` of that jornada): the server will probably refuse them too, but they are not taken along — they can
   be discarded when that happens.
@@ -472,7 +479,9 @@ One RPC per queue item keeps generated TypeScript types for every argument (a ba
   show a non-blocking warning to correct the phone's date and time (`ClockWarning`); nothing is blocked (policy in §14).
   When the app comes back to the screen and every minute, a wall clock that moved more than the time that passed
   (`performance.now()`) was set by hand: the estimate of the old clock is dropped, and while the warning shows (or after
-  such a jump) the clock is measured again with a token refresh, at most every 2 minutes (`checkClock`). The comparison
+  such a jump) the clock is measured again with a token refresh, at most every 2 minutes (`checkClock`). The first online
+  check of each page load measures it too: the saved estimate may be stale (a clock set while the app was closed), and a
+  phone set ahead would otherwise go unwarned while its captures are refused as `device_time_future`. The comparison
   of a send time with a read time (both the phone's clock) treats a send time later than now as earlier than the read
   (the clock went back since), so a corrected clock never holds an order in every pull.
 
@@ -539,8 +548,10 @@ One RPC per queue item keeps generated TypeScript types for every argument (a ba
     when it becomes visible or the writer's page goes away. A tab that holds no data but keeps
     claiming (a full or unreadable device) starts over behind the blocker when another tab announces itself. Without
     BroadcastChannel either (Safari < 15.4), a recent stamp is the only sign of a writer: a new tab waits behind the
-    blocker, and «Usar aquí» there cannot ask the writer to save first (its unsaved write is lost) — two windows of the
-    app at once are not supported on those browsers.
+    blocker. Without BroadcastChannel (with or without Web Locks) «Usar aquí» cannot ask the writer to save first, so it
+    never takes the device silently: the blocker says the other window cannot be asked, and only «Usar aquí de todos
+    modos» takes it (what that window had not saved is lost) — two windows of the app at once are not supported on those
+    browsers.
   - Only once it holds the epoch does a tab read IndexedDB and hydrate the store; a read that keeps failing is never
     hydrated over (the blocker offers to retry). The other tabs never read, persist, push or pull. A writer that steps
     aside shows the blocker at once and saves until nothing is pending, so a capture landing meanwhile goes with it; a
@@ -611,25 +622,33 @@ own surveys into the device's store.
 - Legacy `anon`/`service_role` keys are deprecated by end of 2026: create the new keys and disable the legacy ones once
   nothing uses them. Recommended: migrate to asymmetric JWT signing keys so `getClaims()` verifies locally.
 
-## 11. Next.js integration (Next 16, App Router, `@supabase/ssr`) — design, not built yet
+## 11. Next.js integration (Next 16, App Router, `@supabase/ssr`)
 
-**Status:** only `src/lib/supabase/database.types.ts` exists today. Everything else in this section is the planned shape
-of the integration (phase 1 of §12); the app still runs on its local demo store and its demo `/login`.
+Built on `supabase-wiring` (PR #10). Without the two `NEXT_PUBLIC_SUPABASE_*` values the app is demo-only (no account
+sign-in, no proxy refresh).
 
-- `src/lib/supabase/client.ts` (to create): `createBrowserClient<Database>(url, publishableKey)` — used by the store/sync
-  engine.
-- `src/lib/supabase/server.ts` (to create): `createServerClient<Database>` with `cookies: { getAll, setAll }` (`setAll` in
-  try/catch in Server Components).
-- `src/proxy.ts` (to create; Next 16 renamed Middleware to Proxy): refresh the session (return the response `setAll`
-  built, copy its cookies/cache headers if redirecting), redirect to `/login` without a session except `/encuesta/*`,
-  `/offline`, static assets; optional optimistic route gating with `app_metadata.pulkro_role` + `canSeeRoute` — the
-  database still decides. Use `supabase.auth.getClaims()` there and in server code, never `getSession()`.
-- Login (`/login`, to rewire from the demo role picker): `signInWithPassword`; invite landing
-  (`/acceso/definir-contrasena`, to create): verify the invite link, then `updateUser({ password })`. Sign-out clears
-  IndexedDB only after the queue is empty (or warns), counting the writer tab's queue and the saved queue (§8).
-- Do not use the deprecated `@supabase/server` framework adapters; `@supabase/server` (`withSupabase`) is for the Edge
-  Function only.
-- `src/lib/supabase/database.types.ts` (exists) is generated; regenerate after every migration.
+- `src/lib/supabase/config.ts`: the project URL and publishable key, read as literal `process.env.NEXT_PUBLIC_…` (Next
+  inlines them at build time); `isSupabaseConfigured`.
+- `src/lib/supabase/client.ts`: the browser client, `createBrowserClient<Database>` with `detectSessionInUrl: false` (a
+  link's session is taken only by `/acceso/definir-contrasena`); `getTokenClient` (a client bound to one access token: a
+  request keeps the account it started for, §8); `endSessionOnDevice` (ends this device's session, scoped to one account
+  with `userId`: a session another tab put in the shared cookies meanwhile stays).
+- `src/lib/supabase/server.ts`: `createServerClient<Database>` with `cookies: { getAll, setAll }` (`setAll` in try/catch
+  for Server Components). Nothing in the app uses it yet: every read and write runs from the device.
+- `src/proxy.ts` (Next 16 renamed Middleware to Proxy): refreshes the session cookies on each request (`getClaims()`,
+  `setAll` rebuilding the response and copying its cache headers) for every path but static assets, the service worker
+  and the manifest. It **never redirects**: routes are gated on the client from the on-device store session (AppShell →
+  `/login`), which also works offline; the database decides what an account may read or write.
+- `/login` (`src/features/auth/login-view.tsx`, `account-sign-in.tsx`): `signInWithPassword`, «¿Olvidó su contraseña?»
+  (`resetPasswordForEmail`, `/login?recuperar=1`), "Vuelva a entrar" for the account on the device, and «Entrar al demo»
+  while the demo is on. `use-enter-account.tsx` reads the account's own profile and starts the store's account session.
+- `/acceso/definir-contrasena` (`set-password-view.tsx`): invite / recovery / e-mail-change links (both link forms, §2),
+  then `updateUser({ password })`. Sign-out (`use-sign-out.tsx`) ends the session and wipes the account's data only after
+  the person saw the unsent changes (this tab's queue and the saved one, §8).
+- The sync engine: `src/lib/sync/` — `pull.ts` (cursors, scope gain, reconcile), `push.ts` + `queue.ts` (the queue and its
+  rules), `writer.ts` with `src/lib/device-storage.ts` (one writer per device), `clock.ts`, `use-pull-scheduler.ts`.
+- `@supabase/server` (`createSupabaseContext`) is for the Edge Function only; no deprecated framework adapters.
+- `src/lib/supabase/database.types.ts` is generated; regenerate after every migration.
 
 ## 12. Phased plan to wire the app
 
@@ -645,24 +664,30 @@ of the integration (phase 1 of §12); the app still runs on its local demo store
    activity and have no daily backups — and turn leaked-password protection on then.
    Drop the demo dataset and bootstrap the first Dirección (§2). Create a **dev/staging project or branch** for everything
    that follows (the demo dataset can be loaded there instead).
-2. **Auth in the app**: Supabase clients, `proxy.ts`, login/invite pages, `session` from Auth instead of the demo
-   switcher (keep the demo behind `NEXT_PUBLIC_DEMO`).
-3. **Read path**: sync engine pull (cursor + scope gain + reconcile, §8) into the existing store (replace `ensureSeeded`
-   for real accounts); catalogs and orders read-only first.
-4. **Write path**: queue items `{op_id, rpc, args, order_id, deps, attempts, state}` from each store action (keep the
-   local optimistic update), push via RPC with the outcome classes of §8 (retry / quarantine / error); photos (upload →
-   `add_photo`); folios from results. The store guards already mirror the server rules changed in the review
-   (`closureBlockers` "ninguna jornada ejecutada", `derivedExecutionStatus`, day numbering, frozen incidents, 256-bit
-   survey tokens).
+2. **Auth in the app** — **built** (`supabase-wiring`, §11): Supabase clients, `proxy.ts`, `/login` and
+   `/acceso/definir-contrasena`, the account session from Auth instead of the demo switcher (the demo stays behind
+   `NEXT_PUBLIC_DEMO`).
+3. **Read path** — **built**: the pull (cursors + scope gain + reconcile, §8) into the existing store, which no longer
+   seeds demo data for an account.
+4. **Write path** — **built**: a queue item `{op_id, rpc, args, order_id, deps, attempts, state}` per store action (the
+   local optimistic update stays), pushed via RPC with the outcome classes of §8 (retry / quarantine / error); photos
+   (upload → `add_photo`); folios from the results; one writer per device. The store guards mirror the server rules.
 5. **Admin**: deploy `admin-users`, users screen calls it (shows `open_orders` after a deactivation) — **done** (function
    deployed, migration `admin_users_email_sync` applied, suite 18, users screen), and so are the review fixes and the owner
    decisions (migrations `admin_users_review` then `admin_users_decisions`, suites 19 and 20, function version 3 with
    `resend_invite`); catalogs via RPCs; import real catalogs.
-6. **Pilot hardening**: run `supabase/tests` in CI against a branch, `pg_cron` purge of `private.sync_ops` (> 90 days),
-   storage retention job, PITR/backups, monitoring of advisors and logs.
+6. **Pilot hardening**: run `supabase/tests` (and `npm run check:functions`) in CI against a branch, `pg_cron` purge of
+   `private.sync_ops` (> 90 days), storage retention job, PITR/backups, monitoring of advisors and logs.
+
+Still open from phase 1 before the pilot: custom SMTP with the Spanish templates, the Pro plan (leaked-password protection,
+daily backups), the app's real URL (Site URL, redirect list, the function's `APP_URL` / `APP_ORIGINS`), dropping the demo
+dataset and the first Dirección, and a staging project or branch.
 
 ## 13. Operations
 
+- Edge Functions: type-check with `npm run check:functions` (scripts/check-edge-functions.mjs: tsc against the installed
+  supabase-js types and the Deno / `@supabase/server` declarations in `supabase/functions/_check/`; no Deno needed) before
+  every deploy — the app's `tsc` excludes `supabase/functions`, and neither deploy path type-checks.
 - Migrations: `supabase/migrations/<applied version>_<name>.sql`, applied with the MCP `apply_migration` (name = file
   name without version) and verified byte-for-byte (`md5` of `supabase_migrations.schema_migrations.statements[1]` = file
   `md5`; all 22 match as of 2026-10-11: the first 19 in the PR #9 check, `admin_users_email_sync`, `admin_users_review`

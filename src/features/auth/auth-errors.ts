@@ -139,6 +139,8 @@ const WEAK_REASON: Record<string, string> = {
   pwned: "Esa contraseña aparece en filtraciones conocidas: elija otra.",
 };
 
+const NEW_LINK = "En la entrada, pida uno nuevo con «¿Olvidó su contraseña?»; si no le llega, comuníquese con Dirección.";
+
 /** updateUser({ password }) after an invite / recovery link. */
 export function setPasswordErrorMessage(error: unknown): string {
   if (isNetworkFailure(error)) return NETWORK_MESSAGE;
@@ -146,7 +148,9 @@ export function setPasswordErrorMessage(error: unknown): string {
     const reasons = error.reasons.map((r) => WEAK_REASON[r]).filter(Boolean);
     return reasons.length ? `La contraseña no cumple la política. ${reasons.join(" ")}` : "La contraseña no cumple la política: elija otra.";
   }
-  if (isAuthSessionMissingError(error)) return "El enlace ya no tiene una sesión válida. Pida a Dirección un nuevo enlace.";
+  // Invitation or recovery alike, a new password link comes from «¿Olvidó su contraseña?» (it also completes an invitation
+  // never accepted); Dirección only when it does not arrive — as the expired-link notice says.
+  if (isAuthSessionMissingError(error)) return `El enlace ya no tiene una sesión válida. ${NEW_LINK}`;
   const { code, status } = codeOf(error);
   switch (code) {
     case "same_password":
@@ -156,7 +160,7 @@ export function setPasswordErrorMessage(error: unknown): string {
     case "session_not_found":
     case "session_expired":
     case "reauthentication_needed":
-      return "La sesión del enlace venció. Pida a Dirección un nuevo enlace.";
+      return `La sesión del enlace venció. ${NEW_LINK}`;
     case "over_request_rate_limit":
       return RATE_LIMIT_MESSAGE;
   }

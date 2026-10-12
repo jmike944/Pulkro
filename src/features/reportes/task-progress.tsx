@@ -15,8 +15,9 @@ export type SyncGate =
 
 export function progressOf(t: OutputTask) {
   switch (t.step) {
+    // A new version is registered once its photos are ready (useReportOutputs.generate).
     case "registro":
-      return 0.06;
+      return 0.8;
     case "fotos":
       return 0.1 + 0.66 * (t.total ? t.done / t.total : 1);
     case "pdf":
@@ -47,12 +48,13 @@ export function labelOf(t: OutputTask) {
 export function TaskProgress({ task, className }: { task: OutputTask; className?: string }) {
   const value = progressOf(task);
   const label = labelOf(task);
+  // A new version: its photos first, then the version is registered, then the PDF.
   const steps = [
-    ...(task.kind === "generate" ? [{ key: "registro", label: "Versión" }] : []),
     { key: "fotos", label: "Fotos" },
+    ...(task.kind === "generate" ? [{ key: "registro", label: "Versión" }] : []),
     { key: "pdf", label: "PDF" },
   ];
-  const order = ["registro", "fotos", "pdf", "listo"];
+  const order = ["fotos", "registro", "pdf", "listo"];
   const at = order.indexOf(task.step);
   return (
     <div className={className} aria-live="polite">

@@ -13,7 +13,7 @@
  * Nothing here deletes anything: the pictures leave the device only when the discard is confirmed (discardItems), and the
  * confirmation waits while a save is under way.
  */
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { format } from "date-fns";
 import { Check, Download, Loader2, Share2 } from "lucide-react";
 import { toast } from "sonner";
@@ -36,12 +36,27 @@ export function captureFileName(c: DiscardedCapture, folio: string | undefined, 
   return `${parts.join("_")}.${EXT[type] ?? "jpg"}`;
 }
 
-/** The pictures of `captures` still on this device, as named files (a picture already gone is left out). */
-async function readFiles(captures: readonly DiscardedCapture[], folios: ReadonlyMap<string, string>): Promise<File[]> {
+/**
+ * The pictures of `captures` still on this device, as named files (`read`: the captures they are, in order). A picture
+ * already gone (null) is left out; one the device failed to read is counted in `unreadable`: it may well be there, and the
+ * discard would delete it unsaved.
+ */
+async function readFiles(
+  captures: readonly DiscardedCapture[],
+  folios: ReadonlyMap<string, string>,
+): Promise<{ files: File[]; read: DiscardedCapture[]; unreadable: number }> {
   const files: File[] = [];
+  const read: DiscardedCapture[] = [];
   const names = new Set<string>();
+  let unreadable = 0;
   for (const c of captures) {
-    const blob = await getPhotoBlob(c.key).catch(() => null);
+    let blob: Blob | null;
+    try {
+      blob = await getPhotoBlob(c.key);
+    } catch {
+      unreadable++;
+      continue;
+    }
     if (!blob) continue;
     const type = blob.type || "image/jpeg";
     const base = captureFileName(c, c.orderId ? folios.get(c.orderId) : undefined, type);
@@ -50,29 +65,40 @@ async function readFiles(captures: readonly DiscardedCapture[], folios: Readonly
     names.add(name);
     const taken = c.takenAt ? Date.parse(c.takenAt) : NaN;
     files.push(new File([blob], name, { type, lastModified: Number.isNaN(taken) ? Date.now() : taken }));
+    read.push(c);
   }
-  return files;
+  return { files, read, unreadable };
 }
 
 const keysOf = (captures: readonly DiscardedCapture[]) => captures.map((c) => c.key).join(" ");
 
+const NO_FILES: File[] = [];
+
 /**
  * The files to offer for `captures` (empty while they are read, and when none is on the device any more). Read when the
  * dialog opens, so the tap on «Guardar» can open the share sheet right away (Safari allows it only straight from a tap).
+ * `unreadable`: pictures the device failed to read (the dialog says so); `retry` reads them all again. `filesKey`: which
+ * captures `files` are (their keys): a retry may read another set of the same size, and what was saved is tracked per file.
  */
-export function useCaptureFiles(captures: readonly DiscardedCapture[], folios: ReadonlyMap<string, string>): File[] {
-  const [loaded, setLoaded] = useState<{ keys: string; files: File[] } | null>(null);
+export function useCaptureFiles(
+  captures: readonly DiscardedCapture[],
+  folios: ReadonlyMap<string, string>,
+): { files: File[]; filesKey: string; unreadable: number; retry: () => void } {
+  const [loaded, setLoaded] = useState<{ keys: string; files: File[]; filesKey: string; unreadable: number } | null>(null);
+  const [round, setRound] = useState(0);
   useEffect(() => {
     if (!captures.length) return;
     let live = true;
-    void readFiles(captures, folios).then((files) => {
-      if (live) setLoaded({ keys: keysOf(captures), files });
+    void readFiles(captures, folios).then(({ files, read, unreadable }) => {
+      if (live) setLoaded({ keys: keysOf(captures), files, filesKey: keysOf(read), unreadable });
     });
     return () => {
       live = false;
     };
-  }, [captures, folios]);
-  return captures.length && loaded?.keys === keysOf(captures) ? loaded.files : [];
+  }, [captures, folios, round]);
+  const retry = useCallback(() => setRound((n) => n + 1), []);
+  const current = captures.length && loaded?.keys === keysOf(captures) ? loaded : null;
+  return { files: current?.files ?? NO_FILES, filesKey: current?.filesKey ?? "", unreadable: current?.unreadable ?? 0, retry };
 }
 
 const SHARE_MAX_FILES = 10;

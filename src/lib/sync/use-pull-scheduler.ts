@@ -42,12 +42,12 @@ export function usePullScheduler() {
     const onVisibility = () => {
       if (visible()) pull();
     };
-    // Reconnecting skips the error backoff; the store's offline flag flips on the same event, so read it a moment later.
-    const onOnline = () => setTimeout(() => pull(true), 400);
     const timer = setInterval(() => {
       if (visible()) pull();
     }, INTERVAL_MS);
-    // "Simular sin conexión" switched off (or the browser came back) → pull too.
+    // Reconnecting (the browser came back, or "Simular sin conexión" switched off) → pull, skipping the error backoff. A
+    // browser reconnect reaches here through the store's offline flag (ConnectivityWatcher), once — no `online` listener
+    // of its own, which would pull a second time.
     const stopStore = useAppStore.subscribe((s, prev) => {
       if (isOffline(prev) && !isOffline(s)) pull(true);
       // Signed in again: what waited for the session goes now.
@@ -56,7 +56,6 @@ export function usePullScheduler() {
 
     window.addEventListener("focus", onFocus);
     document.addEventListener("visibilitychange", onVisibility);
-    window.addEventListener("online", onOnline);
 
     let stopAuth = () => {};
     try {
@@ -78,7 +77,6 @@ export function usePullScheduler() {
       stopAuth();
       window.removeEventListener("focus", onFocus);
       document.removeEventListener("visibilitychange", onVisibility);
-      window.removeEventListener("online", onOnline);
     };
   }, [hydrated, account]);
 }

@@ -171,7 +171,8 @@ const missingClient = (o: Order): Client => ({
   id: o.clientId, name: "Cliente no disponible", shortName: "Cliente no disponible", segment: "Comercial", unitId: o.unitId,
   contactName: "", contactPhone: "", contactEmail: "", since: o.createdAt, hue: 220, siteIds: [o.siteId],
 });
-const missingSite = (o: Order): Site => ({ id: o.siteId, clientId: o.clientId, name: "Sitio no disponible", address: "", municipality: "", lat: 0, lng: 0 });
+// Its 0,0 is no location (`unavailable`): the field screens show no map link or pin for it, and a GPS stamp never records it.
+const missingSite = (o: Order): Site => ({ id: o.siteId, clientId: o.clientId, name: "Sitio no disponible", address: "", municipality: "", lat: 0, lng: 0, unavailable: true });
 const missingServiceType = (o: Order): ServiceType => ({ id: o.serviceTypeId, name: "Servicio no disponible", short: "Servicio", hue: 220, defaultHoursPerDay: 8 });
 
 /** Everything about one order, by folio ("OS-24817") or id. `null` = not found OR outside the current role's scope (doc §2). */

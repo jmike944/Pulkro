@@ -481,18 +481,19 @@ function DiscardDialog({ item, onClose }: { item: SyncItem | null; onClose: () =
   const more = set.length - 1;
   const captures = capturesText(set);
   const sum = discardSummary(set);
-  // The answer may have been lost after the server applied it: only the item itself goes (discardSet).
+  // The answer may have been lost after the server applied it: what names it stays queued, and only what reports it without
+  // naming it (a case note about the photo) goes with it (discardSet).
   const unknown = !!item && outcomeUnknown(item);
   // A report after a refused closure, a check-out after a refused check-in: they stay queued and are named here.
   const later = useMemo(() => (item ? likelyRefusedAfter(queue, item.id) : []), [queue, item]);
   // The pictures the discard deletes (only once confirmed), offered to be saved on the phone first.
   const pictures = useMemo(() => discardedCaptures(queue, set, photos), [queue, set, photos]);
   const folios = useMemo(() => new Map(orders.map((o) => [o.id, o.folio])), [orders]);
-  const files = useCaptureFiles(pictures, folios);
+  const { files, filesKey, unreadable, retry } = useCaptureFiles(pictures, folios);
   // How the photos left the app (shared, or downloaded): the confirmation says what that does and does not keep. It never
-  // replaces the checkbox.
+  // replaces the checkbox. Not while some could not be read: those were never offered.
   const [keptFor, setKeptFor] = useState<{ id: string; how: CapturesKept } | null>(null);
-  const kept = item && keptFor?.id === item.id && files.length > 0 ? keptFor.how : null;
+  const kept = item && keptFor?.id === item.id && files.length > 0 && unreadable === 0 ? keptFor.how : null;
   // A save under way (the share sheet open): the confirmation waits for it.
   const [saving, setSaving] = useState(false);
   // The item is being sent again (or went through) while the dialog was open: close it for good, never reopen by itself.
@@ -535,14 +536,16 @@ function DiscardDialog({ item, onClose }: { item: SyncItem | null; onClose: () =
       {unknown && (
         <p className="mt-3 text-[13.5px] leading-snug text-subtle">
           El último envío no tuvo respuesta: puede que el servidor ya lo haya aplicado. Si es así, este dispositivo lo volverá a
-          mostrar. Lo que depende de este cambio sigue en la cola y se enviará.
+          mostrar. Lo que depende de este cambio sigue en la cola y se enviará
+          {more > 0 ? ", salvo las notas que lo reportan: el servidor no podría comprobar si llegó." : "."}
         </p>
       )}
       {more > 0 && (
         <>
           <p className="mt-3 text-[13.5px] leading-snug text-subtle">
-            Usan lo que se descarta (la orden, la foto, la jornada, el registro nuevo…), así que tampoco podrían aplicarse y se
-            descartan con él:
+            {unknown
+              ? "Se descartan con él:"
+              : "Usan lo que se descarta (la orden, la foto, la jornada, el registro nuevo…), así que tampoco podrían aplicarse y se descartan con él:"}
           </p>
           <ul className="mt-2 max-h-40 space-y-1 overflow-y-auto rounded-[14px] border border-hairline px-4 py-2.5 text-[13px] leading-snug text-ink">
             {set.slice(1).map((q) => (
@@ -570,8 +573,31 @@ function DiscardDialog({ item, onClose }: { item: SyncItem | null; onClose: () =
           </p>
         </div>
       )}
+      {unreadable > 0 && item && (
+        <div role="alert" className="mt-3 rounded-[14px] bg-amber-soft px-4 py-3 text-[13.5px] leading-snug text-amber-olive">
+          <p>
+            {unreadable === 1
+              ? "No se pudo leer una de las fotos en este teléfono, así que ahora no se puede guardar. Si descarta, se borra de todos modos."
+              : `No se pudieron leer ${unreadable} de las fotos en este teléfono, así que ahora no se pueden guardar. Si descarta, se borran de todos modos.`}
+          </p>
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => {
+              // What was shared or downloaded so far covered fewer photos: the save step starts over with all of them.
+              setKeptFor(null);
+              retry();
+            }}
+            className="mt-2.5 h-10 rounded-[12px] border-line bg-surface px-4 font-semibold text-ink"
+          >
+            <RefreshCw aria-hidden /> Reintentar
+          </Button>
+        </div>
+      )}
+      {/* Keyed by the photos it offers, not their count: after «Reintentar» another photo may take an unreadable one's place,
+          and what was shared or downloaded is tracked per file. */}
       {files.length > 0 && item && (
-        <SaveCapturesBox key={item.id} files={files} kept={kept} onKept={(how) => setKeptFor({ id: item.id, how })} onBusy={setSaving} />
+        <SaveCapturesBox key={`${item.id}:${filesKey}`} files={files} kept={kept} onKept={(how) => setKeptFor({ id: item.id, how })} onBusy={setSaving} />
       )}
     </ConfirmDialog>
   );

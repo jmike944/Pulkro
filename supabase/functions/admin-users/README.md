@@ -5,8 +5,9 @@ users screen (Configuración → Usuarios) calls it in account sessions; the dem
 
 **Status (2026-10-11):** deployed to Pulkro (`cbdzndpdpwtxbhshidyi`), version 3 (the review fixes and `resend_invite`),
 `verify_jwt` on; migrations `admin_users_email_sync`, `20261011174019_admin_users_review` and
-`20261011175442_admin_users_decisions` applied, suites 18–20 pass; secrets `APP_URL=http://localhost:3000` and
-`APP_ORIGINS=http://localhost:3000,http://localhost:3100` until the app has its own URL. Checked from outside (version 1):
+`20261011175442_admin_users_decisions` applied, suites 18–20 pass; secrets `APP_URL=http://localhost:3000` (the fallback for
+calls without an Origin) and `APP_ORIGINS=http://localhost:3000,http://localhost:3100,https://pulkro.vercel.app,https://pulkro-*-ouroboros-63cf4f47.vercel.app`
+(production and every Vercel preview of the project; the same four entries are in Auth's redirect allow list). Checked from outside (version 1):
 no JWT → 401, preflight from an allowed origin → 204, from any other origin → 403. Not yet exercised with a real user JWT:
 the platform's `verify_jwt` gate is documented to accept the project's ES256 user tokens, while the dashboard labels the
 toggle "Verify JWT with legacy secret". If the first real call answers the gateway's `401 Invalid JWT`, redeploy with
@@ -14,7 +15,7 @@ toggle "Verify JWT with legacy secret". If the first real call answers the gatew
 
 | Action | Body | What it does |
 |---|---|---|
-| `invite` | `{ action, opId, email, name, role, unitId, title?, phone?, hue? }` | `inviteUserByEmail` (`redirectTo` = `APP_URL` + `/acceso/definir-contrasena`), then `provision_profile` **with the caller's JWT**. If the profile fails, the auth user this call created is deleted again. |
+| `invite` | `{ action, opId, email, name, role, unitId, title?, phone?, hue? }` | `inviteUserByEmail` (`redirectTo` = the calling app's origin when allowed, else `APP_URL`, + `/acceso/definir-contrasena`), then `provision_profile` **with the caller's JWT**. If the profile fails, the auth user this call created is deleted again. |
 | `deactivate` | `{ action, opId, userId }` | `update_profile {active:false}` with the caller's JWT (revokes the sessions, returns `open_orders`), then bans the auth user (`ban_duration` 876000h). |
 | `reactivate` | `{ action, opId, userId }` | `update_profile {active:true}`, then lifts the ban. |
 | `change_email` | `{ action, opId, userId, email }` | admin `updateUserById {email, email_confirm: true}`, then `sync_profile_email` with the caller's JWT and the requested address. When the sync changes the profile it also **ends the person's sessions** (their `auth.sessions` rows, refresh tokens included, in the same transaction, as on deactivation): devices signed in with the old address cannot renew their token, and the person signs in again with the new one (from migration `admin_users_decisions`). If the database refuses the sync (any 4xx, a missing RPC included), the auth e-mail goes back to the previous one; if its outcome is unknown (no answer, 5xx) it is left as is and the same request sent again completes it; `409 email_changed` (another change of the same account came in between and won) leaves the login as that change set it. |
@@ -48,7 +49,10 @@ toggle "Verify JWT with legacy secret". If the first real call answers the gatew
     `rate_limited` 429,
     `auth_user_missing` 404, `invite_failed` / `email_update_failed` / `ban_failed` / `unban_failed` / `server_error` 502,
     `unavailable` 503, `payload_too_large` 413, `server_misconfigured` 500.
-- **Logs** carry the action and error codes only — never tokens, keys, request bodies or e-mail addresses.
+- **Logs** carry the action and error codes. Unexpected failures (the context setup, a profile read, the cleanup
+  `deleteUser`, a ban or unban, a login put back, an exception) also log the error's name, code, status and the first 200
+  characters of its message, not scrubbed: the provider's own text, which may name an address. Never tokens, keys or
+  request bodies, and the function logs no addresses itself.
 - **A change the person makes themself** (`supabase.auth.updateUser({ email })` and the confirmation link) does not go
   through this function: the trigger `pulkro_mirror_email_change` on `auth.users` (migration `admin_users_decisions`)
   copies it into `profiles.email` when GoTrue completes it, audited as the person's own change ("Cambió su correo de
@@ -72,6 +76,10 @@ toggle "Verify JWT with legacy secret". If the first real call answers the gatew
 
 ## Before deploying
 
+0. Type-check: `npm run check:functions` (scripts/check-edge-functions.mjs; no Deno needed). The app's `tsc` excludes
+   `supabase/functions`, and neither `supabase functions deploy` nor the MCP `deploy_edge_function` type-checks: this is the
+   only check of the function's types. It also fails when the pinned `npm:@supabase/supabase-js@…` differs from the
+   version in `package.json`.
 1. Migrations: `supabase/migrations/20261011144326_admin_users_email_sync.sql` (adds `sync_profile_email`; applied), then,
    in this order, `20261011174019_admin_users_review.sql` (adds its `p_email`) and
    `20261011175442_admin_users_decisions.sql` (the sync ends the person's sessions; the self-service mirror trigger), then
@@ -108,8 +116,8 @@ legacy `SUPABASE_ANON_KEY` / `SUPABASE_SERVICE_ROLE_KEY`) and `SUPABASE_JWKS` ar
 
 | Secret | Example | Use |
 |---|---|---|
-| `APP_URL` | `https://cuadrillas.pulkro.com.mx` | Base URL of the app: the invitation's `redirectTo` is `APP_URL/acceso/definir-contrasena`. Without it `invite` answers `server_misconfigured`. |
-| `APP_ORIGINS` | `https://cuadrillas.pulkro.com.mx,http://localhost:3000` | Browser origins allowed to call (comma-separated, exact origins). Defaults to the origin of `APP_URL`. Requests from any other `Origin` get `403 origin_not_allowed` and no CORS headers. |
+| `APP_URL` | `https://cuadrillas.pulkro.com.mx` | Fallback base URL for the invitation link, used when the request has no allowed `Origin` (e.g. curl). From the app, the link goes back to the origin the invitation was sent from. Without either, `invite` answers `server_misconfigured`. |
+| `APP_ORIGINS` | `https://cuadrillas.pulkro.com.mx,https://pulkro-*-team.vercel.app,http://localhost:3000` | Browser origins allowed to call (comma-separated). An entry is an exact origin or an https origin with one `*` inside a label, with fixed text on both sides (`pulkro-*-team.vercel.app`; `*.vercel.app` is refused). Defaults to the origin of `APP_URL`. Requests from any other `Origin` get `403 origin_not_allowed` and no CORS headers. An allowed origin also receives the invitation links sent from it, so each one must be in Auth's redirect allow list too. |
 
 ```bash
 supabase secrets set --project-ref cbdzndpdpwtxbhshidyi \
@@ -127,10 +135,12 @@ From the repository root, with the Supabase CLI logged in (a scoped access token
 supabase functions deploy admin-users --project-ref cbdzndpdpwtxbhshidyi
 ```
 
-Without Docker running, add `--use-api` (the bundle is built server-side). `verify_jwt` stays **on** (the default): never
-pass `--no-verify-jwt`. Dependencies are pinned in the imports
-(`npm:@supabase/server@1.9.1`, `npm:@supabase/supabase-js@2.117.2`). Alternatively, deploy with the Supabase MCP
-`deploy_edge_function` (name `admin-users`, entrypoint `index.ts`, `verify_jwt: true`, the file `index.ts`).
+Without Docker running, add `--use-api` (the bundle is built server-side). `verify_jwt` stays **on** (the default). Pass
+`--no-verify-jwt` only for the fallback in "Status" (the gateway answers `401 Invalid JWT` to a valid ES256 user token):
+the function then verifies the user JWT itself against the project JWKS and still requires an active Dirección.
+Dependencies are pinned in the imports (`npm:@supabase/server@1.9.1`, `npm:@supabase/supabase-js@2.117.2`).
+Alternatively, deploy with the Supabase MCP `deploy_edge_function` (name `admin-users`, entrypoint `index.ts`,
+`verify_jwt: true` — `false` only for that same fallback —, the file `index.ts`).
 
 ## Test it
 
@@ -168,7 +178,8 @@ call() { curl -s -i "$URL/functions/v1/admin-users" -H "apikey: $PK" -H "Authori
    e-mail and, for an active account, has «Reenviar invitación» (toast when it goes out; for an account already in use, a
    blue notice pointing to «¿Olvidó su contraseña?»). With "Simular sin conexión" (or the network off) the button, the
    switches, the e-mail change and «Reenviar invitación» say "Necesita conexión".
-9. **Logs**: Dashboard → Edge Functions → `admin-users` → Logs (errors only carry codes).
+9. **Logs**: Dashboard → Edge Functions → `admin-users` → Logs (codes; unexpected failures add the error's name, status and
+   the start of its message: see "Logs" above).
 
 Local runs (`supabase functions serve admin-users --env-file supabase/functions/.env`) need a local stack (`supabase init` +
 `supabase start`), which this repository does not set up yet.

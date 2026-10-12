@@ -14,9 +14,9 @@
 // custom templates with a custom SMTP server on the Free plan; the API answers with an error otherwise.
 //
 // URLs (optional; without the flags the project's values are left as they are):
-//   --site-url https://cuadrillas.pulkro.mx       site_url: {{ .SiteURL }} in the e-mails (no trailing slash)
-//   --redirect https://cuadrillas.pulkro.mx/**    uri_allow_list, repeatable: the exact list of allowed redirect URLs
-//                                                 (resetPasswordForEmail's redirectTo must match one of them)
+//   --site-url https://cuadrillas.pulkro.com.mx     site_url: {{ .SiteURL }} in the e-mails (no trailing slash)
+//   --redirect https://cuadrillas.pulkro.com.mx/**  uri_allow_list, repeatable: the exact list of allowed redirect URLs
+//                                                   (resetPasswordForEmail's redirectTo must match one of them)
 
 import { readFileSync } from 'node:fs';
 

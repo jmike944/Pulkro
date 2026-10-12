@@ -96,6 +96,9 @@ async function pdfSafeDataUrl(blob: Blob) {
   canvas.height = bitmap.height;
   const ctx = canvas.getContext("2d");
   if (!ctx) throw new Error("Canvas no disponible");
+  // JPEG has no transparency: a transparent area would print black. White under it, as svgToJpeg does.
+  ctx.fillStyle = "#ffffff";
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
   ctx.drawImage(bitmap, 0, 0);
   bitmap.close?.();
   return canvas.toDataURL("image/jpeg", 0.86);
@@ -115,24 +118,48 @@ export async function photoToDataUrl(photo: Photo, root?: ParentNode | null): Pr
   return svg ? svgToJpeg(svg) : null;
 }
 
-/** Rasterize photos sequentially (keeps the main thread breathing so progress can animate). */
+/**
+ * Evidence on the server that could not be read now (no copy kept on the device, and the download got no answer or was
+ * refused: a weak signal, an expired session). The photo exists: a PDF with a placeholder in its place would be cached and
+ * shared as the report, so the composition fails instead and the person tries again with a connection.
+ */
+export class PhotosUnavailableError extends Error {
+  constructor(readonly count: number) {
+    super(
+      count === 1
+        ? "No se pudo descargar una de las fotos del reporte. Con conexión, intente de nuevo."
+        : `No se pudieron descargar ${count} fotos del reporte. Con conexión, intente de nuevo.`,
+    );
+    this.name = "PhotosUnavailableError";
+  }
+}
+
+/**
+ * Rasterize photos sequentially (keeps the main thread breathing so progress can animate). A capture whose picture is gone
+ * from the device becomes a placeholder in the PDF; a server photo that cannot be read now fails the whole composition
+ * (PhotosUnavailableError), once every photo was tried.
+ */
 export async function rasterizePhotos(
   photos: Photo[],
   opts: { root?: ParentNode | null; onProgress?: (done: number, total: number) => void } = {},
 ): Promise<Record<string, string>> {
   const out: Record<string, string> = {};
+  let unavailable = 0;
   let done = 0;
   opts.onProgress?.(0, photos.length);
   for (const p of photos) {
+    let url: string | null = null;
     try {
-      const url = await photoToDataUrl(p, opts.root);
-      if (url) out[p.id] = url;
+      url = await photoToDataUrl(p, opts.root);
     } catch {
-      // a missing capture becomes a placeholder in the PDF
+      // handled below
     }
+    if (url) out[p.id] = url;
+    else if (p.source.type === "storage") unavailable++;
     done++;
     opts.onProgress?.(done, photos.length);
     await nextFrame();
   }
+  if (unavailable) throw new PhotosUnavailableError(unavailable);
   return out;
 }

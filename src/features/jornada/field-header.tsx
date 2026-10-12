@@ -63,17 +63,25 @@ export function FieldHeader({ f }: { f: FieldReady }) {
         <span className="text-ink/80">
           {client.shortName} · {site.name}
         </span>
-        <a
-          href={mapsLink(site.lat, site.lng)}
-          target="_blank"
-          rel="noreferrer"
-          className="inline-flex min-h-10 min-w-0 items-center gap-1 text-link hover:underline"
-        >
-          <MapPin className="size-3.5 shrink-0" />
-          <span className="truncate">
-            {site.address}, {site.municipality}
+        {site.unavailable ? (
+          // The site has not reached this device yet: no address, and no location to open in Maps.
+          <span className="inline-flex min-h-10 min-w-0 items-center gap-1">
+            <MapPin className="size-3.5 shrink-0" />
+            <span className="truncate">Ubicación no disponible en este dispositivo</span>
           </span>
-        </a>
+        ) : (
+          <a
+            href={mapsLink(site.lat, site.lng)}
+            target="_blank"
+            rel="noreferrer"
+            className="inline-flex min-h-10 min-w-0 items-center gap-1 text-link hover:underline"
+          >
+            <MapPin className="size-3.5 shrink-0" />
+            <span className="truncate">
+              {site.address}, {site.municipality}
+            </span>
+          </a>
+        )}
         {/* one-tap call; the wide layout has it in the rail */}
         {order.siteContact.phone && (
           <a

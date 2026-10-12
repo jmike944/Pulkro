@@ -25,7 +25,9 @@ const utf8Length = (p: string) => new TextEncoder().encode(p).length;
 export function passwordProblem(password: string, confirmation: string): string | undefined {
   const missing = PASSWORD_RULES.find((r) => !r.test(password));
   if (missing) return `Falta: ${missing.label.toLowerCase()}.`;
-  if (utf8Length(password) > PASSWORD_MAX_LENGTH) return `Use como máximo ${PASSWORD_MAX_LENGTH} caracteres.`;
+  // Measured in bytes (what bcrypt reads), said in plain words: a letter with an accent, the ñ or an emoji takes more room.
+  if (utf8Length(password) > PASSWORD_MAX_LENGTH)
+    return `La contraseña es demasiado larga: acórtela. Admite hasta ${PASSWORD_MAX_LENGTH} caracteres sin acentos; las letras con acento, la ñ y los emojis ocupan más.`;
   if (password !== confirmation) return "Escriba la misma contraseña en los dos campos.";
   return undefined;
 }

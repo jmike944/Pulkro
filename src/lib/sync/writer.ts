@@ -23,12 +23,16 @@ export function setWriterCheck(fn: () => Promise<boolean>) {
   check = fn;
 }
 
-/** This tab is still the device's writer and may send / read now. Never throws. */
+/**
+ * This tab is still the device's writer and may send / read now. Never throws. `halted` is read again once the check
+ * answers: a handover that started while it read the device stops the request too (no RPC starts after the halt).
+ */
 export async function stillWriter(): Promise<boolean> {
   if (halted) return false;
   try {
-    return await check();
+    const ok = await check();
+    return ok && !halted;
   } catch {
-    return true; // the write's own check (same transaction as the write) still holds
+    return !halted; // the write's own check (same transaction as the write) still holds
   }
 }

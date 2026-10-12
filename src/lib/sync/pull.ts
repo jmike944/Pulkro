@@ -412,7 +412,11 @@ async function firstLoad(ctx: Ctx, me: Row<"profiles">) {
       return st;
     }
     const fresh: PullState = { userId: ctx.userId, role: me.role, unitId: me.unit_id, since, cursors: {}, subtrees: st.session.pull?.subtrees ?? [] };
-    return { session: { ...st.session, pull: fresh } };
+    // Only Administración and supervisors see survey links (survey_tokens RLS, §2): a role without them (a downgrade to
+    // Dirección) keeps none of the ones the device holds — the full subtrees read nothing to replace them with.
+    const links = me.role === "administracion" || me.role === "supervisor";
+    const surveys = links || !st.surveys.some((x) => x.token) ? {} : { surveys: st.surveys.map((x) => (x.token ? { ...x, token: "" } : x)) };
+    return { ...surveys, session: { ...st.session, pull: fresh } };
   });
   if (aborted) throw new PullError("aborted", "La sesión cambió durante la descarga.");
 
@@ -432,6 +436,9 @@ async function firstLoad(ctx: Ctx, me: Row<"profiles">) {
     const pull = st.session.pull!;
     const cursors = { ...pull.cursors };
     for (const t of ORDER_TABLES) cursors[t] ??= { at: heads[t] ?? EPOCH, seen: {} };
+    // No order changed in the window (none read, so no cursor yet): the next cycle starts at the window, never at the
+    // beginning of time (every historical order, with its subtree). The catalogs have no window: read whole, as on this load.
+    cursors.orders ??= { at: since, seen: {} };
     return { session: { ...st.session, pull: { ...pull, cursors, loadedAt: new Date().toISOString() } } };
   });
 }
@@ -645,6 +652,15 @@ export type PullRequest = {
   full?: boolean;
 };
 
+/** The account usePullStatus describes: its failures, backoff and error are that account's alone. */
+let statusFor: string | undefined;
+function ownStatus(userId: string) {
+  if (statusFor === userId) return;
+  statusFor = userId;
+  // Another account (signed in without a reload): nothing of the previous one's failures carries over.
+  usePullStatus.setState({ failures: 0, retryAt: 0, error: undefined, errorAt: undefined });
+}
+
 /**
  * Runs a pull for the account session (single-flight: a request during a run schedules one more run). Never throws: the
  * outcome lands in usePullStatus and, for an expired session, in session.needsReauth.
@@ -658,6 +674,7 @@ export function requestPull(store: PullStore, req: PullRequest = {}): Promise<vo
     againFull ||= !!req.full;
     return inflight;
   }
+  ownStatus(st.session.userId);
   const status = usePullStatus.getState();
   const now = Date.now();
   if (!req.manual && !req.full && (now < status.retryAt || now - lastStart < MIN_AUTO_GAP_MS)) return Promise.resolve();
@@ -683,6 +700,8 @@ async function once(store: PullStore, full: boolean) {
   // the time a stalled answer arrives, the store may hold the next person's.
   const userId = store.getState().session.userId;
   const loaded = !!store.getState().session.pull?.loadedAt;
+  // A run queued behind another account's (`again`) starts from this account's own status.
+  ownStatus(userId);
   usePullStatus.setState({ running: true, initial: full || !loaded });
   try {
     await cycle(store, { full, userId });
@@ -727,8 +746,12 @@ async function once(store: PullStore, full: boolean) {
   }
 }
 
+type Refreshed = "ok" | "dead" | "inactive" | "offline";
 let refreshTried = 0;
-let refreshLast: "ok" | "dead" | "inactive" | "offline" = "dead";
+let refreshLast: Refreshed = "dead";
+/** The account the last attempt ran for, and that attempt while it is under way. */
+let refreshFor: string | undefined;
+let refreshing: Promise<Refreshed> | null = null;
 
 /** The access-token hook refuses an account without an active profile with a 403 and no error code. */
 const isNoProfileRefusal = (error: unknown) =>
@@ -738,22 +761,35 @@ const isNoProfileRefusal = (error: unknown) =>
  * "ok" → the session is alive again; "dead" → sign in again; "inactive" → no active profile; "offline" → try later. Shared
  * with the push engine (one attempt per minute for both).
  */
-export async function tryRefresh(store: PullStore): Promise<"ok" | "dead" | "inactive" | "offline"> {
-  // At most one refresh attempt per minute (a server that keeps answering 401 must not loop). Within that minute the
-  // pull and the push share its outcome; after a successful one a new 401 is retried later, never "Vuelva a entrar".
-  if (Date.now() - refreshTried < 60_000) return refreshLast === "ok" ? "offline" : refreshLast;
+export async function tryRefresh(store: PullStore): Promise<Refreshed> {
+  const userId = store.getState().session.userId;
+  // One attempt at a time: a 401 of the push while the pull's refresh is under way (they run together) waits for its
+  // outcome — never the previous minute's, which would flag a session that is being renewed right now.
+  if (refreshing && refreshFor === userId) return refreshing;
+  // At most one refresh attempt per minute and account (a server that keeps answering 401 must not loop). Within that
+  // minute the pull and the push share its outcome; after a successful one a new 401 is retried later, never "Vuelva a
+  // entrar". Another account's outcome says nothing about this one.
+  if (refreshFor === userId && Date.now() - refreshTried < 60_000) return refreshLast === "ok" ? "offline" : refreshLast;
   refreshTried = Date.now();
-  refreshLast = await (async () => {
+  refreshFor = userId;
+  const attempt = (async (): Promise<Refreshed> => {
     try {
       const { data, error } = await getSupabaseBrowserClient().auth.refreshSession();
-      if (error && isNoProfileRefusal(error)) return "inactive" as const;
-      if (error) return isAuthRetryableFetchError(error) ? ("offline" as const) : ("dead" as const);
-      return data.session?.user.id === store.getState().session.userId ? ("ok" as const) : ("dead" as const);
+      if (error && isNoProfileRefusal(error)) return "inactive";
+      if (error) return isAuthRetryableFetchError(error) ? "offline" : "dead";
+      return data.session?.user.id === userId ? "ok" : "dead";
     } catch {
-      return "offline" as const;
+      return "offline";
     }
   })();
-  return refreshLast;
+  refreshing = attempt;
+  const outcome = await attempt;
+  // A newer attempt (another account's, started meanwhile) owns the shared outcome.
+  if (refreshing === attempt) {
+    refreshing = null;
+    refreshLast = outcome;
+  }
+  return outcome;
 }
 
 /**
