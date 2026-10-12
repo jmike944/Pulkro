@@ -182,6 +182,8 @@ export function SetPasswordView() {
   const [stage, setStage] = useState<Stage>({ kind: "checking" });
   const [attempt, setAttempt] = useState(0);
   const [leaving, setLeaving] = useState(false);
+  // «No es mi enlace» under way (ending the link's session takes up to 8 s on a weak signal): the step neither saves nor enters.
+  const [leavingLink, setLeavingLink] = useState(false);
   // The person chose to go on with the link although an account is open on this device.
   const takeOver = useRef(false);
   // The account open on this device: when the link opens another one, the next step names both.
@@ -243,7 +245,10 @@ export function SetPasswordView() {
   };
 
   /** Not this person's link (or not now): nothing of it stays, back to the sign-in. */
-  const leave = (userId: string) => leaveLink(userId).finally(() => router.replace("/login"));
+  const leave = (userId: string) => {
+    setLeavingLink(true);
+    return leaveLink(userId).finally(() => router.replace("/login"));
+  };
 
   const entered = useCallback(() => {
     forgetLink();
@@ -380,11 +385,23 @@ export function SetPasswordView() {
         )}
 
         {stage.kind === "password" && (
-          <PasswordStep verified={stage.verified} replaces={replaces(stage.verified)} onLeave={() => leave(stage.verified.userId)} onSaved={() => continueIn(stage.verified)} />
+          <PasswordStep
+            verified={stage.verified}
+            replaces={replaces(stage.verified)}
+            leaving={leavingLink}
+            onLeave={() => leave(stage.verified.userId)}
+            onSaved={() => continueIn(stage.verified)}
+          />
         )}
 
         {stage.kind === "confirmed" && (
-          <ConfirmedStep verified={stage.verified} replaces={replaces(stage.verified)} onLeave={() => leave(stage.verified.userId)} onContinue={() => continueIn(stage.verified)} />
+          <ConfirmedStep
+            verified={stage.verified}
+            replaces={replaces(stage.verified)}
+            leaving={leavingLink}
+            onLeave={() => leave(stage.verified.userId)}
+            onContinue={() => continueIn(stage.verified)}
+          />
         )}
       </AuthFrame>
       {replaceDialog}
@@ -410,11 +427,22 @@ function Notice({ icon, title, children, primary }: { icon: React.ReactNode; tit
 
 /**
  * The link opens another account than the one open on this device: both are named before anything else, with a way out. (A
- * link can carry any session, not only one Auth issued for this person.)
+ * link can carry any session, not only one Auth issued for this person.) `leaving`: the way out is under way (one tap is
+ * enough); `busy`: the step is saving or entering, and the way out waits for it.
  */
-function OtherAccountNote({ email, replaces, onLeave }: { email: string; replaces: string; onLeave: () => Promise<unknown> }) {
-  // Ending the link's session takes a moment (at most 8 s on a weak signal): one tap is enough.
-  const [leaving, setLeaving] = useState(false);
+function OtherAccountNote({
+  email,
+  replaces,
+  leaving,
+  busy,
+  onLeave,
+}: {
+  email: string;
+  replaces: string;
+  leaving: boolean;
+  busy: boolean;
+  onLeave: () => Promise<unknown>;
+}) {
   return (
     <div role="note" className="mt-5 rounded-[14px] bg-amber-soft px-4 py-3 text-[13.5px] leading-snug text-amber-ink">
       <p>
@@ -423,11 +451,9 @@ function OtherAccountNote({ email, replaces, onLeave }: { email: string; replace
       </p>
       <button
         type="button"
-        disabled={leaving}
-        onClick={() => {
-          setLeaving(true);
-          void onLeave();
-        }}
+        disabled={leaving || busy}
+        aria-busy={leaving || undefined}
+        onClick={() => void onLeave()}
         className="mt-1.5 inline-flex items-center gap-1.5 font-semibold underline underline-offset-2 disabled:opacity-60"
       >
         {leaving && <Loader2 className="size-3.5 animate-spin" aria-hidden />}
@@ -437,18 +463,20 @@ function OtherAccountNote({ email, replaces, onLeave }: { email: string; replace
   );
 }
 
-type StepProps = { verified: Verified; replaces: string | null; onLeave: () => Promise<unknown> };
+/** `leaving`: «No es mi enlace» is under way — the step no longer saves nor enters (the link's account is being left). */
+type StepProps = { verified: Verified; replaces: string | null; leaving: boolean; onLeave: () => Promise<unknown> };
 
-function PasswordStep({ verified, replaces, onLeave, onSaved }: StepProps & { onSaved: () => Promise<unknown> }) {
+function PasswordStep({ verified, replaces, leaving, onLeave, onSaved }: StepProps & { onSaved: () => Promise<unknown> }) {
   const [password, setPassword] = useState("");
   const [confirmation, setConfirmation] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string>();
   const problem = passwordProblem(password, confirmation);
+  const locked = busy || leaving;
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (busy) return;
+    if (locked) return;
     if (problem) {
       setError(problem);
       return;
@@ -479,8 +507,8 @@ function PasswordStep({ verified, replaces, onLeave, onSaved }: StepProps & { on
           ? "Es su primera entrada a Pulkro Cuadrillas: elija la contraseña con la que entrará desde ahora."
           : "Elija una contraseña nueva para su cuenta."}
       </AuthHeading>
-      {replaces && <OtherAccountNote email={verified.email} replaces={replaces} onLeave={onLeave} />}
-      <form onSubmit={submit} noValidate className="mt-7 space-y-4">
+      {replaces && <OtherAccountNote email={verified.email} replaces={replaces} leaving={leaving} busy={busy} onLeave={onLeave} />}
+      <form onSubmit={submit} noValidate aria-busy={locked || undefined} className="mt-7 space-y-4">
         {/* The account it applies to, also read by password managers as the user name. */}
         <AuthField id="set-email" label="Cuenta" icon={<Mail />} type="email" autoComplete="username" value={verified.email} readOnly />
         <PasswordField
@@ -491,7 +519,7 @@ function PasswordStep({ verified, replaces, onLeave, onSaved }: StepProps & { on
           aria-describedby="set-password-rule"
           value={password}
           onChange={(e) => setPassword(e.target.value)}
-          disabled={busy}
+          disabled={locked}
         />
         <PasswordField
           id="set-password-confirm"
@@ -500,7 +528,7 @@ function PasswordStep({ verified, replaces, onLeave, onSaved }: StepProps & { on
           autoComplete="new-password"
           value={confirmation}
           onChange={(e) => setConfirmation(e.target.value)}
-          disabled={busy}
+          disabled={locked}
         />
         <div className="rounded-[16px] border border-hairline px-4 py-3.5">
           <p id="set-password-rule" className="mb-2.5 text-[13.5px] font-semibold text-ink">
@@ -511,9 +539,9 @@ function PasswordStep({ verified, replaces, onLeave, onSaved }: StepProps & { on
         <FormMessage>{error}</FormMessage>
         <Button
           type="submit"
-          disabled={busy}
+          disabled={locked}
           size="lg"
-          className={cn("group h-12 w-full rounded-[14px] text-[15px] font-semibold", problem && !busy && "opacity-60")}
+          className={cn("group h-12 w-full rounded-[14px] text-[15px] font-semibold", problem && !locked && "opacity-60")}
         >
           {busy ? (
             <>
@@ -530,7 +558,7 @@ function PasswordStep({ verified, replaces, onLeave, onSaved }: StepProps & { on
   );
 }
 
-function ConfirmedStep({ verified, replaces, onLeave, onContinue }: StepProps & { onContinue: () => Promise<unknown> }) {
+function ConfirmedStep({ verified, replaces, leaving, onLeave, onContinue }: StepProps & { onContinue: () => Promise<unknown> }) {
   const [busy, setBusy] = useState(false);
   return (
     <>
@@ -546,10 +574,10 @@ function ConfirmedStep({ verified, replaces, onLeave, onContinue }: StepProps & 
           "Su correo quedó confirmado."
         )}
       </AuthHeading>
-      {replaces && <OtherAccountNote email={verified.email} replaces={replaces} onLeave={onLeave} />}
+      {replaces && <OtherAccountNote email={verified.email} replaces={replaces} leaving={leaving} busy={busy} onLeave={onLeave} />}
       <div className="mt-7">
         <BigButton
-          disabled={busy}
+          disabled={busy || leaving}
           onClick={() => {
             setBusy(true);
             void onContinue().finally(() => setBusy(false));
