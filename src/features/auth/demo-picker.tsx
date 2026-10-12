@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { motion } from "motion/react";
 import { ArrowRight, Check } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -18,34 +18,56 @@ const ROLE_COPY: Record<Role, string> = {
   supervisor: "Cuadrillas, jornadas con GPS, evidencia, cierre y envío.",
 };
 
-/** The demo's sign-in: one demo profile per role over the local demo dataset. `onEntered` runs once the session started. */
+const ROLES: Role[] = ["supervisor", "administracion", "direccion"];
+
+/**
+ * The demo's sign-in: one demo profile per role over the local demo dataset. `onEntered` runs once the session started.
+ * A radio group: one tab stop (the selected profile), the arrow keys move the selection.
+ */
 export function DemoPicker({ onEntered }: { onEntered: () => void }) {
   const hydrated = useAppStore((s) => s.hydrated);
   const users = useAppStore((s) => s.users);
   const signIn = useAppStore((s) => s.signIn);
   const [role, setRole] = useState<Role>("supervisor");
+  const radios = useRef<(HTMLButtonElement | null)[]>([]);
 
   const enter = () => {
+    // Before hydration the demo users are not loaded yet: the sign-in would refuse a profile that is there.
+    if (!hydrated) return;
     if (signIn(DEMO_USER_BY_ROLE[role])) onEntered();
+  };
+
+  const onArrow = (i: number) => (e: React.KeyboardEvent) => {
+    const step = e.key === "ArrowDown" || e.key === "ArrowRight" ? 1 : e.key === "ArrowUp" || e.key === "ArrowLeft" ? -1 : 0;
+    if (!step) return;
+    e.preventDefault();
+    const n = (i + step + ROLES.length) % ROLES.length;
+    setRole(ROLES[n]);
+    radios.current[n]?.focus();
   };
 
   return (
     <>
       <div className="mt-7 space-y-3" role="radiogroup" aria-label="Perfil">
-        {(["supervisor", "administracion", "direccion"] as Role[]).map((r, i) => {
+        {ROLES.map((r, i) => {
           const u = users.find((x) => x.id === DEMO_USER_BY_ROLE[r]);
           const active = role === r;
           return (
             <motion.button
               key={r}
+              ref={(el) => {
+                radios.current[i] = el;
+              }}
               type="button"
               role="radio"
               aria-checked={active}
+              tabIndex={active ? 0 : -1}
               aria-label={`${ROLE_LABEL[r]}${u ? ` · ${u.name}` : ""}`}
               initial={{ opacity: 0, x: 12 }}
               animate={{ opacity: 1, x: 0 }}
               transition={{ delay: 0.15 + i * 0.07, ease: EASE }}
               onClick={() => setRole(r)}
+              onKeyDown={onArrow(i)}
               onDoubleClick={enter}
               className={cn(
                 "flex w-full items-center gap-4 rounded-[18px] border p-4 text-left transition-all",

@@ -1,6 +1,6 @@
 "use client";
 
-import { usePathname } from "next/navigation";
+import { usePathname, useSearchParams } from "next/navigation";
 import { LogOut, UserRoundX } from "lucide-react";
 import { BigButton } from "@/components/pk/mobile";
 import { AuthFrame, AuthHeading } from "./auth-frame";
@@ -9,10 +9,14 @@ import { useSignOut } from "./use-sign-out";
 /**
  * Shown by the shell instead of the app when the account's profile is no longer active (session.noAccess): the pull found it
  * deactivated and ended the Supabase session. The device keeps the account's data and unsent changes, but nobody uses them
- * here until the account is active again and signs in, or someone signs out and wipes them.
+ * here until the account is active again and signs in, or someone signs out and wipes them. Signing in again comes back to
+ * this page, its query included. Client-only (the shell renders it after hydration): useSearchParams needs no Suspense here.
  */
 export function NoAccessView() {
   const pathname = usePathname();
+  // toString(), not .size (missing on iOS 15/16).
+  const query = useSearchParams().toString();
+  const here = query ? `${pathname}?${query}` : pathname;
   const { requestSignOut, signOutDialog, signingOut } = useSignOut();
   return (
     <AuthFrame>
@@ -24,7 +28,7 @@ export function NoAccessView() {
         siguen guardados aquí. Si cree que es un error, comuníquese con Dirección.
       </AuthHeading>
       <div className="mt-7 space-y-3">
-        <BigButton href={`/login?next=${encodeURIComponent(pathname)}`}>Entrar de nuevo</BigButton>
+        <BigButton href={`/login?next=${encodeURIComponent(here)}`}>Entrar de nuevo</BigButton>
         <BigButton variant="outline" onClick={requestSignOut} disabled={signingOut}>
           <LogOut /> Cerrar sesión y borrar datos
         </BigButton>

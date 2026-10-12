@@ -34,17 +34,20 @@ export type SignOutOutcome = { result: "ok" | "kept" | "unsaved" } | { result: "
  * while one is being stored.
  */
 export async function endAccountOnDevice(accepted: ReadonlySet<string>): Promise<SignOutOutcome> {
+  // The account being signed out. The waits below can take long, and by then another tab may have put another account's
+  // session in the shared cookies (the next person's sign-in, an e-mail link): only this account's session ends.
+  const userId = useAppStore.getState().session.userId;
   if (!(await whenCapturesSettled(CAPTURE_WAIT_MS))) return { result: "again", ids: await collectUnsent() };
   // Changes made since the person confirmed (a push answer, a capture) are not part of what they agreed to lose.
   const before = await collectUnsent();
   if (newSince(before, accepted)) return { result: "again", ids: before };
   // This device only. Online, Auth revokes this session's refresh token; the cookies are removed here in any case, because
   // signOut() keeps them when it cannot refresh an expired access token first (offline for over an hour, Auth down).
-  await endSessionOnDevice({ revoke: !useAppStore.getState().sync.browserOffline });
+  await endSessionOnDevice({ revoke: !useAppStore.getState().sync.browserOffline, userId });
   // Last count, right before the wipe. The Supabase session is gone by now: keep the data and ask to sign in again.
   const settled = await whenCapturesSettled(CAPTURE_WAIT_MS);
   if (!settled || newSince(await collectUnsent(), accepted) || capturesInProgress() > 0) {
-    flagReauth(useAppStore);
+    flagReauth(useAppStore, { userId });
     return { result: "kept" };
   }
   const saved = await useAppStore.getState().clearDeviceData();

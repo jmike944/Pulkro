@@ -6,7 +6,7 @@ import { ArrowRight, KeyRound, Link2Off, Loader2, LockKeyhole, Mail, MailCheck, 
 import type { EmailOtpType, Session, User } from "@supabase/supabase-js";
 import { cn } from "@/lib/utils";
 import { useAppStore } from "@/lib/store";
-import { getSupabaseBrowserClient, isSupabaseConfigured } from "@/lib/supabase/client";
+import { endSessionOnDevice, getSupabaseBrowserClient, isSupabaseConfigured } from "@/lib/supabase/client";
 import { flagReauth } from "@/lib/sync/pull";
 import { BigButton } from "@/components/pk/mobile";
 import { Button } from "@/components/ui/button";
@@ -81,6 +81,16 @@ function readLink(search: string, hash: string): AuthLink {
 function forgetLink() {
   pageLink = null;
   lastVerified = null;
+}
+
+/**
+ * «No es mi enlace»: the link opened `userId`'s session in this browser (its cookies). Nothing of it stays: the link is
+ * forgotten and that session ends here — that account's only, so a session that landed meanwhile (another tab's sign-in) is
+ * left alone. The account open on the device stays flagged "Vuelva a entrar".
+ */
+export async function leaveLink(userId: string): Promise<void> {
+  forgetLink();
+  await endSessionOnDevice({ userId });
 }
 
 const keyOf = (link: LinkCredential) =>
@@ -233,10 +243,7 @@ export function SetPasswordView() {
   };
 
   /** Not this person's link (or not now): nothing of it stays, back to the sign-in. */
-  const leave = () => {
-    forgetLink();
-    router.replace("/login");
-  };
+  const leave = (userId: string) => leaveLink(userId).finally(() => router.replace("/login"));
 
   const entered = useCallback(() => {
     forgetLink();
@@ -373,11 +380,11 @@ export function SetPasswordView() {
         )}
 
         {stage.kind === "password" && (
-          <PasswordStep verified={stage.verified} replaces={replaces(stage.verified)} onLeave={leave} onSaved={() => continueIn(stage.verified)} />
+          <PasswordStep verified={stage.verified} replaces={replaces(stage.verified)} onLeave={() => leave(stage.verified.userId)} onSaved={() => continueIn(stage.verified)} />
         )}
 
         {stage.kind === "confirmed" && (
-          <ConfirmedStep verified={stage.verified} replaces={replaces(stage.verified)} onLeave={leave} onContinue={() => continueIn(stage.verified)} />
+          <ConfirmedStep verified={stage.verified} replaces={replaces(stage.verified)} onLeave={() => leave(stage.verified.userId)} onContinue={() => continueIn(stage.verified)} />
         )}
       </AuthFrame>
       {replaceDialog}
@@ -405,21 +412,32 @@ function Notice({ icon, title, children, primary }: { icon: React.ReactNode; tit
  * The link opens another account than the one open on this device: both are named before anything else, with a way out. (A
  * link can carry any session, not only one Auth issued for this person.)
  */
-function OtherAccountNote({ email, replaces, onLeave }: { email: string; replaces: string; onLeave: () => void }) {
+function OtherAccountNote({ email, replaces, onLeave }: { email: string; replaces: string; onLeave: () => Promise<unknown> }) {
+  // Ending the link's session takes a moment (at most 8 s on a weak signal): one tap is enough.
+  const [leaving, setLeaving] = useState(false);
   return (
     <div role="note" className="mt-5 rounded-[14px] bg-amber-soft px-4 py-3 text-[13.5px] leading-snug text-amber-ink">
       <p>
         Este enlace es de <b className="font-semibold">{email || "otra cuenta"}</b>, no de <b className="font-semibold">{replaces}</b>, la
         cuenta abierta en este dispositivo. Si no es su enlace, no continúe.
       </p>
-      <button type="button" onClick={onLeave} className="mt-1.5 font-semibold underline underline-offset-2">
+      <button
+        type="button"
+        disabled={leaving}
+        onClick={() => {
+          setLeaving(true);
+          void onLeave();
+        }}
+        className="mt-1.5 inline-flex items-center gap-1.5 font-semibold underline underline-offset-2 disabled:opacity-60"
+      >
+        {leaving && <Loader2 className="size-3.5 animate-spin" aria-hidden />}
         No es mi enlace: volver a la entrada
       </button>
     </div>
   );
 }
 
-type StepProps = { verified: Verified; replaces: string | null; onLeave: () => void };
+type StepProps = { verified: Verified; replaces: string | null; onLeave: () => Promise<unknown> };
 
 function PasswordStep({ verified, replaces, onLeave, onSaved }: StepProps & { onSaved: () => Promise<unknown> }) {
   const [password, setPassword] = useState("");
