@@ -18,6 +18,8 @@
  *    tab is refused). A writer that cannot save what it holds (storage full) says so and stays: its captures exist only in
  *    its memory. While its saves fail it also leaves a mark on the origin (`pulkro-unsaved`): when it does not answer at all
  *    (frozen in the background), the new tab does not take over silently — the person decides («Usar aquí de todos modos»).
+ *    No tab claims the device by itself over that mark (without Web Locks a frozen writer misses the question and the stamp
+ *    below): it waits behind the same blocker.
  *  - Without Web Locks (or when the browser refuses them), the epoch alone: a tab asks on the channel whether a writer is
  *    there, and the writer announces its epoch (a writer that hears a newer one has lost). The writer also stamps the origin
  *    every 1.5 s (`pulkro-writer-alive`): a tab that gets no answer claims only once that stamp is 5 s old, since a writer
@@ -305,7 +307,12 @@ function askForWriter(): Promise<boolean> {
   });
 }
 
-/** Without Web Locks: is a writer there? None answers and none stamped lately → this tab becomes it. */
+/**
+ * Without Web Locks: is a writer there? None answers and none stamped lately → this tab becomes it — unless the last writer
+ * could not save what it holds (`pulkro-unsaved`): a writer frozen in the background misses both the question and the stamp,
+ * and claiming over it would discard its captures, which exist only in its memory. The person decides then, as when
+ * «Usar aquí» gets no answer ("unanswered": «Usar aquí de todos modos»).
+ */
 async function probe() {
   for (;;) {
     const answered = await askForWriter();
@@ -315,6 +322,7 @@ async function probe() {
     // A writer stamped lately but did not answer: it is busy, ask again. With no channel to ask on, the stamp is all there is.
     if (!channel) return setWriter("blocked");
   }
+  if (unsavedElsewhere()) return setWriter("unanswered");
   await claim();
 }
 
@@ -793,7 +801,7 @@ channel?.addEventListener("message", (event: MessageEvent<Message>) => {
     // it starts over behind the blocker instead of claiming over that writer later.
     stopWriting();
     startOver();
-  } else if (writer === "blocked" && m.t === "bye" && !locks()) {
+  } else if ((writer === "blocked" || writer === "unanswered") && m.t === "bye" && !locks()) {
     void probe();
   }
 });
@@ -815,8 +823,8 @@ if (browser) {
   const wake = () => {
     // A writer back from the background (or the back-forward cache) may have been taken over meanwhile: blocker at once.
     if (writer === "writer") void stillWriter();
-    // Without Web Locks, a waiting tab looks again (the writer may have closed without a word).
-    else if (writer === "blocked" && !locks()) void probe();
+    // Without Web Locks, a waiting tab looks again (the writer may have closed without a word, or answer again).
+    else if ((writer === "blocked" || writer === "unanswered") && !locks()) void probe();
   };
   window.addEventListener("pageshow", (e) => {
     if (e.persisted) wake();

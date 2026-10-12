@@ -533,7 +533,10 @@ One RPC per queue item keeps generated TypeScript types for every argument (a ba
     announcement on the channel. A writer that hears a newer epoch has lost; a waiting tab asks again when the writer's page
     goes away or when it becomes visible. The writer also stamps the origin every 1.5 s (`pulkro-writer-alive`, removed
     when its page goes away): a tab that gets no answer claims only once the stamp is 5 s old, so a writer busy for a few
-    seconds (a PDF, a large save) keeps the device and the write waiting in its debounce. A tab that holds no data but keeps
+    seconds (a PDF, a large save) keeps the device and the write waiting in its debounce. A writer frozen in the background
+    misses both the question and the stamp, so a tab never claims by itself while `pulkro-unsaved` is set: it shows the
+    same «La otra ventana no responde» blocker, with «Usar aquí de todos modos» as the explicit decision, and looks again
+    when it becomes visible or the writer's page goes away. A tab that holds no data but keeps
     claiming (a full or unreadable device) starts over behind the blocker when another tab announces itself. Without
     BroadcastChannel either (Safari < 15.4), a recent stamp is the only sign of a writer: a new tab waits behind the
     blocker, and «Usar aquí» there cannot ask the writer to save first (its unsaved write is lost) — two windows of the
