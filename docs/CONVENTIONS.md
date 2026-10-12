@@ -119,6 +119,69 @@ branch on the theme: they use semantic color utilities and never a literal color
 - Do **not** run `next build`, `next dev`, or start servers; do not install packages. Verify with `npx tsc --noEmit` and `npx eslint <your files>`. Ignore errors in files you don't own (other agents are writing them concurrently).
 - Respect doc rules: manual sharing never claims delivery; edits after closure create a new version; GPS + time on check-in/out; ANTES and DESPUÉS photos required to close unless an authorized, justified exception; offline shows pending-sync state.
 
+## Definition of done
+A change is done when every item holds for the files it touches. Each one is a class of review finding that kept coming back.
+
+**(a) Awaits, identities, repeats.** After any `await`, re-check what you checked before it. State tied to an identity
+(account, photo, token) resets when that identity changes. Single-flight anything that must not run twice.
+```ts
+const userId = useAppStore.getState().session.userId;        // named before the first await
+await whenCapturesSettled(CAPTURE_WAIT_MS);
+if (useAppStore.getState().session.userId !== userId) return; // the device changed hands meanwhile
+useResetOnChange(userId, () => setDraft(EMPTY_DRAFT));        // src/lib/use-reset-on-change.ts
+inflight ??= run().finally(() => { inflight = null; });       // one run at a time (see requestPull, sync/pull.ts)
+```
+
+**(b) Docs move with the code.** Docs change in the same commit as the behaviour they describe: no stale "not built yet",
+no outdated promises. E.g. the commit that builds the users screen also rewrites its `docs/backend/architecture.md` section
+from "planned" to what it does.
+
+**(c) Claim only what you can verify.** Never show saved/done for something you cannot verify. Cache keys include every
+input. Test the degraded paths: offline, a failed read, missing data. E.g. a photo handed to the share sheet is
+«compartida», never «guardada» (it may have gone to a chat); `useMemo(() => scope(orders, unit), [orders, unit])`, not
+`[orders]`; a site that is not on the device is never mapped at 0,0.
+
+**(d) Name the account.** Anything that ends a session or applies a server answer names the account it acts for.
+```ts
+await endSessionOnDevice({ userId });                   // required by its type: never "whoever the cookies hold now"
+if (store.getState().session.userId !== userId) return; // an answer fetched for A never lands in B's store
+```
+
+**(e) Accessibility.** Use the primitives (`Dialog`, `RadioGroup`, `Switch`, `ReasonTip`), support the keyboard, and move
+focus into new dialogs and blockers. jsx-a11y's recommended rules are errors; a disable names why the rule is wrong there:
+`// eslint-disable-next-line jsx-a11y/no-autofocus -- the field the person just opened takes the caret`.
+```tsx
+<DialogContent onOpenAutoFocus={(e) => { e.preventDefault(); safeRef.current?.focus(); }}> {/* focus on the safe choice */}
+<span tabIndex={0} role="button" aria-disabled="true">{disabledButton}</span>           {/* a ReasonTip stop */}
+```
+
+**(f) Allowed, refused, neighbour.** Tests cover the allowed case, the refused case and the neighbouring case (archived and
+cancelled; anon and service_role).
+```js
+assert.equal(can("administracion", "order.create"), true); // allowed
+assert.equal(can("supervisor", "order.create"), false);    // refused
+assert.equal(can("direccion", "order.create"), false);     // the neighbour that looks like it might be allowed
+```
+
+**(g) `next=` keeps the query.** Every `/login?next=` link comes from `loginHref(pathname, search)`
+(`src/features/auth/safe-next.ts`), never built by hand: `loginHref(usePathname(), useSearchParams())` comes back to
+`/incidencias?i=INC-0007`, not `/incidencias`. `scripts/check-safe-next.mjs` checks the round trip.
+
+**(h) Usted.** Spanish copy uses the usted voice (see Voice above): «Entre de nuevo», «Elija una fecha», «su cuenta»;
+never «Entra», «Elige», «tu».
+
+## Process
+- **One feature per PR**, opened as a **draft** first so the review bots review small increments.
+- The **pre-PR review** reads every touched file through the Definition of done above, (a) to (h).
+- **High and medium** findings are fixed in the PR; **low** ones go to a follow-up list.
+- After each PR, the **most frequent finding category gets a guard**: a lint rule, a helper or a test template. So far:
+  `endSessionOnDevice` requires `userId` (d), `loginHref` + `check-safe-next.mjs` (g), jsx-a11y and
+  `react-hooks/exhaustive-deps` as errors (e, a), `useResetOnChange` (a).
+- **CI** (`.github/workflows/ci.yml`) runs on every push and pull request: `npx next typegen` → `npx tsc --noEmit -p .` →
+  `npx eslint .` → `npm run build` (the demo build: no secrets) → `node scripts/check-safe-next.mjs` →
+  `node scripts/check-permissions.mjs`. Run the same before pushing; on a fresh checkout `tsc` needs `next typegen` first
+  (it generates the route types).
+
 ## Mobile / PWA language (phones & tablets < 1024 px)
 The product is an installable PWA (manifest, `public/sw.js` offline shell, icons in `public/icons`). Below `lg` the shell
 switches to the **mobile reference** (Today · Labor breakdown · Sent screens):
