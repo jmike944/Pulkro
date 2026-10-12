@@ -6,7 +6,8 @@ import { AnimatePresence, motion } from "motion/react";
 import { ChevronDown, Copy, Link2, Mail, MessageCircle, NotebookPen, QrCode, Send, Sparkles } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
-import { attempt, useAppStore } from "@/lib/store";
+import { attempt, isOffline, useAppStore } from "@/lib/store";
+import { useIsOffline } from "@/lib/hooks";
 import { fmtAgo, plural } from "@/lib/format";
 import { SHARE_CHANNEL } from "@/lib/status";
 import type { ShareChannel } from "@/lib/types";
@@ -16,9 +17,9 @@ import { EASE } from "@/components/pk/motion";
 import { SoftBadge } from "@/components/pk/status";
 import { Button } from "@/components/ui/button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { channelText, contactFor, inLastDays } from "./lib";
+import { channelText, contactFor, inLastDays, surveyCreation, surveyLink, surveyLinkText } from "./lib";
 import { ManualSurveyDialog, type ManualTarget } from "./manual-survey-dialog";
-import { SurveyQrDialog, copySurveyLink, shareSurveyEmail, shareSurveyWhatsapp, type SurveyTarget } from "./survey-share";
+import { SurveyQrDialog, copySurveyLink, shareSurveyEmail, shareSurveyWhatsapp, useSurveyLink, type SurveyTarget } from "./survey-share";
 import type { FollowUpRow } from "./use-postventa";
 import { Gate, REASON_POSTVENTA, menuItemCls, outlineBtnCls } from "./ui";
 
@@ -61,10 +62,19 @@ export function FollowUpPanel({
     if (!s) return; // refused: the store already told the user why
     setGenerated((g) => [...g, r.order.id]);
     const target: SurveyTarget = { s, order: r.order, client: r.client };
+    // Account sessions: the link works once the survey is on the server (its create_survey is only queued now). Nothing is
+    // shared before: the row (and the QR window) offer it as soon as it is active.
+    const st = useAppStore.getState();
+    const link = surveyLink(surveyCreation(st.sync.queue, s.id));
+    if (link.state !== "ready") {
+      if (mode === "qr") setQr(target);
+      toast.success(`Encuesta generada · ${r.order.folio}`, { description: surveyLinkText(link, isOffline(st)) });
+      return;
+    }
     if (mode === "whatsapp") shareSurveyWhatsapp(target);
     else if (mode === "email") shareSurveyEmail(target);
     else if (mode === "qr") setQr(target);
-    else void copySurveyLink(s.token);
+    else void copySurveyLink(s);
     toast.success(`Encuesta generada · ${r.order.folio}`, { description: "La orden pasa a seguimiento postventa." });
   };
 
@@ -132,27 +142,12 @@ export function FollowUpPanel({
                           transition={{ type: "spring", stiffness: 380, damping: 26 }}
                           className="flex w-full flex-wrap items-center justify-end gap-2 md:w-auto"
                         >
-                          <SoftBadge tone="teal" className="mr-auto md:mr-1">
-                            <Sparkles className="size-3" /> Encuesta generada
-                          </SoftBadge>
-                          <Button variant="outline" size="icon" disabled={!canManage} aria-label="Enviar por WhatsApp" className="size-10 rounded-[12px] border-line" onClick={() => shareSurveyWhatsapp(target)}>
-                            <MessageCircle />
-                          </Button>
-                          <Button variant="outline" size="icon" disabled={!canManage} aria-label="Enviar por correo" className="size-10 rounded-[12px] border-line" onClick={() => shareSurveyEmail(target)}>
-                            <Mail />
-                          </Button>
-                          <Button variant="outline" size="icon" disabled={!canManage} aria-label="Copiar enlace" className="size-10 rounded-[12px] border-line" onClick={() => void copySurveyLink(target.s.token)}>
-                            <Copy />
-                          </Button>
-                          <Button variant="outline" size="icon" disabled={!canManage} aria-label="Ver QR" className="size-10 rounded-[12px] border-line" onClick={() => setQr(target)}>
-                            <QrCode />
-                          </Button>
-                          {canManage && !target.s.respondedAt && (
-                            <Button variant="outline" className={cn(outlineBtnCls, "px-3")} onClick={() => setManual({ order: r.order, client: r.client })}>
-                              <NotebookPen /> <span className="hidden sm:inline">Registrar respuesta</span>
-                              <span className="sm:hidden">Respuesta</span>
-                            </Button>
-                          )}
+                          <SharedSurveyActions
+                            target={target}
+                            canManage={canManage}
+                            onQr={() => setQr(target)}
+                            onManual={() => setManual({ order: r.order, client: r.client })}
+                          />
                         </motion.div>
                       ) : (
                         <motion.div key="gen" exit={{ opacity: 0, scale: 0.9 }} className="w-full md:w-auto">
@@ -194,5 +189,46 @@ export function FollowUpPanel({
       <SurveyQrDialog target={qr} canManage={canManage} onOpenChange={(v) => !v && setQr(null)} />
       <ManualSurveyDialog target={manual} onOpenChange={(v) => !v && setManual(null)} />
     </div>
+  );
+}
+
+/**
+ * A generated survey's share buttons. In account sessions they wait until the survey is on the server (its link answers
+ * «No encontramos esta encuesta» before): meanwhile the row says so, and a survey the server refused says why.
+ */
+function SharedSurveyActions({ target, canManage, onQr, onManual }: { target: SurveyTarget; canManage: boolean; onQr: () => void; onManual: () => void }) {
+  const link = useSurveyLink(target.s);
+  const offline = useIsOffline();
+  const ready = link.state === "ready";
+  const share = canManage && ready;
+  return (
+    <>
+      <SoftBadge tone={ready ? "teal" : link.state === "refused" ? "red" : "amber"} className="mr-auto md:mr-1">
+        <Sparkles className="size-3" /> {ready ? "Encuesta generada" : link.state === "refused" ? "Encuesta sin activar" : "Por activar"}
+      </SoftBadge>
+      <Button variant="outline" size="icon" disabled={!share} aria-label="Enviar por WhatsApp" className="size-10 rounded-[12px] border-line" onClick={() => shareSurveyWhatsapp(target)}>
+        <MessageCircle />
+      </Button>
+      <Button variant="outline" size="icon" disabled={!share} aria-label="Enviar por correo" className="size-10 rounded-[12px] border-line" onClick={() => shareSurveyEmail(target)}>
+        <Mail />
+      </Button>
+      <Button variant="outline" size="icon" disabled={!share} aria-label="Copiar enlace" className="size-10 rounded-[12px] border-line" onClick={() => void copySurveyLink(target.s)}>
+        <Copy />
+      </Button>
+      <Button variant="outline" size="icon" disabled={!share} aria-label="Ver QR" className="size-10 rounded-[12px] border-line" onClick={onQr}>
+        <QrCode />
+      </Button>
+      {canManage && !target.s.respondedAt && (
+        <Button variant="outline" className={cn(outlineBtnCls, "px-3")} onClick={onManual}>
+          <NotebookPen /> <span className="hidden sm:inline">Registrar respuesta</span>
+          <span className="sm:hidden">Respuesta</span>
+        </Button>
+      )}
+      {!ready && (
+        <p role="status" className={cn("basis-full text-right text-[12.5px] leading-snug", link.state === "refused" ? "text-red-fg" : "text-subtle")}>
+          {surveyLinkText(link, offline)}
+        </p>
+      )}
+    </>
   );
 }

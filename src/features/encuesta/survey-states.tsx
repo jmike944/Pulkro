@@ -99,8 +99,12 @@ export function SurveyThanks({ answers, name, respondedAt, fresh }: { answers: S
   );
 }
 
-/** Unknown link. `account`: the server has no such survey; otherwise the demo explains its on-device storage kindly. */
-export function SurveyMissing({ token, account }: { token: string; account?: boolean }) {
+/**
+ * Unknown link. `account`: the server has no such survey — or not yet: a survey created offline reaches the server when the
+ * staff's phone syncs, so a fresh link is worth another try (`onRetry`). Otherwise the demo explains its on-device storage
+ * kindly.
+ */
+export function SurveyMissing({ token, account, onRetry }: { token: string; account?: boolean; onRetry?: () => void }) {
   return (
     <div className="flex flex-1 flex-col justify-center py-10">
       <motion.section
@@ -119,9 +123,14 @@ export function SurveyMissing({ token, account }: { token: string; account?: boo
         <h1 className="mt-6 font-serif text-[30px] font-medium leading-tight text-ink">No encontramos esta encuesta</h1>
         <p className="mx-auto mt-3 max-w-sm text-[15px] leading-relaxed text-ink/70">
           {account
-            ? "El enlace no es válido o la encuesta ya no está disponible. Revise que lo haya abierto completo, o pida un enlace nuevo a su supervisor."
+            ? "Si acaba de recibir el enlace, intente de nuevo en unos minutos: la encuesta puede estar activándose todavía. Si no, revise que lo haya abierto completo, o pida un enlace nuevo a su supervisor."
             : "Este prototipo guarda la información en el dispositivo donde se generó el enlace. Ábralo en el mismo navegador donde el equipo de Pulkro lo creó, o pida un enlace nuevo a su supervisor."}
         </p>
+        {account && onRetry && (
+          <Button onClick={onRetry} className="mx-auto mt-6 h-12 w-full max-w-xs rounded-[14px] text-[15px] font-semibold">
+            Intentar de nuevo
+          </Button>
+        )}
         <p className="mx-auto mt-5 w-fit rounded-[10px] bg-tile px-3 py-1.5 text-[12.5px] text-subtle">
           Código <span className="font-semibold text-ink tabular">{token}</span>
         </p>

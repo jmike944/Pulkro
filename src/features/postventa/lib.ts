@@ -16,7 +16,7 @@ import {
 import { daysUntil, firstName } from "@/lib/format";
 import { isProvisionalFolio } from "@/lib/folio";
 import { CASE_CATEGORY } from "@/lib/status";
-import type { CaseCategory, CaseStatus, Order, PostSaleCase, ShareChannel, Survey, User } from "@/lib/types";
+import type { CaseCategory, CaseStatus, Order, PostSaleCase, ShareChannel, Survey, SyncItem, User } from "@/lib/types";
 
 export const MONTHS_SHORT = ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"];
 export const MONTHS_LONG = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
@@ -74,6 +74,39 @@ export function caseWhatsappText(contactName: string, caseFolio: string, orderFo
 export function surveyUrl(token: string) {
   const origin = typeof window !== "undefined" ? window.location.origin : "";
   return `${origin}/encuesta/${token}`;
+}
+
+/**
+ * Whether a survey's link works yet. In an account build the public page reads the survey only from the server
+ * (`get_survey`), so a link shared before the survey's `create_survey` reached the server answers «No encontramos esta
+ * encuesta» — and never works if the server then refuses it.
+ *  - `ready`: nothing queued creates it (the demo, whose queue items carry no operation; a survey read from the server), or
+ *    its creation went through;
+ *  - `pending`: its creation is still queued (offline, on its way, waiting for a retry);
+ *  - `refused`: the server refused it (the sync sheet offers Reintentar / Descartar), with the server's message.
+ */
+export type SurveyLink = { state: "ready" } | { state: "pending" } | { state: "refused"; message: string };
+
+/** The queued operation that creates `surveyId` on the server, if any (create_survey, or a manual answer's new survey). */
+export const surveyCreation = (queue: readonly SyncItem[], surveyId: string): SyncItem | undefined =>
+  queue.find((q) => (q.op?.rpc === "create_survey" || q.op?.rpc === "record_manual_survey") && q.op.args.p_survey_id === surveyId);
+
+const LINK_READY: SurveyLink = { state: "ready" };
+const LINK_PENDING: SurveyLink = { state: "pending" };
+
+/** The link state of a survey whose creation is `item` (surveyCreation). */
+export function surveyLink(item: SyncItem | undefined): SurveyLink {
+  if (!item?.op || item.state === "sincronizado") return LINK_READY;
+  if (item.state === "error") return { state: "refused", message: item.problem?.message ?? "El servidor no aceptó la encuesta." };
+  return LINK_PENDING;
+}
+
+/** What to tell the person while a survey's link does not work yet (SurveyLink not `ready`). */
+export function surveyLinkText(link: SurveyLink, offline: boolean): string {
+  if (link.state === "refused") return `El servidor no activó la encuesta: ${link.message} Revise la cola de sincronización (Reintentar o Descartar).`;
+  return offline
+    ? "La encuesta se activa al sincronizar: compártala cuando esté en línea."
+    : "La encuesta se activa al sincronizar: podrá compartirla en cuanto llegue al servidor.";
 }
 
 /** WhatsApp / mail body for a survey invitation. Never claims delivery. */

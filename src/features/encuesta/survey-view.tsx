@@ -129,7 +129,18 @@ function ServerSurvey({ token }: { token: string }) {
       </>
     );
   if (!loaded) return <SurveyLoading />;
-  if (loaded.status === "missing") return <SurveyMissing token={token} account />;
+  // Not on the server — or not yet (the staff's phone has not synced it): another try shows the loader, then the answer.
+  if (loaded.status === "missing")
+    return (
+      <SurveyMissing
+        token={token}
+        account
+        onRetry={() => {
+          setLoaded(null);
+          reload();
+        }}
+      />
+    );
   if (loaded.status === "error") return <SurveyUnreachable message={loaded.message} onRetry={reload} />;
   const s = loaded.survey;
   if (s.respondedAt && s.answers) return <SurveyThanks answers={s.answers} name={s.respondentName} respondedAt={s.respondedAt} />;

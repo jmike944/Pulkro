@@ -577,6 +577,14 @@ audited as `cliente` and the link is only shared through the client's channel �
 tokens → `PT404`. Tokens are 256-bit (32 random bytes, base64url, generated with `crypto.getRandomValues` in
 `store.ts`); short or low-entropy tokens are refused (`weak_token`). Rate limiting/expiry: §14.
 
+A link is handed out only once its survey is on the server. «Generar encuesta» creates the survey on the device and queues
+`create_survey`; until that item is sent, `get_survey` answers `PT404` for the token, and for good if the server refuses
+it. So in account sessions every way of sharing (WhatsApp, correo, copiar enlace, QR) waits for the item
+(`features/postventa/lib.ts` `surveyLink`): the row says «La encuesta se activa al sincronizar: compártala cuando esté en
+línea» meanwhile, and the server's message if it was refused (Reintentar / Descartar in the sync sheet). The demo shares at
+once, as before. The public page's «No encontramos esta encuesta» of an account build says that a link just received may
+not be active yet and offers «Intentar de nuevo».
+
 The page is a page of the app for the one-writer rule (§8). A client's phone only ever has this page open, so it is the
 writer there and the client never sees the blocker; in account builds it answers through `submit_survey`, and the device
 store it hydrates holds no staff session, so nothing more is written. It never depends on the device there: when the tab
