@@ -125,6 +125,52 @@ export const GEO_NOTE_MIN = 8;
 export const CASE_RESOLUTION_MIN = 10;
 
 /**
+ * Text lengths the server stores (private.req_text and the table checks, trimmed). A longer or shorter text would be refused
+ * for good once its capture is queued (the same request is resent), so the store refuses it first and the fields stop there.
+ */
+export const TEXT_LIMITS = {
+  /** orders.title (create_order, update_order) */
+  orderTitle: { min: 3, max: 200 },
+  /** jornada_checks.note: the justification of a manual or remote check-in / check-out. */
+  geoNote: { max: 500 },
+  /** jornada_notes.text */
+  jornadaNote: { min: 1, max: 2000 },
+  /** incidents.description and post_sale_cases.description */
+  description: { min: 3, max: 4000 },
+  /** incidents.resolution / post_sale_cases.resolution */
+  resolution: { max: 4000 },
+  /** crew_changes.reason (assign_crew) */
+  crewReason: { max: 500 },
+  /** case_events.text (a note on a case) */
+  caseNote: { max: 2000 },
+  /** order_closures */
+  summary: { min: 10, max: 8000 },
+  conformityName: { max: 120 },
+  conformityRole: { max: 120 },
+  conformityComment: { max: 2000 },
+  exception: { max: 2000 },
+  /** surveys.respondent_name (record_manual_survey) */
+  respondentName: { min: 2, max: 120 },
+  /** catalogs (upsert_*) */
+  clientName: { min: 2, max: 160 },
+  clientShortName: { min: 1, max: 60 },
+  siteName: { min: 2, max: 160 },
+  workerName: { min: 3, max: 120 },
+  serviceTypeName: { min: 2, max: 120 },
+  serviceTypeShort: { min: 1, max: 40 },
+  materialName: { min: 2, max: 120 },
+  materialUnit: { min: 1, max: 12 },
+  /** profiles.name (update_profile) */
+  personName: { min: 3, max: 120 },
+} as const;
+
+/** `text` (trimmed) fits `limit`. */
+export const fitsText = (text: string | undefined, limit: { min?: number; max: number }) => {
+  const n = (text ?? "").trim().length;
+  return n >= (limit.min ?? 0) && n <= limit.max;
+};
+
+/**
  * Survey link tokens the server accepts (private.check_token): 43–64 base64url characters, at least 16 distinct ones and
  * no 6-character sequence repeated. A random 256-bit token fails the last rule with probability ~10⁻⁸ (then regenerate).
  */

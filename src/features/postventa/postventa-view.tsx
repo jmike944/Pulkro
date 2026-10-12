@@ -23,6 +23,7 @@ import { SurveysPanel } from "./surveys-panel";
 import { csatOf, inLastDays, isCaseOpen, SURVEY_CHANNEL_LABEL } from "./lib";
 import { usePostventaData } from "./use-postventa";
 import { Gate, REASON_EXPORT, REASON_POSTVENTA, outlineBtnCls } from "./ui";
+import { findByRef } from "@/lib/folio";
 
 type Tab = "casos" | "encuestas" | "seguimiento";
 
@@ -43,7 +44,7 @@ function PostventaInner({ folio }: { folio: string | null }) {
   const now = useNow(60_000);
   const { allUnits, selected } = useUnitScope();
 
-  const focus = folio ? orders.find((o) => o.folio === folio) : undefined;
+  const focus = folio ? findByRef(orders, folio) : undefined;
   const pending = useMemo(() => pendingFollowUps(followUps, now, focus?.id), [followUps, now, focus?.id]);
 
   const [tab, setTab] = useState<Tab>(() => {

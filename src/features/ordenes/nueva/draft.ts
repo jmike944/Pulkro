@@ -3,6 +3,7 @@
  * Pure helpers: defaults, suggestions derived from past orders, per-step validation.
  */
 import { addDays, format, isSunday, parseISO } from "date-fns";
+import { TEXT_LIMITS } from "@/lib/domain";
 import type { NewOrderInput } from "@/lib/store";
 import type { Client, Order, ServiceType, User } from "@/lib/types";
 
@@ -199,6 +200,8 @@ export function validateStep(step: number, d: Draft, ctx: Ctx): Issues {
   if (step === 1) {
     if (!d.serviceTypeId) errors.service = "Elija el tipo de servicio";
     if (ctx.title.trim().length < 4) errors.title = "Escriba un título descriptivo";
+    // The suggested title (service · site) can be longer than the server stores.
+    else if (ctx.title.trim().length > TEXT_LIMITS.orderTitle.max) errors.title = `El título admite hasta ${TEXT_LIMITS.orderTitle.max} caracteres: acórtelo`;
     if (d.serviceTypeId && d.activities.length === 0) errors.activities = "Seleccione al menos una actividad";
   }
 
@@ -249,8 +252,12 @@ export function toInput(d: Draft, title: string, canAssign: boolean): NewOrderIn
 /** Same rule the store applies in createOrder(): jornadas + crew → Programada, else Borrador. */
 export const willBeScheduled = (d: Draft, canAssign: boolean) => d.days.length > 0 && canAssign && d.workerIds.length > 0;
 
-/** Predicts the folio the store will assign (max + 1). Shown as provisional. */
-export function provisionalFolio(orders: Order[]) {
+/**
+ * Predicts the folio the store will assign (max + 1). Shown as provisional. An account session cannot predict it: the server
+ * assigns it when the order reaches it (until then the order shows "OS-PEND-…").
+ */
+export function provisionalFolio(orders: Order[], account = false) {
+  if (account) return "OS-PEND";
   const max = orders.reduce((m, o) => Math.max(m, parseInt(o.folio.split("-")[1] ?? "0", 10) || 0), 0);
   return `OS-${String(max + 1).padStart(5, "0")}`;
 }

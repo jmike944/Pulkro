@@ -94,7 +94,8 @@ function OrderMapCard({ f, showCall = true }: { f: FieldReady; showCall?: boolea
 
   const { checkIn, checkOut, status } = jornada;
   const map = useMemo(() => {
-    const markers: GeoMarker[] = [{ lat: site.lat, lng: site.lng, kind: "site", label: "Sitio", tooltip: site.name }];
+    // A site not on this device has no location: no pin for it.
+    const markers: GeoMarker[] = site.unavailable ? [] : [{ lat: site.lat, lng: site.lng, kind: "site", label: "Sitio", tooltip: site.name }];
     // Supervisión remota is where the supervisor was (or the site's own coordinates as a stand-in): never drawn as a pin on site.
     const inFix = checkIn && checkIn.source !== "remota" ? checkIn : undefined;
     const outFix = checkOut && checkOut.source !== "remota" ? checkOut : undefined;
@@ -121,11 +122,13 @@ function OrderMapCard({ f, showCall = true }: { f: FieldReady; showCall?: boolea
       <div className="space-y-5 p-5">
         <div className="flex gap-2">
           {/* 44px tap target on narrow layouts; the wide rail keeps its 40px buttons */}
-          <Button asChild variant="outline" className="h-11 flex-1 rounded-[12px] border-line font-semibold @min-[880px]:h-10">
-            <a href={mapsLink(site.lat, site.lng)} target="_blank" rel="noreferrer">
-              <Navigation /> Cómo llegar
-            </a>
-          </Button>
+          {!site.unavailable && (
+            <Button asChild variant="outline" className="h-11 flex-1 rounded-[12px] border-line font-semibold @min-[880px]:h-10">
+              <a href={mapsLink(site.lat, site.lng)} target="_blank" rel="noreferrer">
+                <Navigation /> Cómo llegar
+              </a>
+            </Button>
+          )}
           {showCall && order.siteContact.phone && (
             <Button asChild variant="outline" className="h-11 rounded-[12px] border-line px-3.5 @min-[880px]:h-10" aria-label={`Llamar a ${order.siteContact.name}`}>
               <a href={`tel:${order.siteContact.phone.replace(/\s/g, "")}`}>

@@ -138,7 +138,7 @@ export function ReportWorkspace({ bundle }: { bundle: OrderBundle }) {
   const openShareFlow = () => {
     setSent(null);
     setFlowOpen(true);
-    if (latest && !outputs.blobs[latest.id]) void outputs.prepare(ctx, latest, root());
+    if (latest && !outputs.hasFresh(ctx, latest)) void outputs.prepare(ctx, latest, root());
   };
 
   const flowShare = async (channel: "whatsapp" | "email" | "descarga") => {

@@ -28,6 +28,8 @@ const TEMPLATES = [
   { re: /^\/clientes\/([^/]+)\/?$/, url: `/clientes/${TPL}` },
 ];
 const SAFE_ID = /^[A-Za-z0-9_.-]{1,80}$/;
+/** Query keys of Supabase Auth's e-mail links and their redirects (src/features/auth/auth-link-forward.ts). */
+const AUTH_LINK_KEYS = ["code", "token_hash", "access_token", "refresh_token", "error", "error_code", "error_description", "sb_flow_id"];
 
 const PAGES = [
   "/", "/offline", "/login", "/pendientes", "/perfil", "/ordenes", "/ordenes/nueva", "/agenda", "/evidencias", "/incidencias",
@@ -188,6 +190,22 @@ async function navigate(request) {
   }
 }
 
+/**
+ * Invite / recovery landing (/acceso/…, or any page reached with an e-mail link's query): its URL carries a one-time token,
+ * so neither the page nor its URL is ever stored. Network only; without signal, the cached /offline page.
+ */
+async function networkOnly(request) {
+  try {
+    return await fetch(request);
+  } catch {
+    if (request.mode === "navigate") {
+      const offline = await (await caches.open(SHELL)).match("/offline", { ignoreVary: true });
+      if (offline) return offline;
+    }
+    return new Response("Sin conexión", { status: 503, headers: { "Content-Type": "text/plain; charset=utf-8" } });
+  }
+}
+
 async function rsc(request) {
   const cache = await caches.open(SHELL);
   try {
@@ -245,6 +263,12 @@ self.addEventListener("fetch", (event) => {
 
   if (url.pathname.startsWith("/_next/static/") || url.pathname.startsWith("/icons/") || url.pathname.startsWith("/vendor/") || /\.(woff2?|png|svg|ico)$/.test(url.pathname)) {
     event.respondWith(cacheFirst(request, STATIC));
+    return;
+  }
+  // An e-mail link that landed on another page (the Site URL fallback: `/?code=…`, an error redirect…) carries the same
+  // one-time credential in its query until the inline script forwards it: never stored under that URL either.
+  if (url.pathname.startsWith("/acceso/") || (request.mode === "navigate" && AUTH_LINK_KEYS.some((k) => url.searchParams.has(k)))) {
+    event.respondWith(networkOnly(request));
     return;
   }
   if (request.mode === "navigate") {

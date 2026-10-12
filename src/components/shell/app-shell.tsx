@@ -14,23 +14,31 @@ import { MainScroller } from "./main-scroll";
 import { CardHeader } from "./card-header";
 import { canSeeRoute } from "./nav";
 import { RouteNotAllowed } from "./out-of-scope";
+import { ReauthBanner } from "./reauth-banner";
+import { NoAccessView } from "@/features/auth/no-access-view";
 
 /**
  * Authenticated chrome: canvas + sidebar (desktop) / top+bottom bars (mobile) + white work panel.
- * Waits for the IndexedDB store to hydrate, then routes to /login when signed out. Routes the current role may not open
- * (nav.ts → canSeeRoute: typed URLs, old links, a role switch) render one uniform "No disponible para su rol" state.
+ * Waits for the IndexedDB store to hydrate, then routes to /login when signed out. The store session alone opens the app
+ * (offline-first); the browser's Supabase session is reconciled with it in the background (sync/pull.ts verifyAccount): a
+ * missing or foreign one shows "Vuelva a entrar" (ReauthBanner), a deactivated profile blocks the app (NoAccessView). Routes
+ * the current role may not open (nav.ts → canSeeRoute: typed URLs, old links, a role switch) render one uniform "No
+ * disponible para su rol" state.
  */
 export function AppShell({ children }: { children: React.ReactNode }) {
   const hydrated = useAppStore((s) => s.hydrated);
   const signedIn = useAppStore((s) => s.session.signedIn);
+  const noAccess = useAppStore((s) => s.session.mode === "supabase" && s.session.signedIn && !!s.session.noAccess);
   const router = useRouter();
   const pathname = usePathname();
 
   useEffect(() => {
-    if (hydrated && !signedIn) router.replace(`/login?next=${encodeURIComponent(pathname)}`);
+    // The query too (in-page state: ?i=, ?cerrar=1…), read here rather than with useSearchParams: the shell is prerendered.
+    if (hydrated && !signedIn) router.replace(`/login?next=${encodeURIComponent(pathname + window.location.search)}`);
   }, [hydrated, signedIn, router, pathname]);
 
   if (!hydrated || !signedIn) return <ShellSkeleton />;
+  if (noAccess) return <NoAccessView />;
   return <SignedInShell pathname={pathname}>{children}</SignedInShell>;
 }
 
@@ -52,6 +60,8 @@ function SignedInShell({ pathname, children }: { pathname: string; children: Rea
           <div className="min-h-[calc(100dvh-108px)] rounded-[28px] bg-surface shadow-[0_1px_2px_rgb(16_24_40/0.04)] lg:flex lg:min-h-0 lg:flex-1 lg:flex-col lg:overflow-hidden lg:shadow-soft lg:ring-1 lg:ring-edge print:block print:min-h-0 print:overflow-visible print:rounded-none print:shadow-none print:ring-0">
             <CardHeader />
             <MainScroller className="px-5 py-6 sm:px-7 lg:min-h-0 lg:flex-1 lg:overflow-y-auto lg:overscroll-y-contain lg:px-10 lg:py-9 lg:outline-none lg:scrollbar-panel print:overflow-visible print:p-0">
+              {/* Inside the scroller, above the page: --pk-pane-h (the scroller's height) stays exact while it shows. */}
+              <ReauthBanner />
               {allowed ? children : <RouteNotAllowed />}
             </MainScroller>
           </div>

@@ -1,0 +1,17 @@
+{
+  // Type-checks the Edge Functions without Deno: `npm run check:functions` (scripts/check-edge-functions.mjs). The app's
+  // tsconfig.json excludes this folder (Deno globals, `npm:` specifiers); Deno does not read this file.
+  "compilerOptions": {
+    "target": "ES2022",
+    "lib": ["dom", "dom.iterable", "esnext"],
+    "module": "esnext",
+    "moduleResolution": "bundler",
+    "strict": true,
+    "noEmit": true,
+    "isolatedModules": true,
+    "skipLibCheck": true,
+    // No @types/node: a function runs on Deno, not Node.
+    "types": []
+  },
+  "include": ["_check/*.d.ts", "*/index.ts"]
+}

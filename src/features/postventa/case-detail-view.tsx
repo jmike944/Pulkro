@@ -5,13 +5,16 @@ import { use, useMemo, useState } from "react";
 import { BadgeCheck, CircleCheck, Inbox, MessageSquareText, RotateCcw, ShieldCheck, StickyNote, UserCog } from "lucide-react";
 import { toast } from "sonner";
 import { useAppStore } from "@/lib/store";
-import { useCan, useLookups, useOrderBundle, useScopedData } from "@/lib/hooks";
+import { useCan, useCanonicalFolio, useLookups, useOrderBundle, useScopedData } from "@/lib/hooks";
+import { findByRef } from "@/lib/folio";
 import { firstName, fmtDateTime, plural } from "@/lib/format";
 import { CASE_CATEGORY, CASE_CHANNEL, CASE_STATUS, ROLE_LABEL } from "@/lib/status";
 import type { PostSaleCase } from "@/lib/types";
+import { TEXT_LIMITS } from "@/lib/domain";
 import { PageHeader } from "@/components/pk/page";
 import { NotFoundOrOutOfScope } from "@/components/shell/out-of-scope";
 import { ClientMark } from "@/components/pk/client-mark";
+import { ClockWarning } from "@/components/pk/clock-warning";
 import { SectionHeader } from "@/components/pk/bits";
 import { TonePill } from "@/components/pk/status";
 import { Timeline, type TimelineStep } from "@/components/pk/timeline";
@@ -26,9 +29,12 @@ import { Gate, REASON_POSTVENTA, textareaCls } from "./ui";
 
 /** /postventa/[folio] — claim-detail layout for one post-sale case. */
 export function CaseDetailView({ params }: { params: Promise<{ folio: string }> }) {
-  const { folio } = use(params);
+  const { folio: raw } = use(params);
+  const folio = decodeURIComponent(raw);
   const scoped = useScopedData();
-  const c = scoped.cases.find((x) => x.folio === folio);
+  // Its folio, its id, or the provisional folio it had before the server assigned the real one (lib/folio.ts).
+  const c = findByRef(scoped.cases, folio);
+  useCanonicalFolio(folio, c?.folio, "/postventa/");
 
   if (!c) {
     // One state for "doesn't exist" and "outside your scope" (doc §2): it never says which.
@@ -144,6 +150,7 @@ function CaseDetail({ c }: { c: PostSaleCase }) {
                 id="case-note"
                 value={note}
                 onChange={(e) => setNote(e.target.value)}
+                maxLength={TEXT_LIMITS.caseNote.max}
                 onKeyDown={(e) => {
                   if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) submitNote();
                 }}
@@ -177,6 +184,7 @@ function CaseDetail({ c }: { c: PostSaleCase }) {
                 ) : undefined
               }
             />
+            {canManage && order && <ClockWarning className="mb-3" />}
             {casePhotos.length ? (
               <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
                 {casePhotos.map((p) => (

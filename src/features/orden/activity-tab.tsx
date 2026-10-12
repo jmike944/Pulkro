@@ -53,7 +53,11 @@ export function ActivityTab() {
 
   const syncOf = useMemo(() => {
     const m = new Map<string, SyncState>();
-    queue.forEach((q) => m.set(`${q.entityId}|${q.at}`, q.state));
+    // Demo items match their line by entity and time; an account's lines carry the op id of their queue item.
+    queue.forEach((q) => {
+      m.set(`${q.entityId}|${q.at}`, q.state);
+      if (typeof q.op?.args.p_op_id === "string") m.set(`op:${q.op.args.p_op_id}`, q.state);
+    });
     return m;
   }, [queue]);
 
@@ -70,7 +74,7 @@ export function ActivityTab() {
   }, [audit, filter]);
 
   const pending = audit.filter((a) => {
-    const s = syncOf.get(`${a.entityId}|${a.at}`);
+    const s = syncOf.get(a.opId ? `op:${a.opId}` : `${a.entityId}|${a.at}`);
     return s === "pendiente" || s === "error";
   }).length;
 
@@ -102,7 +106,7 @@ export function ActivityTab() {
                 {g.rows.map((a) => {
                   const user = a.by === "cliente" ? undefined : lk.users.get(a.by);
                   const name = a.by === "cliente" ? "Cliente" : (user?.name ?? "Usuario");
-                  const state = syncOf.get(`${a.entityId}|${a.at}`) ?? "sincronizado";
+                  const state = syncOf.get(a.opId ? `op:${a.opId}` : `${a.entityId}|${a.at}`) ?? "sincronizado";
                   const s = SYNC[state];
                   return (
                     <motion.li key={a.id} variants={rowVariants} className="grid grid-cols-[36px_minmax(0,1fr)] gap-3 border-b border-hairline py-4 last:border-b-0 sm:grid-cols-[36px_minmax(0,1fr)_auto] sm:gap-4">

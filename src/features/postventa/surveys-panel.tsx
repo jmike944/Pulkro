@@ -7,6 +7,7 @@ import { ArrowRight, ChevronDown, ClipboardList, Copy, MessageCircle, MessageSqu
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { fmtDay } from "@/lib/format";
+import { useIsOffline } from "@/lib/hooks";
 import type { CaseChannel, PostSaleCase } from "@/lib/types";
 import { ClientMark } from "@/components/pk/client-mark";
 import { EmptyState } from "@/components/pk/feedback";
@@ -23,10 +24,10 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { SURVEY_CHANNEL_LABEL } from "./lib";
+import { SURVEY_CHANNEL_LABEL, surveyLinkText } from "./lib";
 import { ManualSurveyDialog, type ManualTarget } from "./manual-survey-dialog";
 import { NpsValue, Stars } from "./rating";
-import { SurveyQrDialog, copySurveyLink, shareSurveyWhatsapp, type SurveyTarget } from "./survey-share";
+import { SurveyQrDialog, copySurveyLink, shareSurveyWhatsapp, useSurveyLink, type SurveyTarget } from "./survey-share";
 import type { SurveyRow } from "./use-postventa";
 import { REASON_POSTVENTA, inputCls, menuItemCls, outlineBtnCls } from "./ui";
 
@@ -289,6 +290,10 @@ function SurveyMenu({
 }) {
   const pending = !r.s.respondedAt;
   const existingCase = caseByOrder.get(r.order.id);
+  // Account sessions: the link is shared once the survey is on the server (it answers «No encontramos esta encuesta» before).
+  const link = useSurveyLink(r.s);
+  const offline = useIsOffline();
+  const share = canManage && link.state === "ready";
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
@@ -304,15 +309,18 @@ function SurveyMenu({
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-64 rounded-[14px] p-1.5">
         <DropdownMenuLabel className="px-2.5 pb-1 pt-1.5 text-[11.5px] font-semibold uppercase tracking-[0.1em] text-subtle">{r.order.folio}</DropdownMenuLabel>
-        <DropdownMenuItem className={menuItemCls} disabled={!canManage} onClick={() => void copySurveyLink(r.s.token)}>
+        {link.state !== "ready" && (
+          <p className={cn("px-2.5 pb-1.5 pt-0.5 text-[12px] leading-snug", link.state === "refused" ? "text-red-fg" : "text-subtle")}>{surveyLinkText(link, offline)}</p>
+        )}
+        <DropdownMenuItem className={menuItemCls} disabled={!share} onClick={() => void copySurveyLink(r.s)}>
           <Copy /> Copiar enlace
         </DropdownMenuItem>
         {pending && (
           <>
-            <DropdownMenuItem className={menuItemCls} disabled={!canManage} onClick={() => shareSurveyWhatsapp(r)}>
+            <DropdownMenuItem className={menuItemCls} disabled={!share} onClick={() => shareSurveyWhatsapp(r)}>
               <MessageCircle /> Compartir por WhatsApp
             </DropdownMenuItem>
-            <DropdownMenuItem className={menuItemCls} disabled={!canManage} onClick={() => actions.qr(r)}>
+            <DropdownMenuItem className={menuItemCls} disabled={!share} onClick={() => actions.qr(r)}>
               <QrCode /> Ver QR
             </DropdownMenuItem>
             <DropdownMenuItem className={menuItemCls} disabled={!canManage} onClick={() => actions.manual(r)}>

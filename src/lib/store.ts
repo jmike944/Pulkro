@@ -5,12 +5,16 @@
  * queued for sync. Persisted to IndexedDB. Every mutation writes an audit entry
  * (user, date, reason — doc §3) and a sync-queue item.
  *
+ * Account sessions (architecture §8, write path): every action still applies its change here first, then queues exactly ONE
+ * item carrying its RPC — `op: { rpc, args }` with the exact parameters of `public.<rpc>(p_op_id, …)` (sync/ops.ts) — which
+ * sync/push.ts sends. Its Bitácora lines carry that op id until the server's own lines replace them. New records get UUIDs
+ * and provisional folios ("OS-PEND-…", lib/folio.ts) until the server assigns the real one. The demo keeps its simulated sync.
+ *
  * ⚠️ zustand v5: selectors must return stable references. Select raw slices
  *    (`useAppStore(s => s.orders)`) and derive with useMemo, or wrap with `useShallow`.
  */
 import { create } from "zustand";
-import { createJSONStorage, persist, type StateStorage } from "zustand/middleware";
-import { createStore as createIdbStore, del, get, set } from "idb-keyval";
+import { persist } from "zustand/middleware";
 import { differenceInCalendarDays, format, parseISO, startOfDay } from "date-fns";
 import { toast } from "sonner";
 import { DEMO_USER_BY_ROLE, SEED_VERSION, generateSeed, shiftSnapshotDates } from "./seed";
@@ -20,17 +24,28 @@ import {
   GEO_NOTE_MIN,
   SERVICE_HOURS_MAX,
   SERVICE_HOURS_MIN,
+  TEXT_LIMITS,
   closureBlockers,
   derivedExecutionStatus,
+  fitsText,
   isStrongSurveyToken,
   photoTimingIssues,
 } from "./domain";
 import { plural } from "./format";
 import { DONE_STATUSES, OPEN_STATUSES } from "./status";
-import { DEMO_ENABLED } from "./demo";
-import { deletePhotoFile } from "./photo-store";
+import { DEMO_ENABLED, DEMO_SIGN_IN } from "./demo";
+import { cancelPhotoWork, deletePhotoFile, evictKeptPhotos, handOverPhotos } from "./photo-store";
+import { afterHandover, becomeWriter, createDeviceStorage, flushWrite, isQuotaError, ownerOf, registerTab, writerState, type SaveResult } from "./device-storage";
+import { requestPull, verifyAccount, type PullRequest, type PullState } from "./sync/pull";
+import { breakdownArg, daysArg, diffPatch, localDay, materialsArg, orderPatch, rpcOp, type MutationRpc, type RpcArgs } from "./sync/ops";
+import { discardItems, pushQueue, releaseBlobs, resumeAfterReconnect, retryItems } from "./sync/push";
+import { isUnsent } from "./sync/queue";
+import { noteServerTime, setClockSink, type ClockOffset } from "./sync/clock";
+import { haltSync } from "./sync/writer";
+import { provisionalFolio } from "./folio";
 import type {
   AuditEntity,
+  AuditEntry,
   CaseStatus,
   Client,
   Closure,
@@ -51,49 +66,20 @@ import type {
   Survey,
   SurveyAnswers,
   SyncItem,
+  SyncOp,
+  Unit,
   User,
   Worker,
 } from "./types";
 
-/* ───────────── persistence (IndexedDB, debounced writes) ───────────── */
-const idb = typeof indexedDB !== "undefined" ? createIdbStore("pulkro-cuadrillas", "state") : undefined;
-let writeTimer: ReturnType<typeof setTimeout> | undefined;
-let pendingWrite: { name: string; value: string } | null = null;
-let pendingSince = 0;
-const flushWrite = () => {
-  clearTimeout(writeTimer);
-  if (!idb || !pendingWrite) return;
-  const { name, value } = pendingWrite;
-  pendingWrite = null;
-  void set(name, value, idb);
-};
-// A reload / app switch right after a capture must not lose the debounced write (the service worker may hard-navigate offline).
-if (typeof window !== "undefined") {
-  window.addEventListener("pagehide", flushWrite);
-  document.addEventListener("visibilitychange", () => {
-    if (document.visibilityState === "hidden") flushWrite();
-  });
-}
-const idbStorage: StateStorage = {
-  getItem: async (name) => (idb ? ((await get<string>(name, idb)) ?? null) : null),
-  setItem: (name, value) => {
-    if (!idb) return;
-    const waiting = pendingWrite !== null;
-    pendingWrite = { name, value };
-    // Debounce 350 ms, but never let a stream of updates postpone the write by more than ~1 s (a sign-in or a capture
-    // followed by constant store activity used to stay unsaved until the stream stopped).
-    if (!waiting) pendingSince = Date.now();
-    clearTimeout(writeTimer);
-    writeTimer = setTimeout(flushWrite, Date.now() - pendingSince >= 1000 ? 0 : 350);
-  },
-  removeItem: async (name) => {
-    if (idb) await del(name, idb);
-  },
-};
-
 /* ───────────── helpers ───────────── */
 const nowIso = () => new Date().toISOString();
-export const uid = (prefix: string) => `${prefix}_${crypto.randomUUID().replace(/-/g, "").slice(0, 10)}`;
+/**
+ * Ids of new records. An account session uses UUIDs (the RPCs take uuids and the server keeps the device's ids, so a record
+ * created offline never changes identity); the demo keeps its short readable ids.
+ */
+export const uid = (prefix: string): string =>
+  useAppStore.getState().session.mode === "supabase" ? crypto.randomUUID() : `${prefix}_${crypto.randomUUID().replace(/-/g, "").slice(0, 10)}`;
 const nextFolio = (items: { folio: string }[], prefix: string, width: number) => {
   const max = items.reduce((m, x) => Math.max(m, parseInt(x.folio.split("-")[1] ?? "0", 10) || 0), 0);
   return `${prefix}-${String(max + 1).padStart(width, "0")}`;
@@ -134,6 +120,7 @@ export function attempt<T>(run: () => T): T | undefined {
 }
 
 const OUT_OF_SCOPE = "No encontrado o fuera de su alcance.";
+const ORDER_TITLE_RULE = `El título de la orden va de ${TEXT_LIMITS.orderTitle.min} a ${TEXT_LIMITS.orderTitle.max} caracteres.`;
 const CLOSED_ORDER = "Orden cerrada: reábrala para hacer cambios (se generará una nueva versión del reporte).";
 
 /** Why a role can't do an action — the store's guard messages (the UI's tooltips say the same). */
@@ -191,6 +178,21 @@ type Session = {
   signedIn: boolean;
   userId: string;
   unitFilter: string | "all";
+  /**
+   * "demo": the role picker over the local demo dataset. "supabase": a real account (signed in with Supabase Auth, profile
+   * read from public.profiles); the demo dataset and the demo controls never apply to it.
+   */
+  mode: "demo" | "supabase";
+  /**
+   * Account sessions: the browser has no Supabase session for this account (expired refresh token, signed out elsewhere,
+   * another account's invite / recovery link opened on this device, profile deactivated). The device keeps every record and
+   * unsent change; pulling stops until the person signs in again ("Vuelva a entrar": ReauthBanner → /login).
+   */
+  needsReauth?: boolean;
+  /** With needsReauth: the profile is no longer active. The Supabase session was ended and the shell blocks the app. */
+  noAccess?: boolean;
+  /** Account sessions: pull cursors and progress (sync/pull.ts). Belongs to this account; a new account starts without it. */
+  pull?: PullState;
 };
 
 type SyncSlice = {
@@ -199,6 +201,18 @@ type SyncSlice = {
   queue: SyncItem[];
   lastSyncAt: string;
   processing: boolean;
+  /**
+   * The device could not store the data (storage full…): what this tab shows lives only in its memory until a write works
+   * again. Not persisted; the shell warns while it is set.
+   */
+  saveError?: string;
+  /** With saveError: the storage is full (the shell says to free space; otherwise, not to close the app). Not persisted. */
+  saveFull?: boolean;
+  /**
+   * How far the phone's clock is from the server's (sync/clock.ts), from server times the app receives. A property of the
+   * device, not of an account: a sign-out keeps it. The capture screens warn while it is beyond 5 minutes (ClockWarning).
+   */
+  clock?: ClockOffset;
 };
 
 export type AppState = DataSnapshot & {
@@ -208,8 +222,26 @@ export type AppState = DataSnapshot & {
   hydrated: boolean;
 
   /* session */
-  signIn: (userId: string) => void;
+  /** Demo role picker. Returns whether the session started (a refusal is toasted). */
+  signIn: (userId: string) => boolean;
+  /** Demo sign-out (keeps the device data). An account session signs out through useSignOut (features/auth). */
   signOut: () => void;
+  /**
+   * Starts an account session for a verified, active profile. The same account keeps its device data; anything else on the
+   * device (the demo dataset, another account's data) is replaced by an empty dataset holding only this profile and unit.
+   * The caller confirms first when another account still has unsent changes (otherAccountOnDevice, features/auth/session).
+   */
+  startSupabaseSession: (user: User, unit?: Unit) => void;
+  /**
+   * Account sessions: read the server's changes now (first load, cursors, scope gain and loss — sync/pull.ts). Never throws;
+   * the outcome shows in usePullStatus / session.needsReauth. No-op offline, for the demo and while re-authentication is due.
+   */
+  pullNow: (req?: PullRequest) => Promise<void>;
+  /**
+   * Wipes the device after an account sign-out: data, queue and photo blobs (IndexedDB), then the demo seed if offered.
+   * Resolves with the wipe's save: until it is "committed" the device still holds the account's data (it is retried).
+   */
+  clearDeviceData: () => Promise<SaveResult>;
   /** Demo only (NEXT_PUBLIC_DEMO ≠ "0"). */
   switchRole: (role: Role) => void;
   /** No-op for roles without view.allUnits. */
@@ -265,21 +297,38 @@ export type AppState = DataSnapshot & {
   recordManualSurvey: (orderId: string, answers: SurveyAnswers, respondentName: string) => Survey;
 
   /* catalogs */
-  upsertClient: (client: Client) => void;
-  upsertSite: (site: Site) => void;
-  upsertWorker: (worker: Worker) => void;
+  /** Catalog and people upserts: whether the change was applied (a refusal is toasted). */
+  upsertClient: (client: Client) => boolean;
+  upsertSite: (site: Site) => boolean;
+  upsertWorker: (worker: Worker) => boolean;
   /** users.admin, or self-service on one's own record limited to the phone (role, unit, e-mail and active never change here). */
-  upsertUser: (user: User) => void;
+  upsertUser: (user: User) => boolean;
+  /**
+   * Account sessions: a profile the server already changed (invite, deactivation, reactivation and e-mail change go through
+   * the `admin-users` Edge Function, online). Applied as is, without a queue item or a local audit entry (the server wrote
+   * it; the next pull brings both). `fields` limits an existing user to the fields that action changed, so unsent local
+   * edits of the others stay on the device. No-op for the demo.
+   */
+  applyServerUser: (user: User, fields?: (keyof User)[]) => void;
   /** Self-service "Mis datos": the phone of the signed-in user (the e-mail is the account's identity: Dirección manages it). */
   updateMyContact: (contact: { phone?: string }) => void;
-  upsertServiceType: (st: ServiceType) => void;
-  upsertMaterial: (m: Material) => void;
+  upsertServiceType: (st: ServiceType) => boolean;
+  upsertMaterial: (m: Material) => boolean;
 
   /* sync */
   setForcedOffline: (v: boolean) => void;
   setBrowserOffline: (v: boolean) => void;
+  /** Demo: the simulated server. Account sessions: sends what is ready (sync/push.ts). Never throws. */
   processSyncQueue: () => Promise<void>;
+  /** "Reintentar": every item that did not go through goes back in line (with the same arguments). */
   retrySync: () => void;
+  /** Account sessions: "Reintentar" on one item. */
+  retrySyncItem: (itemId: string) => void;
+  /**
+   * Account sessions: "Descartar" an item the server did not apply (and, for a new order, every change of that order). The
+   * device goes back to the server's version of what it touched. Returns how many items left the queue.
+   */
+  discardSyncItem: (itemId: string) => number;
 
   /* demo */
   /** Demo only (NEXT_PUBLIC_DEMO ≠ "0"); the UI must confirm first (DemoResetDialog). Refused while records are unsynced. */
@@ -300,12 +349,65 @@ const emptyData: DataSnapshot = {
 
 export const isOffline = (s: Pick<AppState, "sync">) => s.sync.forcedOffline || s.sync.browserOffline;
 
-/** Items that were mid-upload when the app closed go back to "pendiente" so the engine retries them. */
-const unstick = (queue: SyncItem[]) => queue.map((q) => (q.state === "sincronizando" ? { ...q, state: "pendiente" as const } : q));
+/** Queue items that have not reached the server (pending, sending or failed). */
+export const unsentCount = (queue: SyncItem[]) => queue.filter((q) => q.state !== "sincronizado").length;
+export const unsentIds = (queue: SyncItem[]) => queue.filter((q) => q.state !== "sincronizado").map((q) => q.id);
+
+const signedOutSession = (): Session => ({ signedIn: false, userId: DEMO_USER_BY_ROLE.supervisor, unitFilter: "all", mode: "demo" });
+
+/** Items that were mid-upload when the app closed go back to "pendiente" so the engine retries them (same array when none was). */
+const unstick = (queue: SyncItem[]) =>
+  queue.some((q) => q.state === "sincronizando") ? queue.map((q) => (q.state === "sincronizando" ? { ...q, state: "pendiente" as const } : q)) : queue;
+
+/**
+ * Why the store would refuse an administrator's change of a profile (`next` over `prev`, by `me`), or null. One's own role,
+ * unit or state; a name the server refuses; a new role or unit while the person still supervises open orders or owns open
+ * post-sale cases (server: update_profile → has_open_orders / has_open_cases: they are reassigned first). The user dialog
+ * asks it before any server call, so an e-mail change or a deactivation never goes through when the rest would be refused.
+ */
+export function profileChangeBlocker(s: Pick<DataSnapshot, "orders" | "cases">, me: User, prev: User | undefined, next: User): string | null {
+  if (next.id === me.id && (next.role !== me.role || !next.active || next.unitId !== me.unitId))
+    return "No puede cambiar su propio rol, unidad o estado: pídalo a otra persona de Dirección.";
+  if (prev && next.name !== prev.name && !fitsText(next.name, TEXT_LIMITS.personName))
+    return `El nombre va de ${TEXT_LIMITS.personName.min} a ${TEXT_LIMITS.personName.max} caracteres.`;
+  if (prev && (next.role !== prev.role || next.unitId !== prev.unitId)) {
+    const orders = s.orders.filter((o) => o.supervisorId === next.id && !isTerminal(o.status)).map((o) => o.folio);
+    if (orders.length) return `Tiene órdenes abiertas como supervisor (${orders.join(", ")}): reasígnelas antes de cambiar su unidad o rol.`;
+    const cases = s.cases.filter((c) => c.ownerId === next.id && (c.status === "abierto" || c.status === "en_proceso")).map((c) => c.folio);
+    if (cases.length) return `Es responsable de casos postventa abiertos (${cases.join(", ")}): reasígnelos antes de cambiar su unidad o rol.`;
+  }
+  return null;
+}
+
+/** Asks the browser to keep this site's storage (the unsent captures are the only copy until they are sent). Once per tab. */
+let persistAsked = false;
+export function requestPersistentStorage() {
+  if (persistAsked || typeof navigator === "undefined") return;
+  persistAsked = true;
+  void navigator.storage?.persist?.().catch(() => undefined);
+}
 
 export const useAppStore = create<AppState>()(
   persist(
-    (setState, getState) => {
+    (setState, getState, storeApi) => {
+      const api = { getState, setState, subscribe: storeApi.subscribe };
+      const account = () => getState().session.mode === "supabase";
+
+      /**
+       * Account sessions: the action being run (`act`). Its Bitácora lines wait here, tagged with one op id, and become one
+       * queue item together with the RPC the action registered (`send`).
+       */
+      type Capture = {
+        opId: string;
+        op?: SyncOp;
+        /** The order the RPC belongs to: its queue chain (the item waits for the earlier items of that order). */
+        orderId?: string;
+        deps: string[];
+        entries: AuditEntry[];
+        item?: Pick<SyncItem, "label" | "entity" | "entityId" | "orderId" | "bytes">;
+      };
+      let capture: Capture | null = null;
+
       /* internal: audit + sync enqueue */
       const record = (
         entity: AuditEntity,
@@ -315,7 +417,14 @@ export const useAppStore = create<AppState>()(
       ) => {
         const s = getState();
         const at = nowIso();
-        const entry = { id: uid("aud"), at, by: opts.by ?? s.session.userId, entity, entityId, orderId: opts.orderId, action, reason: opts.reason };
+        const entry: AuditEntry = { id: uid("aud"), at, by: opts.by ?? s.session.userId, entity, entityId, orderId: opts.orderId, action, reason: opts.reason };
+        if (capture) {
+          // The first line names the queue item (the action's own line; status changes it causes come after it).
+          capture.entries.push({ ...entry, opId: capture.opId });
+          capture.item ??= { label: opts.syncLabel ?? action, entity, entityId, orderId: opts.orderId, bytes: opts.bytes };
+          return;
+        }
+        // Demo (and, should an account action ever skip `act`, an item without an RPC: the queue shows it cannot be sent).
         const item: SyncItem = {
           id: uid("syn"), at, label: opts.syncLabel ?? action, entity, entityId, orderId: opts.orderId,
           state: "pendiente", bytes: opts.bytes,
@@ -323,6 +432,60 @@ export const useAppStore = create<AppState>()(
         setState((st) => ({ audit: [entry, ...st.audit], sync: { ...st.sync, queue: [...st.sync.queue, item] } }));
         if (!isOffline(getState())) queueMicrotask(() => void getState().processSyncQueue());
       };
+
+      /**
+       * Runs an action. In an account session its Bitácora lines share one op id and, if it registered its RPC (`send`), ONE
+       * queue item carries it. An action that was refused, or that only changed device state, queues nothing and leaves no
+       * Bitácora line (the server writes the real one).
+       */
+      const act = <T,>(run: () => T): T => {
+        if (!account() || capture) return run();
+        const c: Capture = { opId: crypto.randomUUID(), deps: [], entries: [] };
+        capture = c;
+        let done = false;
+        try {
+          const out = run();
+          done = true;
+          return out;
+        } finally {
+          capture = null;
+          // A refused action (PermissionDeniedError) or one that failed half-way queues nothing.
+          if (c.op && done) {
+            const meta = c.item ?? { label: c.op.rpc, entity: "orden" as const, entityId: c.orderId ?? "" };
+            const item: SyncItem = {
+              id: uid("syn"), at: nowIso(), ...meta, orderId: c.orderId ?? meta.orderId, state: "pendiente", op: c.op,
+              deps: c.deps.length ? [...new Set(c.deps)] : undefined,
+            };
+            const entries = [...c.entries].reverse();
+            setState((st) => ({ audit: [...entries, ...st.audit], sync: { ...st.sync, queue: [...st.sync.queue, item] } }));
+            if (!isOffline(getState())) queueMicrotask(() => void getState().processSyncQueue());
+          }
+        }
+      };
+
+      /**
+       * Account sessions: the RPC of the running action (one per action), with the exact parameters of `public.<rpc>`.
+       * `deps`: records it names that may have been created on this device and must reach the server first.
+       */
+      const send = <N extends MutationRpc>(
+        rpc: N,
+        args: RpcArgs<N>,
+        opts: { orderId?: string; deps?: string[]; creates?: boolean; upload?: SyncOp["upload"] } = {},
+      ) => {
+        if (!capture) return;
+        if (capture.op) {
+          console.warn(`[store] ${rpc}: la acción ya registró ${capture.op.rpc}`);
+          return;
+        }
+        capture.op = rpcOp(rpc, capture.opId, args, { ...(opts.creates ? { creates: true } : {}), ...(opts.upload ? { upload: opts.upload } : {}) });
+        capture.orderId = opts.orderId;
+        capture.deps.push(...(opts.deps ?? []));
+      };
+      /** Queue keys of catalog records (`catalogo:<id>`), the form `deps` takes. */
+      const cat = (...ids: (string | undefined)[]) => ids.filter((x): x is string => !!x).map((x) => `catalogo:${x}`);
+      /** A new record, or one of `keys` differs (catalog upserts only travel when the server would store something new). */
+      const changed = <T extends object>(prev: T | undefined, next: T, keys: (keyof T)[]) =>
+        !prev || keys.some((k) => JSON.stringify(prev[k]) !== JSON.stringify(next[k]));
 
       /* internal: permission + scope guards (doc §2). The UI hides what a role can't do; these make it hold for every caller. */
       let lastDenied = "";
@@ -420,15 +583,26 @@ export const useAppStore = create<AppState>()(
         const offline = isOffline(s);
         const t = nowIso();
         const note = geo.note?.trim() || undefined;
-        return { ...geo, note, deviceAt: t, serverAt: offline ? undefined : t, by: s.session.userId, offline };
+        // An account's stamp gets its server time from the server (check_in / check_out answer); the demo simulates it.
+        return { ...geo, note, deviceAt: t, serverAt: offline || s.session.mode === "supabase" ? undefined : t, by: s.session.userId, offline };
       };
       const geoLabel = (geo: GeoInput) =>
         geo.source === "remota" ? "supervisión remota" : geo.source === "manual" ? "ubicación manual" : `GPS ±${Math.round(geo.accuracy)} m`;
-      /** Manual pins and remote supervision always carry a justification. */
-      const geoNoteOk = (geo: GeoInput) =>
-        geo.source === "gps" || (geo.note?.trim().length ?? 0) >= GEO_NOTE_MIN
+      /** check_in / check_out parameters of a stamp (device time of the capture). */
+      const geoArgs = (jornadaId: string, stamp: GeoStamp): RpcArgs<"check_in"> => ({
+        p_jornada_id: jornadaId, p_device_at: stamp.deviceAt, p_lat: stamp.lat, p_lng: stamp.lng, p_accuracy: stamp.accuracy,
+        p_source: stamp.source, p_note: stamp.note, p_offline: stamp.offline,
+      });
+      /** Manual pins and remote supervision always carry a justification, within what the server stores. */
+      const geoNoteOk = (geo: GeoInput) => {
+        if (!fitsText(geo.note, TEXT_LIMITS.geoNote))
+          return denied(`La justificación admite hasta ${TEXT_LIMITS.geoNote.max} caracteres: resúmala.`);
+        return geo.source === "gps" || (geo.note?.trim().length ?? 0) >= GEO_NOTE_MIN
           ? true
           : denied(geo.source === "remota" ? "Explique la supervisión remota (quién está en sitio y cómo se confirmó)." : "Justifique la ubicación manual.");
+      };
+      /** A text the server would refuse for good once queued (TEXT_LIMITS): refused here, with the reason. */
+      const textOk = (text: string | undefined, limit: { min?: number; max: number }, message: string) => (fitsText(text, limit) ? true : denied(message));
 
       const reseed = () => {
         const seed = generateSeed(new Date());
@@ -443,22 +617,95 @@ export const useAppStore = create<AppState>()(
       return {
         ...emptyData,
         meta: { seededAt: "", seedVersion: 0 },
-        session: { signedIn: false, userId: DEMO_USER_BY_ROLE.supervisor, unitFilter: "all" },
+        session: signedOutSession(),
         sync: { forcedOffline: false, browserOffline: false, queue: [], lastSyncAt: nowIso(), processing: false },
         hydrated: false,
 
         /* ── session ── */
         signIn: (userId) => {
+          if (!DEMO_SIGN_IN) {
+            denied("Esta versión no tiene demostración: entre con su cuenta.");
+            return false;
+          }
+          // An account's data never turns into a demo session: its owner signs out first (useSignOut checks the queue).
+          if (getState().session.mode === "supabase") {
+            denied("Hay una cuenta abierta en este dispositivo: cierre su sesión antes de entrar al demo.");
+            return false;
+          }
           const user = getState().users.find((u) => u.id === userId);
           if (!user || !user.active) {
             denied("La cuenta no existe o está desactivada.");
-            return;
+            return false;
           }
-          setState((st) => ({ session: { ...st.session, signedIn: true, userId, unitFilter: "all" } }));
+          setState((st) => ({ session: { ...st.session, signedIn: true, userId, unitFilter: "all", mode: "demo" } }));
+          return true;
         },
         signOut: () => setState((st) => ({ session: { ...st.session, signedIn: false } })),
+        startSupabaseSession: (user, unit) => {
+          const s = getState();
+          if (s.session.mode === "supabase" && s.session.userId === user.id) {
+            // Same account (signed in again on this device): keep its data and unsent queue, refresh its own records.
+            setState((st) => ({
+              users: st.users.some((u) => u.id === user.id) ? st.users.map((u) => (u.id === user.id ? user : u)) : [...st.users, user],
+              units: !unit ? st.units : st.units.some((x) => x.id === unit.id) ? st.units.map((x) => (x.id === unit.id ? unit : x)) : [...st.units, unit],
+              // Signing in again ends a pending re-authentication; the cursors carry on from where they were.
+              session: { ...st.session, signedIn: true, mode: "supabase", needsReauth: false, noAccess: undefined },
+            }));
+            // What waited for the new sign-in goes first, then the server's changes.
+            setTimeout(() => {
+              void getState().processSyncQueue();
+              void getState().pullNow({ manual: true });
+            }, 0);
+            return;
+          }
+          // Demo data or another account's data never carries over: start from an empty dataset with this profile only,
+          // so nobody mistakes demo records for real ones.
+          setState((st) => ({
+            ...emptyData,
+            users: [user],
+            units: unit ? [unit] : [],
+            meta: { seededAt: "", seedVersion: 0 },
+            session: { signedIn: true, userId: user.id, unitFilter: "all", mode: "supabase" },
+            sync: { ...st.sync, queue: [], lastSyncAt: nowIso(), processing: false },
+          }));
+          // Written now. The previous owner's photo blobs (those on the device now) go once the device holds this account's
+          // data — this save or a retry of it. A save the device refused or could not store leaves that owner's data, and
+          // the captures it names, where they were; what this account captures meanwhile stays.
+          afterHandover(ownerOf({ mode: "supabase", userId: user.id }), handOverPhotos());
+          void flushWrite();
+          requestPersistentStorage();
+          // First load of the account's catalogs and orders in scope, then the incremental cursors (sync/pull.ts).
+          setTimeout(() => void getState().pullNow({ manual: true }), 0);
+        },
+        pullNow: async (req) => {
+          await requestPull(api, req);
+          // Pushed photos whose server row a pull has now confirmed: free their device copies.
+          releaseBlobs(api);
+        },
+        clearDeviceData: () => {
+          setState((st) => ({
+            ...emptyData,
+            meta: { seededAt: "", seedVersion: 0 },
+            session: signedOutSession(),
+            sync: { forcedOffline: false, browserOffline: st.sync.browserOffline, queue: [], lastSyncAt: nowIso(), processing: false, clock: st.sync.clock },
+          }));
+          // Write the empty state now (not after the debounce): the account's records leave IndexedDB with the sign-out. Its
+          // photo blobs go once that is on the device (this save or a retry of it): a tab that lost the device meanwhile
+          // deletes nothing of the writer's.
+          const release = handOverPhotos();
+          afterHandover("demo", release);
+          const saved = flushWrite().then(async (result) => {
+            // A full device: the person agreed to lose what those blobs hold — they go first, then the wipe is tried again.
+            if (result !== "failed" || !getState().sync.saveFull) return result;
+            await release();
+            return flushWrite();
+          });
+          // The login screen's demo picker needs the demo dataset back (when the build offers it).
+          getState().ensureSeeded();
+          return saved;
+        },
         switchRole: (role) => {
-          if (!DEMO_ENABLED) {
+          if (!DEMO_ENABLED || getState().session.mode === "supabase") {
             denied("El cambio de rol solo existe en la versión de demostración.");
             return;
           }
@@ -475,7 +722,7 @@ export const useAppStore = create<AppState>()(
         },
 
         /* ── orders ── */
-        createOrder: (input) => {
+        createOrder: (input) => act(() => {
           const user = must(allowRole(["order.create"]));
           const s = getState();
           const found = s.clients.find((c) => c.id === input.clientId);
@@ -485,10 +732,12 @@ export const useAppStore = create<AppState>()(
           const supervisor = s.users.find((u) => u.id === input.supervisorId && u.role === "supervisor" && u.active && u.unitId === unitId);
           must(supervisor ? true : denied("El supervisor debe estar activo y pertenecer a la unidad del cliente."));
           if (user.role === "supervisor") must(input.supervisorId === user.id ? true : denied("Un supervisor solo registra órdenes a su cargo."));
+          must(textOk(input.title, TEXT_LIMITS.orderTitle, ORDER_TITLE_RULE));
           const id = uid("ord");
-          const folio = nextFolio(s.orders, "OS", 5);
+          const folio = account() ? provisionalFolio("OS", id) : nextFolio(s.orders, "OS", 5);
           const at = nowIso();
-          const sorted = [...input.days].sort((a, b) => a.date.localeCompare(b.date));
+          // Day order = the server's (create_order numbers the days by date, then start time).
+          const sorted = [...input.days].sort((a, b) => a.date.localeCompare(b.date) || a.start.localeCompare(b.start));
           const toIso = (date: string, hm: string) => new Date(`${date}T${hm}:00`).toISOString();
           // Only whoever assigns crews can pre-staff the order; anyone else leaves the dates for the supervisor to confirm.
           const pool = new Set(s.workers.filter((w) => w.active && w.unitId === unitId).map((w) => w.id));
@@ -512,11 +761,23 @@ export const useAppStore = create<AppState>()(
             workerIds, status: "pendiente", log: [],
           }));
           setState((st) => ({ orders: [order, ...st.orders], jornadas: [...st.jornadas, ...jornadas] }));
+          // The server starts every order as borrador without crew (only Administración creates orders, and it does not staff them).
+          send(
+            "create_order",
+            {
+              p_order_id: id, p_client_id: input.clientId, p_site_id: input.siteId, p_service_type_id: input.serviceTypeId,
+              p_supervisor_id: input.supervisorId, p_title: input.title, p_days: daysArg(jornadas), p_activities: input.activities,
+              p_materials: materialsArg(input.materials), p_special_instructions: input.specialInstructions,
+              p_site_contact_name: input.siteContact.name, p_site_contact_phone: input.siteContact.phone,
+              p_commercial_ref: input.commercialRef, p_priority: input.priority,
+            },
+            { orderId: id, deps: cat(input.clientId, input.siteId, input.serviceTypeId, ...input.materials.map((m) => m.materialId)) },
+          );
           record("orden", id, "Alta manual de orden de servicio", { orderId: id, reason: input.commercialRef ? `Trabajo autorizado ${input.commercialRef}` : undefined, syncLabel: `Nueva orden ${folio}` });
           return order;
-        },
+        }),
 
-        updateOrder: (orderId, patch, action = "Editó datos de la orden", reason) => {
+        updateOrder: (orderId, patch, action = "Editó datos de la orden", reason) => act(() => {
           const keys = (Object.keys(patch) as (keyof Order)[]).filter((k) => patch[k] !== undefined);
           if (keys.some((k) => !FULL_EDIT_FIELDS.includes(k))) {
             denied("Ese dato de la orden no se edita aquí.");
@@ -526,10 +787,15 @@ export const useAppStore = create<AppState>()(
           const ok = allowOrder(general ? ["order.edit"] : ["order.edit", "order.editOperational"], orderId);
           if (!ok) return;
           const { order } = ok;
-          if (isTerminal(order.status)) {
+          // Decision 19: the supervisor alone can still be reassigned on a closed order (finalizada, reporte_enviado,
+          // seguimiento) so follow-up and a reopening are not stranded (server: update_order).
+          const supervisorOnly = keys.length === 1 && keys[0] === "supervisorId";
+          const reassignable: OrderStatus[] = ["finalizada", "reporte_enviado", "seguimiento"];
+          if (isTerminal(order.status) && !(supervisorOnly && reassignable.includes(order.status))) {
             denied(order.status === "cancelada" ? "La orden está cancelada." : CLOSED_ORDER);
             return;
           }
+          if (patch.title !== undefined && !textOk(patch.title, TEXT_LIMITS.orderTitle, ORDER_TITLE_RULE)) return;
           const s = getState();
           if (patch.supervisorId && patch.supervisorId !== order.supervisorId) {
             const sup = s.users.find((u) => u.id === patch.supervisorId && u.role === "supervisor" && u.active && u.unitId === order.unitId);
@@ -543,7 +809,14 @@ export const useAppStore = create<AppState>()(
             return;
           }
           const clean = Object.fromEntries(keys.map((k) => [k, patch[k]])) as Partial<Order>;
+          // Only the fields that change travel (the other role's edits are never overwritten with stale form values).
+          const serverPatch = orderPatch(order, clean);
+          if (account() && !Object.keys(serverPatch).length) return;
           patchOrder(orderId, clean);
+          send("update_order", { p_order_id: orderId, p_patch: serverPatch, p_reason: reason }, {
+            orderId,
+            deps: cat(clean.siteId, clean.serviceTypeId, ...(clean.materials ?? []).map((m) => m.materialId)),
+          });
           record("orden", orderId, action, { orderId, reason, syncLabel: `Edición · ${order.folio}` });
           if (clean.supervisorId && clean.supervisorId !== order.supervisorId) {
             // Reassignment history (doc §4.1): who had it, who has it now.
@@ -567,7 +840,7 @@ export const useAppStore = create<AppState>()(
               moved.forEach((c) => record("caso", c.id, `Reasignó caso ${c.folio} con la orden`, { orderId, reason }));
             }
           }
-        },
+        }),
 
         setOrderStatus: (orderId, status, reason) => {
           const s = getState();
@@ -575,34 +848,42 @@ export const useAppStore = create<AppState>()(
           if (status === "cancelada") return getState().cancelOrder(orderId, reason ?? "");
           if (status === "reabierta") return getState().reopenOrder(orderId, reason ?? "");
           if (status === "archivada") return getState().archiveOrder(orderId, reason);
-          if (!RESCHEDULE_TARGETS.includes(status)) {
-            denied("Ese estado lo calcula el sistema a partir de las jornadas, el cierre y el reporte.");
-            return;
-          }
-          const ok = allowOrder(["order.reschedule"], orderId);
-          if (!ok) return;
-          if (isTerminal(ok.order.status)) {
-            denied(CLOSED_ORDER);
-            return;
-          }
-          // Confirming dates only leaves "Reprogramada" (the order's own status, or the one it resumes after its incident).
-          const rescheduled = current === "reprogramada" || (current === "con_incidencia" && ok.order.previousStatus === "reprogramada");
-          if (status !== "reprogramada" && !rescheduled) {
-            denied("Solo se confirman fechas de una orden reprogramada.");
-            return;
-          }
-          // The jornadas decide the status when confirming (server: set_order_status), never the requested target.
-          const next = status === "reprogramada" ? "reprogramada" : derivedExecutionStatus(orderId, getState().jornadas);
-          // An open blocking incident stays authoritative: the order stays con_incidencia and resumes `next` afterwards.
-          const blocking = getState().incidents.some((i) => i.orderId === orderId && i.status === "abierta" && i.blocksClosure);
-          if (blocking) {
-            patchOrder(orderId, { previousStatus: next });
-            changeStatus(orderId, "con_incidencia", reason);
-            record("orden", orderId, status === "reprogramada" ? "Marcó la orden como reprogramada (sigue con incidencia)" : "Confirmó fechas (sigue con incidencia)", { orderId, reason });
-          } else changeStatus(orderId, next, reason);
+          act(() => {
+            if (!RESCHEDULE_TARGETS.includes(status)) {
+              denied("Ese estado lo calcula el sistema a partir de las jornadas, el cierre y el reporte.");
+              return;
+            }
+            const ok = allowOrder(["order.reschedule"], orderId);
+            if (!ok) return;
+            if (isTerminal(ok.order.status)) {
+              denied(CLOSED_ORDER);
+              return;
+            }
+            // Confirming dates only leaves "Reprogramada" (the order's own status, or the one it resumes after its incident).
+            const rescheduled = current === "reprogramada" || (current === "con_incidencia" && ok.order.previousStatus === "reprogramada");
+            if (status !== "reprogramada" && !rescheduled) {
+              denied("Solo se confirman fechas de una orden reprogramada.");
+              return;
+            }
+            if (status === "reprogramada" && (reason?.trim().length ?? 0) < 5) {
+              denied("Indique el motivo de la reprogramación.");
+              return;
+            }
+            // The requested status travels; the server derives the result from its own jornadas and incidents.
+            send("set_order_status", { p_order_id: orderId, p_status: status, p_reason: reason }, { orderId });
+            // The jornadas decide the status when confirming (server: set_order_status), never the requested target.
+            const next = status === "reprogramada" ? "reprogramada" : derivedExecutionStatus(orderId, getState().jornadas);
+            // An open blocking incident stays authoritative: the order stays con_incidencia and resumes `next` afterwards.
+            const blocking = getState().incidents.some((i) => i.orderId === orderId && i.status === "abierta" && i.blocksClosure);
+            if (blocking) {
+              patchOrder(orderId, { previousStatus: next });
+              changeStatus(orderId, "con_incidencia", reason);
+              record("orden", orderId, status === "reprogramada" ? "Marcó la orden como reprogramada (sigue con incidencia)" : "Confirmó fechas (sigue con incidencia)", { orderId, reason });
+            } else changeStatus(orderId, next, reason);
+          });
         },
 
-        cancelOrder: (orderId, reason) => {
+        cancelOrder: (orderId, reason) => act(() => {
           const ok = allowOrder(["order.edit"], orderId);
           if (!ok) return;
           if (!OPEN_STATUSES.includes(ok.order.status)) {
@@ -613,10 +894,11 @@ export const useAppStore = create<AppState>()(
             denied("Indique el motivo de la cancelación.");
             return;
           }
+          send("cancel_order", { p_order_id: orderId, p_reason: reason.trim() }, { orderId });
           changeStatus(orderId, "cancelada", reason.trim());
-        },
+        }),
 
-        reopenOrder: (orderId, reason) => {
+        reopenOrder: (orderId, reason) => act(() => {
           const ok = allowOrder(["order.reopen"], orderId);
           if (!ok) return false;
           const o = ok.order;
@@ -634,11 +916,12 @@ export const useAppStore = create<AppState>()(
             return false;
           }
           patchOrder(orderId, { previousStatus: o.status, reopenedAt: nowIso() });
+          send("reopen_order", { p_order_id: orderId, p_reason: reason.trim() }, { orderId });
           changeStatus(orderId, "reabierta", reason.trim());
           return true;
-        },
+        }),
 
-        archiveOrder: (orderId, reason) => {
+        archiveOrder: (orderId, reason) => act(() => {
           const ok = allowOrder(["order.archive"], orderId);
           if (!ok) return;
           if (!ARCHIVABLE.includes(ok.order.status)) {
@@ -651,11 +934,13 @@ export const useAppStore = create<AppState>()(
             return;
           }
           patchOrder(orderId, { archivedAt: nowIso() });
+          // A blank reason takes the server's default ("Ciclo postventa completo"), like here.
+          send("archive_order", { p_order_id: orderId, p_reason: reason?.trim() || undefined }, { orderId });
           changeStatus(orderId, "archivada", reason?.trim() || "Ciclo postventa completo");
-        },
+        }),
 
         /* ── scheduling ── */
-        assignCrew: (orderId, workerIds, reason, jornadaId) => {
+        assignCrew: (orderId, workerIds, reason, jornadaId) => act(() => {
           const ok = allowOrder(["crew.assign"], orderId);
           if (!ok) return;
           const { user, order } = ok;
@@ -679,6 +964,7 @@ export const useAppStore = create<AppState>()(
             denied("La cuadrilla debe ser personal activo de la unidad de la orden.");
             return;
           }
+          if (!textOk(reason, TEXT_LIMITS.crewReason, `El motivo admite hasta ${TEXT_LIMITS.crewReason.max} caracteres.`)) return;
           const at = nowIso();
           setState((st) => ({
             jornadas: st.jornadas.map((j) =>
@@ -688,12 +974,13 @@ export const useAppStore = create<AppState>()(
           patchOrder(orderId, {
             crewHistory: [...order.crewHistory, { at, workerIds, by: user.id, reason, jornadaId }],
           });
+          send("assign_crew", { p_order_id: orderId, p_worker_ids: workerIds, p_reason: reason, p_jornada_id: jornadaId }, { orderId, deps: cat(...workerIds) });
           record("orden", orderId, `Asignó cuadrilla de ${workerIds.length} personas`, { orderId, reason, syncLabel: `Cuadrilla · ${order.folio}` });
           const hasJornadas = getState().jornadas.some((j) => j.orderId === orderId);
           if (order.status === "borrador" && workerIds.length && hasJornadas) changeStatus(orderId, "programada");
-        },
+        }),
 
-        scheduleJornadas: (orderId, days, reason) => {
+        scheduleJornadas: (orderId, days, reason) => act(() => {
           const ok = allowOrder(["order.reschedule", "crew.assign"], orderId);
           if (!ok) return;
           const { order } = ok;
@@ -711,7 +998,7 @@ export const useAppStore = create<AppState>()(
           const lastIndex = kept.reduce((m, j) => Math.max(m, j.dayIndex), 0);
           const crew = order.crewHistory.at(-1)?.workerIds ?? [];
           const toIso = (date: string, hm: string) => new Date(`${date}T${hm}:00`).toISOString();
-          const sorted = [...days].sort((a, b) => a.date.localeCompare(b.date));
+          const sorted = [...days].sort((a, b) => a.date.localeCompare(b.date) || a.start.localeCompare(b.start));
           const fresh: Jornada[] = sorted.map((d, i) => ({
             id: uid("jor"), orderId, dayIndex: lastIndex + i + 1, date: d.date,
             plannedStart: toIso(d.date, d.start), plannedEnd: toIso(d.date, d.end), workerIds: crew, status: "pendiente", log: [],
@@ -723,6 +1010,7 @@ export const useAppStore = create<AppState>()(
             scheduledStart: all.map((j) => j.plannedStart).sort()[0] ?? order.scheduledStart,
             scheduledEnd: all.map((j) => j.plannedEnd).sort().at(-1) ?? order.scheduledEnd,
           });
+          send("schedule_jornadas", { p_order_id: orderId, p_days: daysArg(fresh), p_reason: reason }, { orderId });
           record("orden", orderId, `Programó ${plural(fresh.length, "jornada", "jornadas")}`, { orderId, reason, syncLabel: `Agenda · ${order.folio}` });
           // Execution states follow the jornadas (server: schedule_jornadas → derived_status).
           const derived: OrderStatus[] = ["borrador", "programada", "en_ejecucion", "jornada_cerrada", "pendiente_validacion", "reprogramada"];
@@ -731,10 +1019,10 @@ export const useAppStore = create<AppState>()(
           // Under an open blocking incident the new plan decides the status the order resumes.
           else if (order.status === "con_incidencia" && order.previousStatus && derived.includes(order.previousStatus))
             patchOrder(orderId, { previousStatus: derivedExecutionStatus(orderId, getState().jornadas) });
-        },
+        }),
 
         /* ── field execution ── */
-        checkIn: (jornadaId, geo) => {
+        checkIn: (jornadaId, geo) => act(() => {
           const ok = allowJornada(["field.capture"], jornadaId);
           if (!ok) return;
           const { jornada: j, order } = ok;
@@ -746,6 +1034,7 @@ export const useAppStore = create<AppState>()(
           if (!geoNoteOk(geo)) return;
           const stamp = geoStamp(geo);
           patchJornada(jornadaId, { checkIn: stamp, status: "en_curso" });
+          send("check_in", geoArgs(jornadaId, stamp), { orderId: j.orderId });
           record("jornada", jornadaId, `Registro de entrada · Jornada ${j.dayIndex} (${geoLabel(geo)})`, {
             orderId: j.orderId, reason: stamp.note, syncLabel: `Entrada ${geo.source === "remota" ? "remota" : "GPS"} · ${order.folio}`,
           });
@@ -753,9 +1042,9 @@ export const useAppStore = create<AppState>()(
           const o = getState().orders.find((x) => x.id === j.orderId);
           if (o?.status === "con_incidencia") patchOrder(j.orderId, { previousStatus: "en_ejecucion" });
           else if (o) changeStatus(j.orderId, "en_ejecucion");
-        },
+        }),
 
-        checkOut: (jornadaId, geo) => {
+        checkOut: (jornadaId, geo) => act(() => {
           const ok = allowJornada(["field.capture"], jornadaId);
           if (!ok) return;
           const { jornada: j, order } = ok;
@@ -771,6 +1060,7 @@ export const useAppStore = create<AppState>()(
             return;
           }
           patchJornada(jornadaId, { checkOut: stamp, status: "cerrada" });
+          send("check_out", geoArgs(jornadaId, stamp), { orderId: j.orderId });
           record("jornada", jornadaId, `Registro de salida · Jornada ${j.dayIndex} (${geoLabel(geo)})`, {
             orderId: j.orderId, reason: stamp.note, syncLabel: `Salida ${geo.source === "remota" ? "remota" : "GPS"} · ${order.folio}`,
           });
@@ -780,9 +1070,9 @@ export const useAppStore = create<AppState>()(
           const next = derivedExecutionStatus(j.orderId, getState().jornadas);
           if (o?.status === "con_incidencia") patchOrder(j.orderId, { previousStatus: next });
           else if (o) changeStatus(j.orderId, next);
-        },
+        }),
 
-        addJornadaNote: (jornadaId, text) => {
+        addJornadaNote: (jornadaId, text) => act(() => {
           const ok = allowJornada(["field.capture"], jornadaId);
           if (!ok) return;
           const { jornada: j, order, user } = ok;
@@ -790,20 +1080,26 @@ export const useAppStore = create<AppState>()(
             denied("La orden ya no admite cambios.");
             return;
           }
-          patchJornada(jornadaId, { log: [...j.log, { at: nowIso(), by: user.id, text }] });
+          if (!textOk(text, TEXT_LIMITS.jornadaNote, `Escriba la nota (hasta ${TEXT_LIMITS.jornadaNote.max} caracteres).`)) return;
+          const at = nowIso();
+          // An account's note keeps the id the server will store (jornada_notes.id): the pulled row replaces it, never doubles it.
+          const noteId = account() ? uid("not") : undefined;
+          patchJornada(jornadaId, { log: [...j.log, { ...(noteId ? { id: noteId } : {}), at, by: user.id, text }] });
+          if (noteId) send("add_jornada_note", { p_note_id: noteId, p_jornada_id: jornadaId, p_text: text, p_device_at: at }, { orderId: j.orderId });
           record("jornada", jornadaId, "Agregó nota a la bitácora", { orderId: j.orderId, syncLabel: `Bitácora · ${order.folio}` });
-        },
+        }),
 
-        logReminder: (orderId, jornadaId, note) => {
+        logReminder: (orderId, jornadaId, note) => act(() => {
           const ok = allowOrder(["field.capture"], orderId);
           if (!ok) return;
           const j = jornadaId ? getState().jornadas.find((x) => x.id === jornadaId && x.orderId === orderId) : undefined;
+          send("log_reminder", { p_order_id: orderId, p_jornada_id: j?.id, p_note: note?.trim() || undefined }, { orderId });
           record(j ? "jornada" : "orden", j?.id ?? orderId, `Envió recordatorio de evidencia${j ? ` · Jornada ${j.dayIndex}` : ""}`, {
             orderId, reason: note?.trim() || undefined, syncLabel: `Recordatorio · ${ok.order.folio}`,
           });
-        },
+        }),
 
-        setJornadaBreakdown: (jornadaId, breakdown, note) => {
+        setJornadaBreakdown: (jornadaId, breakdown, note) => act(() => {
           const ok = allowJornada(["field.capture"], jornadaId);
           if (!ok) return false;
           const { jornada: j } = ok;
@@ -818,14 +1114,18 @@ export const useAppStore = create<AppState>()(
             return false;
           }
           patchJornada(jornadaId, { breakdown, breakdownNote: note?.trim() || undefined });
+          send("set_jornada_breakdown", { p_jornada_id: jornadaId, p_breakdown: breakdownArg(breakdown), p_note: note?.trim() || undefined }, { orderId: j.orderId });
           record("jornada", jornadaId, `Registró desglose de horas · Jornada ${j.dayIndex} (${total.toFixed(1)} h)`, {
             orderId: j.orderId, reason: note?.trim() || undefined, syncLabel: `Desglose de horas · ${ok.order.folio}`,
           });
           return true;
-        },
+        }),
 
-        addPhoto: (photo) => {
+        addPhoto: (photo) => act(() => {
           const { order, user } = must(allowOrder([photoAction(photo.kind)], photo.orderId));
+          // Sample pictures ("Simular") belong to the demo: an account's evidence is always a real capture (a file on the device).
+          if (photo.source.type !== "idb" && getState().session.mode === "supabase")
+            must(denied("Las fotos de ejemplo solo existen en la demostración: tome la foto o elíjala de la galería."));
           if (photo.kind !== "postventa") must(isTerminal(order.status) ? denied(CLOSED_ORDER) : true);
           const s = getState();
           const id = uid("pho");
@@ -837,12 +1137,28 @@ export const useAppStore = create<AppState>()(
             takenAtSource: rest.takenAtSource ?? (photo.takenAt ? undefined : "device"),
           };
           setState((st) => ({ photos: [...st.photos, p] }));
+          if (p.source.type === "idb") {
+            // One item, two steps (push.ts): the file to Storage (the device compresses to JPEG), then add_photo links it.
+            const path = `orders/${p.orderId}/${p.kind}/${id}.jpg`;
+            send(
+              "add_photo",
+              {
+                p_photo_id: id, p_order_id: p.orderId, p_kind: p.kind, p_storage_path: path, p_taken_at: p.takenAt,
+                p_taken_at_source: p.takenAtSource ?? "device", p_area: p.area, p_jornada_id: p.jornadaId, p_incident_id: p.incidentId,
+                p_case_id: p.caseId, p_attached_at: at, p_origin: p.origin, p_lat: p.lat, p_lng: p.lng, p_accuracy: p.accuracy,
+                p_geo_source: p.geoSource, p_width: Math.round(p.source.width), p_height: Math.round(p.source.height),
+                p_selected_for_report: p.selectedForReport, p_note: p.note,
+              },
+              { orderId: p.orderId, upload: { path, blobKey: p.source.key } },
+            );
+          }
           const kindLabel = { antes: "ANTES", despues: "DESPUÉS", incidencia: "incidencia", postventa: "postventa" }[p.kind];
           const jornada = p.jornadaId ? s.jornadas.find((j) => j.id === p.jornadaId) : undefined;
+          const shot = Number.isNaN(Date.parse(p.takenAt)) ? p.takenAt : format(parseISO(p.takenAt), "dd/MM/yyyy HH:mm");
           const notes = [
             p.origin === "gallery" ? "Desde galería" : p.origin === "camera" ? "Cámara" : "",
-            p.takenAtSource === "exif" ? `tomada ${format(parseISO(p.takenAt), "dd/MM/yyyy HH:mm")}` : "",
-            p.takenAtSource === "file" ? `fecha del archivo ${format(parseISO(p.takenAt), "dd/MM/yyyy HH:mm")} (sin fecha de la toma)` : "",
+            p.takenAtSource === "exif" ? `tomada ${shot}` : "",
+            p.takenAtSource === "file" ? `fecha del archivo ${shot} (sin fecha de la toma)` : "",
             p.geoSource === "exif" ? "ubicación de la foto" : p.geoSource === "device" ? "ubicación del teléfono al adjuntar" : "",
             ...photoTimingIssues(p, jornada).map((x) => `Advertencia: ${x.label}`),
           ].filter(Boolean);
@@ -850,29 +1166,58 @@ export const useAppStore = create<AppState>()(
             orderId: p.orderId, reason: notes.length ? notes.join(" · ") : undefined, syncLabel: `Foto ${kindLabel} · ${order.folio}`, bytes: bytes ?? 380_000,
           });
           return id;
-        },
+        }),
 
-        updatePhoto: (photoId, patch) => {
+        updatePhoto: (photoId, patch) => act(() => {
           const ok = allowPhotoEdit(photoId);
           if (!ok) return;
           const allowed: (keyof Photo)[] = ["area", "note", "caseId", "incidentId"];
           const clean = Object.fromEntries(Object.entries(patch).filter(([k]) => allowed.includes(k as keyof Photo))) as Partial<Photo>;
           if (!Object.keys(clean).length) return;
+          const serverPatch = diffPatch(ok.photo, clean, { area: "area", note: "note", caseId: "case_id", incidentId: "incident_id" });
+          if (account() && !Object.keys(serverPatch).length) return;
           setState((st) => ({ photos: st.photos.map((p) => (p.id === photoId ? { ...p, ...clean } : p)) }));
+          send("update_photo", { p_photo_id: photoId, p_patch: serverPatch }, { orderId: ok.photo.orderId });
           record("foto", photoId, `Editó foto · ${clean.area ?? ok.photo.area}`, { orderId: ok.photo.orderId });
-        },
+        }),
 
-        deletePhoto: (photoId) => {
+        deletePhoto: (photoId) => act(() => {
           const ok = allowPhotoEdit(photoId);
           if (!ok) return;
           setState((st) => ({ photos: st.photos.filter((x) => x.id !== photoId) }));
-          // The image blob goes with the record (every caller: lightbox delete, discarded drafts, incident/case photos),
-          // and only after the permission check passed.
-          if (ok.photo.source.type === "idb") void deletePhotoFile(ok.photo.source.key);
+          if (!account()) {
+            // The image blob goes with the record (every caller: lightbox delete, discarded drafts, incident/case photos),
+            // and only after the permission check passed.
+            if (ok.photo.source.type === "idb") void deletePhotoFile(ok.photo.source.key);
+            record("foto", photoId, `Eliminó foto · ${ok.photo.area}`, { orderId: ok.photo.orderId });
+            return;
+          }
+          // A capture the server never applied (a discarded draft, a shot taken by mistake): its queued items go with it instead
+          // of sending a picture only to delete it. Once add_photo may have been applied (it is being sent, or its last
+          // attempt got no answer), delete_photo follows it.
+          const queue = getState().sync.queue;
+          const add = queue.find((q) => q.op?.rpc === "add_photo" && q.op.args.p_photo_id === photoId && isUnsent(q));
+          // Its RPC never went out, or the server explicitly refused it (a refusal rolls back; an applied op answers
+          // "duplicate" before any check, so it is never refused afterwards): not on the server.
+          const refused = add?.state === "error" && /^(PT|23|storage)/.test(add.problem?.code ?? "");
+          const untouched = !!add && (refused || (add.state === "pendiente" && !add.tried));
+          if (untouched) {
+            const mine = queue.filter((q) => q.entity === "foto" && q.entityId === photoId && isUnsent(q) && q.state !== "sincronizando");
+            const ops = new Set(mine.map((q) => q.op?.args.p_op_id));
+            const ids = new Set(mine.map((q) => q.id));
+            setState((st) => ({
+              audit: st.audit.filter((a) => !a.opId || !ops.has(a.opId)),
+              sync: { ...st.sync, queue: st.sync.queue.filter((q) => !ids.has(q.id)) },
+            }));
+            if (ok.photo.source.type === "idb") void deletePhotoFile(ok.photo.source.key);
+            return;
+          }
+          // The device copy is freed by the push engine once the upload no longer needs it.
+          send("delete_photo", { p_photo_id: photoId }, { orderId: ok.photo.orderId });
           record("foto", photoId, `Eliminó foto · ${ok.photo.area}`, { orderId: ok.photo.orderId });
-        },
+        }),
 
-        togglePhotoForReport: (photoId) => {
+        togglePhotoForReport: (photoId) => act(() => {
           const photo = getState().photos.find((p) => p.id === photoId);
           const ok = allowOrder(["field.capture"], photo?.orderId);
           if (!ok || !photo) return;
@@ -882,21 +1227,33 @@ export const useAppStore = create<AppState>()(
           }
           const selected = !photo.selectedForReport;
           setState((st) => ({ photos: st.photos.map((p) => (p.id === photoId ? { ...p, selectedForReport: selected } : p)) }));
+          // The value itself, not a toggle: a retried request leaves the same result.
+          send("set_photo_selected", { p_photo_id: photoId, p_selected: selected }, { orderId: photo.orderId });
           record("foto", photoId, `${selected ? "Incluyó" : "Quitó"} foto ${selected ? "en" : "del"} reporte · ${photo.area}`, {
             orderId: photo.orderId, syncLabel: `Selección de fotos · ${ok.order.folio}`,
           });
-        },
+        }),
 
         /* ── incidents ── */
-        addIncident: (input) => {
+        addIncident: (input) => act(() => {
           const { order, user } = must(allowOrder(["field.capture"], input.orderId));
           must(isTerminal(order.status) ? denied(CLOSED_ORDER) : true);
+          must(textOk(input.description, TEXT_LIMITS.description, `Describa la incidencia (de ${TEXT_LIMITS.description.min} a ${TEXT_LIMITS.description.max} caracteres).`));
           const s = getState();
+          const id = uid("inc");
           const inc: Incident = {
-            ...input, id: uid("inc"), folio: nextFolio(s.incidents, "INC", 4), status: "abierta",
+            ...input, id, folio: account() ? provisionalFolio("INC", id) : nextFolio(s.incidents, "INC", 4), status: "abierta",
             createdAt: nowIso(), createdBy: user.id,
           };
           setState((st) => ({ incidents: [inc, ...st.incidents] }));
+          send(
+            "add_incident",
+            {
+              p_incident_id: id, p_order_id: inc.orderId, p_type: inc.type, p_severity: inc.severity, p_description: inc.description,
+              p_blocks_closure: inc.blocksClosure, p_jornada_id: inc.jornadaId, p_device_at: inc.createdAt,
+            },
+            { orderId: inc.orderId },
+          );
           record("incidencia", inc.id, `Registró incidencia ${inc.folio}`, { orderId: inc.orderId, syncLabel: `Incidencia ${inc.folio}` });
           if (inc.blocksClosure) {
             const o = getState().orders.find((x) => x.id === inc.orderId);
@@ -906,9 +1263,9 @@ export const useAppStore = create<AppState>()(
             }
           }
           return inc;
-        },
+        }),
 
-        updateIncident: (incidentId, patch) => {
+        updateIncident: (incidentId, patch) => act(() => {
           const inc = getState().incidents.find((i) => i.id === incidentId);
           const ok = allowOrder(["field.capture"], inc?.orderId);
           if (!ok || !inc) return;
@@ -923,7 +1280,11 @@ export const useAppStore = create<AppState>()(
           }
           // Identity and authorship never change; resolution goes through resolveIncident.
           const rest = omit(patch, ["id", "folio", "orderId", "createdAt", "createdBy", "status", "resolvedAt", "resolvedBy"]);
+          if (rest.description !== undefined && !textOk(rest.description, TEXT_LIMITS.description, `Describa la incidencia (de ${TEXT_LIMITS.description.min} a ${TEXT_LIMITS.description.max} caracteres).`)) return;
           setState((st) => ({ incidents: st.incidents.map((i) => (i.id === incidentId ? { ...i, ...rest } : i)) }));
+          // Only server fields travel (photoIds follow the photos' own incident_id).
+          const serverPatch = diffPatch(inc, rest, { type: "type", severity: "severity", description: "description", blocksClosure: "blocks_closure", jornadaId: "jornada_id" });
+          if (Object.keys(serverPatch).length) send("update_incident", { p_incident_id: incidentId, p_patch: serverPatch }, { orderId: inc.orderId });
           record("incidencia", incidentId, `Actualizó incidencia ${inc.folio}`, { orderId: inc.orderId });
           // The blocking flag of an open incident drives Con incidencia, like adding or resolving one (server: update_incident).
           const blocks = rest.blocksClosure ?? inc.blocksClosure;
@@ -940,9 +1301,9 @@ export const useAppStore = create<AppState>()(
             const next = o.previousStatus && resumable.includes(o.previousStatus) ? o.previousStatus : derivedExecutionStatus(o.id, getState().jornadas);
             changeStatus(o.id, next, `La incidencia ${inc.folio} ya no bloquea el cierre`);
           }
-        },
+        }),
 
-        resolveIncident: (incidentId, resolution) => {
+        resolveIncident: (incidentId, resolution) => act(() => {
           const s = getState();
           const inc = s.incidents.find((i) => i.id === incidentId);
           const ok = allowOrder(["field.capture"], inc?.orderId);
@@ -951,11 +1312,13 @@ export const useAppStore = create<AppState>()(
             denied("La orden ya no admite cambios.");
             return;
           }
+          if (!textOk(resolution, { min: 3, max: TEXT_LIMITS.resolution.max }, `Describa la resolución (de 3 a ${TEXT_LIMITS.resolution.max} caracteres).`)) return;
           setState((st) => ({
             incidents: st.incidents.map((i) =>
               i.id === incidentId ? { ...i, status: "resuelta", resolution, resolvedAt: nowIso(), resolvedBy: ok.user.id } : i,
             ),
           }));
+          send("resolve_incident", { p_incident_id: incidentId, p_resolution: resolution }, { orderId: inc.orderId });
           record("incidencia", incidentId, `Resolvió incidencia ${inc.folio}`, { orderId: inc.orderId, reason: resolution });
           const stillBlocking = getState().incidents.some((i) => i.orderId === inc.orderId && i.status === "abierta" && i.blocksClosure);
           const o = getState().orders.find((x) => x.id === inc.orderId);
@@ -967,10 +1330,10 @@ export const useAppStore = create<AppState>()(
             const next = o.previousStatus && resumable.includes(o.previousStatus) ? o.previousStatus : fallback;
             changeStatus(o.id, next, "Incidencia resuelta");
           }
-        },
+        }),
 
         /* ── closure + report ── */
-        validateClosure: (orderId, closure) => {
+        validateClosure: (orderId, closure) => act(() => {
           const ok = allowOrder(["closure.authorize"], orderId);
           if (!ok) return;
           const { order, user } = ok;
@@ -993,15 +1356,41 @@ export const useAppStore = create<AppState>()(
             denied("Faltan fotos ANTES o DESPUÉS: registre una excepción autorizada y justificada para cerrar.");
             return;
           }
-          const full: Closure = { ...closure, validatedAt: nowIso(), validatedBy: user.id };
+          // What the server stores of a closure (order_closures): a longer text would strand the closure and its signature.
+          const L = TEXT_LIMITS;
+          const c0 = closure.conformity;
+          if (
+            !textOk(closure.summary, L.summary, `La descripción para el reporte va de ${L.summary.min} a ${L.summary.max} caracteres.`) ||
+            !textOk(c0?.name, L.conformityName, `El nombre de quien acepta admite hasta ${L.conformityName.max} caracteres.`) ||
+            !textOk(c0?.role, L.conformityRole, `El puesto admite hasta ${L.conformityRole.max} caracteres.`) ||
+            !textOk(c0?.comment, L.conformityComment, `El comentario admite hasta ${L.conformityComment.max} caracteres.`) ||
+            !textOk(closure.exception?.reason, L.exception, `La justificación de la excepción admite hasta ${L.exception.max} caracteres.`)
+          )
+            return;
+          // An account's closure keeps the id the server stores (order_closures.id); its version comes in the answer.
+          const closureId = account() ? uid("clo") : undefined;
+          const full: Closure = { ...closure, ...(closureId ? { id: closureId } : {}), validatedAt: nowIso(), validatedBy: user.id };
           patchOrder(orderId, { closure: full });
+          if (closureId) {
+            const c = closure.conformity;
+            send(
+              "validate_closure",
+              {
+                p_closure_id: closureId, p_order_id: orderId, p_summary: closure.summary, p_conformity_method: c?.method,
+                p_conformity_name: c?.name, p_conformity_role: c?.role,
+                p_conformity_signature: c?.method === "firma" ? c.signatureDataUrl : undefined, p_conformity_at: c?.at,
+                p_conformity_comment: c?.comment, p_exception_reason: closure.exception?.reason, p_device_at: full.validatedAt,
+              },
+              { orderId },
+            );
+          }
           record("orden", orderId, order.status === "reabierta" ? "Validó de nuevo el cierre (orden reabierta)" : "Validó cierre definitivo", {
             orderId, reason: closure.exception ? `Excepción: ${closure.exception.reason}` : undefined, syncLabel: `Cierre · ${order.folio}`,
           });
           changeStatus(orderId, "finalizada");
-        },
+        }),
 
-        generateReport: (orderId, photoIds, summary) => {
+        generateReport: (orderId, photoIds, summary) => act(() => {
           const { order, user } = must(allowOrder(["report.share"], orderId));
           if (order.status === "reabierta" || (order.reopenedAt && (!order.closure || order.closure.validatedAt < order.reopenedAt)))
             must(denied("La orden se reabrió: valide de nuevo el cierre antes de generar una nueva versión del reporte."));
@@ -1014,11 +1403,13 @@ export const useAppStore = create<AppState>()(
             photoIds: photoIds.filter((id) => own.has(id)), summary, shares: [],
           };
           setState((st) => ({ reports: [rep, ...st.reports] }));
+          // The server numbers the version and freezes its snapshot; the answer brings both version and photo list.
+          send("generate_report", { p_report_id: rep.id, p_order_id: orderId, p_photo_ids: rep.photoIds, p_summary: summary, p_device_at: rep.generatedAt }, { orderId });
           record("reporte", rep.id, `Generó reporte PDF v${rep.version}`, { orderId, syncLabel: `Reporte v${rep.version} · ${order.folio}`, bytes: 1_200_000 });
           return rep;
-        },
+        }),
 
-        logShare: (reportId, channel, to) => {
+        logShare: (reportId, channel, to) => act(() => {
           const rep = getState().reports.find((r) => r.id === reportId);
           const ok = allowOrder(["report.share"], rep?.orderId);
           if (!ok || !rep) return;
@@ -1027,36 +1418,53 @@ export const useAppStore = create<AppState>()(
             note: "Envío iniciado desde el dispositivo · sin confirmación de entrega",
           };
           setState((st) => ({ reports: st.reports.map((r) => (r.id === reportId ? { ...r, shares: [...r.shares, share] } : r)) }));
+          send("log_share", { p_share_id: share.id, p_report_id: reportId, p_channel: channel, p_recipient: to, p_device_at: share.at }, { orderId: rep.orderId });
           const label = channel === "whatsapp" ? "WhatsApp" : channel === "email" ? "correo" : "descarga";
           record("reporte", reportId, `Inició envío por ${label}`, { orderId: rep.orderId, reason: to });
           const o = getState().orders.find((x) => x.id === rep.orderId);
           if (o?.status === "finalizada") changeStatus(rep.orderId, "reporte_enviado");
-        },
+        }),
 
         /* ── post-sale ── */
-        createCase: (input) => {
+        createCase: (input) => act(() => {
           const { user, order } = must(allowOrder(["postventa.manage"], input.orderId));
           must(isValidCaseOwner(input.ownerId, order) ? true : denied(CASE_OWNER_RULE));
+          must(textOk(input.description, TEXT_LIMITS.description, `Describa el caso (de ${TEXT_LIMITS.description.min} a ${TEXT_LIMITS.description.max} caracteres).`));
           // A case is resolved with its resolution, after it exists (server: create_case → resolution_required).
           must(!input.status || input.status === "abierto" || input.status === "en_proceso" ? true : denied(CASE_NEW_STATUS_RULE));
           const s = getState();
           const at = nowIso();
+          const id = uid("cas");
           const c: PostSaleCase = {
-            ...input, status: input.status ?? "abierto", id: uid("cas"), folio: nextFolio(s.cases, "PV", 4),
+            ...input, status: input.status ?? "abierto", id, folio: account() ? provisionalFolio("PV", id) : nextFolio(s.cases, "PV", 4),
             createdAt: at, createdBy: user.id, updatedAt: at,
             timeline: [{ at, by: user.id, text: "Caso registrado y asignado." }],
           };
           setState((st) => ({ cases: [c, ...st.cases] }));
+          send(
+            "create_case",
+            {
+              p_case_id: id, p_order_id: c.orderId, p_category: c.category, p_severity: c.severity, p_channel: c.channel,
+              p_description: c.description, p_owner_id: c.ownerId, p_due_date: localDay(c.dueDate), p_status: c.status,
+            },
+            { orderId: c.orderId },
+          );
           record("caso", c.id, `Abrió caso postventa ${c.folio}`, { orderId: c.orderId, syncLabel: `Caso ${c.folio}` });
           const o = getState().orders.find((x) => x.id === c.orderId);
           if (o && (o.status === "reporte_enviado" || o.status === "archivada")) changeStatus(o.id, "seguimiento", `Caso ${c.folio}`);
           return c;
-        },
+        }),
 
-        updateCase: (caseId, patch, note) => {
+        updateCase: (caseId, patch, note) => act(() => {
           const c = getState().cases.find((x) => x.id === caseId);
           const ok = allowOrder(["postventa.manage"], c?.orderId);
           if (!ok || !c) return false;
+          if (
+            !textOk(note, TEXT_LIMITS.caseNote, `La nota admite hasta ${TEXT_LIMITS.caseNote.max} caracteres.`) ||
+            (patch.description !== undefined && !textOk(patch.description, TEXT_LIMITS.description, `Describa el caso (de ${TEXT_LIMITS.description.min} a ${TEXT_LIMITS.description.max} caracteres).`)) ||
+            (patch.resolution !== undefined && !textOk(patch.resolution, TEXT_LIMITS.resolution, `La resolución admite hasta ${TEXT_LIMITS.resolution.max} caracteres.`))
+          )
+            return false;
           if (patch.ownerId !== undefined && patch.ownerId !== c.ownerId && !isValidCaseOwner(patch.ownerId, ok.order)) {
             denied(CASE_OWNER_RULE);
             return false;
@@ -1084,23 +1492,35 @@ export const useAppStore = create<AppState>()(
           const rest = omit(patch, ["id", "folio", "orderId", "clientId", "createdAt", "createdBy", "timeline"]);
           const timeline = note ? [...c.timeline, { at, by: ok.user.id, text: note }] : c.timeline;
           setState((st) => ({ cases: st.cases.map((x) => (x.id === caseId ? { ...x, ...rest, timeline, updatedAt: at } : x)) }));
+          // Only the fields that change travel; a note alone is add_case_note (photoIds follow the photos' own case_id).
+          // Photos this change adds («Agregó una foto de evidencia»): the note depends on them, so discarding the photo — refused,
+          // or its answer lost — discards its note too (discardSet follows `deps`): the server cannot check the note against the
+          // photo, and the timeline never reports a photo it may never have got.
+          const deps = (patch.photoIds ?? []).filter((id) => !c.photoIds.includes(id)).map((id) => `foto:${id}`);
+          const serverPatch = diffPatch(c, rest, {
+            category: "category", severity: "severity", channel: "channel", description: "description", ownerId: "owner_id",
+            dueDate: "due_date", status: "status", resolution: "resolution",
+          }, { dueDate: (v) => (typeof v === "string" ? localDay(v) : null) });
+          if (Object.keys(serverPatch).length) send("update_case", { p_case_id: caseId, p_patch: serverPatch, p_note: note }, { orderId: c.orderId, deps });
+          else if (note?.trim()) send("add_case_note", { p_case_id: caseId, p_text: note }, { orderId: c.orderId, deps });
           record("caso", caseId, note ?? `Actualizó caso ${c.folio}`, { orderId: c.orderId });
           return true;
-        },
+        }),
 
         addCaseNote: (caseId, text) => getState().updateCase(caseId, {}, text),
 
-        createSurvey: (orderId, channel) => {
+        createSurvey: (orderId, channel) => act(() => {
           const { order: o, user } = must(allowOrder(["postventa.manage"], orderId));
           const sv: Survey = {
             id: uid("sur"), token: surveyToken(), orderId, clientId: o.clientId, sentAt: nowIso(), sentBy: user.id,
             channel, manual: false,
           };
           setState((st) => ({ surveys: [sv, ...st.surveys] }));
+          send("create_survey", { p_survey_id: sv.id, p_order_id: orderId, p_channel: channel, p_token: sv.token }, { orderId });
           record("encuesta", sv.id, "Generó enlace de encuesta", { orderId, syncLabel: `Encuesta · ${o.folio}` });
           if (o.status === "reporte_enviado") changeStatus(orderId, "seguimiento", "Encuesta enviada");
           return sv;
-        },
+        }),
 
         // Public (/encuesta/[token]): the client answers without a session; the token is the only key.
         submitSurvey: (token, answers, respondentName) => {
@@ -1118,56 +1538,121 @@ export const useAppStore = create<AppState>()(
           return true;
         },
 
-        recordManualSurvey: (orderId, answers, respondentName) => {
+        recordManualSurvey: (orderId, answers, respondentName) => act(() => {
           const { order: o, user } = must(allowOrder(["postventa.manage"], orderId));
+          must(textOk(respondentName, TEXT_LIMITS.respondentName, `Indique quién respondió (de ${TEXT_LIMITS.respondentName.min} a ${TEXT_LIMITS.respondentName.max} caracteres).`));
           const s = getState();
           const existing = s.surveys.find((x) => x.orderId === orderId && !x.respondedAt);
           const at = nowIso();
+          // The server fills its newest unanswered survey of the order, or creates this new one (id + token always sent).
+          const freshId = uid("sur");
+          const freshToken = surveyToken();
           const sv: Survey = existing
             ? { ...existing, answers, respondentName, respondedAt: at, manual: true }
-            : { id: uid("sur"), token: surveyToken(), orderId, clientId: o.clientId, sentAt: at, sentBy: user.id, channel: "descarga", manual: true, answers, respondentName, respondedAt: at };
+            : { id: freshId, token: freshToken, orderId, clientId: o.clientId, sentAt: at, sentBy: user.id, channel: "descarga", manual: true, answers, respondentName, respondedAt: at };
           setState((st) => ({ surveys: existing ? st.surveys.map((x) => (x.id === sv.id ? sv : x)) : [sv, ...st.surveys] }));
+          send(
+            "record_manual_survey",
+            {
+              p_order_id: orderId, p_overall: answers.overall, p_quality: answers.quality, p_punctuality: answers.punctuality,
+              p_staff: answers.staff, p_nps: answers.nps, p_respondent_name: respondentName, p_comment: answers.comment,
+              p_survey_id: freshId, p_token: freshToken,
+            },
+            { orderId },
+          );
           record("encuesta", sv.id, "Registró respuesta de encuesta manualmente", { orderId });
           return sv;
-        },
+        }),
 
-        /* ── catalogs ── */
-        upsertClient: (client) => {
+        /* ── catalogs ── (account sessions: one upsert RPC, only when a field the server keeps changes) */
+        upsertClient: (client) => act(() => {
           const prev = getState().clients.find((c) => c.id === client.id);
-          if (!allowCatalog(prev?.unitId) || !allowCatalog(client.unitId)) return;
+          if (!allowCatalog(prev?.unitId) || !allowCatalog(client.unitId)) return false;
+          const L = TEXT_LIMITS;
+          if (
+            !textOk(client.name, L.clientName, `El nombre del cliente va de ${L.clientName.min} a ${L.clientName.max} caracteres.`) ||
+            !textOk(client.shortName, L.clientShortName, `El nombre corto va de ${L.clientShortName.min} a ${L.clientShortName.max} caracteres.`)
+          )
+            return false;
+          // Its orders and history belong to its unit (server: upsert_client → client_in_use). The server counts every order,
+          // history the device may not hold included: this only catches what the device can see.
+          if (prev && client.unitId !== prev.unitId) {
+            const folios = getState().orders.filter((o) => o.clientId === client.id).map((o) => o.folio);
+            if (folios.length) {
+              denied(`El cliente ya tiene órdenes (${folios.slice(0, 5).join(", ")}${folios.length > 5 ? "…" : ""}): no puede cambiar de unidad.`);
+              return false;
+            }
+          }
           setState((st) => ({ clients: prev ? st.clients.map((c) => (c.id === client.id ? client : c)) : [...st.clients, client] }));
+          // A client without "cliente desde" on the server keeps none: its stand-in (the creation date) never travels.
+          const day = (c?: Client) => (c && !c.sinceUnset && !Number.isNaN(Date.parse(c.since)) ? localDay(c.since) : undefined);
+          const since = day(client);
+          if (changed(prev, client, ["name", "shortName", "segment", "unitId", "contactName", "contactPhone", "contactEmail", "hue"]) || day(prev) !== since)
+            send(
+              "upsert_client",
+              {
+                p_client_id: client.id, p_name: client.name, p_short_name: client.shortName, p_segment: client.segment,
+                p_unit_id: client.unitId, p_contact_name: client.contactName, p_contact_phone: client.contactPhone,
+                p_contact_email: client.contactEmail, p_since: since, p_hue: client.hue,
+              },
+              { creates: !prev },
+            );
           record("catalogo", client.id, `Guardó cliente ${client.shortName}`);
-        },
-        upsertSite: (site) => {
+          return true;
+        }),
+        upsertSite: (site) => act(() => {
           const s = getState();
           const client = s.clients.find((c) => c.id === site.clientId);
           if (!client) {
             denied(OUT_OF_SCOPE);
-            return;
+            return false;
           }
-          if (!allowCatalog(client.unitId)) return;
+          if (!allowCatalog(client.unitId)) return false;
           // An existing site is also guarded by the unit of the client it belongs to today (a payload must not move it across units).
           const prevSite = s.sites.find((x) => x.id === site.id);
           if (prevSite) {
             const prevClient = s.clients.find((c) => c.id === prevSite.clientId);
             if (!prevClient) {
               denied(OUT_OF_SCOPE);
-              return;
+              return false;
             }
-            if (!allowCatalog(prevClient.unitId)) return;
+            if (!allowCatalog(prevClient.unitId)) return false;
           }
+          if (!textOk(site.name, TEXT_LIMITS.siteName, `El nombre del sitio va de ${TEXT_LIMITS.siteName.min} a ${TEXT_LIMITS.siteName.max} caracteres.`)) return false;
           setState((st) => ({ sites: st.sites.some((c) => c.id === site.id) ? st.sites.map((c) => (c.id === site.id ? site : c)) : [...st.sites, site] }));
+          if (changed(prevSite, site, ["clientId", "name", "address", "municipality", "lat", "lng"]))
+            send(
+              "upsert_site",
+              {
+                p_site_id: site.id, p_client_id: site.clientId, p_name: site.name, p_lat: site.lat, p_lng: site.lng,
+                p_address: site.address, p_municipality: site.municipality,
+              },
+              { creates: !prevSite, deps: cat(site.clientId) },
+            );
           record("catalogo", site.id, `Guardó sitio ${site.name}`);
-        },
-        upsertWorker: (worker) => {
+          return true;
+        }),
+        upsertWorker: (worker) => act(() => {
           const prev = getState().workers.find((w) => w.id === worker.id);
-          if (!allowCatalog(prev?.unitId) || !allowCatalog(worker.unitId)) return;
+          if (!allowCatalog(prev?.unitId) || !allowCatalog(worker.unitId)) return false;
+          if (!textOk(worker.name, TEXT_LIMITS.workerName, `El nombre va de ${TEXT_LIMITS.workerName.min} a ${TEXT_LIMITS.workerName.max} caracteres.`)) return false;
           setState((st) => ({ workers: prev ? st.workers.map((c) => (c.id === worker.id ? worker : c)) : [...st.workers, worker] }));
+          // The server derives the initials from the name.
+          if (changed(prev, worker, ["name", "unitId", "specialty", "phone", "hue", "active"]))
+            send(
+              "upsert_worker",
+              {
+                p_worker_id: worker.id, p_name: worker.name, p_unit_id: worker.unitId, p_specialty: worker.specialty,
+                p_phone: worker.phone, p_hue: worker.hue, p_active: worker.active,
+              },
+              { creates: !prev },
+            );
           record("catalogo", worker.id, `Guardó trabajador ${worker.name}`);
-        },
-        upsertUser: (next) => {
+          return true;
+        }),
+        upsertUser: (next) => act(() => {
           const me = allowRole(null);
-          if (!me) return;
+          if (!me) return false;
           const prev = getState().users.find((u) => u.id === next.id);
           if (!can(me.role, "users.admin")) {
             // Self-service: only one's own phone.
@@ -1175,49 +1660,106 @@ export const useAppStore = create<AppState>()(
               !!prev && prev.id === me.id && (Object.keys(next) as (keyof User)[]).every((k) => k === "phone" || next[k] === prev[k]);
             if (!sameIdentity) {
               denied(DENIED_REASON["users.admin"]!);
-              return;
+              return false;
             }
-          } else if (next.id === me.id && (next.role !== me.role || !next.active || next.unitId !== me.unitId)) {
-            denied("No puede cambiar su propio rol, unidad o estado: pídalo a otra persona de Dirección.");
-            return;
+          } else {
+            const blocker = profileChangeBlocker(getState(), me, prev, next);
+            if (blocker) {
+              denied(blocker);
+              return false;
+            }
           }
-          setState((st) => ({ users: prev ? st.users.map((c) => (c.id === next.id ? next : c)) : [...st.users, next] }));
+          // Account sessions: a new account (invite) and access changes (active, e-mail) go through the admin-users Edge Function,
+          // not the queue, so the device never shows them before the server has them (the pull brings them); the profile
+          // fields go through update_profile, one's own phone through update_my_contact.
+          if (account() && !prev) return true;
+          const saved = account() && prev ? { ...next, active: prev.active, email: prev.email } : next;
+          setState((st) => ({ users: prev ? st.users.map((c) => (c.id === next.id ? saved : c)) : [...st.users, saved] }));
+          if (prev && !can(me.role, "users.admin")) {
+            if (prev.phone !== next.phone) send("update_my_contact", { p_phone: next.phone });
+          } else if (prev) {
+            const patch = diffPatch(prev, next, { name: "name", title: "title", role: "role", unitId: "unit_id", phone: "phone", hue: "hue" });
+            if (Object.keys(patch).length) send("update_profile", { p_user_id: next.id, p_patch: patch });
+          }
           record("usuario", next.id, `Guardó usuario ${next.name}`);
+          return true;
+        }),
+        applyServerUser: (server, fields) => {
+          if (getState().session.mode !== "supabase") return;
+          setState((st) => {
+            const prev = st.users.find((u) => u.id === server.id);
+            if (!prev) return { users: [...st.users, server] };
+            const next: User = fields ? { ...prev, ...Object.fromEntries(fields.map((k) => [k, server[k]])) } : server;
+            return { users: st.users.map((u) => (u.id === server.id ? next : u)) };
+          });
         },
-        updateMyContact: (contact) => {
+        updateMyContact: (contact) => act(() => {
           const me = allowRole(null);
           if (!me) return;
           const patch: Partial<User> = {};
           if (contact.phone !== undefined) patch.phone = contact.phone.trim();
           if (!Object.keys(patch).length) return;
           setState((st) => ({ users: st.users.map((u) => (u.id === me.id ? { ...u, ...patch } : u)) }));
+          if (patch.phone !== undefined && patch.phone !== me.phone) send("update_my_contact", { p_phone: patch.phone });
           record("usuario", me.id, "Actualizó sus datos de contacto");
-        },
-        upsertServiceType: (stype) => {
-          if (!allowCatalog(undefined)) return;
+        }),
+        upsertServiceType: (stype) => act(() => {
+          if (!allowCatalog(undefined)) return false;
           if (!(stype.defaultHoursPerDay >= SERVICE_HOURS_MIN && stype.defaultHoursPerDay <= SERVICE_HOURS_MAX)) {
             denied(`Las horas por día van de ${SERVICE_HOURS_MIN} a ${SERVICE_HOURS_MAX}.`);
-            return;
+            return false;
           }
+          const L = TEXT_LIMITS;
+          if (
+            !textOk(stype.name, L.serviceTypeName, `El nombre va de ${L.serviceTypeName.min} a ${L.serviceTypeName.max} caracteres.`) ||
+            !textOk(stype.short, L.serviceTypeShort, `El nombre corto va de ${L.serviceTypeShort.min} a ${L.serviceTypeShort.max} caracteres.`)
+          )
+            return false;
+          const prev = getState().serviceTypes.find((c) => c.id === stype.id);
           setState((st) => ({ serviceTypes: st.serviceTypes.some((c) => c.id === stype.id) ? st.serviceTypes.map((c) => (c.id === stype.id ? stype : c)) : [...st.serviceTypes, stype] }));
+          if (changed(prev, stype, ["name", "short", "hue", "defaultHoursPerDay"]))
+            send(
+              "upsert_service_type",
+              { p_service_type_id: stype.id, p_name: stype.name, p_short: stype.short, p_default_hours_per_day: stype.defaultHoursPerDay, p_hue: stype.hue },
+              { creates: !prev },
+            );
           record("catalogo", stype.id, `Guardó tipo de servicio ${stype.name}`);
-        },
-        upsertMaterial: (m) => {
-          if (!allowCatalog(undefined)) return;
+          return true;
+        }),
+        upsertMaterial: (m) => act(() => {
+          if (!allowCatalog(undefined)) return false;
+          // A unit the server refuses would hold every order that uses the material behind it (server: upsert_material).
+          const L = TEXT_LIMITS;
+          if (
+            !textOk(m.name, L.materialName, `El nombre del material va de ${L.materialName.min} a ${L.materialName.max} caracteres.`) ||
+            !textOk(m.unit, L.materialUnit, `La unidad de medida va de ${L.materialUnit.min} a ${L.materialUnit.max} caracteres (ej. «m²», «L», «pza»).`)
+          )
+            return false;
+          const prev = getState().materials.find((c) => c.id === m.id);
           setState((st) => ({ materials: st.materials.some((c) => c.id === m.id) ? st.materials.map((c) => (c.id === m.id ? m : c)) : [...st.materials, m] }));
+          if (changed(prev, m, ["name", "unit"])) send("upsert_material", { p_material_id: m.id, p_name: m.name, p_unit: m.unit }, { creates: !prev });
           record("catalogo", m.id, `Guardó material ${m.name}`);
-        },
+          return true;
+        }),
 
-        /* ── sync engine (simulated server round-trips) ── */
+        /* ── sync engine (account sessions: sync/push.ts; the demo simulates the server round-trips) ── */
         setForcedOffline: (v) => {
           setState((st) => ({ sync: { ...st.sync, forcedOffline: v } }));
-          if (!v) void getState().processSyncQueue();
+          if (!v) void (account() ? resumeAfterReconnect(api) : getState().processSyncQueue());
         },
         setBrowserOffline: (v) => {
           setState((st) => ({ sync: { ...st.sync, browserOffline: v } }));
-          if (!v) void getState().processSyncQueue();
+          if (!v) void (account() ? resumeAfterReconnect(api) : getState().processSyncQueue());
         },
+        retrySyncItem: (itemId) => {
+          if (account()) void retryItems(api, [itemId]);
+        },
+        discardSyncItem: (itemId) => (account() ? discardItems(api, itemId) : 0),
         retrySync: () => {
+          if (account()) {
+            void retryItems(api);
+            return;
+          }
           // Errors go back to the queue; so does anything left "sincronizando" by an interrupted run (nothing is uploading now).
           setState((st) => ({
             sync: {
@@ -1228,6 +1770,8 @@ export const useAppStore = create<AppState>()(
           void getState().processSyncQueue();
         },
         processSyncQueue: async () => {
+          // An account's queue goes to the server (sync/push.ts); the loop below only simulates the server for the demo.
+          if (getState().session.mode === "supabase") return pushQueue(api);
           if (getState().sync.processing) return;
           setState((st) => ({ sync: { ...st.sync, processing: true } }));
           try {
@@ -1274,7 +1818,7 @@ export const useAppStore = create<AppState>()(
 
         /* ── demo data ── */
         resetDemo: () => {
-          if (!DEMO_ENABLED) {
+          if (!DEMO_ENABLED || getState().session.mode === "supabase") {
             denied("Restablecer datos solo existe en la versión de demostración.");
             return;
           }
@@ -1289,6 +1833,20 @@ export const useAppStore = create<AppState>()(
 
         ensureSeeded: () => {
           const s = getState();
+          // An account session never gets the demo dataset: it reads its data from the server (after the bootstrap has
+          // set the connectivity flags, hence the timeout). First the browser's Supabase session must still be this
+          // account's: none, or another account's (a link opened on this device) → "Vuelva a entrar", no sync.
+          if (s.session.mode === "supabase") {
+            if (s.session.signedIn) setTimeout(() => void verifyAccount({ getState, setState }), 0);
+            return;
+          }
+          // A build without the demo sign-in keeps no demo data (nor a demo session left by an earlier demo build).
+          if (!DEMO_SIGN_IN) {
+            if (s.session.signedIn || s.users.length || s.orders.length) {
+              setState({ ...emptyData, meta: { seededAt: "", seedVersion: 0 }, session: signedOutSession(), sync: { ...s.sync, queue: [] } });
+            }
+            return;
+          }
           if (!s.meta.seededAt || s.meta.seedVersion !== SEED_VERSION || s.orders.length === 0) {
             reseed();
             return;
@@ -1317,25 +1875,94 @@ export const useAppStore = create<AppState>()(
     {
       name: "pulkro-cuadrillas",
       version: SEED_VERSION,
-      storage: createJSONStorage(() => idbStorage),
+      storage: createDeviceStorage<Partial<AppState>>(),
       skipHydration: true,
       partialize: (s) => {
         const out: Record<string, unknown> = {};
         for (const k of DATA_KEYS) out[k] = s[k];
-        out.sync = { ...s.sync, queue: unstick(s.sync.queue), processing: false, browserOffline: false };
+        // Only what is persisted: a transient key left in (even as undefined) makes every update look like a change.
+        out.sync = { ...omit(s.sync, ["saveError", "saveFull"]), queue: unstick(s.sync.queue), processing: false, browserOffline: false };
         return out as Partial<AppState>;
       },
-      migrate: () => ({}) as AppState, // version bump → reseed
+      // A seed version bump reseeds the demo. An account's data (and its unsent queue) is never thrown away for it.
+      migrate: (persisted) =>
+        ((persisted as Partial<AppState> | undefined)?.session?.mode === "supabase" ? persisted : {}) as AppState,
     },
   ),
 );
 
-/** Called once on the client: rehydrate from IndexedDB, then seed / re-anchor. */
-export async function bootstrapStore() {
+// Server times read outside the sync engines (the Auth answers of supabase/client.ts) adjust the clock estimate.
+setClockSink((sample) => noteServerTime(useAppStore, sample));
+
+/** The toast of an account sign-out whose wipe the device has not stored yet (useSignOut): it goes once a save works again. */
+export const WIPE_PENDING_TOAST = "pk-wipe-pending";
+
+registerTab({
+  // Another tab holds the device now, or another owner's data is on it: nothing of it stays in this tab's memory (writes
+  // are already off). Not hydrated any more: the shell waits (behind the blocker) instead of sending this tab to /login.
+  drop: () => {
+    // Nor does any copy of a server photo it was still keeping land on the device afterwards.
+    cancelPhotoWork();
+    useAppStore.setState((st) => ({
+      ...emptyData,
+      meta: { seededAt: "", seedVersion: 0 },
+      session: signedOutSession(),
+      sync: { ...st.sync, queue: [], processing: false },
+      hydrated: false,
+    }));
+  },
+  // A handover: nothing is sent or read while this tab saves what it holds; it goes on if it could not (and stays the writer).
+  halt: (on) => {
+    haltSync(on);
+    if (!on) void useAppStore.getState().processSyncQueue();
+  },
+  saveFailed: (error) => {
+    if (error === null) {
+      useAppStore.setState((st) => (st.sync.saveError ? { sync: { ...st.sync, saveError: undefined, saveFull: undefined } } : st));
+      toast.dismiss("pk-save-error");
+      // A sign-out's wipe that had failed is on the device now (this save carries it).
+      toast.dismiss(WIPE_PENDING_TOAST);
+      return;
+    }
+    // The same test device-storage uses to free space first (a quota error, by name or by message).
+    const full = isQuotaError(error);
+    const message = full
+      ? "El almacenamiento del teléfono está lleno: libere espacio. Lo capturado sigue en esta pantalla, pero se perderá si se cierra la app."
+      : "No se pudieron guardar los datos en el dispositivo. Lo capturado sigue en esta pantalla: no cierre la app mientras se reintenta.";
+    useAppStore.setState((st) => (st.sync.saveError === message ? st : { sync: { ...st.sync, saveError: message, saveFull: full || undefined } }));
+    toast.error("No se pudo guardar en el dispositivo", { id: "pk-save-error", description: message, duration: Infinity });
+  },
+  evict: () => evictKeptPhotos(),
+});
+
+let booting: Promise<void> | undefined;
+
+/**
+ * Called on the client: rehydrate from IndexedDB, then seed / re-anchor. Single-flight: React runs effects twice in
+ * development (and a remount can call it again), and a second `rehydrate()` supersedes the first — zustand drops the earlier
+ * read — so two overlapping calls would mark the store hydrated with nothing in it and send a signed-in device to /login.
+ */
+export function bootstrapStore(): Promise<void> {
+  booting ??= boot();
+  return booting;
+}
+
+async function boot() {
   if (useAppStore.getState().hydrated) return;
+  // One tab per device holds the data (lib/device-storage): this one reads it only once it is that tab. Until then the
+  // blocker shows («Pulkro está abierta en otra ventana»), and nothing here reads, writes, sends or pulls.
+  await becomeWriter();
   await useAppStore.persist.rehydrate();
+  // The device could not be read: never start from nothing over the data that is there (the blocker offers to retry).
+  if (writerState() !== "writer") return;
   // A reload in the middle of an upload leaves items "sincronizando": put them back in line (retried once online below).
-  useAppStore.setState((st) => ({ sync: { ...st.sync, processing: false, queue: unstick(st.sync.queue) } }));
+  // Sessions saved before account sign-in existed have no mode: they are demo sessions.
+  useAppStore.setState((st) => ({
+    session: { ...st.session, mode: st.session.mode === "supabase" ? "supabase" : "demo" },
+    sync: { ...st.sync, processing: false, saveError: undefined, saveFull: undefined, queue: unstick(st.sync.queue) },
+  }));
+  // An account's unsent captures are the only copy until they are sent: ask the browser not to evict them.
+  if (useAppStore.getState().session.mode === "supabase") requestPersistentStorage();
   useAppStore.getState().ensureSeeded();
   useAppStore.setState({ hydrated: true });
   if (typeof navigator !== "undefined") useAppStore.getState().setBrowserOffline(!navigator.onLine);

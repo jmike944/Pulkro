@@ -4,15 +4,18 @@ import { useRef, useState } from "react";
 import { Camera, ImagePlus, Loader2, Wand2 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
-import { PermissionDeniedError, useAppStore } from "@/lib/store";
-import { DEMO_ENABLED } from "@/lib/demo";
+import { PermissionDeniedError, requestPersistentStorage, useAppStore } from "@/lib/store";
+import { useDemoSession } from "@/lib/hooks";
 import { photoTimingIssues } from "@/lib/domain";
 import { fmtDateTime } from "@/lib/format";
 import { currentPosition } from "@/lib/geo";
-import { deletePhotoFile, describeCapture, savePhotoFile, type CaptureInput } from "@/lib/photo-store";
+import { UndecodableImageError, deletePhotoFile, describeCapture, savePhotoFile, type CaptureInput } from "@/lib/photo-store";
+import { flushWrite, holdForCapture } from "@/lib/device-storage";
+import { plural } from "@/lib/format";
 import { SCENE_AREAS, SCENES_BY_SERVICE } from "@/lib/seed";
 import type { Photo, PhotoKind, SceneKind } from "@/lib/types";
 import { Button } from "@/components/ui/button";
+import { ClockWarning } from "./clock-warning";
 
 
 export function areaSuggestions(serviceTypeId: string) {
@@ -41,6 +44,95 @@ export const CAPTURE_HELP =
   "Cada foto guarda la hora real de la toma, si es de cámara o de galería y su ubicación: la de la foto si la trae o, si no, la del teléfono al adjuntarla.";
 
 /**
+ * Stores `files` as photos of `meta` and tells the person how it went (usePhotoCapture runs it). A file that cannot be added
+ * (a format this browser cannot open…) is reported and the rest of the batch still goes in; a refusal of the store
+ * (PermissionDeniedError) stops it. "Guardada en el dispositivo" only once the device stored it. Returns the new photo ids.
+ * `input` is the file input the pictures came through. Callers that cannot tell pass nothing: a fresh file counts as a
+ * camera shot and anything older than a few minutes as a gallery pick.
+ * Until the batch is over, a handover to another window, a sign-out and another account's sign-in wait for it (a photo still
+ * being compressed is in no write and no count of unsent changes yet).
+ */
+export async function captureFiles(files: FileList | File[], meta: CaptureMeta, input: CaptureInput = "camera"): Promise<string[]> {
+  const addPhoto = useAppStore.getState().addPhoto;
+  const ids: string[] = [];
+  const warnings: string[] = [];
+  /** Files that could not be added (a format this browser cannot open…): the rest of the batch still goes in. */
+  const failed: { heic: boolean; message: string }[] = [];
+  let galleryNote: string | undefined;
+  // The captures are the only copy until they are sent: ask the browser not to evict them (once).
+  requestPersistentStorage();
+  const release = holdForCapture();
+  try {
+    // One non-blocking position read per batch: a fix from the last two minutes is reused, no answer in 3 s = no coordinates.
+    const position = currentPosition(3000, 120_000);
+    for (const file of Array.from(files)) {
+      let saved: Awaited<ReturnType<typeof savePhotoFile>>;
+      try {
+        saved = await savePhotoFile(file);
+      } catch (e) {
+        failed.push({ heic: e instanceof UndecodableImageError && e.heic, message: e instanceof Error ? e.message : "" });
+        continue;
+      }
+      const { key, width, height, bytes, exif } = saved;
+      const when = describeCapture(file, input, exif);
+      const geo =
+        exif.lat !== undefined && exif.lng !== undefined
+          ? { lat: exif.lat, lng: exif.lng, geoSource: "exif" as const }
+          : await position.then((p) => (p ? { lat: p.lat, lng: p.lng, accuracy: p.accuracy, geoSource: "device" as const } : {}));
+      let id: string;
+      try {
+        id = addPhoto({
+          orderId: meta.orderId, jornadaId: meta.jornadaId, incidentId: meta.incidentId, caseId: meta.caseId,
+          kind: meta.kind, area: meta.area || "Sin área",
+          takenAt: when.takenAt, takenAtSource: when.takenAtSource, origin: when.origin, ...geo,
+          source: { type: "idb", key, width, height }, selectedForReport: meta.selectedForReport ?? true, bytes,
+        });
+      } catch (e) {
+        void deletePhotoFile(key); // never leave an orphan blob behind
+        throw e;
+      }
+      ids.push(id);
+      const st = useAppStore.getState();
+      const photo = st.photos.find((p) => p.id === id);
+      if (photo) {
+        const jornada = meta.jornadaId ? st.jornadas.find((j) => j.id === meta.jornadaId) : undefined;
+        photoTimingIssues(photo, jornada).forEach((x) => warnings.push(x.label));
+        if (photo.origin === "gallery") {
+          const when = photo.takenAtSource === "device" ? "sin fecha de la toma" : `tomada ${fmtDateTime(photo.takenAt)}`;
+          // A gallery pick without GPS gets the phone's position at attach time: say so, it may not be where the picture was taken.
+          galleryNote = `Desde la galería · ${when}${photo.geoSource === "device" ? " · ubicación del teléfono, no de la toma" : ""}`;
+        }
+      }
+    }
+    if (failed.length) {
+      const heic = failed.some((f) => f.heic);
+      toast.error(`${plural(failed.length, "foto no se pudo agregar", "fotos no se pudieron agregar")}`, {
+        description: heic
+          ? "Formato HEIC no compatible con este navegador: conviértala a JPEG o use «Tomar foto»."
+          : failed.find((f) => f.message)?.message || "El archivo no es una imagen que este navegador pueda abrir.",
+      });
+    }
+    // "Guardada en el dispositivo" only once the device has it (a full phone refuses the write; the shell says so).
+    if (ids.length && (await flushWrite()) !== "committed")
+      toast.error(ids.length === 1 ? "La foto no se pudo guardar en el dispositivo" : "Las fotos no se pudieron guardar en el dispositivo", {
+        description: useAppStore.getState().sync.saveFull
+          ? "Libere espacio en el teléfono y no cierre la app: se reintenta guardar."
+          : "No cierre la app: se reintenta guardar.",
+      });
+    else if (ids.length)
+      toast.success(ids.length === 1 ? "Foto guardada en el dispositivo" : `${ids.length} fotos guardadas en el dispositivo`, { description: galleryNote });
+    if (warnings.length)
+      toast.warning([...new Set(warnings)].join(" · "), { description: "Se guardó, pero queda marcada para revisión en la bitácora." });
+  } catch (e) {
+    // The store already told the user why when it refused (PermissionDeniedError).
+    if (!(e instanceof PermissionDeniedError)) toast.error(e instanceof Error ? e.message : "No se pudo guardar la foto. Intente de nuevo.");
+  } finally {
+    release();
+  }
+  return ids;
+}
+
+/**
  * Photo capture helpers. Real captures are compressed and stored in IndexedDB; `simulate` adds a
  * procedural scene photo (demo only, handy on desktop without a camera). Returns the created photo ids.
  *
@@ -54,61 +146,14 @@ export function usePhotoCapture() {
   const addPhoto = useAppStore((s) => s.addPhoto);
   const [busy, setBusy] = useState(false);
 
-  /**
-   * `input` is the file input the pictures came through. Callers that cannot tell pass nothing: a fresh file counts as a
-   * camera shot and anything older than a few minutes as a gallery pick.
-   */
+  /** See captureFiles. */
   async function capture(files: FileList | File[], meta: CaptureMeta, input: CaptureInput = "camera") {
     setBusy(true);
-    const ids: string[] = [];
-    const warnings: string[] = [];
-    let galleryNote: string | undefined;
     try {
-      // One non-blocking position read per batch: a fix from the last two minutes is reused, no answer in 3 s = no coordinates.
-      const position = currentPosition(3000, 120_000);
-      for (const file of Array.from(files)) {
-        const { key, width, height, bytes, exif } = await savePhotoFile(file);
-        const when = describeCapture(file, input, exif);
-        const geo =
-          exif.lat !== undefined && exif.lng !== undefined
-            ? { lat: exif.lat, lng: exif.lng, geoSource: "exif" as const }
-            : await position.then((p) => (p ? { lat: p.lat, lng: p.lng, accuracy: p.accuracy, geoSource: "device" as const } : {}));
-        let id: string;
-        try {
-          id = addPhoto({
-            orderId: meta.orderId, jornadaId: meta.jornadaId, incidentId: meta.incidentId, caseId: meta.caseId,
-            kind: meta.kind, area: meta.area || "Sin área",
-            takenAt: when.takenAt, takenAtSource: when.takenAtSource, origin: when.origin, ...geo,
-            source: { type: "idb", key, width, height }, selectedForReport: meta.selectedForReport ?? true, bytes,
-          });
-        } catch (e) {
-          void deletePhotoFile(key); // never leave an orphan blob behind
-          throw e;
-        }
-        ids.push(id);
-        const st = useAppStore.getState();
-        const photo = st.photos.find((p) => p.id === id);
-        if (photo) {
-          const jornada = meta.jornadaId ? st.jornadas.find((j) => j.id === meta.jornadaId) : undefined;
-          photoTimingIssues(photo, jornada).forEach((x) => warnings.push(x.label));
-          if (photo.origin === "gallery") {
-            const when = photo.takenAtSource === "device" ? "sin fecha de la toma" : `tomada ${fmtDateTime(photo.takenAt)}`;
-            // A gallery pick without GPS gets the phone's position at attach time: say so, it may not be where the picture was taken.
-            galleryNote = `Desde la galería · ${when}${photo.geoSource === "device" ? " · ubicación del teléfono, no de la toma" : ""}`;
-          }
-        }
-      }
-      if (ids.length)
-        toast.success(ids.length === 1 ? "Foto guardada en el dispositivo" : `${ids.length} fotos guardadas en el dispositivo`, { description: galleryNote });
-      if (warnings.length)
-        toast.warning([...new Set(warnings)].join(" · "), { description: "Se guardó, pero queda marcada para revisión en la bitácora." });
-    } catch (e) {
-      // The store already told the user why when it refused (PermissionDeniedError).
-      if (!(e instanceof PermissionDeniedError)) toast.error(e instanceof Error ? e.message : "No se pudo guardar la foto. Intente de nuevo.");
+      return await captureFiles(files, meta, input);
     } finally {
       setBusy(false);
     }
-    return ids;
   }
 
   /** DEMO photo (procedural scene). Throws PermissionDeniedError like addPhoto when the role may not capture. */
@@ -128,8 +173,8 @@ export function usePhotoCapture() {
 }
 
 /**
- * Capture control: "Tomar foto" (opens rear camera on phones), "Galería", and "Simular" for demos (hidden when the
- * build has NEXT_PUBLIC_DEMO=0: a pilot never mixes made-up pictures into real evidence).
+ * Capture control: "Tomar foto" (opens rear camera on phones), "Galería", and "Simular" in a demo session only (never in an
+ * account session, whatever the build: real evidence never mixes with made-up pictures).
  */
 export function PhotoCaptureButtons({
   meta,
@@ -138,6 +183,7 @@ export function PhotoCaptureButtons({
   compact,
   disabled,
   help = !compact,
+  onBusyChange,
 }: {
   meta: CaptureMeta;
   onCaptured?: (ids: string[]) => void;
@@ -146,14 +192,25 @@ export function PhotoCaptureButtons({
   disabled?: boolean;
   /** Show `CAPTURE_HELP` under the buttons (default: yes, except in the compact variant). */
   help?: boolean;
+  /**
+   * `true` when a picked photo starts being saved (compressing, reading the position), `false` once it is done —
+   * after `onCaptured`, so a parent can hold its submit until the photos land. Every `true` is followed by one `false`.
+   */
+  onBusyChange?: (busy: boolean) => void;
 }) {
   const camRef = useRef<HTMLInputElement>(null);
   const galRef = useRef<HTMLInputElement>(null);
   const { capture, simulate, busy } = usePhotoCapture();
+  const demo = useDemoSession();
   const onFiles = async (files: FileList | null, input: CaptureInput) => {
     if (!files?.length) return;
-    const ids = await capture(files, meta, input);
-    if (ids.length) onCaptured?.(ids);
+    onBusyChange?.(true);
+    try {
+      const ids = await capture(files, meta, input);
+      if (ids.length) onCaptured?.(ids);
+    } finally {
+      onBusyChange?.(false);
+    }
   };
   return (
     <div className={cn("flex flex-wrap items-center gap-2", className)}>
@@ -165,7 +222,7 @@ export function PhotoCaptureButtons({
       <Button type="button" variant="outline" disabled={disabled || busy} onClick={() => galRef.current?.click()} className="h-10 rounded-[12px] px-3.5">
         <ImagePlus /> {!compact && "Galería"}
       </Button>
-      {DEMO_ENABLED && (
+      {demo && (
         <Button
           type="button"
           variant="ghost"
@@ -186,6 +243,7 @@ export function PhotoCaptureButtons({
         </Button>
       )}
       {help && <p className="basis-full text-[12.5px] leading-snug text-subtle">{CAPTURE_HELP}</p>}
+      {!compact && <ClockWarning className="basis-full" />}
     </div>
   );
 }

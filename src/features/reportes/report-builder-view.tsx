@@ -1,7 +1,7 @@
 "use client";
 
 import { use } from "react";
-import { useCan, useOrderBundle, useScopedData } from "@/lib/hooks";
+import { useCan, useCanonicalFolio, useOrderBundle, useScopedData } from "@/lib/hooks";
 import { PageHeader } from "@/components/pk/page";
 import { Shimmer } from "@/components/pk/feedback";
 import { NotFoundOrOutOfScope } from "@/components/shell/out-of-scope";
@@ -18,6 +18,7 @@ export function ReportBuilderView({ params }: { params: Promise<{ folio: string 
 
 function ReportBuilder({ folio }: { folio: string }) {
   const bundle = useOrderBundle(folio);
+  useCanonicalFolio(folio, bundle?.order.folio, "/ordenes/", "/reporte");
   const { orderIds } = useScopedData();
   const canClose = useCan("closure.authorize");
 

@@ -4,7 +4,9 @@
  * Photo rasterization for the PDF. react-pdf only embeds JPG/PNG, so:
  *  · procedural seed scenes (inline <svg>) are serialized with XMLSerializer → <img> → <canvas> → JPEG data URL
  *    (JPEG keeps a 12-photo report light enough for WhatsApp; the grime/noise filters make PNGs huge);
- *  · real captures stored in IndexedDB are read back as data URLs.
+ *  · real captures stored in IndexedDB are read back as data URLs;
+ *  · evidence on the server (Storage) comes from the copy kept on the device or a download with the account's session
+ *    (re-encoded to JPEG when it is not JPEG/PNG).
  * The rendered preview is the first source of SVGs (`[data-raster="<photoId>"] svg`); photos that are not
  * mounted (older versions, the reports hub) are rendered offscreen with the same <ScenePhoto> component.
  */
@@ -12,7 +14,7 @@ import { createElement } from "react";
 import { flushSync } from "react-dom";
 import { createRoot } from "react-dom/client";
 import { ScenePhoto } from "@/components/pk/scene-photo";
-import { getPhotoBlob } from "@/lib/photo-store";
+import { getPhotoBlob, getStoragePhotoBlob } from "@/lib/photo-store";
 import type { Photo } from "@/lib/types";
 
 const SVG_NS = "http://www.w3.org/2000/svg";
@@ -85,34 +87,79 @@ function renderSceneOffscreen(photo: Photo): SVGSVGElement | null {
   }
 }
 
+/** react-pdf embeds JPEG and PNG only: anything else (WebP evidence) is re-encoded. */
+async function pdfSafeDataUrl(blob: Blob) {
+  if (blob.type === "image/jpeg" || blob.type === "image/png") return blobToDataUrl(blob);
+  const bitmap = await createImageBitmap(blob);
+  const canvas = document.createElement("canvas");
+  canvas.width = bitmap.width;
+  canvas.height = bitmap.height;
+  const ctx = canvas.getContext("2d");
+  if (!ctx) throw new Error("Canvas no disponible");
+  // JPEG has no transparency: a transparent area would print black. White under it, as svgToJpeg does.
+  ctx.fillStyle = "#ffffff";
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+  ctx.drawImage(bitmap, 0, 0);
+  bitmap.close?.();
+  return canvas.toDataURL("image/jpeg", 0.86);
+}
+
 export async function photoToDataUrl(photo: Photo, root?: ParentNode | null): Promise<string | null> {
   if (photo.source.type === "idb") {
     const blob = await getPhotoBlob(photo.source.key);
     return blob ? blobToDataUrl(blob) : null;
+  }
+  if (photo.source.type === "storage") {
+    const blob = await getStoragePhotoBlob(photo.source.path);
+    return blob ? pdfSafeDataUrl(blob) : null;
   }
   const mounted = root?.querySelector<SVGSVGElement>(`[data-raster="${photo.id}"] svg`);
   const svg = mounted ?? renderSceneOffscreen(photo);
   return svg ? svgToJpeg(svg) : null;
 }
 
-/** Rasterize photos sequentially (keeps the main thread breathing so progress can animate). */
+/**
+ * Evidence on the server that could not be read now (no copy kept on the device, and the download got no answer or was
+ * refused: a weak signal, an expired session). The photo exists: a PDF with a placeholder in its place would be cached and
+ * shared as the report, so the composition fails instead and the person tries again with a connection.
+ */
+export class PhotosUnavailableError extends Error {
+  constructor(readonly count: number) {
+    super(
+      count === 1
+        ? "No se pudo descargar una de las fotos del reporte. Con conexión, intente de nuevo."
+        : `No se pudieron descargar ${count} fotos del reporte. Con conexión, intente de nuevo.`,
+    );
+    this.name = "PhotosUnavailableError";
+  }
+}
+
+/**
+ * Rasterize photos sequentially (keeps the main thread breathing so progress can animate). A capture whose picture is gone
+ * from the device becomes a placeholder in the PDF; a server photo that cannot be read now fails the whole composition
+ * (PhotosUnavailableError), once every photo was tried.
+ */
 export async function rasterizePhotos(
   photos: Photo[],
   opts: { root?: ParentNode | null; onProgress?: (done: number, total: number) => void } = {},
 ): Promise<Record<string, string>> {
   const out: Record<string, string> = {};
+  let unavailable = 0;
   let done = 0;
   opts.onProgress?.(0, photos.length);
   for (const p of photos) {
+    let url: string | null = null;
     try {
-      const url = await photoToDataUrl(p, opts.root);
-      if (url) out[p.id] = url;
+      url = await photoToDataUrl(p, opts.root);
     } catch {
-      // a missing capture becomes a placeholder in the PDF
+      // handled below
     }
+    if (url) out[p.id] = url;
+    else if (p.source.type === "storage") unavailable++;
     done++;
     opts.onProgress?.(done, photos.length);
     await nextFrame();
   }
+  if (unavailable) throw new PhotosUnavailableError(unavailable);
   return out;
 }

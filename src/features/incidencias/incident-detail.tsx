@@ -9,6 +9,7 @@ import { useMediaQuery } from "@/lib/hooks";
 import { fmtAgo, fmtDateTime, fmtDay, plural } from "@/lib/format";
 import { INCIDENT_TYPE, SEVERITY } from "@/lib/status";
 import type { Photo } from "@/lib/types";
+import { TEXT_LIMITS } from "@/lib/domain";
 import { Sheet, SheetContent, SheetDescription, SheetFooter, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -18,7 +19,7 @@ import { OrderStatusPill, SoftBadge } from "@/components/pk/status";
 import { PhotoThumb } from "@/components/pk/scene-photo";
 import { ClientMark } from "@/components/pk/client-mark";
 import { Timeline, type TimelineStep } from "@/components/pk/timeline";
-import { AuroraStat, BigButton, FlowHeading, FlowScreen, ItemCard, SuccessHero } from "@/components/pk/mobile";
+import { AuroraStat, BigButton, FlowHeading, FlowScreen, ItemCard, MODAL_DESKTOP_QUERY, SuccessHero } from "@/components/pk/mobile";
 import { EASE } from "@/components/pk/motion";
 import { PhotoLightbox, useLightbox } from "@/features/evidencias/photo-lightbox";
 import { Guarded } from "@/features/evidencias/guarded";
@@ -33,7 +34,10 @@ type Model = ReturnType<typeof useIncidentModel>;
 type Ready = Model & { incident: NonNullable<Model["incident"]>; bundle: NonNullable<Model["bundle"]> };
 const isReady = (m: Model): m is Ready => !!m.incident && !!m.bundle;
 
-/** Incident detail: right Sheet on tablet/desktop, full-screen flow (with success screen) on phones. */
+/**
+ * Incident detail: right Sheet from lg (the desktop panel), the phone flow (with success screen) below it — a page
+ * sheet on tablets.
+ */
 export function IncidentDetail({
   incidentId,
   open,
@@ -46,7 +50,7 @@ export function IncidentDetail({
   /** open incidents in scope (phone success screen) */
   openCount: number;
 }) {
-  const isDesktop = useMediaQuery("(min-width: 768px)");
+  const isDesktop = useMediaQuery(MODAL_DESKTOP_QUERY);
   if (!isDesktop) return incidentId ? <PhoneIncident key={incidentId} incidentId={incidentId} open={open} onOpenChange={onOpenChange} openCount={openCount} /> : null;
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
@@ -435,6 +439,7 @@ function ResolutionForm({ value, onChange }: { value: string; onChange: (v: stri
         id="inc-resolution"
         value={value}
         onChange={(e) => onChange(e.target.value)}
+        maxLength={TEXT_LIMITS.resolution.max}
         placeholder="¿Qué se hizo y con quién se acordó?"
         className="min-h-[104px] rounded-[14px] text-[15px]"
       />

@@ -1,6 +1,5 @@
 "use client";
 
-import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { motion } from "motion/react";
 import { CloudUpload, Download, LogOut, RotateCcw, Share, Smartphone, WifiOff } from "lucide-react";
@@ -8,7 +7,6 @@ import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { useAppStore, useCurrentUser, useLookups, useSyncSummary } from "@/lib/hooks";
 import { useUi } from "@/lib/ui-store";
-import { DEMO_ENABLED } from "@/lib/demo";
 import { ROLE_LABEL } from "@/lib/status";
 import { fmtAgo, plural } from "@/lib/format";
 import type { Role } from "@/lib/types";
@@ -22,6 +20,8 @@ import { ThemeSegmented, useThemeChoice } from "@/components/shell/theme-switche
 import { UnitPickerSheet, useUnitScope } from "@/components/shell/unit-picker";
 import { useInstallPrompt } from "@/components/shell/pwa";
 import { DemoResetDialog } from "@/components/shell/demo-reset-dialog";
+import { useSignOut } from "@/features/auth/use-sign-out";
+import { useDemoControls } from "@/features/auth/session";
 
 function Card({ children, className }: { children: React.ReactNode; className?: string }) {
   return (
@@ -35,9 +35,9 @@ function Card({ children, className }: { children: React.ReactNode; className?: 
 export function PerfilView() {
   const user = useCurrentUser();
   const lk = useLookups();
-  const router = useRouter();
   const switchRole = useAppStore((s) => s.switchRole);
-  const signOut = useAppStore((s) => s.signOut);
+  const demo = useDemoControls();
+  const { requestSignOut, signOutDialog } = useSignOut();
   const forced = useAppStore((s) => s.sync.forcedOffline);
   const setForced = useAppStore((s) => s.setForcedOffline);
   const { offline, pending, lastSyncAt } = useSyncSummary();
@@ -143,7 +143,7 @@ export function PerfilView() {
           </Card>
         )}
 
-        {DEMO_ENABLED && (
+        {demo && (
           <Card>
             <p className="mb-3 text-[12px] font-semibold uppercase tracking-[0.1em] text-subtle">Ver la app como (demo)</p>
             <Segmented
@@ -168,7 +168,7 @@ export function PerfilView() {
         </Card>
 
         <Card className="p-2">
-          {DEMO_ENABLED && (
+          {demo && (
             <button
               onClick={() => setResetOpen(true)}
               className="flex h-[52px] w-full items-center gap-3.5 rounded-[14px] px-3 text-left text-[15.5px] text-ink active:bg-sand"
@@ -180,10 +180,7 @@ export function PerfilView() {
             </button>
           )}
           <button
-            onClick={() => {
-              signOut();
-              router.push("/login");
-            }}
+            onClick={requestSignOut}
             className="flex h-[52px] w-full items-center gap-3.5 rounded-[14px] px-3 text-left text-[15.5px] text-red-fg active:bg-sand"
           >
             <span className="inline-flex size-9 items-center justify-center rounded-[11px] bg-red-soft">
@@ -195,6 +192,7 @@ export function PerfilView() {
         <p className="pb-2 text-center text-[12px] text-subtle">Pulkro Cuadrillas · prototipo v1.0 · datos guardados en este dispositivo</p>
       </motion.div>
       <DemoResetDialog open={resetOpen} onOpenChange={setResetOpen} />
+      {signOutDialog}
     </div>
   );
 }

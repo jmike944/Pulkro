@@ -42,11 +42,13 @@ export function SiteQuickCard({ className }: { className?: string }) {
         </div>
       </div>
       <div className="mt-3.5 flex gap-2">
-        <Button asChild variant="outline" className="h-11 min-w-0 flex-1 rounded-[12px] border-line font-semibold">
-          <a href={mapsLink(site.lat, site.lng)} target="_blank" rel="noreferrer">
-            <Navigation /> Cómo llegar
-          </a>
-        </Button>
+        {!site.unavailable && (
+          <Button asChild variant="outline" className="h-11 min-w-0 flex-1 rounded-[12px] border-line font-semibold">
+            <a href={mapsLink(site.lat, site.lng)} target="_blank" rel="noreferrer">
+              <Navigation /> Cómo llegar
+            </a>
+          </Button>
+        )}
         {phone && (
           <Button asChild variant="outline" className="h-11 min-w-0 flex-1 rounded-[12px] border-line font-semibold">
             <a href={`tel:${phone.replace(/\s/g, "")}`} aria-label={`Llamar a ${order.siteContact.name || "contacto en sitio"}`}>
@@ -79,12 +81,13 @@ export function SitePanel() {
   const inFix = stamped?.checkIn && stamped.checkIn.source !== "remota" ? stamped.checkIn : undefined;
   const outFix = stamped?.checkOut && stamped.checkOut.source !== "remota" ? stamped.checkOut : undefined;
   const markers = useMemo(() => {
-    const m: GeoMarker[] = [{ lat: site.lat, lng: site.lng, kind: "site", label: "Sitio", tooltip: site.name }];
+    // A site not on this device has no location: no pin, no distance to it.
+    const m: GeoMarker[] = site.unavailable ? [] : [{ lat: site.lat, lng: site.lng, kind: "site", label: "Sitio", tooltip: site.name }];
     if (stamped && inFix) m.push({ lat: inFix.lat, lng: inFix.lng, kind: stamped.checkOut ? "checkin" : "live", label: "Entrada", tooltip: `Jornada ${stamped.dayIndex}` });
     if (stamped && outFix) m.push({ lat: outFix.lat, lng: outFix.lng, kind: "checkout", label: "Salida", tooltip: `Jornada ${stamped.dayIndex}` });
     return m;
   }, [site, stamped, inFix, outFix]);
-  const dist = inFix ? Math.round(distanceMeters(site, inFix)) : null;
+  const dist = inFix && !site.unavailable ? Math.round(distanceMeters(site, inFix)) : null;
 
   return (
     <section>
@@ -108,18 +111,29 @@ export function SitePanel() {
           },
         ]}
       />
-      <GeoMap markers={markers} connect accuracy={inFix ? { lat: inFix.lat, lng: inFix.lng, radius: inFix.accuracy } : undefined} className="mt-5 h-[210px]" />
+      {/* Without the site's pin, a line from the entrada to the salida would read as a route between them. */}
+      <GeoMap
+        markers={markers}
+        connect={!site.unavailable}
+        accuracy={inFix ? { lat: inFix.lat, lng: inFix.lng, radius: inFix.accuracy } : undefined}
+        className="mt-5 h-[210px]"
+      />
       <div className="mt-2.5 flex items-center justify-between gap-3 text-[12.5px] text-subtle">
-        <span className="min-w-0 truncate">
+        <span className={cn("min-w-0", inFix && dist === null ? "leading-snug" : "truncate")}>
           {stamped?.checkIn?.source === "remota"
             ? `Entrada J${stamped.dayIndex} por supervisión remota`
             : stamped && inFix && dist !== null
               ? `Entrada J${stamped.dayIndex} a ${dist} m del sitio · ${inFix.source === "manual" ? "ubicación manual" : `±${Math.round(inFix.accuracy)} m`}`
-              : "Sin registros GPS todavía"}
+              : stamped && inFix
+                ? // A fix is recorded, but the site's location is not on this device yet: no distance to measure.
+                  `${inFix.source === "manual" ? "Ubicación manual" : "Registro GPS"} de la entrada J${stamped.dayIndex} · la ubicación del sitio aún no está en este dispositivo`
+                : "Sin registros GPS todavía"}
         </span>
-        <a href={mapsLink(site.lat, site.lng)} target="_blank" rel="noreferrer" className="inline-flex min-h-11 shrink-0 items-center gap-1 font-semibold text-link lg:min-h-0">
-          Abrir en Maps <ArrowUpRight className="size-3.5" />
-        </a>
+        {!site.unavailable && (
+          <a href={mapsLink(site.lat, site.lng)} target="_blank" rel="noreferrer" className="inline-flex min-h-11 shrink-0 items-center gap-1 font-semibold text-link lg:min-h-0">
+            Abrir en Maps <ArrowUpRight className="size-3.5" />
+          </a>
+        )}
       </div>
     </section>
   );

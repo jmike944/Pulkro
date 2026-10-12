@@ -5,9 +5,11 @@ import { AnimatePresence, motion } from "motion/react";
 import { Camera, CircleAlert, CloudOff, Crosshair, Headset, Info, LocateFixed, MapPin, MapPinned, RefreshCw, ShieldCheck, Sparkles, Timer, Wifi } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { GeoInput } from "@/lib/store";
-import { GEO_NOTE_MIN } from "@/lib/domain";
+import { useDemoSession } from "@/lib/hooks";
+import { GEO_NOTE_MIN, TEXT_LIMITS } from "@/lib/domain";
 import { fmtCoords } from "@/lib/format";
 import { ClientMark } from "@/components/pk/client-mark";
+import { ClockWarning } from "@/components/pk/clock-warning";
 import { distanceMeters, readPosition, type GeoMarker, type GeoReading } from "@/components/pk/geo-map";
 import { AuroraStat, BigButton, FlowHeading, FlowScreen, ItemCard, MobileRow } from "@/components/pk/mobile";
 import { AnimatedNumber } from "@/components/pk/bits";
@@ -89,6 +91,9 @@ export function GpsFlow({
 }) {
   const copy = COPY[mode];
   const { site } = f;
+  // The site has not reached this device yet (a stand-in): its 0,0 is no location — nothing is measured against it, and it is
+  // never recorded in place of a reading (no «Continuar sin GPS», no site location, no remote stamp without a live reading).
+  const known = !site.unavailable;
   const [attempt, setAttempt] = useState(0);
   const [reading, setReading] = useState<Reading | null>(null);
   const [useSite, setUseSite] = useState(false);
@@ -98,6 +103,7 @@ export function GpsFlow({
   const [error, setError] = useState<string | null>(null);
   const [done, setDone] = useState<Extract<GpsResult, { ok: true }> | null>(null);
   const [slow, setSlow] = useState(false);
+  const demo = useDemoSession();
 
   const siteLat = site.lat;
   const siteLng = site.lng;
@@ -105,7 +111,7 @@ export function GpsFlow({
     if (!open) return;
     let alive = true;
     // Keep the radar on screen long enough to read as "searching", even when GPS answers instantly.
-    void Promise.all([readPosition({ lat: siteLat, lng: siteLng }, 9000), wait(1700)]).then(([r]) => {
+    void Promise.all([readPosition({ lat: siteLat, lng: siteLng }, { demo, timeoutMs: 9000 }), wait(1700)]).then(([r]) => {
       if (alive) setReading((prev) => prev ?? { ...r, at: new Date().toISOString() });
     });
     // An unanswered permission prompt never times out: offer a way forward after a few seconds.
@@ -114,7 +120,7 @@ export function GpsFlow({
       alive = false;
       clearTimeout(t);
     };
-  }, [open, siteLat, siteLng, attempt]);
+  }, [open, siteLat, siteLng, attempt, demo]);
 
   const close = () => onOpenChange(false);
   const retry = () => {
@@ -225,16 +231,22 @@ export function GpsFlow({
         <AnimatePresence>
           {slow && (
             <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="mt-2 flex flex-col items-center gap-2 text-center">
-              <p className="text-[13.5px] text-subtle">¿El teléfono no responde? Revise el permiso de ubicación o continúe con una justificación.</p>
-              <button
-                type="button"
-                onClick={() =>
-                  setReading({ lat: site.lat, lng: site.lng, accuracy: 25, source: "gps", simulated: true, error: "No se obtuvo señal GPS", at: new Date().toISOString() })
-                }
-                className="inline-flex h-11 items-center gap-2 rounded-[12px] px-4 text-[14px] font-semibold text-link transition hover:bg-sky-soft"
-              >
-                <MapPinned className="size-4" /> Continuar sin GPS
-              </button>
+              <p className="text-[13.5px] text-subtle">
+                {known
+                  ? "¿El teléfono no responde? Revise el permiso de ubicación o continúe con una justificación."
+                  : "¿El teléfono no responde? Revise el permiso de ubicación: la ubicación del sitio aún no está en este dispositivo, así que se necesita la del teléfono."}
+              </p>
+              {known && (
+                <button
+                  type="button"
+                  onClick={() =>
+                    setReading({ lat: site.lat, lng: site.lng, accuracy: 25, source: "manual", simulated: true, error: "No se obtuvo señal GPS", at: new Date().toISOString() })
+                  }
+                  className="inline-flex h-11 items-center gap-2 rounded-[12px] px-4 text-[14px] font-semibold text-link transition hover:bg-sky-soft"
+                >
+                  <MapPinned className="size-4" /> Continuar sin GPS
+                </button>
+              )}
             </motion.div>
           )}
         </AnimatePresence>
@@ -252,12 +264,16 @@ export function GpsFlow({
   /* ── review ── */
   // A real reading of the phone (never the simulated fallback). In remote supervision it is where the SUPERVISOR is, not the site.
   const live = reading && !reading.simulated ? { lat: reading.lat, lng: reading.lng, accuracy: reading.accuracy } : null;
+  // The site's own location stands in only when the device holds it; a simulated reading is that same stand-in.
+  const atSite = (accuracy: number) => (known ? { lat: site.lat, lng: site.lng, accuracy } : null);
   const point = remote
-    ? (live ?? { lat: site.lat, lng: site.lng, accuracy: 0 })
+    ? (live ?? atSite(0))
     : useSite || !reading
-      ? { lat: site.lat, lng: site.lng, accuracy: 15 }
-      : { lat: reading.lat, lng: reading.lng, accuracy: reading.accuracy };
-  const distance = distanceMeters(point, site);
+      ? atSite(15)
+      : reading.simulated
+        ? (known ? { lat: reading.lat, lng: reading.lng, accuracy: reading.accuracy } : null)
+        : { lat: reading.lat, lng: reading.lng, accuracy: reading.accuracy };
+  const distance = point && known ? distanceMeters(point, site) : null;
   const issues: string[] = [];
   if (remote) {
     // no geofence: the supervisor is not at the site by definition
@@ -265,13 +281,15 @@ export function GpsFlow({
   else if (reading) {
     if (reading.error) issues.push(`${reading.error}: la posición es aproximada.`);
     if (reading.simulated && !reading.error) issues.push("El dispositivo no entregó una lectura GPS real; la posición es aproximada.");
-    if (distance > MAX_SITE_DISTANCE) issues.push(`Está a ${fmtDistance(distance)} del sitio (máximo ${MAX_SITE_DISTANCE} m).`);
+    if (!known) issues.push("La ubicación del sitio aún no está en este dispositivo: no se puede comprobar la distancia.");
+    else if (distance !== null && distance > MAX_SITE_DISTANCE) issues.push(`Está a ${fmtDistance(distance)} del sitio (máximo ${MAX_SITE_DISTANCE} m).`);
   }
   const needsNote = remote || issues.length > 0;
   const noteOk = note.trim().length >= GEO_NOTE_MIN;
-  const canConfirm = (!needsNote || noteOk) && ack;
+  const canConfirm = !!point && (!needsNote || noteOk) && ack;
 
   const confirm = () => {
+    if (!point) return;
     const geo: GeoInput = remote
       ? { lat: point.lat, lng: point.lng, accuracy: point.accuracy, source: "remota", note: note.trim() }
       : needsNote
@@ -313,11 +331,22 @@ export function GpsFlow({
           </button>
         </div>
 
-        <ReadingMap site={site} point={point} useSite={useSite} mode={mode} />
+        {point ? (
+          <ReadingMap site={site} point={point} useSite={useSite} mode={mode} />
+        ) : (
+          <p role="alert" className="rounded-[16px] bg-amber-soft px-4 py-3 text-[13.5px] leading-snug text-amber-olive">
+            No hay ubicación que registrar: el teléfono no dio una lectura GPS y la ubicación del sitio aún no está en este dispositivo.
+            Lea de nuevo con la ubicación activada, o espere a que el sitio llegue con señal.
+          </p>
+        )}
 
         <dl className="grid grid-cols-2 gap-px overflow-hidden rounded-[18px] bg-hairline ring-1 ring-hairline">
-          <Stat label="Distancia al sitio" value={useSite ? "0 m" : fmtDistance(distance)} tone={!useSite && distance > MAX_SITE_DISTANCE ? "red" : "ok"} />
-          <Stat label="Precisión" value={`±${Math.round(point.accuracy)} m`} tone={point.accuracy > 50 ? "amber" : "ok"} />
+          <Stat
+            label="Distancia al sitio"
+            value={useSite ? "0 m" : distance === null ? "—" : fmtDistance(distance)}
+            tone={!useSite && distance !== null && distance > MAX_SITE_DISTANCE ? "red" : "ok"}
+          />
+          <Stat label="Precisión" value={point ? `±${Math.round(point.accuracy)} m` : "—"} tone={point && point.accuracy > 50 ? "amber" : "ok"} />
           <Stat label="Hora del dispositivo" value={fmtClock(reading?.at ?? new Date())} />
           <Stat
             label="Se guarda"
@@ -331,7 +360,7 @@ export function GpsFlow({
           />
         </dl>
         <p className="flex items-center gap-1.5 text-[12.5px] text-subtle tabular">
-          <Crosshair className="size-3.5 shrink-0" /> {remote ? "Supervisión remota · ubicación de referencia del sitio" : needsNote ? "Manual justificada" : "GPS del dispositivo"} · {fmtCoords(point.lat, point.lng)}
+          <Crosshair className="size-3.5 shrink-0" /> {remote ? "Supervisión remota · ubicación de referencia del sitio" : needsNote ? "Manual justificada" : "GPS del dispositivo"} · {point ? fmtCoords(point.lat, point.lng) : "sin ubicación"}
         </p>
       </motion.div>
 
@@ -361,6 +390,7 @@ export function GpsFlow({
                 id="gps-note"
                 value={note}
                 onChange={(e) => setNote(e.target.value)}
+                maxLength={TEXT_LIMITS.geoNote.max}
                 placeholder={remote ? "¿Cómo confirmó la entrada o salida de la cuadrilla?" : "¿Por qué no hay lectura GPS confiable en el sitio?"}
                 className="min-h-[84px] rounded-[14px] border-amber-line bg-surface text-[16px]"
               />
@@ -371,7 +401,7 @@ export function GpsFlow({
                   </Chip>
                 ))}
               </div>
-              {!remote && !useSite && (
+              {!remote && !useSite && known && (
                 <button
                   type="button"
                   onClick={() => {
@@ -387,6 +417,8 @@ export function GpsFlow({
           </motion.div>
         )}
       </AnimatePresence>
+
+      <ClockWarning className="mt-5" />
 
       {warnings.length > 0 && (
         <ul className="mt-5 space-y-2">
@@ -417,7 +449,7 @@ export function GpsFlow({
 function ReadingMap({ site, point, useSite, mode }: { site: FieldReady["site"]; point: { lat: number; lng: number; accuracy: number }; useSite: boolean; mode: GpsMode }) {
   const { lat, lng, accuracy } = point;
   const props = useMemo(() => {
-    const markers: GeoMarker[] = [{ lat: site.lat, lng: site.lng, kind: "site", label: "Sitio", tooltip: site.name }];
+    const markers: GeoMarker[] = site.unavailable ? [] : [{ lat: site.lat, lng: site.lng, kind: "site", label: "Sitio", tooltip: site.name }];
     if (!useSite) markers.push({ lat, lng, kind: mode === "entrada" ? "checkin" : "checkout", label: mode === "entrada" ? "Entrada" : "Salida" });
     return { markers, accuracy: { lat, lng, radius: accuracy } };
   }, [site, lat, lng, accuracy, useSite, mode]);

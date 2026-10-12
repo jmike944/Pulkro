@@ -13,7 +13,7 @@ declare
     'update_photo', 'delete_photo', 'set_photo_selected', 'add_incident', 'update_incident', 'resolve_incident',
     'validate_closure', 'generate_report', 'log_share', 'create_case', 'update_case', 'add_case_note', 'create_survey',
     'record_manual_survey', 'upsert_unit', 'upsert_client', 'upsert_site', 'upsert_worker', 'upsert_service_type',
-    'upsert_material', 'provision_profile', 'update_profile', 'update_my_contact'];
+    'upsert_material', 'provision_profile', 'update_profile', 'update_my_contact', 'sync_profile_email'];
   v_history text[] := array[
     'crew_changes', 'jornada_checks', 'jornada_notes', 'case_events', 'order_closures', 'reports', 'report_shares',
     'survey_tokens', 'audit_log'];

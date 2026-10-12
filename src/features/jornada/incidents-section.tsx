@@ -10,6 +10,7 @@ import { useAppStore, useLookups } from "@/lib/hooks";
 import { fmtDateTime, fmtTime } from "@/lib/format";
 import { INCIDENT_TYPE, SEVERITY, toneSoftBg, toneText } from "@/lib/status";
 import type { Incident, Photo } from "@/lib/types";
+import { TEXT_LIMITS } from "@/lib/domain";
 import { INCIDENT_ICONS } from "@/components/pk/incident-sheet";
 import { PhotoImage } from "@/components/pk/scene-photo";
 import { SoftBadge, ToneText } from "@/components/pk/status";
@@ -175,6 +176,7 @@ function IncidentRow({ f, inc, photos }: { f: FieldReady; inc: Incident; photos:
                     id={`res-${inc.id}`}
                     value={text}
                     onChange={(e) => setText(e.target.value)}
+                    maxLength={TEXT_LIMITS.resolution.max}
                     placeholder="Ej. Se repuso material con entrega urgente y se informó al contacto."
                     className="min-h-[76px] rounded-[14px] bg-surface text-[16px] sm:text-[15px]"
                   />

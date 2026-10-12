@@ -13,6 +13,7 @@ import { toast } from "sonner";
 import { useAppStore, useLookups } from "@/lib/hooks";
 import { plural } from "@/lib/format";
 import type { Jornada, Order, Worker } from "@/lib/types";
+import { TEXT_LIMITS } from "@/lib/domain";
 import { CrewPicker } from "@/components/pk/crew-picker";
 import { PersonAvatar } from "@/components/pk/bits";
 import { ModalCancel, ModalShell, firstMissing } from "@/components/pk/modal-shell";
@@ -151,7 +152,7 @@ function CrewForm({ open, onOpenChange, order, jornadas, jornadaId, allowApplyAl
           )}
         </AnimatePresence>
 
-        <ReasonField id="crew-reason" value={reason} onChange={setReason} suggestions={REASONS} />
+        <ReasonField id="crew-reason" value={reason} onChange={setReason} suggestions={REASONS} max={TEXT_LIMITS.crewReason.max} />
       </div>
     </ModalShell>
   );

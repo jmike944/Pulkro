@@ -1,26 +1,26 @@
 "use client";
 
-import { Suspense, useEffect, useState } from "react";
+import { Suspense, useCallback, useEffect, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { AnimatePresence, motion } from "motion/react";
-import { ArrowRight, Check, ShieldCheck } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { ArrowLeft, Loader2, ShieldCheck, Sparkles } from "lucide-react";
 import { useAppStore } from "@/lib/store";
-import { DEMO_USER_BY_ROLE } from "@/lib/seed";
-import { ROLE_LABEL } from "@/lib/status";
-import type { Role } from "@/lib/types";
-import { PulkroLogo } from "@/components/pk/brand";
-import { Bubbles } from "@/components/pk/aurora";
-import { PersonAvatar } from "@/components/pk/bits";
-import { EASE } from "@/components/pk/motion";
+import { verifyAccount } from "@/lib/sync/pull";
+import { DEMO_SIGN_IN } from "@/lib/demo";
+import { isSupabaseConfigured } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
+import { AccountSignIn } from "./account-sign-in";
+import { AuthFrame, AuthHeading } from "./auth-frame";
+import { DemoPicker } from "./demo-picker";
+import { TextAction } from "./form-bits";
+import { RecoveryRequest } from "./recovery-request";
+import { safeNext } from "./safe-next";
 
-const ROLE_COPY: Record<Role, string> = {
-  direccion: "Todas las unidades, indicadores y exportaciones.",
-  administracion: "Alta de órdenes, postventa y reportes de su unidad.",
-  supervisor: "Cuadrillas, jornadas con GPS, evidencia, cierre y envío.",
-};
+type Panel = "account" | "recovery" | "demo";
 
+/**
+ * /login. With a Supabase project: e-mail + password (accounts are created by Dirección through an invite), "¿Olvidó su
+ * contraseña?", and — while the demo is on — "Entrar al demo" as the secondary way in. Without one: only the demo picker.
+ */
 export function LoginView() {
   return (
     <Suspense>
@@ -30,129 +30,131 @@ export function LoginView() {
 }
 
 function LoginInner() {
-  const hydrated = useAppStore((s) => s.hydrated);
-  const users = useAppStore((s) => s.users);
-  const signIn = useAppStore((s) => s.signIn);
   const router = useRouter();
   const params = useSearchParams();
-  const [role, setRole] = useState<Role>("supervisor");
+  const hydrated = useAppStore((s) => s.hydrated);
+  const accountSignedIn = useAppStore((s) => s.session.signedIn && s.session.mode === "supabase");
+  // The browser has no Supabase session for the account whose data is on the device: sign in again (same account, data kept).
+  const reauth = useAppStore((s) => s.session.signedIn && s.session.mode === "supabase" && !!s.session.needsReauth);
+  const noAccess = useAppStore((s) => s.session.signedIn && s.session.mode === "supabase" && !!s.session.noAccess);
+  // The browser's Supabase session has been compared with the account on the device (verifyAccount).
+  const [checked, setChecked] = useState(false);
+  const accountEmail = useAppStore((s) => (s.session.mode === "supabase" ? s.users.find((u) => u.id === s.session.userId)?.email : undefined));
+  const [panel, setPanel] = useState<Panel>(() =>
+    !isSupabaseConfigured ? "demo" : params.get("recuperar") === "1" ? "recovery" : "account",
+  );
+  // null = not typed yet: a re-authentication offers the account's own e-mail.
+  const [typedEmail, setEmail] = useState<string | null>(null);
+  const email = typedEmail ?? (reauth ? (accountEmail ?? "") : "");
   const [leaving, setLeaving] = useState(false);
+  const leavingRef = useRef(false);
+  const next = safeNext(params.get("next"));
 
   useEffect(() => {
     router.prefetch("/");
   }, [router]);
 
-  const enter = () => {
-    signIn(DEMO_USER_BY_ROLE[role]);
+  const entered = useCallback(() => {
+    leavingRef.current = true;
     setLeaving(true);
-    const next = params.get("next");
-    setTimeout(() => router.replace(next && next.startsWith("/") && !next.startsWith("/login") ? next : "/"), 450);
-  };
+    setTimeout(() => router.replace(next), 450);
+  }, [router, next]);
+
+  useEffect(() => {
+    if (!hydrated || !accountSignedIn) return;
+    let alive = true;
+    // None, or another account's (a link opened on this device) → needsReauth: the form below. This account's → in.
+    void verifyAccount(useAppStore).then(() => alive && setChecked(true));
+    return () => {
+      alive = false;
+    };
+  }, [hydrated, accountSignedIn]);
+
+  // An account already signed in on this device goes straight in (it signs out from the app, which checks unsent changes) once
+  // the browser's Supabase session is its own (or cannot be checked offline); otherwise it signs in again here. Only from the
+  // sign-in panel: «¿Olvidó su contraseña?» (/login?recuperar=1, e.g. «Pedir un enlace nuevo» for someone else's expired
+  // link) stays open — asking for a recovery e-mail does not touch the open session.
+  useEffect(() => {
+    if (panel === "account" && hydrated && accountSignedIn && checked && !reauth && !leavingRef.current) router.replace(next);
+  }, [panel, hydrated, accountSignedIn, checked, reauth, router, next]);
+  const opening = hydrated && accountSignedIn && !reauth;
 
   return (
-    <div className="grid min-h-dvh grid-cols-[minmax(0,1fr)] bg-canvas lg:grid-cols-[1.1fr_1fr]">
-      {/* Brand side */}
-      <div className="bg-aurora grain relative hidden overflow-hidden lg:block">
-        <Bubbles />
-        <div className="relative z-[2] flex h-full flex-col justify-between p-12">
-          <PulkroLogo />
-          <div className="max-w-xl">
-            <motion.p
-              initial={{ opacity: 0, y: 20, filter: "blur(8px)" }}
-              animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
-              transition={{ duration: 0.9, ease: EASE }}
-              className="font-serif text-[58px] font-medium leading-[1.02] tracking-[-0.02em] text-ink"
-            >
-              Si piensa en limpio…
-              <br />
-              <span className="italic text-brand-ink">¡piense en Pulkro!</span>
-            </motion.p>
-            <motion.p
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ delay: 0.5, duration: 0.8 }}
-              className="mt-6 max-w-md text-[16px] leading-relaxed text-ink/70"
-            >
-              Control operativo y postventa de cuadrillas: de la orden autorizada al reporte con fotos, sin papel y aun sin señal.
-            </motion.p>
-          </div>
-          <div className="flex gap-10 text-[13px] text-ink/60">
-            <span>
-              <b className="block text-[22px] font-medium text-ink">1985</b>Desde
-            </span>
-            <span>
-              <b className="block text-[22px] font-medium text-ink">3</b>Unidades
-            </span>
-            <span>
-              <b className="block text-[22px] font-medium text-ink">Sin señal</b>Captura en campo
-            </span>
-          </div>
+    <AuthFrame leaving={leaving} cardKey={panel}>
+      {panel === "account" && opening && (
+        <div className="flex flex-col items-center py-10 text-center" role="status">
+          <Loader2 className="size-8 animate-spin text-subtle" />
+          <p className="mt-4 text-[15px] text-subtle">Abriendo su cuenta…</p>
         </div>
-      </div>
+      )}
 
-      {/* Form side */}
-      <div className="flex items-center justify-center p-5 sm:p-10">
-        <AnimatePresence>
-          {!leaving && (
-            <motion.div
-              initial={{ opacity: 0, y: 16 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.97, filter: "blur(6px)" }}
-              transition={{ duration: 0.5, ease: EASE }}
-              className="w-full max-w-[440px] rounded-[28px] bg-surface p-7 shadow-lift ring-1 ring-edge sm:p-9"
-            >
-              <PulkroLogo className="mb-8 gap-3 lg:hidden [&>span:first-child]:size-11 [&>span:last-child]:h-[19px]" />
-              <h1 className="font-serif text-[34px] font-medium leading-tight text-ink">Bienvenido</h1>
-              <p className="mt-2 text-[15px] text-subtle">Elija un perfil de demostración para entrar. Cada rol ve solo lo que le corresponde.</p>
-
-              <div className="mt-7 space-y-3" role="radiogroup" aria-label="Perfil">
-                {(["supervisor", "administracion", "direccion"] as Role[]).map((r, i) => {
-                  const u = users.find((x) => x.id === DEMO_USER_BY_ROLE[r]);
-                  const active = role === r;
-                  return (
-                    <motion.button
-                      key={r}
-                      role="radio"
-                      aria-checked={active}
-                      aria-label={`${ROLE_LABEL[r]}${u ? ` · ${u.name}` : ""}`}
-                      initial={{ opacity: 0, x: 12 }}
-                      animate={{ opacity: 1, x: 0 }}
-                      transition={{ delay: 0.15 + i * 0.07, ease: EASE }}
-                      onClick={() => setRole(r)}
-                      onDoubleClick={enter}
-                      className={cn(
-                        "flex w-full items-center gap-4 rounded-[18px] border p-4 text-left transition-all",
-                        active ? "border-transparent bg-blue-wash ring-2 ring-azure" : "border-hairline hover:border-line-strong hover:bg-wash",
-                      )}
-                    >
-                      {u ? <PersonAvatar initials={u.initials} hue={u.hue} size={44} /> : <span className="size-11 rounded-full shimmer" />}
-                      <span className="min-w-0 flex-1">
-                        <span className="flex items-center gap-2 text-[15px] font-semibold text-ink">
-                          {ROLE_LABEL[r]}
-                          {u && <span className="truncate font-normal text-subtle">· {u.name.split(" ").slice(0, 2).join(" ")}</span>}
-                        </span>
-                        <span className="mt-0.5 block text-[13px] leading-snug text-subtle">{ROLE_COPY[r]}</span>
-                      </span>
-                      <span className={cn("inline-flex size-6 shrink-0 items-center justify-center rounded-full transition", active ? "bg-azure text-white" : "border border-line-strong")}>
-                        {active && <Check className="size-3.5" strokeWidth={3} />}
-                      </span>
-                    </motion.button>
-                  );
-                })}
-              </div>
-
-              <Button onClick={enter} disabled={!hydrated} size="lg" className="group mt-7 h-12 w-full rounded-[14px] text-[15px] font-semibold">
-                {hydrated ? "Entrar" : "Preparando datos…"}
-                <ArrowRight className="transition-transform group-hover:translate-x-1" />
-              </Button>
-              <p className="mt-5 flex items-start gap-2 text-[12.5px] leading-relaxed text-subtle">
-                <ShieldCheck className="mt-0.5 size-4 shrink-0 text-teal-fg" />
-                Prototipo navegable. En producción cada persona accede con su cuenta individual, sesiones seguras y bitácora de auditoría.
-              </p>
-            </motion.div>
+      {panel === "account" && !opening && (
+        <>
+          {noAccess ? (
+            <AuthHeading title="Su cuenta ya no tiene acceso">
+              Su perfil ya no está activo en Pulkro Cuadrillas. Sus datos siguen en este dispositivo: si Dirección lo reactiva, entre de nuevo con
+              su contraseña. Para entrar con otra cuenta, escriba su correo.
+            </AuthHeading>
+          ) : reauth ? (
+            <AuthHeading title="Vuelva a entrar">
+              La sesión de su cuenta ya no está abierta en este dispositivo. Sus datos y los cambios sin enviar siguen guardados: escriba su
+              contraseña para seguir sincronizando.
+            </AuthHeading>
+          ) : (
+            <AuthHeading title="Bienvenido">Entre con el correo y la contraseña de su cuenta.</AuthHeading>
           )}
-        </AnimatePresence>
-      </div>
-    </div>
+          <AccountSignIn email={email} onEmailChange={setEmail} onForgot={() => setPanel("recovery")} onEntered={entered} />
+          {reauth && !noAccess && (
+            <div className="mt-3 flex justify-center">
+              <TextAction onClick={() => router.replace(next)}>
+                <ArrowLeft className="size-4" /> Volver sin entrar
+              </TextAction>
+            </div>
+          )}
+          {DEMO_SIGN_IN && !reauth && (
+            <>
+              <div className="my-6 flex items-center gap-3 text-[12px] font-semibold uppercase tracking-[0.1em] text-subtle" aria-hidden>
+                <span className="h-px flex-1 bg-hairline" />o<span className="h-px flex-1 bg-hairline" />
+              </div>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setPanel("demo")}
+                size="lg"
+                className="h-12 w-full rounded-[14px] border-line text-[15px] font-semibold"
+              >
+                <Sparkles /> Entrar al demo
+              </Button>
+            </>
+          )}
+          <p className="mt-5 flex items-start gap-2 text-[12.5px] leading-relaxed text-subtle">
+            <ShieldCheck className="mt-0.5 size-4 shrink-0 text-teal-fg" />
+            Cada persona entra con su cuenta individual. Dirección da de alta las cuentas: recibirá un correo para definir su contraseña.
+          </p>
+        </>
+      )}
+
+      {panel === "recovery" && <RecoveryRequest email={email} onEmailChange={setEmail} onBack={() => setPanel("account")} />}
+
+      {panel === "demo" && (
+        <>
+          <AuthHeading title="Bienvenido">Elija un perfil de demostración para entrar. Cada rol ve solo lo que le corresponde.</AuthHeading>
+          <DemoPicker onEntered={entered} />
+          {isSupabaseConfigured && (
+            <div className="mt-3 flex justify-center">
+              <TextAction onClick={() => setPanel("account")}>
+                <ArrowLeft className="size-4" /> Volver
+              </TextAction>
+            </div>
+          )}
+          <p className="mt-5 flex items-start gap-2 text-[12.5px] leading-relaxed text-subtle">
+            <ShieldCheck className="mt-0.5 size-4 shrink-0 text-teal-fg" />
+            {isSupabaseConfigured
+              ? "Prototipo navegable con datos de demostración guardados solo en este dispositivo: no se mezclan con los de una cuenta."
+              : "Prototipo navegable. En producción cada persona accede con su cuenta individual, sesiones seguras y bitácora de auditoría."}
+          </p>
+        </>
+      )}
+    </AuthFrame>
   );
 }

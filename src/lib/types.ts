@@ -48,6 +48,11 @@ export type Site = {
   municipality: string;
   lat: number;
   lng: number;
+  /**
+   * A stand-in for a site this device does not hold (lib/hooks.ts: an order whose site has not arrived yet): its lat/lng
+   * are no location — nothing maps, measures against or records them.
+   */
+  unavailable?: true;
 };
 
 export type Client = {
@@ -60,6 +65,11 @@ export type Client = {
   contactPhone: string; // E.164-ish "+52 81 1234 5678"
   contactEmail: string;
   since: string; // ISO date
+  /**
+   * The server has no "cliente desde" for it (clients.since is null): `since` shows the record's creation instead, and an
+   * edit never sends that stand-in as if someone had entered it.
+   */
+  sinceUnset?: boolean;
   hue: number;
   siteIds: string[];
 };
@@ -95,6 +105,8 @@ export type OrderStatus =
   | "reabierta";
 
 export type CrewChange = {
+  /** Server row id (crew_changes.id) of a pulled entry; entries recorded on this device have none until synced. */
+  id?: string;
   at: string;
   workerIds: string[];
   by: string; // user id
@@ -118,6 +130,9 @@ export type EvidenceException = {
 };
 
 export type Closure = {
+  /** Server row (order_closures.id) and its version: a re-validation after a reopening is version n+1. */
+  id?: string;
+  version?: number;
   validatedAt: string;
   validatedBy: string; // user id (supervisor)
   conformity?: Conformity;
@@ -178,7 +193,11 @@ export type GeoStamp = {
 
 export type JornadaStatus = "pendiente" | "en_curso" | "cerrada";
 
-export type JornadaLogEntry = { at: string; by: string; text: string };
+/**
+ * `id`: the jornada_notes row id — set by the pull, or on this device for an account's own note (sent as `p_note_id`); demo
+ * notes have none.
+ */
+export type JornadaLogEntry = { id?: string; at: string; by: string; text: string };
 
 /** One working day of an order. Multi-day orders keep independent jornadas. */
 export type Jornada = {
@@ -210,10 +229,14 @@ export type SceneKind =
   | "lobby"
   | "escalera";
 
-/** Photo source: either a procedural seed scene, or a real capture stored in IndexedDB. */
+/**
+ * Photo source: a procedural seed scene (demo), a capture still on this device (IndexedDB blob), or evidence stored on the
+ * server (private Storage bucket `evidencias`, shown through a short-lived signed URL — photo-store.ts).
+ */
 export type PhotoSource =
   | { type: "scene"; scene: SceneKind; seed: number }
-  | { type: "idb"; key: string; width: number; height: number };
+  | { type: "idb"; key: string; width: number; height: number }
+  | { type: "storage"; path: string; width?: number; height?: number };
 
 /** Where a real capture came from: the camera input right now, or picked from the gallery (may be older / taken by someone else). */
 export type PhotoOrigin = "camera" | "gallery";
@@ -331,7 +354,8 @@ export type PostSaleCase = {
   createdAt: string;
   createdBy: string;
   updatedAt: string;
-  timeline: { at: string; by: string; text: string }[];
+  /** `id`: server row id (case_events.id) of a pulled entry; entries written on this device have none until synced. */
+  timeline: { id?: string; at: string; by: string; text: string }[];
 };
 
 export type SurveyAnswers = {
@@ -377,9 +401,42 @@ export type AuditEntry = {
   orderId?: string;
   action: string; // "Cambió estado a Programada"
   reason?: string;
+  /**
+   * Account sessions, lines written on this device: the queue operation (`p_op_id`) that recorded them. The server's own
+   * lines carry the same op id (audit_log.op_id) and replace these when they are pulled.
+   */
+  opId?: string;
 };
 
+/**
+ * pendiente: waiting to be sent (or to be retried after `nextAt`) · sincronizando: being sent · sincronizado: on the server ·
+ * error: the server did not apply it (`problem` says why); it stays on the device until the person retries or discards it.
+ */
 export type SyncState = "pendiente" | "sincronizando" | "sincronizado" | "error";
+
+/** Account sessions: the RPC a queue item sends (architecture §8). */
+export type SyncOp = {
+  /** `public.<rpc>`. */
+  rpc: string;
+  /** Its exact named arguments, `p_op_id` included: every retry sends this same object (the server binds the op id to them). */
+  args: Record<string, unknown>;
+  /** The item created its record on this device (a new client, site…): discarding it removes the record here. */
+  creates?: boolean;
+  /**
+   * add_photo: the picture goes to Storage first (bucket `evidencias`, never upserted). `uploaded` once Storage has it, so a
+   * retry resumes at the RPC; `released` once the device copy (IndexedDB `blobKey`) was freed after a pull confirmed it.
+   */
+  upload?: { path: string; blobKey: string; uploaded?: boolean; released?: boolean };
+};
+
+/** Why an item is waiting or stopped. `message` is what the person reads (usted); code / hint are the server's. */
+export type SyncProblem = {
+  /** reintento: tried again later · conflicto: the server's state refused it (quarantine) · error: invalid or not allowed. */
+  kind: "reintento" | "conflicto" | "error";
+  message: string;
+  code?: string;
+  hint?: string;
+};
 
 export type SyncItem = {
   id: string;
@@ -390,6 +447,29 @@ export type SyncItem = {
   orderId?: string;
   state: SyncState;
   bytes?: number;
+  /** Account sessions: what is sent. Demo items have none (the demo simulates the server). */
+  op?: SyncOp;
+  /**
+   * Records this item needs on the server first (`${entity}:${id}` of a client, site, worker… created on this device), or
+   * that it reports (`foto:<id>`: a case note about the photo it came with). Discarding such a record discards this item.
+   */
+  deps?: string[];
+  /** Server answers that asked to retry (server busy, a parent still on its way): they count toward the cap (queue.ts). */
+  attempts?: number;
+  /** Attempts that got no answer (offline, unreachable): they only space the retries out, never quarantine the item. */
+  netAttempts?: number;
+  /** Its RPC was sent at least once (it may have been applied even without an answer). */
+  tried?: boolean;
+  /**
+   * An attempt went out and its answer was lost (network, a gateway timeout, a device error after sending): the server may
+   * have applied it. Only a definite answer clears it (applied, or a refusal that ran on the server); a busy answer does not.
+   */
+  maybeApplied?: boolean;
+  firstFailAt?: string;
+  /** Earliest next attempt after a failure. */
+  nextAt?: string;
+  problem?: SyncProblem;
+  syncedAt?: string;
 };
 
 export type DataSnapshot = {

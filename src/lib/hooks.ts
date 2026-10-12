@@ -1,9 +1,13 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useShallow } from "zustand/react/shallow";
 import { isOffline, useAppStore } from "./store";
 import { can, canSeeAuditEntry, canSeeOrder, scopedUnitIds, type Action } from "./permissions";
+import { usePullStatus } from "./sync/status";
+import { clockSkewMs } from "./sync/clock";
+import { DEMO_ENABLED } from "./demo";
+import { findByRef } from "./folio";
 import type { AuditEntry, Client, Jornada, Order, ServiceType, Site, User, Worker, Material, Unit } from "./types";
 
 export { useAppStore } from "./store";
@@ -23,6 +27,15 @@ export function useCurrentUser(): User {
       },
     [users, userId],
   );
+}
+
+/**
+ * A demo session in a build that offers the demo controls (role switch, demo reset, "Simular" sample photos, the scattered
+ * GPS fallback). Never an account session, whatever the build: an account's evidence is always real.
+ */
+export function useDemoSession(): boolean {
+  const mode = useAppStore((s) => s.session.mode);
+  return DEMO_ENABLED && mode !== "supabase";
 }
 
 export function useCan(action: Action) {
@@ -150,6 +163,18 @@ export function useScopedAudit(): AuditEntry[] {
   }, [raw, user, unitFilter, orderIds]);
 }
 
+/**
+ * Stand-ins for catalog records an order on the device names but the device does not hold (an order kept for its unsent or
+ * refused captures after it moved out of scope): the screens still render, and say so.
+ */
+const missingClient = (o: Order): Client => ({
+  id: o.clientId, name: "Cliente no disponible", shortName: "Cliente no disponible", segment: "Comercial", unitId: o.unitId,
+  contactName: "", contactPhone: "", contactEmail: "", since: o.createdAt, hue: 220, siteIds: [o.siteId],
+});
+// Its 0,0 is no location (`unavailable`): the field screens show no map link or pin for it, and a GPS stamp never records it.
+const missingSite = (o: Order): Site => ({ id: o.siteId, clientId: o.clientId, name: "Sitio no disponible", address: "", municipality: "", lat: 0, lng: 0, unavailable: true });
+const missingServiceType = (o: Order): ServiceType => ({ id: o.serviceTypeId, name: "Servicio no disponible", short: "Servicio", hue: 220, defaultHoursPerDay: 8 });
+
 /** Everything about one order, by folio ("OS-24817") or id. `null` = not found OR outside the current role's scope (doc §2). */
 export function useOrderBundle(folioOrId: string) {
   const lk = useLookups();
@@ -162,14 +187,15 @@ export function useOrderBundle(folioOrId: string) {
     })),
   );
   return useMemo(() => {
-    const order = s.orders.find((o) => o.folio === folioOrId || o.id === folioOrId);
+    // A folio, an id, or the provisional folio an account's new order had before the server assigned its own (lib/folio.ts).
+    const order = findByRef(s.orders, folioOrId);
     if (!order || !canSeeOrder(user, order, unitFilter)) return null;
     const jornadas = s.jornadas.filter((j) => j.orderId === order.id).sort((a, b) => a.dayIndex - b.dayIndex);
     return {
       order,
-      client: lk.clients.get(order.clientId)!,
-      site: lk.sites.get(order.siteId)!,
-      serviceType: lk.serviceTypes.get(order.serviceTypeId)!,
+      client: lk.clients.get(order.clientId) ?? missingClient(order),
+      site: lk.sites.get(order.siteId) ?? missingSite(order),
+      serviceType: lk.serviceTypes.get(order.serviceTypeId) ?? missingServiceType(order),
       supervisor: lk.users.get(order.supervisorId)!,
       unit: lk.units.get(order.unitId)!,
       jornadas,
@@ -200,15 +226,71 @@ export function useIsOffline() {
   return useAppStore((s) => isOffline(s));
 }
 
+/**
+ * Account sessions: how far the phone's clock is from the server's (ms, server minus phone; negative = the phone is
+ * ahead) while that is beyond 5 minutes, else undefined (sync/clock.ts). The demo never talks to a server: undefined.
+ */
+export function useClockSkew(): number | undefined {
+  const clock = useAppStore((s) => (s.session.mode === "supabase" ? s.sync.clock : undefined));
+  return clockSkewMs(clock);
+}
+
+/**
+ * Sync status for the indicators. `lastSyncAt` is the last time the device heard from the server: the demo's simulated sends,
+ * or an account's last successful pull (sync/pull.ts). Account sessions also report the pull itself: running (`pulling`,
+ * `pullInitial` = first load / orders being completed), its last error, and a session that must be renewed (`needsReauth`).
+ */
 export function useSyncSummary() {
   const queue = useAppStore((s) => s.sync.queue);
-  const lastSyncAt = useAppStore((s) => s.sync.lastSyncAt);
+  const queueSyncAt = useAppStore((s) => s.sync.lastSyncAt);
+  const account = useAppStore((s) => s.session.mode === "supabase");
+  const lastPullAt = useAppStore((s) => s.session.pull?.lastPullAt);
+  const needsReauth = useAppStore((s) => s.session.mode === "supabase" && !!s.session.needsReauth);
+  const pulling = usePullStatus((s) => s.running);
+  const pullInitial = usePullStatus((s) => s.initial);
+  const pullError = usePullStatus((s) => s.error);
+  // The device could not store the data (storage full…): captures live only in memory until a write works again.
+  const saveError = useAppStore((s) => s.sync.saveError);
+  const saveFull = useAppStore((s) => !!s.sync.saveFull);
   const offline = useIsOffline();
   return useMemo(() => {
     const pending = queue.filter((q) => q.state === "pendiente" || q.state === "error");
     const syncing = queue.filter((q) => q.state === "sincronizando");
-    return { offline, pending, syncing, lastSyncAt, queue };
-  }, [queue, lastSyncAt, offline]);
+    const lastSyncAt = account ? (lastPullAt ?? queueSyncAt) : queueSyncAt;
+    return { offline, pending, syncing, lastSyncAt, queue, account, lastPullAt, pulling: account && pulling, pullInitial, pullError: account ? pullError : undefined, needsReauth, saveError, saveFull };
+  }, [queue, queueSyncAt, offline, account, lastPullAt, pulling, pullInitial, pullError, needsReauth, saveError, saveFull]);
+}
+
+/**
+ * Keeps the address on the record's current folio: a page opened by id, or by the provisional folio of a record created on
+ * this device ("OS-PEND-…"), moves to the real folio — so a link, a bookmark or the back button keeps working across the
+ * change. Native history (no navigation: works offline; Next keeps usePathname in step).
+ * It runs when the page opens (or the record first shows) and when the tab becomes visible again — never right when the
+ * folio changes under an open page: Next turns replaceState into a restore that discards a navigation already under way (a
+ * tap on «Jornada» or «Reporte» while the server's answer arrives). findByRef keeps the old address working meanwhile.
+ */
+export function useCanonicalFolio(segment: string, folio: string | undefined, base: string, suffix = "") {
+  const latest = useRef(folio);
+  useEffect(() => {
+    latest.current = folio;
+  }, [folio]);
+  const ready = !!folio;
+  useEffect(() => {
+    if (!ready) return;
+    const canonical = () => {
+      const current = latest.current;
+      if (!current || current === segment) return;
+      const target = `${base}${encodeURIComponent(current)}${suffix}`;
+      if (window.location.pathname === target) return;
+      window.history.replaceState(null, "", `${target}${window.location.search}${window.location.hash}`);
+    };
+    canonical();
+    const onVisible = () => {
+      if (document.visibilityState === "visible") canonical();
+    };
+    document.addEventListener("visibilitychange", onVisible);
+    return () => document.removeEventListener("visibilitychange", onVisible);
+  }, [segment, base, suffix, ready]);
 }
 
 /** Re-renders every `ms` — for live timers and "hace X min" labels. */

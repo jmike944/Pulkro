@@ -1,11 +1,13 @@
 # Pulkro Cuadrillas — backend architecture (Supabase)
 
 Status (2026-10-11, after the PR #9 review): schema, RLS, business-rule RPCs, Storage and the auth hook function are
-**applied** to the Supabase project "Pulkro" (ref `cbdzndpdpwtxbhshidyi`, us-east-1, Postgres 17.11) — the 18 migrations
+**applied** to the Supabase project "Pulkro" (ref `cbdzndpdpwtxbhshidyi`, us-east-1, Postgres 17.11) — the 22 migrations
 below. The project holds the **demo dataset** (302 orders and their history, 11 password-less demo accounts; every row
 registered in `private.demo_rows`, removed in one call by `select private.drop_demo_data();`, see `supabase/seed/README.md`);
-no real accounts or data yet, no Storage objects. The app still runs on the on-device zustand store; wiring it to this
-backend is the phased plan in §12.
+no real accounts or data yet, no Storage objects. The app is wired to it on branch `supabase-wiring` (PR #10): an account
+build (the two `NEXT_PUBLIC_SUPABASE_*` values set) signs in with Supabase Auth and syncs the on-device zustand store
+through `src/lib/sync` (pull, push queue, one writer per device: §8, §11); the demo stays on behind `NEXT_PUBLIC_DEMO`.
+What is left before the pilot is listed in §12.
 
 | Applied migration (version = file name) | Content |
 |---|---|
@@ -27,10 +29,20 @@ backend is the phased plan in §12.
 | `20261011061310_review_pr9_codex_round2` | PR #9 review (Codex, round 2): an order's open cases follow it to the new supervisor, reopening a case needs its reason, open blocking incidents stay authoritative when an order is flagged Reprogramada, people on visible orders and cases stay readable after a unit move (`private.referenced_profile_ids()`), `upsert_site` holds the client it authorized against |
 | `20261011063116_review_pr9_cubic_round2` | PR #9 review (cubic, round 2): `update_incident` refuses an empty patch and never detaches an incident from its jornada (`jornada_required`); `drop_demo_data` refuses while a surviving order names a demo material or demo worker; check-in/out and rescheduling under an open blocking incident update the status the order resumes; a supervisor owns a case only inside the order's unit; `upsert_site` locks clients before the site |
 | `20261011065308_review_pr9_cubic_round3` | PR #9 review (cubic, round 3): `referenced_profile_ids` reads every profile reference of a visible order and its records (field capture, incidents, photos, closures, reports, shares, surveys, cases) |
+| `20261011125657_decision_closed_order_reassign` | owner decision 19 (§14): Administración reassigns the supervisor of a closed order (only that field) without reopening it |
+| `20261011144326_admin_users_email_sync` | account administration (§2, decision 11): `sync_profile_email`, the RPC the `admin-users` Edge Function calls after changing a login e-mail |
+| `20261011174019_admin_users_review` | account administration review: `sync_profile_email(p_op_id, p_user_id, p_email default null)` syncs only while the login still holds the address the request set (`PT409 email_changed` otherwise); `p_email` is part of the op digest |
+| `20261011175442_admin_users_decisions` | owner decisions on account administration: an actual e-mail change also ends the person's sessions; the fail-safe trigger `pulkro_mirror_email_change` on `auth.users` copies a self-service e-mail change into `profiles.email` |
+
+Edge Function `admin-users` **deployed** (version 3, 2026-10-11: the review fixes and `resend_invite`; `verify_jwt` on;
+`APP_ORIGINS` allows localhost, `https://pulkro.vercel.app` and every Vercel preview of the project, and invitation links go
+back to the origin they were sent from; `APP_URL` = localhost is only the fallback for calls without an Origin). Auth settings applied: sign-ups off, the password policy, the access-token hook
+(enabled), redirect URLs `http://localhost:3000/**` and `http://localhost:3100/**` (Site URL `http://localhost:3000`).
 
 Sources of truth mirrored here: `docs/requisitos.md`, `src/lib/types.ts`, `src/lib/permissions.ts`, `src/lib/hooks.ts`,
-`src/lib/store.ts`, `src/lib/domain.ts`. Tests: `supabase/tests/` (all 17 files pass, including the review regression suites
-`09` to `16`; they ignore the rows of the demo dataset). Types: `src/lib/supabase/database.types.ts` (regenerated after migration `20261011043034`).
+`src/lib/store.ts`, `src/lib/domain.ts`. Tests: `supabase/tests/` (files `00` to `20` pass, including the review regression
+suites `09` to `16`, the owner-decision suite `17` and the account-administration suites `18` to `20`; they ignore the
+rows of the demo dataset). Types: `src/lib/supabase/database.types.ts` (regenerated after migration `20261011043034`).
 
 ---
 
@@ -43,7 +55,7 @@ PWA (Next.js 16, zustand + IndexedDB, works offline)
  │          re-checks role, scope and every business rule against server state, writes rows + audit, idempotent
  ├─ files:  Storage bucket `evidencias` (private): upload → then RPC add_photo links the metadata
  └─ auth:   Supabase Auth, e-mail + password; JWT carries role/unit hints from the hook (UI only)
-Edge Function `admin-users` (designed, not deployed): invites/bans accounts with the secret key; profiles via RPC
+Edge Function `admin-users` (deployed): invites/bans accounts with the secret key; profiles via RPC
 Public survey page (/encuesta/[token]): anon → public.get_survey / public.submit_survey only
 ```
 
@@ -68,44 +80,63 @@ answers `PT401`.
 - adds `app_metadata.pulkro_role` and `app_metadata.pulkro_unit_id` — **UI hints only** (route guards in `proxy.ts`,
   menus); never trusted by the database;
 - **refuses** to issue/refresh a token (403) when the profile is missing or inactive.
-- To enable: Dashboard → Authentication → Hooks → Custom access token → Postgres function
-  `private.custom_access_token_hook` (config.toml: `uri = "pg-functions://postgres/private/custom_access_token_hook"`).
-  **Not enabled yet** (needs the dashboard; the MCP has no auth-config tool). Everything is secure without it; it only
-  adds the UI claims and the refresh refusal.
+- **Enabled** (2026-10-11: Dashboard → Authentication → Hooks → Custom access token → Postgres function
+  `private.custom_access_token_hook`; config.toml: `uri = "pg-functions://postgres/private/custom_access_token_hook"`).
+  Authorization never depended on it (RLS reads `profiles`); what it adds is the UI claims and the refusal. **Consequence:**
+  no account without an active profile gets a session, not even from an e-mail link — Auth's `/verify` answers
+  `#error=access_denied` (HTTP 403, no `error_code`) and `/acceso/definir-contrasena` shows "No puede entrar todavía". So in
+  the bootstrap below the `profiles` insert must run **before** the invite link is opened; a link opened too early works
+  again once the profile exists, as long as it has not expired.
 
 **Stale claims**: claims can lag up to the JWT lifetime. Because RLS reads `profiles` on every statement, a role/unit
 change or deactivation is effective **immediately** for data. The client calls `supabase.auth.refreshSession()` after any
 `PT401`/`PT403` or when it pulls a changed own profile, so menus catch up (and runs a full re-sync, §8).
 
-**Account lifecycle (Dirección = `users.admin`)** — Edge Function `admin-users` (design, not deployed):
+**Account lifecycle (Dirección = `users.admin`)** — Edge Function `admin-users` (`supabase/functions/admin-users/`,
+**deployed**; contract, secrets, deploy and test steps in its `README.md`). `verify_jwt` on; the function
+re-verifies the JWT with `@supabase/server` (`createSupabaseContext`, project JWKS), requires an **active Dirección**
+profile before any Auth admin call, and writes every profile change **with the caller's JWT** so the database re-checks
+`users.admin` and audits who did it. The secret key only reaches `auth.admin` (and the caller's own profile row).
 
-```ts
-// supabase/functions/admin-users/index.ts — verify_jwt = true (user JWT); secret key only inside the function
-import { withSupabase } from 'npm:@supabase/server@1'
-export default { fetch: withSupabase({ auth: 'user' }, async (req, ctx) => {
-  const body = await req.json()                       // { action, opId, email?, userId?, name?, role?, unitId? }
-  const { data: me } = await ctx.supabase.from('profiles').select('role, active').eq('id', ctx.userClaims!.id).single()
-  if (me?.role !== 'direccion' || !me.active) return Response.json({ code: 'forbidden' }, { status: 403 })
-  if (body.action === 'invite') {
-    const { data, error } = await ctx.supabaseAdmin.auth.admin.inviteUserByEmail(body.email, { redirectTo: `${Deno.env.get('APP_URL')}/acceso/definir-contrasena` })
-    if (error) return Response.json({ code: 'invite_failed', message: error.message }, { status: 400 })
-    // the profile is written with the CALLER's JWT: the DB re-checks users.admin and audits who did it
-    const { error: rpcError } = await ctx.supabase.rpc('provision_profile', { p_op_id: body.opId, p_user_id: data.user.id,
-      p_name: body.name, p_role: body.role, p_unit_id: body.unitId, p_title: body.title ?? '', p_phone: body.phone ?? '' })
-    if (rpcError) { await ctx.supabaseAdmin.auth.admin.deleteUser(data.user.id); return Response.json(rpcError, { status: 400 }) }
-    return Response.json({ userId: data.user.id })
-  }
-  if (body.action === 'deactivate' || body.action === 'reactivate') {
-    const active = body.action === 'reactivate'
-    const { data, error } = await ctx.supabase.rpc('update_profile', { p_op_id: body.opId, p_user_id: body.userId, p_patch: { active } })
-    if (error) return Response.json(error, { status: 400 })
-    await ctx.supabaseAdmin.auth.admin.updateUserById(body.userId, { ban_duration: active ? 'none' : '876000h' })
-    return Response.json({ ok: true, openOrders: data?.open_orders ?? [] })   // folios left to reassign
-  }
-  // 'change_email': auth.admin.updateUserById(id, { email }) + profile e-mail sync (RPC still to add, see §14)
-  return Response.json({ code: 'unknown_action' }, { status: 400 })
-}) }
-```
+| Action | Auth admin (secret key) | RPC (caller's JWT) |
+|---|---|---|
+| `invite {opId, email, name, role, unitId, title?, phone?, hue?}` | `inviteUserByEmail` (`redirectTo` = the calling app's allowed origin, else `APP_URL`, + `/acceso/definir-contrasena`); if the profile fails, the auth user is deleted again only when this call created it (a re-sent invitation to an existing, never-confirmed account without a profile leaves that account in place) | `provision_profile` |
+| `deactivate` / `reactivate {opId, userId}` | ban (`876000h`) / unban, mirroring the profile's `active` | `update_profile {active}` (returns `open_orders`) |
+| `change_email {opId, userId, email}` | `updateUserById {email, email_confirm: true}`; put back when the database refuses the sync (any 4xx); on no answer or a 5xx it stays changed and the same request completes it; on `email_changed` (another change of the same account won) it stays as the other request left it | `sync_profile_email` (with the request's address); when it changes the profile it **ends the person's sessions** (decision 2: they sign in again with the new address) |
+| `resend_invite {opId, userId}` | `getUserById`; only while the invitation is pending (`invited_at` set, `last_sign_in_at` empty) `inviteUserByEmail` again (GoTrue re-sends to an unconfirmed account, with a new link); otherwise, or when GoTrue refuses a confirmed account, `409 already_active` → «¿Olvidó su contraseña?» | none: reads the profile (must exist and be active, else `out_of_scope` / `409 account_inactive`); nothing written or audited, `opId` not stored |
+
+Answers `{ ok: true, …, profile }` (`resend_invite`: `{ ok: true, action, resent: true, user_id }`) or
+`{ ok: false, code, message }` (stable code = the database hint for RPC refusals; Spanish message). `opId` makes retries
+idempotent (not for `resend_invite`, which stores nothing: each call e-mails again). CORS only for `APP_ORIGINS`. The app
+calls it from Configuración → Usuarios in account sessions, online only ("Necesita conexión" offline); the demo keeps its
+local store. «Reenviar invitación» sits in the person's «Editar» (active accounts other than one's own); its
+`already_active` answer is shown as information, not as an error.
+
+**Known limitation, accepted (owner decision 4, 2026-10-11): two invitation e-mails on a retry of the same
+`invite`.** The e-mail goes out before `provision_profile` stores the op: a second request with the same `opId` that finds
+no profile yet also calls `inviteUserByEmail`, and GoTrue re-sends to the account the first one created. It finds none
+while the first is still between `inviteUserByEmail` and `provision_profile` (a double submit, a retry after a lost
+answer in that window), and also after the first crashed, timed out or was stopped between the e-mail and the profile
+(its auth user stays without a profile until the retry provisions it). One account and one profile result; the person
+gets two e-mails and uses the latest (each send issues a new link). No reservation step is added (it would need a
+migration and a redeploy). The app never promises otherwise: after an unknown outcome the users screen says the
+invitation can be sent again without creating another account, and that if two e-mails arrive the person uses the
+latest.
+
+**E-mail changes and sessions.** Dirección's change (`change_email`) ends the person's sessions in the same transaction as
+the profile update (`sync_profile_email` deletes their `auth.sessions`, refresh tokens included, like a deactivation): a
+device signed in with the old address keeps its access token at most until it expires (1 h) and cannot renew it. A no-op
+sync (already in sync, a retry) or a refused one ends nothing. A change the person **makes themself**
+(`supabase.auth.updateUser({ email })` and the confirmation link — the app does not offer it yet) is copied into
+`profiles.email` by the trigger `pulkro_mirror_email_change` on `auth.users` (`AFTER UPDATE OF email`, SECURITY DEFINER
+`private.mirror_auth_email_change`, not executable by any API role), audited as the person's own change ("Cambió su correo
+de acceso", old → new, their unit). It acts only on the statement with which GoTrue completes a pending change: the e-mail
+changed, the old row had a pending `email_change`, the new e-mail is that address and `email_change` is cleared in the same
+statement (`ConfirmEmailChange`). Dirección's admin update writes `email` alone, so it never matches (not even when it
+sets the very address the person had asked for): `sync_profile_email` stays the path that copies and audits it. The
+trigger runs in GoTrue's transaction (no JWT, so not `private.actor()`) and never raises: an address another profile uses
+(`profiles_email_key`), or any other error, leaves the profile unchanged with no audit row; anything GoTrue does that does
+not look like a completed change leaves the status quo. It does not end sessions (the person is the one signed in).
 
 **Deactivation is layered**: `update_profile(active=false)` (in the same transaction) sets `deactivated_at`, **deletes the
 user's `auth.sessions`** (refresh tokens die with them) and returns `open_orders` (folios of the open orders the person
@@ -121,7 +152,34 @@ it with `select private.drop_demo_data();` (and confirm `select count(*) from pr
 e-mail from Dashboard → Authentication → Users → Invite, and
 `insert into public.units (id, name, code, city) values (gen_random_uuid(), 'Matriz Monterrey', 'MTY', 'Monterrey, N.L.');`
 and `insert into public.profiles (id, name, initials, role, unit_id, email) select u.id, '<Nombre>', '<IN>', 'direccion', (select id from public.units where code = 'MTY'), lower(u.email) from auth.users u where u.email = '<correo>';`.
+Run both inserts **before** opening the invite link: with the access-token hook enabled, the link of an account without
+an active profile is refused ("No puede entrar todavía"; it works once the profile exists, if it has not expired).
 After that every account goes through the app/Edge Function.
+
+**E-mail links (invite, recovery)** land on `/acceso/definir-contrasena`, which accepts every form Supabase sends
+(`src/features/auth/auth-link.ts`):
+- **Default templates** (Free plan without custom SMTP: Supabase's own e-mails, **in English**): the link goes to Auth's
+  `/verify` and comes back to `redirectTo`. Admin invites (`admin-users`, or the dashboard) are not PKCE, so the session
+  comes back in the fragment (`#access_token=…&refresh_token=…&type=invite`) and the page calls `setSession`. A recovery
+  asked for in the app is PKCE (`@supabase/ssr` forces it): it comes back as `?code=…` and the page calls
+  `exchangeCodeForSession`. That only works in the browser that asked, which holds the code verifier: on iOS, a request
+  made in the installed app and a link opened in Safari do not share it. A refused link comes back as
+  `#error=access_denied&error_code=otp_expired…`.
+- **Spanish templates** (`supabase/templates/`, used only with custom SMTP): `?token_hash=…&type=…`, and the page calls
+  `verifyOtp`.
+
+The browser client has `detectSessionInUrl: false`, so this page is the only code that turns a link into a session (with
+detection on, the client would reject the implicit fragment and spend the one-time code before the page could). A link
+that lands elsewhere goes on to the page through an inline script in the root layout, before the store or the client
+read anything. That happens with a `redirectTo` outside the allow list, which falls back to the Site URL, and with a
+dashboard invite, which has no `redirectTo`. Allow list: `<app>/acceso/definir-contrasena`, plus `http://localhost:3000/**`
+and `http://localhost:3100/**` for local development.
+
+The fragment's `type` is plain text, so the page takes a fragment session only as `invite` or `recovery` (the password
+step always follows) and shows the account it opens; with an account open on the device it asks first, then flags that
+account for re-authentication (its pull stops writing) and names both. A PKCE exchange that fails after reaching auth-js is
+final (the verifier is gone: a new link is the way out). The service worker never caches a navigation whose query carries
+a link's credential.
 
 ## 3. Data model (`src/lib/types.ts` → tables)
 
@@ -133,7 +191,7 @@ rows, `deleted_at` tombstones where rows can disappear. Every FK has an index (a
 | Type | Table | Notes |
 |---|---|---|
 | `Unit` | `units` | `code` unique (`^[A-Z0-9]{2,8}$`) |
-| `User` | `profiles` | PK/FK `auth.users(id)` restrict; `role`, `unit_id`, `active` + `deactivated_at`; `email` unique, lower-case |
+| `User` | `profiles` | PK/FK `auth.users(id)` restrict; `role`, `unit_id`, `active` + `deactivated_at`; `email` unique, lower-case, a copy of `auth.users.email` written only by `provision_profile` and `sync_profile_email` |
 | `Worker` | `workers` | unit-scoped crew; never deleted (`active`) |
 | `Client` | `clients` | `siteIds` derived from `sites.client_id`; a client with orders cannot change unit (`client_in_use`) |
 | `Site` | `sites` | `unique (id, client_id)` is the target of `orders (site_id, client_id)` → a site always belongs to the order's client |
@@ -228,7 +286,7 @@ RPCs take the token instead of an op id.
 | RPC | Permission (scope) | Main server-side rules |
 |---|---|---|
 | `create_order` | order.create (Administración, own unit) | client in unit, site ∈ client, active supervisor of that unit, materials/activities/days validated; folio; starts `borrador` |
-| `update_order` | general fields: order.edit · operational: + order.editOperational (own) | whitelisted keys; closed/cancelled refused; supervisor reassignment within unit, audited "Reasignó la orden de A a B", recorded in `private.order_assignments`, `scope_changed_at` stamped; the order's open cases owned by the former supervisor move to the new one (timeline entry + audit) |
+| `update_order` | general fields: order.edit · operational: + order.editOperational (own) | whitelisted keys; closed/cancelled refused, except the supervisor alone on a finalizada/reporte_enviado/seguimiento order (decision 19); supervisor reassignment within unit, audited "Reasignó la orden de A a B", recorded in `private.order_assignments`, `scope_changed_at` stamped; the order's open cases owned by the former supervisor move to the new one (timeline entry + audit) |
 | `set_order_status` | order.reschedule | flag `reprogramada` (reason ≥ 5) or confirm dates: leaving `reprogramada` goes to the status the jornadas support (`derived_status`); while a blocking incident is open the order stays `con_incidencia` and the requested status becomes `previous_status` (check-in/out and `schedule_jornadas` update it the same way) (dates of an order that resumes `reprogramada` can be confirmed under the incident) — the requested target is not trusted |
 | `cancel_order` | order.edit | open orders only, reason ≥ 5 |
 | `reopen_order` | order.reopen (supervisor, own, still in the order's unit — `supervisor_other_unit`) | finalizada/reporte_enviado/seguimiento → `reabierta`, keeps `previous_status`, stamps `reopened_at` |
@@ -248,7 +306,9 @@ RPCs take the token instead of an op id.
 | `upsert_client`, `upsert_site`, `upsert_worker` | catalogs.admin (Administración own unit; Dirección all) | previous and new unit both checked; a client with orders cannot change unit (`client_in_use`), a client without orders that moves touches its sites; a site with orders cannot change client |
 | `upsert_service_type`, `upsert_material` | catalogs.admin | company-wide (as coded in `store.ts`) |
 | `provision_profile`, `update_profile` | users.admin | auth user must exist; no self role/unit/status change; no unit/role change with open orders or open cases; deactivation revokes sessions and returns `open_orders` |
+| `sync_profile_email` | users.admin | after `admin-users` changed the login e-mail: copies `lower(auth.users.email)` into `profiles.email`, audited (old → new), and **deletes the person's `auth.sessions`** when it changes the address (decision 2); with `p_email` (the address the request set, in the op digest) only while the login still holds it, else `email_changed`; an address another profile uses → `email_taken`; already in sync → `changed: false`, nothing ended (migrations `admin_users_email_sync`, `admin_users_review`, `admin_users_decisions`) |
 | `update_my_contact` | any active account | own phone only |
+| *(trigger)* `pulkro_mirror_email_change` on `auth.users` | GoTrue (no JWT) | not an RPC: a self-service login e-mail change, once GoTrue completes it, is copied into `profiles.email` and audited as the person's own; never raises (§2 "E-mail changes and sessions"; migration `admin_users_decisions`) |
 | `sync_reconcile` (read) | any active account (SECURITY INVOKER, plain RLS) | returns the subset of ids still visible |
 
 **Error contract** (PostgREST maps `PTnnn` to HTTP status; `hint` is a stable machine reason — the complete list):
@@ -257,7 +317,7 @@ RPCs take the token instead of an op id.
 `order_not_open`, `duplicate_check`, `check_in_missing`, `not_closable`, `closure_blocked`, `evidence_missing`,
 `revalidation_required`, `closure_required`, `open_cases`, `not_reopenable`, `not_archivable`, `not_rescheduled`,
 `already_resolved`, `already_provisioned`, `self_change`, `site_in_use`, `site_changed`, `client_in_use`,
-`has_open_orders`, `has_open_cases`, `op_id_reused`, `object_missing`, `parent_missing`, `order_reassigned`,
+`has_open_orders`, `has_open_cases`, `email_taken`, `email_changed`, `op_id_reused`, `object_missing`, `parent_missing`, `order_reassigned`,
 `jornada_rescheduled`, `jornada_closed`, `photo_deleted`, `supervisor_other_unit`, `append_only`; owner-only
 `drop_demo_data`: `demo_in_use`, `demo_storage_objects`) · `PT422` (`invalid_value` — any malformed or out-of-range input,
 mapped by the wrappers — and `invalid_activities`, `invalid_answers`, `invalid_breakdown`, `invalid_case_owner`,
@@ -356,24 +416,74 @@ One RPC per queue item keeps generated TypeScript types for every argument (a ba
   `create_order` → `schedule_jornadas`, upload → `add_photo`, `add_incident` → photo linked to it). When an item fails
   permanently, later items of the same order are held ("bloqueado por…") until resolved.
 - **Outcome classes** for the queue:
-  - *retry with backoff*: network errors, 5xx, `408/429`, `PT409 object_missing` (upload still running) and
-    `PT409 parent_missing` (a parent still in the queue) — capped (e.g. 20 attempts / 24 h), then quarantine;
+  - *retry with backoff*: network errors, 5xx, `408/429`, `PT409 object_missing` (upload still running),
+    `PT409 parent_missing` (a parent still in the queue) and `PT422 device_time_future` (the phone's clock is ahead: the
+    same request goes once the server's clock passes the stamped time) — server answers are capped (20 attempts / 24 h),
+    then quarantine; requests that got no answer only space the retries out and never count toward the cap;
   - *re-authenticate, keep the queue*: `PT401`;
   - *conflict → quarantine* (keep the payload and blobs on the device, show "no se aplicó" with the server message, offer
     redo/hand-off/discard): `order_reassigned`, `jornada_rescheduled`, `photo_deleted`, `order_closed`, `order_cancelled`,
-    `order_frozen`, `duplicate_check`, `op_id_reused`, a permanently failed upload;
+    `order_frozen`, `duplicate_check`, `op_id_reused`, a permanently failed upload. Exception: `photo_deleted` answering
+    `delete_photo` means the photo is already deleted — the item counts as sent;
   - *permanent error* (bug or invalid input): other `PT403/PT404/PT409/PT422`; re-pull the order, let the user decide.
-  Field evidence is never dropped silently: a quarantined capture can be exported (photos + times) and handed to the
-  current supervisor.
+  - *never retried* — a resend of the same request cannot change the answer, so the sync sheet offers only "Descartar"
+    and "Reintentar N envíos" skips them (`NO_RETRY_HINTS`, queue.ts): `op_id_reused`, `duplicate_check`,
+    `already_resolved`, `already_provisioned`, `photo_lost`, `device_time_stale`, and a photo file the bucket can never
+    take (Storage 413 → `upload_too_large`, 415 → `upload_bad_type`; the message says to take the photo again or attach
+    a smaller one / another format).
+  - *reversible refusals* (owner decision 2026-10-11, `REVERSIBLE_HINTS`): `order_closed`, `order_reassigned`,
+    `out_of_scope`, `order_cancelled`, `jornada_rescheduled` and the bucket refusing the file for those reasons (Storage
+    403 / RLS → `upload_forbidden`). A reopening, a reassignment back or a reschedule lets the very same request through,
+    so «Reintentar» stays offered (per item and in "Reintentar N envíos"); the row keeps the server's message and adds
+    when Reintentar helps. A refused resend changes nothing (the op rolls back).
+  - *maybe applied*: an attempt whose answer was lost (no answer, 502/504, a device error after the request left) marks
+    the item `maybeApplied` until a definite answer (applied / duplicate, a business refusal, a constraint, a privilege);
+    busy answers (408/429/5xx, PostgREST, transient database states) prove nothing about it and keep the mark. While it
+    holds, «Descartar» leaves what names the item queued (it may still apply), takes along only what depends on it without
+    naming it (see below), deletes no picture a queued item still needs, and a discarded `create_order` is read back from
+    the server by id.
+  - an item the retry cap stopped is never resent by itself: its message says so (a phone clock ahead: "Corrija la fecha
+    y hora del teléfono y pulse Reintentar").
+  Field evidence is never dropped silently: a quarantined capture stays on the device until the person discards it, and
+  the "Descartar" confirmation first offers «Guardar fotos en el teléfono» for every photo it would delete (the share
+  sheet with the files where supported, else one download each, named `<folio>_<kind>_<yyyy-MM-dd_HH-mm-ss>`); the device
+  copies are deleted only once the discard is confirmed (a picture the device fails to read is said so, with
+  «Reintentar»). Discarding an item takes along the later items that name a record it creates (they could only answer
+  `parent_missing`), or depend on it (`deps`: a case's «Agregó una foto» note goes with that photo). If its last attempt
+  got no answer, the server may have applied it: what names it stays queued (the server answers `parent_missing` if it
+  never arrived; a new order discarded that way keeps the pictures its still-queued photos need), and only what depends
+  on it without naming it still goes along — the «Agregó una foto» note carries no photo id the server could check.
+  Discarding a refused `validate_closure` or `check_in` also names the later `generate_report` / `log_share` of that order
+  (or the `check_out` of that jornada): the server will probably refuse them too, but they are not taken along — they can
+  be discarded when that happens.
+- **Whose session**: a push burst and a pull cycle check once that the browser's session is the account's on the device,
+  then send every request with that session's access token (`getTokenClient`): the cookies are shared by every tab, and
+  an e-mail link or a sign-in in another tab may replace them mid-run. What an answer says about the account ("no
+  access", "the session is gone") applies to the account the burst or cycle ran for, and only while the store still holds
+  it: a request that stalled while the next person signed in on the phone never flags or signs out that person.
+  Ending a deactivated account's session never revokes another account's (`endSessionOnDevice({ userId })`).
 - **Conflicts**: field-level patches (`update_order`, `update_photo`, `update_incident`, `update_case` send only the
   touched keys) so Administración (general data) and the supervisor (operational data) never overwrite each other; the
   same field edited twice → last server arrival wins, both edits stay in the audit log. State conflicts (check-in on an
   order cancelled meanwhile, closure after an incident was opened on another device) are rejected by the rules — the
   server state wins.
 - **Device time**: `p_device_at` (check-in/out, notes, incidents, closure, reports, shares) and `p_taken_at`/`p_attached_at`
-  (photos) are stored next to the server time, bounded (§6) and never used for authorization. A phone clock more than
-  5 minutes fast is refused (`device_time_future`): the app compares its clock with the server's `Date` header and warns
-  before capturing (policy in §14).
+  (photos) are stored next to the server time, bounded (§6) and never used for authorization, and the app never rewrites
+  them (they are evidence). A time more than 5 minutes ahead of the server's clock (`device_time_future`) is retried as
+  above until the server's clock passes it; one older than 45 days (`device_time_stale`) is never retried. The app keeps
+  an estimate of the phone's clock offset (`sync.clock`, persisted, per device; sync/clock.ts) from server times it
+  already receives: `server_at` of check-in/out and `reopened_at` of reopen_order (timed around the request; a
+  `duplicate` answer is ignored), the `iat` of every access token a sign-in or refresh returns (read from a copy of the
+  Auth answer in supabase/client.ts), and the newest `updated_at` a pull reads (a lower bound: it only raises the
+  estimate). While the offset exceeds 5 minutes, the capture screens (check-in/out, photos, notes, incidents, closure)
+  show a non-blocking warning to correct the phone's date and time (`ClockWarning`); nothing is blocked (policy in §14).
+  When the app comes back to the screen and every minute, a wall clock that moved more than the time that passed
+  (`performance.now()`) was set by hand: the estimate of the old clock is dropped, and while the warning shows (or after
+  such a jump) the clock is measured again with a token refresh, at most every 2 minutes (`checkClock`). The first online
+  check of each page load measures it too: the saved estimate may be stale (a clock set while the app was closed), and a
+  phone set ahead would otherwise go unwarned while its captures are refused as `device_time_future`. The comparison
+  of a send time with a read time (both the phone's clock) treats a send time later than now as earlier than the read
+  (the clock went back since), so a corrected clock never holds an order in every pull.
 
 **Pull — RLS-scoped table reads with incremental cursors, plus fetch-by-reference for scope gain.**
 
@@ -398,7 +508,75 @@ One RPC per queue item keeps generated TypeScript types for every argument (a ba
 - **Scope loss** (order reassigned, unit change, deactivation, role change): `rpc('sync_reconcile', {p_table, p_ids})`
   returns which of the device's ids are still visible (≤ 2000 per call); the device drops the rest and their children.
   Run it after login, on unit/role change and periodically (e.g. daily) per table. Queued items for dropped orders go to
-  quarantine (above), not to the trash.
+  quarantine (above), not to the trash; an order kept that way keeps the client, site, people and crew it names. A read
+  (page, subtree, reconcile) that started before an item reached the server treats that item's order as still unsent, so
+  it never wipes what was just sent; catalog / profile rows held for an unsent edit are read again by id afterwards.
+- **One writer per device** (owner decision 2026-10-11; `src/lib/device-storage.ts`). A tab holds the whole dataset in
+  memory and saves it whole to IndexedDB, so two tabs saving would replace each other's captures. An earlier build merged
+  the tabs' saves record by record (a revision next to the data, a three-way merge, every save announced and merged into
+  the other tabs). Review found that merge fragile — another owner's data merged into a tab that had changed hands, a save
+  queued behind a merge overwriting it, two tabs rewriting the dataset to each other forever, a tab's own in-flight item
+  reset so «Descartar» showed mid-send, the queue re-sorted by the phone's clock (dependents ahead of their parents),
+  discards that did not stick, pull cursors moved past rows a tab never applied, re-read lists erased — so it was dropped.
+  Now one tab holds the data:
+  - **Writer epoch**: `writer-epoch` is stored next to `device-owner`. A tab becomes the writer by incrementing it in one
+    transaction and remembering its value; it never acts as the writer before that write is stored (a full device: the
+    blocker asks to free space and the claim is retried; any other refusal — site data blocked, a broken database — says
+    the data could not be read). Every save checks the epoch and the owner in the same readwrite transaction as
+    the save, and is refused unless both are still what this tab expects. A refused tab stops writing for good, drops its
+    data from memory and shows the blocker, so a tab that was frozen while another took over is harmless when it wakes up.
+    The push and pull engines check the epoch too, before every RPC and every pull cycle (`sync/writer.ts`): a tab that lost
+    the device never sends an item the new writer may have discarded meanwhile.
+  - **Web Lock** `pulkro-writer`: the first tab takes it and holds it. Every other tab of the app shows a full-screen
+    blocker, «Pulkro está abierta en otra ventana», with «Usar aquí», and becomes the writer by itself when the writer's
+    tab closes. «Usar aquí» asks the writer over a BroadcastChannel to step aside: it stops pushing and pulling, saves its
+    pending write, shows the blocker and starts over behind it. If it does not answer within 1.5 s (or does not finish
+    within 10 s), the new tab takes over anyway (`steal`, then a new epoch, which refuses any late save of the old tab). A
+    writer that cannot save what it holds (storage full) answers that it keeps the device: its captures exist only in its
+    memory, so there is no takeover until it has saved them. While its saves fail it also marks the origin
+    (`pulkro-unsaved`, localStorage): when it does not answer at all (frozen in the background) and the mark is set, the
+    new tab does not take over silently — it says the other window does not answer and holds unsaved changes, and offers
+    «Usar aquí de todos modos» (those changes are lost then). A browser that refuses Web Locks (site data blocked) falls
+    back to the epoch alone, below.
+  - Without Web Locks (older browsers, insecure origins): the epoch alone, plus a "writer?" question and a "writer"
+    announcement on the channel. A writer that hears a newer epoch has lost; a waiting tab asks again when the writer's page
+    goes away or when it becomes visible. The writer also stamps the origin every 1.5 s (`pulkro-writer-alive`, removed
+    when its page goes away): a tab that gets no answer claims only once the stamp is 5 s old, so a writer busy for a few
+    seconds (a PDF, a large save) keeps the device and the write waiting in its debounce. A writer frozen in the background
+    misses both the question and the stamp, so a tab never claims by itself while `pulkro-unsaved` is set: it shows the
+    same «La otra ventana no responde» blocker, with «Usar aquí de todos modos» as the explicit decision, and looks again
+    when it becomes visible or the writer's page goes away. A tab that holds no data but keeps
+    claiming (a full or unreadable device) starts over behind the blocker when another tab announces itself. Without
+    BroadcastChannel either (Safari < 15.4), a recent stamp is the only sign of a writer: a new tab waits behind the
+    blocker. Without BroadcastChannel (with or without Web Locks) «Usar aquí» cannot ask the writer to save first, so it
+    never takes the device silently: the blocker says the other window cannot be asked, and only «Usar aquí de todos
+    modos» takes it (what that window had not saved is lost) — two windows of the app at once are not supported on those
+    browsers.
+  - Only once it holds the epoch does a tab read IndexedDB and hydrate the store; a read that keeps failing is never
+    hydrated over (the blocker offers to retry). The other tabs never read, persist, push or pull. A writer that steps
+    aside shows the blocker at once and saves until nothing is pending, so a capture landing meanwhile goes with it; a
+    photo batch still being stored (compressing, waiting for the position) is waited for too, and the requester is told the
+    writer is still saving (its 10-second wait starts again). Only the writer keeps copies of server photos: a tab that lost the device
+    while downloading one writes nothing afterwards.
+    With one writer there is no cross-tab push lock: during a takeover the old tab stops at its next epoch check, and a
+    request already in flight is deduplicated by its op id.
+  - A sign-out, or another account's sign-in, counts this tab's unsent items plus the queue saved on the device (and, when
+    this tab holds no account, the account saved there — a save that failed may have left it). Both first wait for photo
+    batches still being stored (a photo is no queue item until then), and never wipe while one is. A sign-out says the
+    account's data was erased only once the device stored the wipe; otherwise it says the data is still on the device (the
+    wipe is retried). The photo blobs on the device when it changes hands are listed then and deleted once a save of the
+    new owner's data commits — that save or a retry of it — so a refused or failed save leaves them with the data that
+    names them, and the next account's own captures stay. A sign-out on a full device deletes them first (the person agreed
+    to lose them) and tries the wipe again.
+  - The public survey page (§9) takes part like any other page of the app, except that in an account build it never
+    depends on the device: when the tab cannot hold the data (full, unreadable), the page is read and answered on the
+    server without the store (the server still refuses a staff session it sees in the cookies).
+  - **Deploying it** (owner decision 2026-10-11): no build before the writer epoch was deployed to users. Builds before it
+    (the demo build, the record-by-record merge) neither check nor bump `writer-epoch`, so a tab still running one would
+    write the dataset unchecked over the writer's: the first deploy of this build must not coexist with open tabs of an
+    older build (close them, or reload every window once, before using the new one). From this build on the epoch is the
+    fence: every later build keeps `writer-epoch`, `device-owner`, the lock and the channel `pulkro-writer` (a build that
+    changes them carries its own fence), so a tab left open on an older epoch-aware build is refused like any stale tab.
 - **Initial load**: catalogs (small) + orders in scope that are open or updated in the last N months (Dirección: N
   chosen in §14) + their children by `order_id in (…)`; `audit_log` only for a recent window (it is not reconciled).
 - Server-assigned values (folios, `server_at`, versions, snapshots, `scope_changed_at`) reach the device through the RPC
@@ -417,6 +595,23 @@ audited as `cliente` and the link is only shared through the client's channel �
 tokens → `PT404`. Tokens are 256-bit (32 random bytes, base64url, generated with `crypto.getRandomValues` in
 `store.ts`); short or low-entropy tokens are refused (`weak_token`). Rate limiting/expiry: §14.
 
+A link is handed out only once its survey is on the server. «Generar encuesta» creates the survey on the device and queues
+`create_survey`; until that item is sent, `get_survey` answers `PT404` for the token, and for good if the server refuses
+it. So in account sessions every way of sharing (WhatsApp, correo, copiar enlace, QR) waits for the item
+(`features/postventa/lib.ts` `surveyLink`): the row says «La encuesta se activa al sincronizar: compártala cuando esté en
+línea» meanwhile, and the server's message if it was refused (Reintentar / Descartar in the sync sheet). The demo shares at
+once, as before. The public page's «No encontramos esta encuesta» of an account build says that a link just received may
+not be active yet and offers «Intentar de nuevo».
+
+The page is a page of the app for the one-writer rule (§8). A client's phone only ever has this page open, so it is the
+writer there and the client never sees the blocker; in account builds it answers through `submit_survey`, and the device
+store it hydrates holds no staff session, so nothing more is written. It never depends on the device there: when the tab
+cannot hold the app's data (storage full, site data blocked, a broken database), the page renders the server survey
+without the store, and the server's `42501` still catches a staff session in the cookies. On a staff device where the app is open in another
+window, the page shows the same blocker («Usar aquí»): it needs the writer's data to know whether a staff session is open
+on the device (it asks to sign out first, and only the writer may sign out and wipe the device), and the demo answers its
+own surveys into the device's store.
+
 ## 10. API keys and environment
 
 - App (browser + Next.js server): `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` (`sb_publishable_…`).
@@ -427,30 +622,40 @@ tokens → `PT404`. Tokens are 256-bit (32 random bytes, base64url, generated wi
 - Legacy `anon`/`service_role` keys are deprecated by end of 2026: create the new keys and disable the legacy ones once
   nothing uses them. Recommended: migrate to asymmetric JWT signing keys so `getClaims()` verifies locally.
 
-## 11. Next.js integration (Next 16, App Router, `@supabase/ssr`) — design, not built yet
+## 11. Next.js integration (Next 16, App Router, `@supabase/ssr`)
 
-**Status:** only `src/lib/supabase/database.types.ts` exists today. Everything else in this section is the planned shape
-of the integration (phase 1 of §12); the app still runs on its local demo store and its demo `/login`.
+Built on `supabase-wiring` (PR #10). Without the two `NEXT_PUBLIC_SUPABASE_*` values the app is demo-only (no account
+sign-in, no proxy refresh).
 
-- `src/lib/supabase/client.ts` (to create): `createBrowserClient<Database>(url, publishableKey)` — used by the store/sync
-  engine.
-- `src/lib/supabase/server.ts` (to create): `createServerClient<Database>` with `cookies: { getAll, setAll }` (`setAll` in
-  try/catch in Server Components).
-- `src/proxy.ts` (to create; Next 16 renamed Middleware to Proxy): refresh the session (return the response `setAll`
-  built, copy its cookies/cache headers if redirecting), redirect to `/login` without a session except `/encuesta/*`,
-  `/offline`, static assets; optional optimistic route gating with `app_metadata.pulkro_role` + `canSeeRoute` — the
-  database still decides. Use `supabase.auth.getClaims()` there and in server code, never `getSession()`.
-- Login (`/login`, to rewire from the demo role picker): `signInWithPassword`; invite landing
-  (`/acceso/definir-contrasena`, to create): verify the invite link, then `updateUser({ password })`. Sign-out clears
-  IndexedDB only after the queue is empty (or warns).
-- Do not use the deprecated `@supabase/server` framework adapters; `@supabase/server` (`withSupabase`) is for the Edge
-  Function only.
-- `src/lib/supabase/database.types.ts` (exists) is generated; regenerate after every migration.
+- `src/lib/supabase/config.ts`: the project URL and publishable key, read as literal `process.env.NEXT_PUBLIC_…` (Next
+  inlines them at build time); `isSupabaseConfigured`.
+- `src/lib/supabase/client.ts`: the browser client, `createBrowserClient<Database>` with `detectSessionInUrl: false` (a
+  link's session is taken only by `/acceso/definir-contrasena`); `getTokenClient` (a client bound to one access token: a
+  request keeps the account it started for, §8); `endSessionOnDevice` (ends this device's session, scoped to one account
+  with `userId`: a session another tab put in the shared cookies meanwhile stays).
+- `src/lib/supabase/server.ts`: `createServerClient<Database>` with `cookies: { getAll, setAll }` (`setAll` in try/catch
+  for Server Components). Nothing in the app uses it yet: every read and write runs from the device.
+- `src/proxy.ts` (Next 16 renamed Middleware to Proxy): refreshes the session cookies on each request (`getClaims()`,
+  `setAll` rebuilding the response and copying its cache headers) for every path but static assets, the service worker
+  and the manifest. It **never redirects**: routes are gated on the client from the on-device store session (AppShell →
+  `/login`), which also works offline; the database decides what an account may read or write.
+- `/login` (`src/features/auth/login-view.tsx`, `account-sign-in.tsx`): `signInWithPassword`, «¿Olvidó su contraseña?»
+  (`resetPasswordForEmail`, `/login?recuperar=1`), "Vuelva a entrar" for the account on the device, and «Entrar al demo»
+  while the demo is on. `use-enter-account.tsx` reads the account's own profile and starts the store's account session.
+- `/acceso/definir-contrasena` (`set-password-view.tsx`): invite / recovery / e-mail-change links (both link forms, §2),
+  then `updateUser({ password })`. Sign-out (`use-sign-out.tsx`) ends the session and wipes the account's data only after
+  the person saw the unsent changes (this tab's queue and the saved one, §8).
+- The sync engine: `src/lib/sync/` — `pull.ts` (cursors, scope gain, reconcile), `push.ts` + `queue.ts` (the queue and its
+  rules), `writer.ts` with `src/lib/device-storage.ts` (one writer per device), `clock.ts`, `use-pull-scheduler.ts`.
+- `@supabase/server` (`createSupabaseContext`) is for the Edge Function only; no deprecated framework adapters.
+- `src/lib/supabase/database.types.ts` is generated; regenerate after every migration.
 
 ## 12. Phased plan to wire the app
 
-1. **Project settings** (dashboard): disable sign-ups; Site URL + redirect URLs; enable the hook; custom SMTP + Spanish
-   invite/recovery templates; JWT expiry (keep ≤ 1 h) and session limits; new API keys; asymmetric signing keys.
+1. **Project settings** (dashboard): disable sign-ups; Site URL (the app's URL) + redirect URLs
+   (`<app>/acceso/definir-contrasena`, `http://localhost:3000/**`, `http://localhost:3100/**`); enable the hook; custom
+   SMTP + Spanish invite/recovery templates (until then Supabase sends its default English e-mails, whose links the app
+   also accepts: §2 "E-mail links"); JWT expiry (keep ≤ 1 h) and session limits; new API keys; asymmetric signing keys.
    **Passwords** (Authentication → Providers → Email): minimum length 12, require lowercase, uppercase and digits (no
    symbol requirement: supervisors type on phones). Sign-ups off, the hook, the password policy, `jwt_exp` and refresh-token
    rotation are applied by `scripts/supabase-auth-config.mjs` (Management API, your own scoped access token; dry run by
@@ -459,25 +664,34 @@ of the integration (phase 1 of §12); the app still runs on its local demo store
    activity and have no daily backups — and turn leaked-password protection on then.
    Drop the demo dataset and bootstrap the first Dirección (§2). Create a **dev/staging project or branch** for everything
    that follows (the demo dataset can be loaded there instead).
-2. **Auth in the app**: Supabase clients, `proxy.ts`, login/invite pages, `session` from Auth instead of the demo
-   switcher (keep the demo behind `NEXT_PUBLIC_DEMO`).
-3. **Read path**: sync engine pull (cursor + scope gain + reconcile, §8) into the existing store (replace `ensureSeeded`
-   for real accounts); catalogs and orders read-only first.
-4. **Write path**: queue items `{op_id, rpc, args, order_id, deps, attempts, state}` from each store action (keep the
-   local optimistic update), push via RPC with the outcome classes of §8 (retry / quarantine / error); photos (upload →
-   `add_photo`); folios from results. The store guards already mirror the server rules changed in the review
-   (`closureBlockers` "ninguna jornada ejecutada", `derivedExecutionStatus`, day numbering, frozen incidents, 256-bit
-   survey tokens).
-5. **Admin**: deploy `admin-users`, users screen calls it (shows `open_orders` after a deactivation); catalogs via RPCs;
-   import real catalogs.
-6. **Pilot hardening**: run `supabase/tests` in CI against a branch, `pg_cron` purge of `private.sync_ops` (> 90 days),
-   storage retention job, PITR/backups, monitoring of advisors and logs.
+2. **Auth in the app** — **built** (`supabase-wiring`, §11): Supabase clients, `proxy.ts`, `/login` and
+   `/acceso/definir-contrasena`, the account session from Auth instead of the demo switcher (the demo stays behind
+   `NEXT_PUBLIC_DEMO`).
+3. **Read path** — **built**: the pull (cursors + scope gain + reconcile, §8) into the existing store, which no longer
+   seeds demo data for an account.
+4. **Write path** — **built**: a queue item `{op_id, rpc, args, order_id, deps, attempts, state}` per store action (the
+   local optimistic update stays), pushed via RPC with the outcome classes of §8 (retry / quarantine / error); photos
+   (upload → `add_photo`); folios from the results; one writer per device. The store guards mirror the server rules.
+5. **Admin**: deploy `admin-users`, users screen calls it (shows `open_orders` after a deactivation) — **done** (function
+   deployed, migration `admin_users_email_sync` applied, suite 18, users screen), and so are the review fixes and the owner
+   decisions (migrations `admin_users_review` then `admin_users_decisions`, suites 19 and 20, function version 3 with
+   `resend_invite`); catalogs via RPCs; import real catalogs.
+6. **Pilot hardening**: run `supabase/tests` (and `npm run check:functions`) in CI against a branch, `pg_cron` purge of
+   `private.sync_ops` (> 90 days), storage retention job, PITR/backups, monitoring of advisors and logs.
+
+Still open from phase 1 before the pilot: custom SMTP with the Spanish templates, the Pro plan (leaked-password protection,
+daily backups), the app's real URL (Site URL, redirect list, the function's `APP_URL` / `APP_ORIGINS`), dropping the demo
+dataset and the first Dirección, and a staging project or branch.
 
 ## 13. Operations
 
+- Edge Functions: type-check with `npm run check:functions` (scripts/check-edge-functions.mjs: tsc against the installed
+  supabase-js types and the Deno / `@supabase/server` declarations in `supabase/functions/_check/`; no Deno needed) before
+  every deploy — the app's `tsc` excludes `supabase/functions`, and neither deploy path type-checks.
 - Migrations: `supabase/migrations/<applied version>_<name>.sql`, applied with the MCP `apply_migration` (name = file
   name without version) and verified byte-for-byte (`md5` of `supabase_migrations.schema_migrations.statements[1]` = file
-  `md5`; all 18 match on 2026-10-11). **Never edit an applied file**; fix forward with a new one. Dry run first: one `execute_sql` call
+  `md5`; all 22 match as of 2026-10-11: the first 19 in the PR #9 check, `admin_users_email_sync`, `admin_users_review`
+  and `admin_users_decisions` right after each was applied). **Never edit an applied file**; fix forward with a new one. Dry run first: one `execute_sql` call
   `begin; <migration>; <tests>; rollback;` (verified to be transactional). Changing an RPC signature: drop the old
   `public.<name>` wrapper, recreate `private.<name>`, call `private.expose_rpc` (which also regenerates the op-args
   digest).
@@ -496,50 +710,62 @@ of the integration (phase 1 of §12); the app still runs on its local demo store
 - Test runs advance the folio sequences and the `audit_log` identity (sequences are not transactional); on an empty
   database reset them with `setval(…, 1, false)` (README of `supabase/tests`).
 
-## 14. Decisiones pendientes (para el dueño)
+## 14. Decisiones (2026-10-11)
 
-1. **Entorno**: hoy todo vive en el proyecto que se usa como producción. Antes del piloto: proyecto de desarrollo/staging
-   o *branching*, y correr ahí las pruebas y las migraciones primero.
-2. **Folios**: empiezan en `OS-00001`, `INC-0001`, `PV-0001`, globales (sin prefijo por unidad). Las secuencias pueden
-   dejar huecos. ¿Número inicial o prefijo por unidad?
-3. **Responsable de casos postventa**: el servidor solo acepta Administración de la unidad o el supervisor de la orden
-   (el prototipo ofrecía cualquier supervisor de la unidad, que luego no vería el caso). ¿Se confirma?
-4. **Catálogos de toda la empresa** (tipos de servicio, materiales): hoy los editan Dirección y Administración (como en el
-   prototipo). ¿Solo Dirección? **Unidades**: solo Dirección (`users.admin`).
-5. **Conformidad del cliente al cerrar**: el servidor la acepta opcional (el diálogo la exige). ¿Obligatoria?
-   ¿La firma se queda como imagen dentro del cierre (≤ 512 kB) o como archivo en Storage?
-6. **Retención**: fotos eliminadas (hoy se conservan), evidencia de órdenes archivadas, bitácora, `sync_ops`, archivos
-   subidos cuyo `add_photo` nunca llegó; límite por foto (10 MB) y plan de almacenamiento. La purga de historial usa
-   `pulkro.history_purge` en un trabajo del servidor: definir plazos.
-7. **PDF del reporte**: hoy se genera en el dispositivo a partir de los datos + `snapshot`. ¿Guardar también el PDF de cada
-   versión en Storage?
-8. **Visibilidad de perfiles para supervisores**: hoy ven su perfil, quienes crearon sus órdenes y responsables de sus
-   casos (nombres de la bitácora vienen guardados en cada registro). ¿Suficiente?
-9. **Carga inicial de Dirección**: cuántos meses de historial bajan al dispositivo.
-10. **Reloj del dispositivo**: hoy se rechaza lo que llega > 5 min adelantado o > 45 días de atraso (también en notas,
-    incidencias, cierres, reportes y envíos). Alternativa: aceptar y marcar (ordenando por hora del servidor). ¿Cuál?
-11. **Correo**: SMTP propio y plantillas en español para invitación y recuperación de contraseña (en el plan gratuito
-    las plantillas no se pueden personalizar con el SMTP por defecto). Cambio de correo de un usuario: falta definir el
-    flujo (Edge Function + RPC para sincronizar `profiles.email`).
-12. **Sesiones**: duración del token, tiempo de inactividad y sesión única por usuario (algunas opciones requieren plan Pro).
-13. **Encuesta pública**: vigencia del enlace y límite de intentos (los tokens ya son de 256 bits). El personal tiene los
-    enlaces y podría contestar desde una ventana privada: ¿basta con la bitácora o se requiere algo más (p. ej. enviar el
-    enlace solo por un canal del cliente)?
-14. **Compartir una versión anterior** del reporte mientras la orden está reabierta: hoy se permite (igual que el prototipo).
-15. **Indicadores/exportaciones**: hoy se calculan en el dispositivo con los datos visibles; si se requieren totales de
-    toda la empresa sin bajar el detalle, agregar vistas/RPC de solo lectura para Dirección y Administración.
-16. **Privacidad y residencia de datos**: proyecto en us-east-1; aviso de privacidad para fotos, GPS y firmas; respaldos
-    (PITR) y política de recuperación.
-17. **Capturas de un supervisor reasignado** (revisión F04): hoy el servidor responde `order_reassigned` y la app las pone
-    en cuarentena para entregarlas a quien tiene la orden. ¿Se acepta en cambio lo capturado *antes* de la reasignación
-    (ventana de gracia, p. ej. 72 h, con hora del dispositivo — que el dispositivo podría falsear) o se guarda en el
-    servidor una bandeja de "capturas por revisar" para Administración?
-18. **Jornada reprogramada con registro sin conexión** (`jornada_rescheduled`): ¿la cuadrilla sí trabajó ese día? Hoy no se
-    revive la jornada; la app ofrece capturar en la jornada vigente. ¿Se permite reactivar la jornada original?
-19. **Órdenes cerradas cuyo supervisor cambió de unidad o rol**: el servidor bloquea el cambio solo con órdenes *abiertas*;
-    las cerradas conservan su supervisor histórico (reabrirlas sigue siendo suyo). ¿Permitir reasignar el responsable de
-    una orden cerrada (seguimiento/reapertura)?
-20. **Envío en lote** (`sync_push` con varias operaciones por llamada) para reconexiones con mucha cola: hoy una llamada por
-    operación. ¿Cuándo vale la pena?
-21. **Escala de Dirección**: la visibilidad se resuelve con la lista de ids de órdenes (rápido hasta decenas de miles).
-    Por encima de ~100 000 órdenes conviene un rol de base de datos propio para Dirección (vía el *hook*).
+El dueño delegó estas decisiones ("your call"). Quedan como valores por defecto: cualquiera se puede revisar después;
+las marcadas **[implementado]** ya están en el servidor y en la app.
+
+1. **Entorno**: por decisión del dueño, la integración de la app se construye y prueba contra el proyecto "Pulkro" con los
+   datos demo. Antes del piloto: plan Pro (respaldos diarios, sin pausa por inactividad) y un proyecto de staging o
+   *branching* para pruebas y migraciones; el demo se quita con `select private.drop_demo_data();` (lo ejecuta el dueño).
+2. **Folios**: globales `OS-00001`, `INC-0001`, `PV-0001`, sin prefijo por unidad; se aceptan huecos (las secuencias no
+   son transaccionales). Mantienen la continuidad con los folios del demo mientras esté cargado.
+3. **Responsable de casos postventa**: Administración de la unidad de la orden o el supervisor de la orden, dentro de la
+   unidad. **[implementado]**
+4. **Catálogos de toda la empresa** (tipos de servicio, materiales): Dirección y Administración (como en el prototipo).
+   Unidades: solo Dirección. **[implementado]**
+5. **Conformidad del cliente**: la app la exige al cerrar; el servidor la acepta opcional para no bloquear un cierre
+   legítimo sin cliente presente (la excepción queda en el reporte). La firma se queda como imagen dentro del cierre
+   (≤ 512 kB): viaja con el cierre y su versión.
+6. **Retención** (a programar con `pg_cron` en la fase 6, usando `pulkro.history_purge`): fotos eliminadas → sus archivos
+   se borran a los 90 días; evidencia de órdenes archivadas → 2 años; bitácora → sin purga; `private.sync_ops` → 90 días;
+   archivos subidos sin `add_photo` → 7 días. Límite por foto: 10 MB (la app comprime a ~1600 px antes de subir).
+7. **PDF del reporte**: se genera en el dispositivo a partir del `snapshot`; no se guarda en Storage (el snapshot congelado
+   es la fuente). Se reconsidera si un cliente pide el PDF archivado.
+8. **Visibilidad de perfiles**: toda persona que aparece en un registro visible (supervisores actuales y anteriores,
+   autores de capturas, cierres, reportes, envíos, encuestas, casos). **[implementado]**
+9. **Carga inicial**: 6 meses de historial para Dirección y Administración; el supervisor baja todas sus órdenes abiertas
+   y 6 meses de cerradas. Lo anterior se consulta en línea.
+10. **Reloj del dispositivo**: se mantiene el rechazo (> 5 min adelantado o > 45 días de atraso), con mensaje para revisar
+    la hora del teléfono. **[implementado]** Decisión del dueño (CAP-1): lo adelantado se reintenta hasta que la hora del
+    servidor lo alcanza (sin reescribir la hora del dispositivo), lo demasiado antiguo solo se puede descartar, y las
+    pantallas de captura avisan sin bloquear mientras el reloj del teléfono difiere más de 5 min del servidor (§8).
+11. **Correo**: por decisión del dueño, el remitente por defecto de Supabase por ahora (solo entrega a miembros del equipo,
+    ~2 correos por hora); plantillas en español en `supabase/templates/`. SMTP propio antes del piloto. Cambio de correo
+    de un usuario: acción `change_email` de la Edge Function `admin-users` (fase 5). **[desplegado y aplicado: función
+    `admin-users`, RPC `sync_profile_email` (migración `admin_users_email_sync`), pantalla de usuarios; correcciones de la
+    revisión (migración `admin_users_review`, nuevo despliegue de la función) pendientes]** Decisiones del dueño sobre las
+    cuentas (escritas, pendientes de aplicar con la migración `admin_users_decisions` y el nuevo despliegue): Dirección
+    puede **reenviar una invitación** pendiente («Reenviar invitación» en «Editar»; si la persona ya entró, se le indica
+    «¿Olvidó su contraseña?»); **cambiar el correo de acceso cierra las sesiones** de esa persona; un cambio de correo que
+    la persona confirma por su cuenta se **copia al perfil** (disparador en `auth.users`, sin bloquear nunca la
+    confirmación); se aceptan **dos correos de invitación** si el mismo envío se reintenta muy rápido (§2).
+12. **Sesiones**: token de acceso de 1 h y rotación de *refresh tokens* (valores por defecto). Inactividad y sesión única
+    requieren Pro: se revisan al pasar a Pro.
+13. **Encuesta pública**: un solo envío por enlace, sin vencimiento por ahora; la bitácora registra quién generó y envió
+    cada enlace. Si hace falta, vencimiento a 30 días.
+14. **Compartir una versión anterior** del reporte con la orden reabierta: se permite (como el prototipo). **[implementado]**
+15. **Indicadores/exportaciones**: se calculan en el dispositivo con los datos visibles; vistas/RPC de totales solo si la
+    carga inicial (punto 9) lo exige.
+16. **Privacidad y residencia**: se acepta us-east-1. Antes del piloto: aviso de privacidad (fotos, GPS, firmas) redactado
+    por el dueño/asesor legal y respaldos con Pro.
+17. **Capturas de un supervisor reasignado**: se quedan en cuarentena en el dispositivo y se entregan a quien tiene la
+    orden (sin ventana de gracia, porque la hora del dispositivo se puede falsear). **[implementado]**
+18. **Jornada reprogramada con registro sin conexión**: no se revive la jornada original; la app ofrece capturar en la
+    jornada vigente. **[implementado]**
+19. **Orden cerrada cuyo supervisor cambió de unidad o rol**: Administración puede reasignar el supervisor de una orden
+    finalizada, con reporte enviado o en seguimiento (solo ese campo) sin reabrirla; así el nuevo supervisor puede darle
+    seguimiento o reabrirla. **[implementado: migración `decision_closed_order_reassign`, prueba 17]**
+20. **Envío en lote**: una llamada por operación; se agrega `sync_push` en lote si las colas al reconectar pasan de ~50
+    operaciones.
+21. **Escala de Dirección**: la lista de ids de órdenes basta hasta ~100 000 órdenes; después, rol de base de datos propio.

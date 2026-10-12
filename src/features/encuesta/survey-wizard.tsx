@@ -8,6 +8,7 @@ import { cn } from "@/lib/utils";
 import { useAppStore } from "@/lib/store";
 import { useUi } from "@/lib/ui-store";
 import type { SurveyAnswers } from "@/lib/types";
+import type { SendOutcome } from "./survey-remote";
 import { EASE } from "@/components/pk/motion";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -28,8 +29,22 @@ const slide: Variants = {
   exit: (dir: number) => ({ opacity: 0, x: dir * -36, filter: "blur(4px)", transition: { duration: 0.22, ease: EASE } }),
 };
 
-/** Four short steps: overall stars → detail stars → NPS → optional comment + name. */
-export function SurveyWizard({ token, onSubmitted }: { token: string; onSubmitted: (answers: SurveyAnswers, name?: string) => void }) {
+/**
+ * Four short steps: overall stars → detail stars → NPS → optional comment + name. `send`: the answer goes to the server
+ * (account builds, survey-remote.ts); without it the demo records it on the device. `onStale`: the server says the page is out
+ * of date (already answered meanwhile, a staff session): load it again.
+ */
+export function SurveyWizard({
+  token,
+  onSubmitted,
+  send,
+  onStale,
+}: {
+  token: string;
+  onSubmitted: (answers: SurveyAnswers, name?: string) => void;
+  send?: (answers: SurveyAnswers, name?: string) => Promise<SendOutcome>;
+  onStale?: () => void;
+}) {
   const submitSurvey = useAppStore((s) => s.submitSurvey);
   const [step, setStep] = useState(0);
   const [dir, setDir] = useState(1);
@@ -50,10 +65,24 @@ export function SurveyWizard({ token, onSubmitted }: { token: string; onSubmitte
     setStep(to);
   };
 
-  const submit = () => {
+  const submit = async () => {
     if (nps === null || !overall || sending) return;
     setSending(true);
     const answers: SurveyAnswers = { overall, ...detail, nps, comment: comment.trim() || undefined };
+    if (send) {
+      const r = await send(answers, name.trim() || undefined);
+      if (r.status === "ok") {
+        useUi.getState().fireCelebrate();
+        onSubmitted(answers, name.trim() || undefined);
+        return;
+      }
+      setSending(false);
+      if (r.status === "already") toast.error("Esta encuesta ya fue respondida", { description: "Gracias, ya tenemos su calificación." });
+      else if (r.status === "missing") toast.error("Esta encuesta ya no está disponible", { description: "Pida un enlace nuevo a su supervisor." });
+      else if (r.status === "error") toast.error("No se pudo enviar su respuesta", { description: r.message });
+      if (r.status !== "error") onStale?.();
+      return;
+    }
     const ok = submitSurvey(token, answers, name.trim() || undefined);
     if (!ok) {
       setSending(false);
@@ -169,7 +198,7 @@ export function SurveyWizard({ token, onSubmitted }: { token: string; onSubmitte
       <div className="flex items-center gap-3 border-t border-hairline bg-surface/70 px-6 py-4 sm:px-8">
         {step > 0 && (
           <Button variant="ghost" onClick={() => go(step - 1)} className="h-12 rounded-[14px] px-4 text-[15px]">
-            <ArrowLeft /> Atrás
+            <ArrowLeft /> Volver
           </Button>
         )}
         <motion.div className="ml-auto" animate={canNext ? { scale: 1, opacity: 1 } : { scale: 0.98, opacity: 0.85 }}>
@@ -178,7 +207,7 @@ export function SurveyWizard({ token, onSubmitted }: { token: string; onSubmitte
               Continuar <ArrowRight />
             </Button>
           ) : (
-            <Button onClick={submit} disabled={sending} className="h-12 rounded-[14px] px-6 text-[15px] font-semibold">
+            <Button onClick={() => void submit()} disabled={sending} className="h-12 rounded-[14px] px-6 text-[15px] font-semibold">
               <Send /> Enviar respuesta
             </Button>
           )}

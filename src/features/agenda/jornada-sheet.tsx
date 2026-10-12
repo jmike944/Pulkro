@@ -12,6 +12,7 @@ import { ORDER_STATUS } from "@/lib/status";
 import type { Jornada, OrderStatus } from "@/lib/types";
 import { AvatarStack, Eyebrow, KeyValues, PersonAvatar } from "@/components/pk/bits";
 import { ClientMark } from "@/components/pk/client-mark";
+import { MODAL_DESKTOP_QUERY } from "@/components/pk/modal-shell";
 import { OrderStatusPill, StatusDot, TonePill } from "@/components/pk/status";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
@@ -45,7 +46,8 @@ export function JornadaSheet({
   /** jornada ids change when rescheduling — follow the moved one */
   onMoved: (jornadaId: string, date: string) => void;
 }) {
-  const isDesktop = useMediaQuery("(min-width: 768px)");
+  // Same breakpoint as the shell and every modal: right sheet on the desktop panel (lg), bottom sheet below.
+  const isDesktop = useMediaQuery(MODAL_DESKTOP_QUERY);
   // Lives outside the sheet: rescheduling replaces the jornada (new id), which re-keys the sheet body.
   const [move, setMove] = useState<MoveState>(null);
   return (
@@ -254,7 +256,7 @@ function Detail({
             </p>
             <p className="mt-0.5 text-[13px] leading-snug text-subtle">{site?.address}</p>
           </div>
-          {site && (
+          {site && !site.unavailable && (
             <a
               href={mapsLink(site.lat, site.lng)}
               target="_blank"

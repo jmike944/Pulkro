@@ -12,6 +12,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { NpsPicker, StarInput } from "./rating";
 import { FieldLabel, inputCls, textareaCls } from "./ui";
 import { useHeldTarget } from "./use-held-target";
+import { TEXT_LIMITS } from "@/lib/domain";
 
 export type ManualTarget = { order: Order; client?: Client };
 
@@ -73,7 +74,7 @@ function ManualForm({
   const hint = firstMissing(
     [!overall, "Marque la calificación general"],
     [nps === null, "Marque qué tan probable es que el cliente nos recomiende (0 a 10)"],
-    [!name.trim(), "Escriba el nombre de quien respondió"],
+    [name.trim().length < TEXT_LIMITS.respondentName.min, "Escriba el nombre de quien respondió"],
   );
   const dirty = overall > 0 || nps !== null || comment.trim().length > 0 || name.trim() !== initialName.trim() || Object.values(detail).some(Boolean);
 
@@ -147,7 +148,7 @@ function ManualForm({
           <FieldLabel htmlFor="ms-comment" hint="Opcional">
             Comentario del cliente
           </FieldLabel>
-          <Textarea id="ms-comment" value={comment} onChange={(e) => setComment(e.target.value)} placeholder="Escriba lo que comentó el cliente, con sus palabras…" className={textareaCls} />
+          <Textarea id="ms-comment" value={comment} onChange={(e) => setComment(e.target.value)} maxLength={2000} placeholder="Escriba lo que comentó el cliente, con sus palabras…" className={textareaCls} />
         </div>
 
         <div>
@@ -156,6 +157,7 @@ function ManualForm({
             id="ms-name"
             value={name}
             onChange={(e) => setName(e.target.value)}
+            maxLength={TEXT_LIMITS.respondentName.max}
             placeholder="Nombre de quien respondió"
             autoComplete="off"
             aria-required

@@ -10,6 +10,7 @@ import { jornadaMinutes } from "@/lib/domain";
 import { fmtDuration, fmtTime } from "@/lib/format";
 import { Shimmer } from "@/components/pk/feedback";
 import { NotFoundOrOutOfScope } from "@/components/shell/out-of-scope";
+import { ClockWarning } from "@/components/pk/clock-warning";
 import { IncidentSheet } from "@/components/pk/incident-sheet";
 import { useFieldState, type FieldReady, type FieldWarning } from "./use-field-state";
 import { FieldHeader } from "./field-header";
@@ -110,6 +111,8 @@ function FieldScreen({ f }: { f: FieldReady }) {
       <div className="grid gap-10 @min-[880px]:grid-cols-[minmax(0,1fr)_minmax(290px,340px)] @min-[1080px]:gap-14">
         <div className="mx-auto w-full min-w-0 max-w-2xl space-y-10">
           <div className="space-y-5">
+            {/* Inline captures (photo sections, the Bitácora composer) live on this page: one warning for all of them. */}
+            <ClockWarning />
             <StepRail steps={f.steps} current={f.currentStep} />
             <HeroCard f={f} actions={actions} />
             {f.jornada.status === "cerrada" && <NextStep f={f} />}

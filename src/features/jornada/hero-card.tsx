@@ -88,7 +88,7 @@ function PendingState({ f, actions }: { f: FieldReady; actions: HeroActions }) {
         <span className="text-white/35">–</span>
         {fmtTime(jornada.plannedEnd)}
       </p>
-      <p className={cn("mt-3 text-[14.5px]", today && delta < -15 ? "font-medium text-[#ffd18a]" : "text-white/70")}>
+      <p className={cn("mt-3 text-[14.5px]", today && delta < -15 ? "font-medium text-amber-glow" : "text-white/70")}>
         {fmtDuration(planned)} de trabajo · {when}
       </p>
 
@@ -102,7 +102,7 @@ function PendingState({ f, actions }: { f: FieldReady; actions: HeroActions }) {
         ) : (
           <ReadOnlyLine>Esperando el registro de entrada del supervisor.</ReadOnlyLine>
         )}
-        {f.permissions.capture && f.checkInBlock && <p className="mt-2.5 text-[13px] leading-snug text-[#ffd18a]">{f.checkInBlock}</p>}
+        {f.permissions.capture && f.checkInBlock && <p className="mt-2.5 text-[13px] leading-snug text-amber-glow">{f.checkInBlock}</p>}
       </div>
     </div>
   );
@@ -125,7 +125,7 @@ function LiveState({ f, actions }: { f: FieldReady; actions: HeroActions }) {
         }
         right={
           <span className="inline-flex items-center gap-1.5">
-            {(checkIn.offline || !checkIn.serverAt) && <CloudOff className="size-3.5 text-[#ffd18a]" aria-label="Entrada sin sincronizar" />}
+            {(checkIn.offline || !checkIn.serverAt) && <CloudOff className="size-3.5 text-amber-glow" aria-label="Entrada sin sincronizar" />}
             En sitio desde {fmtTime(checkIn.deviceAt)}
           </span>
         }
@@ -152,7 +152,7 @@ function LiveState({ f, actions }: { f: FieldReady; actions: HeroActions }) {
           <ReadOnlyLine>La salida la registra el supervisor al terminar.</ReadOnlyLine>
         )}
         {f.permissions.capture && f.antes.length === 0 && (
-          <p className="mt-3 flex items-start gap-2 text-[13px] leading-snug text-[#ffd18a]">
+          <p className="mt-3 flex items-start gap-2 text-[13px] leading-snug text-amber-glow">
             <TriangleAlert className="mt-0.5 size-4 shrink-0" /> Aún no hay fotos ANTES: tómelas antes de empezar los trabajos.
           </p>
         )}
@@ -190,11 +190,11 @@ function LiveTimer({ since, planned }: { since: string; planned: number }) {
       </p>
       <div className="mt-4 flex items-center justify-between gap-3 text-[13px] text-white/60">
         <span>Plan {fmtDuration(planned)}</span>
-        <span className={cn("tabular", over && "font-semibold text-[#ffd18a]")}>{over ? `+${fmtDuration(secs / 60 - planned)} sobre el plan` : `${Math.round(pct * 100)}%`}</span>
+        <span className={cn("tabular", over && "font-semibold text-amber-glow")}>{over ? `+${fmtDuration(secs / 60 - planned)} sobre el plan` : `${Math.round(pct * 100)}%`}</span>
       </div>
       <div className="mt-2 h-[6px] overflow-hidden rounded-full bg-white/10">
         <motion.div
-          className={cn("h-full rounded-full", over ? "bg-[#ffd18a]" : "bg-gradient-to-r from-st-blue to-sky")}
+          className={cn("h-full rounded-full", over ? "bg-amber-glow" : "bg-gradient-to-r from-st-blue to-sky")}
           initial={{ width: 0 }}
           animate={{ width: `${Math.min(1, pct) * 100}%` }}
           transition={{ type: "spring", stiffness: 60, damping: 18 }}
@@ -231,7 +231,7 @@ function ClosedState({ f, actions }: { f: FieldReady; actions: HeroActions }) {
       </p>
       <p className="mt-3 text-[14px] text-white/70">
         Plan {fmtDuration(planned)} ·{" "}
-        <span className={cn(Math.abs(diff) > 30 && "font-semibold text-[#ffd18a]")}>
+        <span className={cn(Math.abs(diff) > 30 && "font-semibold text-amber-glow")}>
           {diff === 0 ? "justo a tiempo" : diff > 0 ? `+${fmtDuration(diff)}` : `−${fmtDuration(-diff)}`}
         </span>
       </p>
@@ -264,7 +264,7 @@ function StampTile({ label, stamp }: { label: string; stamp: GeoStamp }) {
     <div className="rounded-[20px] bg-white/[0.07] p-4 ring-1 ring-white/10">
       <div className="flex items-center justify-between gap-2">
         <p className="text-[12px] font-semibold uppercase tracking-[0.12em] text-white/50">{label}</p>
-        <span className={cn("inline-flex h-6 items-center gap-1 rounded-full px-2 text-[11.5px] font-semibold", justified ? "bg-[#ffd18a]/15 text-[#ffd18a]" : "bg-sky/15 text-sky")}>
+        <span className={cn("inline-flex h-6 items-center gap-1 rounded-full px-2 text-[11.5px] font-semibold", justified ? "bg-amber-glow/15 text-amber-glow" : "bg-sky/15 text-sky")}>
           {remote ? <Headset className="size-3" /> : <MapPin className="size-3" />} {remote ? "Remota" : manual ? "Manual" : `±${Math.round(stamp.accuracy)} m`}
         </span>
       </div>
@@ -276,7 +276,7 @@ function StampTile({ label, stamp }: { label: string; stamp: GeoStamp }) {
         </div>
         <div className="flex justify-between gap-3">
           <dt className="text-white/50">Servidor</dt>
-          <dd className={cn("tabular", stamp.serverAt ? "text-white/85" : "font-semibold text-[#ffd18a]")}>
+          <dd className={cn("tabular", stamp.serverAt ? "text-white/85" : "font-semibold text-amber-glow")}>
             {stamp.serverAt ? fmtClock(stamp.serverAt) : "pendiente de sincronizar"}
           </dd>
         </div>

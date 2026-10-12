@@ -1,0 +1,662 @@
+/**
+ * admin-users — account administration for Dirección (Pulkro Cuadrillas; docs/backend/architecture.md §2, decision 11).
+ *
+ * POST JSON, user JWT (verify_jwt on). The caller must be an ACTIVE Dirección profile; the database re-checks
+ * `users.admin` in every RPC anyway, but the check here gates the Auth admin calls (an invite e-mail cannot be unsent).
+ *
+ *   { action: "invite",       opId, email, name, role, unitId, title?, phone?, hue? }
+ *       inviteUserByEmail (redirectTo = <the calling app's origin, else APP_URL>/acceso/definir-contrasena), then provision_profile with the CALLER's JWT;
+ *       if the profile fails, the auth user this call created is deleted again.
+ *   { action: "deactivate",   opId, userId }   update_profile {active:false} (caller's JWT; revokes sessions, returns
+ *   { action: "reactivate",   opId, userId }   open_orders), then ban / unban through the admin API.
+ *   { action: "change_email", opId, userId, email }
+ *       admin updateUserById {email, email_confirm:true}, then sync_profile_email (caller's JWT); if the database refuses the
+ *       sync (any 4xx), the auth e-mail goes back to the previous one; an unknown outcome (no answer, 5xx) leaves it, and the
+ *       same request again completes it; email_changed (another change of the same account won the race) leaves it too. The
+ *       sync ends the person's sessions when it changes the address: they sign in again with the new one.
+ *   { action: "resend_invite", opId, userId }
+ *       the invitation e-mail again (inviteUserByEmail on the same address), only for an active profile whose auth account
+ *       was invited and never signed in; otherwise 409 already_active («¿Olvidó su contraseña?» is the way in). Nothing is
+ *       written in the database: opId is accepted for symmetry and not stored.
+ *
+ * 200 → { ok: true, action, duplicate, user_id, profile, open_orders?, invite_pending? }   (`profile` = the public.profiles
+ *       row as the caller reads it after the change, or null if that read failed: the next pull brings it)
+ *       resend_invite → { ok: true, action, resent: true, user_id }
+ * 4xx/5xx → { ok: false, code, message }: `code` is stable (the database hint for RPC refusals, e.g. "self_change",
+ *       "forbidden:users.admin", "op_id_reused"; otherwise one of the codes below), `message` is Spanish for the person.
+ *
+ * `opId` is the idempotency key of the RPC: a retry with the same payload answers the stored result (duplicate: true).
+ * Secrets: SUPABASE_URL, the publishable/secret keys and the JWKS are provisioned by the platform; APP_URL and APP_ORIGINS
+ * are set as function secrets (README.md). Nothing here logs tokens, keys, request bodies or e-mail addresses.
+ */
+import { createSupabaseContext, type SupabaseContext } from "npm:@supabase/server@1.9.1";
+import { isAuthRetryableFetchError } from "npm:@supabase/supabase-js@2.117.2";
+import { corsHeaders as supabaseCorsHeaders } from "npm:@supabase/supabase-js@2.117.2/cors";
+
+/* ───────────── configuration ───────────── */
+
+const env = (name: string): string | undefined => Deno.env.get(name)?.trim() || undefined;
+
+/** One key out of the platform's JSON map (`SUPABASE_*_KEYS`), the single-key form, or the legacy JWT key. */
+function pickKey(pluralVar: string, singularVar: string, legacyVar: string): string | undefined {
+  const plural = env(pluralVar);
+  if (plural) {
+    try {
+      const keys = JSON.parse(plural) as Record<string, unknown>;
+      const value = keys?.default ?? Object.values(keys ?? {})[0];
+      if (typeof value === "string" && value) return value;
+    } catch {
+      // malformed: fall through to the other forms
+    }
+  }
+  return env(singularVar) ?? env(legacyVar);
+}
+
+const PUBLISHABLE_KEY = pickKey("SUPABASE_PUBLISHABLE_KEYS", "SUPABASE_PUBLISHABLE_KEY", "SUPABASE_ANON_KEY");
+const SECRET_KEY = pickKey("SUPABASE_SECRET_KEYS", "SUPABASE_SECRET_KEY", "SUPABASE_SERVICE_ROLE_KEY");
+/** Passed to @supabase/server so it uses exactly these keys (new `sb_…` keys first, legacy JWT keys as fallback). */
+const SERVER_ENV = {
+  ...(PUBLISHABLE_KEY ? { publishableKeys: { default: PUBLISHABLE_KEY } } : {}),
+  ...(SECRET_KEY ? { secretKeys: { default: SECRET_KEY } } : {}),
+};
+
+const originOf = (value: string): string | undefined => {
+  try {
+    const url = new URL(value);
+    return url.protocol === "https:" || url.protocol === "http:" ? url.origin : undefined;
+  } catch {
+    return undefined;
+  }
+};
+
+/** Base URL of the app (invite landing page). No trailing slash. */
+const APP_URL = originOf(env("APP_URL") ?? "") ? env("APP_URL")!.replace(/\/+$/, "") : undefined;
+/**
+ * Browser origins allowed to call (APP_ORIGINS, comma-separated; when unset, the origin of APP_URL). An entry is an exact
+ * origin, or an https origin with ONE `*` standing for letters, digits and dashes inside a single DNS label (never a dot),
+ * e.g. `https://pulkro-*-ouroboros-63cf4f47.vercel.app` for every Vercel preview of the project. Keep patterns project-specific:
+ * the `*` needs fixed text on both sides within its label (`*.vercel.app` is refused); an allowed origin also receives the
+ * invitation links its Dirección sends (below), and Supabase Auth's redirect allow list must list it too, or the link falls
+ * back to the Site URL.
+ */
+type OriginRule = { exact: string } | { pattern: RegExp };
+const ORIGIN_PATTERN_RE = /^https:\/\/[a-z0-9.-]*\*[a-z0-9.-]*\.[a-z0-9-]+\.[a-z]{2,}$/;
+const escapeRe = (value: string) => value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+function originRule(raw: string): OriginRule | undefined {
+  const value = raw.trim().toLowerCase().replace(/\/+$/, "");
+  if (!value.includes("*")) {
+    const exact = originOf(value);
+    return exact ? { exact } : undefined;
+  }
+  if (value.indexOf("*") !== value.lastIndexOf("*") || !ORIGIN_PATTERN_RE.test(value)) return undefined;
+  const [before, after] = value.split("*");
+  // Fixed text on both sides inside the same label (`pulkro-*-team`): never a whole label (`*.vercel.app` = any app).
+  if (!/[a-z0-9-]$/.test(before) || !/^[a-z0-9-]/.test(after)) return undefined;
+  return { pattern: new RegExp(`^${escapeRe(before)}[a-z0-9-]+${escapeRe(after)}$`) };
+}
+const ORIGIN_RULES: readonly OriginRule[] = (env("APP_ORIGINS") ?? APP_URL ?? "")
+  .split(",")
+  .map(originRule)
+  .filter((rule): rule is OriginRule => !!rule);
+const isAllowedOrigin = (origin: string): boolean => {
+  const value = origin.toLowerCase();
+  return ORIGIN_RULES.some((rule) => ("exact" in rule ? rule.exact === value : rule.pattern.test(value)));
+};
+
+const INVITE_PATH = "/acceso/definir-contrasena";
+/** "Banned until" for a deactivated account: effectively forever; reactivation lifts it ("none"). */
+const BAN_DURATION = "876000h";
+const MAX_BODY = 16_384;
+
+/* ───────────── errors (stable codes, Spanish messages in the usted voice) ───────────── */
+
+class Failure extends Error {
+  constructor(
+    readonly status: number,
+    readonly code: string,
+    message: string,
+  ) {
+    super(message);
+    this.name = "Failure";
+  }
+}
+
+/** A function declaration (not an arrow) so `if (…) fail(…)` narrows like a throw. */
+function fail(status: number, code: string, message: string): never {
+  throw new Failure(status, code, message);
+}
+
+const MSG = {
+  sessionExpired: "Su sesión venció. Vuelva a iniciar sesión para continuar.",
+  misconfigured: "El servicio de cuentas no está configurado. Avise a quien administra el sistema.",
+  unavailable: "No se pudo contactar al servidor. Revise su conexión e intente de nuevo en unos minutos.",
+  serverError: "El servicio de cuentas tuvo un error inesperado. Intente de nuevo en unos minutos.",
+  emailTaken: "Ese correo ya pertenece a otra cuenta de Pulkro Cuadrillas: use uno distinto.",
+  emailInvalid: "Escriba un correo completo, como nombre@empresa.com.",
+  outOfScope: "No encontrado o fuera de su alcance.",
+  alreadyActive:
+    "Esta persona ya no tiene una invitación pendiente: ya entró a Pulkro Cuadrillas o su cuenta ya está confirmada. Si no recuerda su contraseña, pídale que use «¿Olvidó su contraseña?» en la pantalla de inicio de sesión.",
+  emailChanged: "Otra persona de Dirección cambió el correo de esta cuenta al mismo tiempo. Actualice la pantalla y revise el correo actual.",
+} as const;
+
+/** change_email: the login holds another request's address now (two changes of the same account at once). */
+const emailChanged = () => new Failure(409, "email_changed", MSG.emailChanged);
+
+const NETWORK_RE = /failed to fetch|fetch failed|networkerror|load failed|network request failed|connection|timed? ?out/i;
+
+type DbError = { message: string; code?: string; details?: string | null; hint?: string | null };
+
+/**
+ * A PostgREST error → the contract. Business refusals keep the database's code (`PTnnn` → HTTP nnn) and its stable hint
+ * and Spanish message; `details` (raw SQL text) never leaves the function.
+ */
+function dbFailure(error: DbError, status: number): Failure {
+  const pt = /^PT(\d{3})$/.exec(error.code ?? "");
+  if (pt) return new Failure(Number(pt[1]), error.hint || "rejected", error.message);
+  if (error.code === "23505") return new Failure(409, "duplicate", "Ese registro ya existe.");
+  if (error.code === "23503") return new Failure(422, "missing_reference", "Falta un dato relacionado: actualice la pantalla e intente de nuevo.");
+  if (error.code === "42501") return new Failure(403, "forbidden", "Su cuenta no tiene permiso para esta acción.");
+  if (status === 401 || /^PGRST30[0-3]$/.test(error.code ?? "")) return new Failure(401, "no_session", MSG.sessionExpired);
+  if (status === 0 || NETWORK_RE.test(error.message)) return new Failure(503, "unavailable", MSG.unavailable);
+  return new Failure(502, "server_error", MSG.serverError);
+}
+
+type AuthAdminError = { message: string; code?: string; status?: number; name?: string };
+type AuthStep = "invite" | "email" | "lookup";
+
+/** An Auth admin API error → the contract (GoTrue's `error.code`, HTTP status as fallback). */
+function authFailure(error: AuthAdminError | null | undefined, step: AuthStep): Failure {
+  if (!error) return new Failure(502, "server_error", MSG.serverError);
+  if (isAuthRetryableFetchError(error) || error.status === 0) return new Failure(503, "unavailable", MSG.unavailable);
+  switch (error.code) {
+    case "email_exists":
+    case "user_already_exists":
+    case "identity_already_exists":
+      return new Failure(409, "email_taken", "Ese correo ya tiene una cuenta de acceso: use uno distinto.");
+    case "email_address_invalid":
+    case "validation_failed":
+      return new Failure(422, "invalid_email", MSG.emailInvalid);
+    case "email_address_not_authorized":
+      return new Failure(
+        422,
+        "email_not_authorized",
+        "El servidor de correo actual solo envía a las direcciones autorizadas del proyecto. Pida que se configure el servidor de correo propio o use una dirección autorizada.",
+      );
+    case "over_email_send_rate_limit":
+    case "over_request_rate_limit":
+      return new Failure(
+        429,
+        "rate_limited",
+        "Se alcanzó el límite de correos por hora del servidor de correo. Espere un rato e intente de nuevo.",
+      );
+    case "user_not_found":
+      return new Failure(404, "auth_user_missing", "La cuenta de acceso no existe.");
+  }
+  if (error.status === 429) return new Failure(429, "rate_limited", "Hay demasiadas solicitudes seguidas. Espere unos minutos e intente de nuevo.");
+  if (error.status === 404) return new Failure(404, "auth_user_missing", "La cuenta de acceso no existe.");
+  if (step === "invite") return new Failure(502, "invite_failed", "No se pudo enviar la invitación. Intente de nuevo en unos minutos.");
+  if (step === "email") return new Failure(502, "email_update_failed", "No se pudo cambiar el correo. Intente de nuevo en unos minutos.");
+  return new Failure(502, "server_error", MSG.serverError);
+}
+
+/** For logs only: names and codes, never tokens, keys or addresses. */
+const describe = (error: unknown): string => {
+  if (error && typeof error === "object") {
+    const e = error as { name?: unknown; code?: unknown; status?: unknown; message?: unknown };
+    return [e.name, e.code, e.status, typeof e.message === "string" ? e.message.slice(0, 200) : undefined]
+      .filter((part) => part !== undefined && part !== "")
+      .join(" · ");
+  }
+  return String(error).slice(0, 200);
+};
+
+/* ───────────── request validation ───────────── */
+
+const ROLES = ["direccion", "administracion", "supervisor"] as const;
+type Role = (typeof ROLES)[number];
+
+type InviteRequest = {
+  action: "invite";
+  opId: string;
+  email: string;
+  name: string;
+  role: Role;
+  unitId: string;
+  title: string;
+  phone: string;
+  hue: number | null;
+};
+type ActiveRequest = { action: "deactivate" | "reactivate"; opId: string; userId: string };
+type EmailRequest = { action: "change_email"; opId: string; userId: string; email: string };
+/** opId: accepted for symmetry with the other actions; nothing is written in the database, so nothing stores it. */
+type ResendRequest = { action: "resend_invite"; opId: string; userId: string };
+type AdminRequest = InviteRequest | ActiveRequest | EmailRequest | ResendRequest;
+
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const EMAIL_RE = /^[^@\s]+@[^@\s]+\.[^@\s]{2,}$/;
+
+function invalid(message: string): never {
+  return fail(422, "invalid_value", message);
+}
+
+function uuidField(body: Record<string, unknown>, key: string, message: string): string {
+  const value = body[key];
+  return typeof value === "string" && UUID_RE.test(value) ? value.toLowerCase() : invalid(message);
+}
+
+function emailField(body: Record<string, unknown>): string {
+  const value = typeof body.email === "string" ? body.email.trim().toLowerCase() : "";
+  return value.length <= 254 && EMAIL_RE.test(value) ? value : fail(422, "invalid_email", MSG.emailInvalid);
+}
+
+function textField(body: Record<string, unknown>, key: string, max: number, message: string): string {
+  const value = body[key];
+  if (value === undefined || value === null) return "";
+  if (typeof value !== "string" || value.trim().length > max) return invalid(message);
+  return value.trim();
+}
+
+function parseRequest(raw: unknown): AdminRequest {
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) {
+    return fail(400, "invalid_body", "La solicitud no es válida: envíe un objeto JSON con la acción y sus datos.");
+  }
+  const body = raw as Record<string, unknown>;
+  const opId = uuidField(body, "opId", "Falta el identificador de la operación (opId).");
+  switch (body.action) {
+    case "invite": {
+      const name = typeof body.name === "string" ? body.name.trim().replace(/\s+/g, " ") : "";
+      if (name.length < 3 || name.length > 120) invalid("Escriba el nombre completo (de 3 a 120 caracteres).");
+      if (typeof body.role !== "string" || !(ROLES as readonly string[]).includes(body.role)) {
+        invalid("Elija un rol válido: Dirección, Administración o Supervisor.");
+      }
+      const hue = body.hue === undefined || body.hue === null ? null : body.hue;
+      if (hue !== null && !(typeof hue === "number" && Number.isInteger(hue) && hue >= 0 && hue <= 360)) {
+        invalid("El color del avatar no es válido.");
+      }
+      return {
+        action: "invite",
+        opId,
+        email: emailField(body),
+        name,
+        role: body.role as Role,
+        unitId: uuidField(body, "unitId", "Elija la unidad de la persona."),
+        title: textField(body, "title", 120, "El puesto admite hasta 120 caracteres."),
+        phone: textField(body, "phone", 40, "El teléfono admite hasta 40 caracteres."),
+        hue: hue as number | null,
+      };
+    }
+    case "deactivate":
+    case "reactivate":
+      return { action: body.action, opId, userId: uuidField(body, "userId", "Indique la cuenta (userId).") };
+    case "change_email":
+      return { action: "change_email", opId, userId: uuidField(body, "userId", "Indique la cuenta (userId)."), email: emailField(body) };
+    case "resend_invite":
+      return { action: "resend_invite", opId, userId: uuidField(body, "userId", "Indique la cuenta (userId).") };
+    default:
+      return fail(400, "unknown_action", "Acción desconocida. Use invite, deactivate, reactivate, change_email o resend_invite.");
+  }
+}
+
+async function readBody(req: Request): Promise<unknown> {
+  const text = await req.text();
+  if (text.length > MAX_BODY) fail(413, "payload_too_large", "La solicitud es demasiado grande.");
+  try {
+    return JSON.parse(text);
+  } catch {
+    return fail(400, "invalid_body", "La solicitud no es válida: envíe un objeto JSON con la acción y sus datos.");
+  }
+}
+
+/* ───────────── actions ───────────── */
+
+type Ctx = {
+  /** Scoped to the caller (their JWT): RLS applies and every RPC re-checks role, scope and rules. */
+  db: SupabaseContext["supabase"];
+  /** Secret key: used for auth.admin and for reading the caller's own profile row, nothing else. */
+  admin: SupabaseContext["supabaseAdmin"];
+  callerId: string;
+  /**
+   * Where invitation links land: the app the request came from (its Origin, when allowed: production, a Vercel preview or
+   * localhost), else APP_URL (calls without an Origin, e.g. curl). No trailing slash.
+   */
+  appUrl: string | undefined;
+};
+
+const PROFILE_COLUMNS = "id, name, initials, role, title, unit_id, email, phone, hue, active";
+type ProfileRow = {
+  id: string;
+  name: string;
+  initials: string;
+  role: Role;
+  title: string;
+  unit_id: string;
+  email: string;
+  phone: string;
+  hue: number;
+  active: boolean;
+};
+type RpcResult = { duplicate?: boolean; open_orders?: unknown } | null;
+
+/** The caller must be an active Dirección. Read with the secret key, filtered to the caller's own id. */
+async function requireDireccion(ctx: Ctx): Promise<void> {
+  const { data, error, status } = await ctx.admin.from("profiles").select("role, active").eq("id", ctx.callerId).maybeSingle();
+  if (error) throw dbFailure(error, status);
+  const me = data as { role: Role; active: boolean } | null;
+  if (!me) fail(401, "no_profile", "Su cuenta no tiene perfil en Pulkro Cuadrillas.");
+  if (!me.active) fail(401, "inactive", "Su cuenta está desactivada.");
+  if (me.role !== "direccion") fail(403, "forbidden:users.admin", "Su rol no administra usuarios.");
+}
+
+/** The profile as the caller reads it now (null if the read fails: the change is already done, the pull brings it). */
+async function readProfile(ctx: Ctx, userId: string): Promise<ProfileRow | null> {
+  const { data, error } = await ctx.db.from("profiles").select(PROFILE_COLUMNS).eq("id", userId).maybeSingle();
+  if (error) {
+    console.warn("admin-users: profile read after the change failed", describe(error));
+    return null;
+  }
+  return (data as ProfileRow | null) ?? null;
+}
+
+async function profileIdByEmail(ctx: Ctx, email: string, exceptId?: string): Promise<string | null> {
+  let query = ctx.db.from("profiles").select("id").eq("email", email);
+  if (exceptId) query = query.neq("id", exceptId);
+  const { data, error, status } = await query.limit(1).maybeSingle();
+  if (error) throw dbFailure(error, status);
+  return (data as { id: string } | null)?.id ?? null;
+}
+
+function provision(ctx: Ctx, req: InviteRequest, userId: string) {
+  return ctx.db.rpc("provision_profile", {
+    p_op_id: req.opId,
+    p_user_id: userId,
+    p_name: req.name,
+    p_role: req.role,
+    p_unit_id: req.unitId,
+    p_title: req.title,
+    p_phone: req.phone,
+    p_hue: req.hue,
+  });
+}
+
+async function invite(ctx: Ctx, req: InviteRequest) {
+  if (!ctx.appUrl) {
+    console.error("admin-users: no app URL for the invitation link (APP_URL unset and no allowed Origin)");
+    fail(500, "server_misconfigured", MSG.misconfigured);
+  }
+  // Checked before anything is e-mailed: an invitation cannot be taken back.
+  const unit = await ctx.db.from("units").select("id").eq("id", req.unitId).maybeSingle();
+  if (unit.error) throw dbFailure(unit.error, unit.status);
+  if (!unit.data) fail(422, "invalid_unit", "La unidad elegida no existe. Elija otra.");
+
+  // The address already has a profile: either this same invite answered before (a retry after a lost response → the
+  // stored result, nothing e-mailed again) or another account owns it.
+  const existingId = await profileIdByEmail(ctx, req.email);
+  if (existingId) {
+    const replay = await provision(ctx, req, existingId);
+    if (replay.error) {
+      if (replay.error.hint === "already_provisioned") {
+        // Another op id for an address that already has an account: say what to do with THAT account (an active one is not
+        // "reactivated"; its pending invitation is re-sent from its row).
+        const existing = await readProfile(ctx, existingId);
+        fail(
+          409,
+          "email_taken",
+          existing && !existing.active
+            ? "Ese correo ya pertenece a una cuenta de Pulkro Cuadrillas que está desactivada. Si es la misma persona, búsquela en la lista y reactívela con el interruptor «Activo»."
+            : "Ese correo ya pertenece a una cuenta de Pulkro Cuadrillas. Si es la misma persona y aún no ha aceptado su invitación, búsquela en la lista, abra «Editar» en su fila y use «Reenviar invitación».",
+        );
+      }
+      throw dbFailure(replay.error, replay.status);
+    }
+    return { ok: true, action: req.action, duplicate: true, user_id: existingId, profile: await readProfile(ctx, existingId) };
+  }
+
+  const startedAt = Date.now();
+  const invited = await ctx.admin.auth.admin.inviteUserByEmail(req.email, { redirectTo: `${ctx.appUrl}${INVITE_PATH}` });
+  if (invited.error || !invited.data?.user) throw authFailure(invited.error, "invite");
+  const user = invited.data.user;
+  // GoTrue re-sends the invitation of an existing, never-confirmed account (same id, `invited_at` moves on): only an
+  // account created by this call — just now, invited in the same step — is removed if the profile fails. (An auth user
+  // with a profile can never be deleted anyway: profiles.id is ON DELETE RESTRICT.)
+  const createdAt = Date.parse(user.created_at);
+  const invitedAt = user.invited_at ? Date.parse(user.invited_at) : createdAt;
+  const createdNow = createdAt >= startedAt - 60_000 && Math.abs(invitedAt - createdAt) < 5_000;
+
+  const provisioned = await provision(ctx, req, user.id);
+  if (provisioned.error) {
+    if (createdNow) {
+      const removed = await ctx.admin.auth.admin.deleteUser(user.id);
+      if (removed.error) console.error("admin-users invite: could not remove the auth user after a failed profile", describe(removed.error));
+    }
+    throw dbFailure(provisioned.error, provisioned.status);
+  }
+  const result = provisioned.data as RpcResult;
+  return { ok: true, action: req.action, duplicate: !!result?.duplicate, user_id: user.id, profile: await readProfile(ctx, user.id) };
+}
+
+async function setActive(ctx: Ctx, req: ActiveRequest) {
+  const active = req.action === "reactivate";
+  // The database first: it refuses self changes and other units' rules, revokes the sessions and lists open orders.
+  const rpc = await ctx.db.rpc("update_profile", { p_op_id: req.opId, p_user_id: req.userId, p_patch: { active } });
+  if (rpc.error) throw dbFailure(rpc.error, rpc.status);
+  const result = rpc.data as RpcResult;
+  // Then the auth account, mirroring the profile as it is NOW: a retried op answers its stored result even if someone
+  // changed the status since, and two people may switch the same account at once — the ban follows the profile, not the
+  // request, and is checked again after it is set. Idempotent, so a retry also repairs an attempt that stopped here.
+  let profile = await readProfile(ctx, req.userId);
+  let nowActive = profile ? profile.active : active;
+  for (let round = 0; round < 3; round++) {
+    const banned = await ctx.admin.auth.admin.updateUserById(req.userId, { ban_duration: nowActive ? "none" : BAN_DURATION });
+    if (banned.error) {
+      console.error(`admin-users ${req.action}: ${nowActive ? "unban" : "ban"} failed after the profile change`, describe(banned.error));
+      if (nowActive) {
+        fail(502, "unban_failed", "La cuenta quedó activa en Pulkro Cuadrillas, pero no se pudo quitar el bloqueo de acceso. Intente de nuevo.");
+      }
+      fail(502, "ban_failed", "La cuenta quedó desactivada en Pulkro Cuadrillas, pero no se pudo bloquear su acceso. Intente de nuevo.");
+    }
+    const after = await readProfile(ctx, req.userId);
+    if (!after || after.active === nowActive) break;
+    profile = after;
+    nowActive = after.active;
+  }
+  const listed = result?.open_orders;
+  const openOrders = Array.isArray(listed) ? listed.filter((folio): folio is string => typeof folio === "string") : [];
+  return {
+    ok: true,
+    action: req.action,
+    duplicate: !!result?.duplicate,
+    user_id: req.userId,
+    active: nowActive,
+    open_orders: openOrders,
+    profile,
+  };
+}
+
+async function changeEmail(ctx: Ctx, req: EmailRequest) {
+  // Checked before the auth account changes.
+  const target = await ctx.db.from("profiles").select("id").eq("id", req.userId).maybeSingle();
+  if (target.error) throw dbFailure(target.error, target.status);
+  if (!target.data) fail(404, "out_of_scope", MSG.outOfScope);
+  if (await profileIdByEmail(ctx, req.email, req.userId)) fail(409, "email_taken", MSG.emailTaken);
+
+  const found = await ctx.admin.auth.admin.getUserById(req.userId);
+  if (found.error || !found.data?.user) throw authFailure(found.error, "lookup");
+  const authUser = found.data.user;
+  const previous = authUser.email ?? "";
+  // Never accepted the invitation: the old link went to the old address, so the person sets a password through
+  // "¿Olvidó su contraseña?" with the new one. Read from what this change leaves alone: accepting an invitation always signs
+  // the person in (last_sign_in_at), while the e-mail update below confirms the account — so a retry after a lost answer
+  // still reports it (email_confirmed_at would already be set by the first attempt).
+  const invitePending = !!authUser.invited_at && !authUser.last_sign_in_at;
+
+  let changedAuth = false;
+  if (previous.toLowerCase() !== req.email) {
+    const updated = await ctx.admin.auth.admin.updateUserById(req.userId, { email: req.email, email_confirm: true });
+    if (updated.error) throw authFailure(updated.error, "email");
+    changedAuth = true;
+  }
+
+  const restoreLogin = async (why: string) => {
+    if (!changedAuth || !previous) return;
+    const reverted = await ctx.admin.auth.admin.updateUserById(req.userId, { email: previous, email_confirm: true });
+    if (reverted.error) console.error(`admin-users change_email: could not restore the previous auth e-mail (${why})`, describe(reverted.error));
+  };
+  const done = (profile: ProfileRow | null, duplicate: boolean) => ({
+    ok: true,
+    action: req.action,
+    duplicate,
+    user_id: req.userId,
+    email: req.email,
+    invite_pending: invitePending,
+    profile,
+  });
+
+  // p_email: the database syncs only if the login still holds THIS request's address (another Dirección may have changed
+  // it in between) and refuses with email_changed otherwise.
+  const synced = await ctx.db.rpc("sync_profile_email", { p_op_id: req.opId, p_user_id: req.userId, p_email: req.email });
+  if (synced.error) {
+    const failure = dbFailure(synced.error, synced.status);
+    if (synced.status === 0 || synced.status >= 500) {
+      // Unknown outcome (no answer, timeout, 5xx): the sync may have committed, so the login is never undone on a guess.
+      // Sending the same request again completes it without repeating anything.
+      const now = await readProfile(ctx, req.userId);
+      if (now?.email === req.email) return done(now, false);
+      throw failure;
+    }
+    // The login now holds another request's address: it is that request's to keep, nothing to undo here.
+    if (synced.error.hint === "email_changed") throw emailChanged();
+    // Any other answer of the database (PTnnn, 401, a PostgREST 4xx such as an RPC missing from its schema cache) is a
+    // definite refusal: the transaction did not commit, nothing changed in the profile, so the login goes back too.
+    await restoreLogin("sync refused");
+    throw failure;
+  }
+  const result = synced.data as (RpcResult & { email?: unknown }) | null;
+  const now = await readProfile(ctx, req.userId);
+  const syncedEmail = typeof result?.email === "string" ? result.email : now?.email;
+  if (!result?.duplicate && syncedEmail !== undefined && syncedEmail !== req.email) {
+    // The profile copied another address than this request's (a database without the p_email check): the login is the
+    // other request's now, so it stays, and this request is not reported as done.
+    throw emailChanged();
+  }
+  if (result?.duplicate && changedAuth && now?.email !== req.email) {
+    // This op was applied before and the address changed again since (the stored result does not re-sync the profile):
+    // the login goes back to what it was instead of differing from the profile. (When the profile already holds this
+    // address — an earlier attempt synced it and its login change was lost — the login now matches it: nothing to undo.)
+    await restoreLogin("stale retry");
+    fail(409, "stale_retry", "Este cambio ya se había aplicado y el correo cambió después. Actualice la pantalla y revise el correo actual.");
+  }
+  return done(now, !!result?.duplicate);
+}
+
+/**
+ * The invitation e-mail again, to the address of the auth account (the login). Only while the invitation is pending — the
+ * account was invited and never signed in (accepting an invitation always signs the person in), the same rule as
+ * change_email's invite_pending — and only for an active profile. GoTrue re-sends to an invited account that is not
+ * confirmed yet (a new link: the latest e-mail is the one to use); a confirmed one — e.g. after a change_email, which
+ * confirms the new address — is refused (email_exists) and answered as already_active, like an account in use: its way in is
+ * «¿Olvidó su contraseña?». Nothing is written in the database, so nothing is audited and no op is stored.
+ */
+async function resendInvite(ctx: Ctx, req: ResendRequest) {
+  if (!ctx.appUrl) {
+    console.error("admin-users: no app URL for the invitation link (APP_URL unset and no allowed Origin)");
+    fail(500, "server_misconfigured", MSG.misconfigured);
+  }
+  const target = await ctx.db.from("profiles").select("id, active").eq("id", req.userId).maybeSingle();
+  if (target.error) throw dbFailure(target.error, target.status);
+  const profile = target.data as { id: string; active: boolean } | null;
+  if (!profile) fail(404, "out_of_scope", MSG.outOfScope);
+  if (!profile.active) {
+    fail(409, "account_inactive", "La cuenta está desactivada: reactívela antes de reenviar la invitación.");
+  }
+
+  const found = await ctx.admin.auth.admin.getUserById(req.userId);
+  if (found.error || !found.data?.user) throw authFailure(found.error, "lookup");
+  const authUser = found.data.user;
+  if (!authUser.invited_at || authUser.last_sign_in_at) fail(409, "already_active", MSG.alreadyActive);
+  if (!authUser.email) fail(404, "auth_user_missing", "La cuenta de acceso no tiene correo.");
+
+  const invited = await ctx.admin.auth.admin.inviteUserByEmail(authUser.email, { redirectTo: `${ctx.appUrl}${INVITE_PATH}` });
+  if (invited.error) {
+    const code = invited.error.code;
+    if (code === "email_exists" || code === "user_already_exists") fail(409, "already_active", MSG.alreadyActive);
+    throw authFailure(invited.error, "invite");
+  }
+  return { ok: true, action: req.action, resent: true, user_id: req.userId };
+}
+
+function run(ctx: Ctx, req: AdminRequest) {
+  switch (req.action) {
+    case "invite":
+      return invite(ctx, req);
+    case "deactivate":
+    case "reactivate":
+      return setActive(ctx, req);
+    case "change_email":
+      return changeEmail(ctx, req);
+    case "resend_invite":
+      return resendInvite(ctx, req);
+  }
+}
+
+/* ───────────── HTTP ───────────── */
+
+/** CORS for the app's own origins only. Calls without an Origin header (curl, server code) get no CORS headers. */
+function corsFor(req: Request): { allowed: boolean; headers: Headers } {
+  const headers = new Headers({ Vary: "Origin" });
+  const origin = req.headers.get("Origin");
+  if (!origin) return { allowed: true, headers };
+  if (!isAllowedOrigin(origin)) return { allowed: false, headers };
+  headers.set("Access-Control-Allow-Origin", origin);
+  headers.set("Access-Control-Allow-Headers", supabaseCorsHeaders["Access-Control-Allow-Headers"]);
+  headers.set("Access-Control-Allow-Methods", "POST, OPTIONS");
+  headers.set("Access-Control-Max-Age", "600");
+  return { allowed: true, headers };
+}
+
+function reply(status: number, body: unknown, cors: Headers): Response {
+  const headers = new Headers(cors);
+  headers.set("Content-Type", "application/json; charset=utf-8");
+  headers.set("Cache-Control", "no-store");
+  headers.set("X-Content-Type-Options", "nosniff");
+  return new Response(JSON.stringify(body), { status, headers });
+}
+
+Deno.serve(async (req: Request): Promise<Response> => {
+  const cors = corsFor(req);
+  if (req.method === "OPTIONS") return new Response(null, { status: cors.allowed ? 204 : 403, headers: cors.headers });
+
+  let action = "unknown";
+  try {
+    if (!cors.allowed) fail(403, "origin_not_allowed", "Este sitio no puede usar el servicio de cuentas de Pulkro Cuadrillas.");
+    if (req.method !== "POST") fail(405, "method_not_allowed", "Use POST para llamar a este servicio.");
+
+    // verify_jwt already rejected requests without a valid JWT at the gateway; this verifies it again (project JWKS) and
+    // builds the caller-scoped client and the secret-key client.
+    const auth = await createSupabaseContext(req, { auth: "user", env: SERVER_ENV });
+    if (auth.error) {
+      if (auth.error.status === 401) fail(401, "no_session", MSG.sessionExpired);
+      console.error("admin-users: context setup failed", describe(auth.error));
+      // the project's signing keys could not be fetched right now: temporary, not a configuration problem
+      if (auth.error.status === 503 || auth.error.code === "JWKS_FETCH_FAILED") fail(503, "unavailable", MSG.unavailable);
+      fail(500, "server_misconfigured", MSG.misconfigured);
+    }
+    const context = auth.data;
+    const callerId = context.userClaims?.id;
+    if (!callerId) fail(401, "no_session", MSG.sessionExpired);
+
+    const origin = req.headers.get("Origin");
+    const appUrl = origin && isAllowedOrigin(origin) ? origin.toLowerCase() : APP_URL;
+    const ctx: Ctx = { db: context.supabase, admin: context.supabaseAdmin, callerId, appUrl };
+    await requireDireccion(ctx);
+    const request = parseRequest(await readBody(req));
+    action = request.action;
+    return reply(200, await run(ctx, request), cors.headers);
+  } catch (error) {
+    if (error instanceof Failure) {
+      if (error.status >= 500) console.error(`admin-users ${action}: ${error.code}`);
+      return reply(error.status, { ok: false, code: error.code, message: error.message }, cors.headers);
+    }
+    console.error(`admin-users ${action}: unexpected error`, describe(error));
+    return reply(500, { ok: false, code: "server_error", message: MSG.serverError }, cors.headers);
+  }
+});

@@ -99,8 +99,12 @@ export function SurveyThanks({ answers, name, respondedAt, fresh }: { answers: S
   );
 }
 
-/** Token not on this device: explain the prototype's on-device storage kindly. */
-export function SurveyMissing({ token }: { token: string }) {
+/**
+ * Unknown link. `account`: the server has no such survey — or not yet: a survey created offline reaches the server when the
+ * staff's phone syncs, so a fresh link is worth another try (`onRetry`). Otherwise the demo explains its on-device storage
+ * kindly.
+ */
+export function SurveyMissing({ token, account, onRetry }: { token: string; account?: boolean; onRetry?: () => void }) {
   return (
     <div className="flex flex-1 flex-col justify-center py-10">
       <motion.section
@@ -118,8 +122,15 @@ export function SurveyMissing({ token }: { token: string }) {
         </div>
         <h1 className="mt-6 font-serif text-[30px] font-medium leading-tight text-ink">No encontramos esta encuesta</h1>
         <p className="mx-auto mt-3 max-w-sm text-[15px] leading-relaxed text-ink/70">
-          Este prototipo guarda la información en el dispositivo donde se generó el enlace. Ábralo en el mismo navegador donde el equipo de Pulkro lo creó, o pida un enlace nuevo a su supervisor.
+          {account
+            ? "Si acaba de recibir el enlace, intente de nuevo en unos minutos: la encuesta puede estar activándose todavía. Si no, revise que lo haya abierto completo, o pida un enlace nuevo a su supervisor."
+            : "Este prototipo guarda la información en el dispositivo donde se generó el enlace. Ábralo en el mismo navegador donde el equipo de Pulkro lo creó, o pida un enlace nuevo a su supervisor."}
         </p>
+        {account && onRetry && (
+          <Button onClick={onRetry} className="mx-auto mt-6 h-12 w-full max-w-xs rounded-[14px] text-[15px] font-semibold">
+            Intentar de nuevo
+          </Button>
+        )}
         <p className="mx-auto mt-5 w-fit rounded-[10px] bg-tile px-3 py-1.5 text-[12.5px] text-subtle">
           Código <span className="font-semibold text-ink tabular">{token}</span>
         </p>
@@ -157,6 +168,42 @@ export function SurveyStaffSession({ onSignOut }: { onSignOut: () => void }) {
             <Link href="/postventa">Volver a Postventa</Link>
           </Button>
         </div>
+      </motion.section>
+    </div>
+  );
+}
+
+/** Reading the survey from the server (account builds). */
+export function SurveyLoading() {
+  return (
+    <div className="flex flex-1 flex-col items-center justify-center gap-5 py-16" role="status" aria-live="polite">
+      <p className="text-[14px] font-medium text-ink/70">Preparando su encuesta…</p>
+      <div className="w-full max-w-[360px] space-y-3" aria-hidden>
+        <div className="h-5 w-3/4 animate-pulse rounded-full bg-surface/55" />
+        <div className="h-36 animate-pulse rounded-[24px] bg-surface/50" />
+      </div>
+    </div>
+  );
+}
+
+/** The server could not be reached (or failed): nothing is lost, try again. */
+export function SurveyUnreachable({ message, onRetry }: { message: string; onRetry: () => void }) {
+  return (
+    <div className="flex flex-1 flex-col justify-center py-10">
+      <motion.section
+        initial={{ opacity: 0, y: 18 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.6, ease: EASE }}
+        className="glass-card rounded-[30px] px-6 py-9 text-center sm:px-10"
+      >
+        <span className="mx-auto inline-flex size-16 items-center justify-center rounded-[20px] bg-sky-soft text-azure-fg">
+          <Smartphone className="size-7" />
+        </span>
+        <h1 className="mt-6 font-serif text-[30px] font-medium leading-tight text-ink">No se pudo abrir la encuesta</h1>
+        <p className="mx-auto mt-3 max-w-sm text-[15px] leading-relaxed text-ink/70">{message}</p>
+        <Button onClick={onRetry} className="mx-auto mt-7 h-12 w-full max-w-xs rounded-[14px] text-[15px] font-semibold">
+          Intentar de nuevo
+        </Button>
       </motion.section>
     </div>
   );

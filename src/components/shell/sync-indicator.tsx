@@ -1,16 +1,32 @@
 "use client";
 
-import { useEffect, useId, useMemo, useState } from "react";
+import { useCallback, useEffect, useId, useMemo, useState } from "react";
 import { AnimatePresence, motion } from "motion/react";
-import { Check, ChevronRight, CloudOff, CloudUpload, Loader2, RefreshCw, TriangleAlert, WifiOff } from "lucide-react";
+import Link from "next/link";
+import { Check, ChevronRight, CloudDownload, CloudOff, CloudUpload, KeyRound, Loader2, RefreshCw, Trash2, TriangleAlert, WifiOff } from "lucide-react";
+import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { useAppStore, useNow, useSyncSummary } from "@/lib/hooks";
 import { useUi } from "@/lib/ui-store";
 import { fmtAgo, fmtTime, plural } from "@/lib/format";
 import type { SyncItem } from "@/lib/types";
+import {
+  NO_RETRY_HINTS,
+  REVERSIBLE_HINTS,
+  discardSet,
+  discardSummary,
+  discardedCaptures,
+  isBulkRetryable,
+  isStopped,
+  likelyRefusedAfter,
+  outcomeUnknown,
+  waitsFor,
+} from "@/lib/sync/queue";
 import { ModalShell } from "@/components/pk/modal-shell";
+import { ConfirmDialog } from "@/features/configuracion/shared";
 import { Switch } from "@/components/ui/switch";
 import { Button } from "@/components/ui/button";
+import { SaveCapturesBox, useCaptureFiles, type CapturesKept } from "./discard-photos";
 
 /**
  * Sidebar chip — the "Detection on · 4 min ago" equivalent for offline sync.
@@ -19,11 +35,37 @@ import { Button } from "@/components/ui/button";
  * keeps its weight. Either way it is the same button and opens the sync sheet.
  */
 export function SyncChip({ collapsed, compact, slim }: { collapsed?: boolean; compact?: boolean; slim?: boolean }) {
-  const { offline, pending, syncing, lastSyncAt } = useSyncSummary();
+  const { offline, pending, syncing, lastSyncAt, pulling, pullInitial, pullError, needsReauth, saveError, saveFull } = useSyncSummary();
   const setOpen = useUi((s) => s.setSyncOpen);
   useNow(30_000);
-  const state = offline ? "offline" : syncing.length || pending.length ? "syncing" : "ok";
+  // Account sessions add the pull: first download, a failed update, a session to renew. A device that cannot store the
+  // data comes first: captures would be lost if the app closed.
+  const state = saveError
+    ? "unsaved"
+    : offline
+    ? "offline"
+    : needsReauth
+      ? "reauth"
+      : syncing.length || pending.length
+        ? "syncing"
+        : pulling && pullInitial
+          ? "downloading"
+          : pullError
+            ? "stale"
+            : "ok";
+  const warn = state === "offline" || state === "reauth" || state === "stale" || state === "unsaved";
+  const busy = state === "syncing" || state === "downloading";
   const row = !!slim && state === "ok";
+  // Collapsed, only the dot shows: the name carries the state. Otherwise the visible text names the button.
+  const spoken = {
+    ok: `Sincronizado, ${fmtAgo(lastSyncAt)}`,
+    syncing: `Sincronizando, ${pending.length + syncing.length} en cola`,
+    offline: `Sin conexión, ${plural(pending.length, "pendiente", "pendientes")}`,
+    downloading: "Descargando datos de su cuenta",
+    stale: `Sin actualizar, ${fmtAgo(lastSyncAt)}`,
+    reauth: "Vuelva a entrar, sin sincronizar",
+    unsaved: "Sin guardar en el dispositivo",
+  }[state];
   return (
     <button
       onClick={() => setOpen(true)}
@@ -38,19 +80,14 @@ export function SyncChip({ collapsed, compact, slim }: { collapsed?: boolean; co
         collapsed && "justify-center px-0",
         compact && "w-auto rounded-full px-3 py-2 text-[12.5px]",
       )}
-      aria-label="Estado de sincronización"
+      aria-label={collapsed ? `Sincronización: ${spoken}` : undefined}
     >
       {/* In the slim row the dot sits in a 20px box so it lines up with the nav icons above. */}
       <span className={cn("relative inline-flex size-2.5 shrink-0", row && "m-[5px]")}>
         <span
-          className={cn(
-            "absolute inset-0 rounded-full animate-ping-soft",
-            state === "ok" && "bg-st-blue",
-            state === "syncing" && "bg-sky",
-            state === "offline" && "bg-st-amber",
-          )}
+          className={cn("absolute inset-0 rounded-full animate-ping-soft", state === "ok" && "bg-st-blue", busy && "bg-sky", warn && "bg-st-amber")}
         />
-        <span className={cn("relative size-2.5 rounded-full", state === "ok" && "bg-st-blue", state === "syncing" && "bg-sky", state === "offline" && "bg-st-amber")} />
+        <span className={cn("relative size-2.5 rounded-full", state === "ok" && "bg-st-blue", busy && "bg-sky", warn && "bg-st-amber")} />
       </span>
       {!collapsed && (
         <AnimatePresence mode="wait" initial={false}>
@@ -85,6 +122,30 @@ export function SyncChip({ collapsed, compact, slim }: { collapsed?: boolean; co
                 <span className="truncate text-subtle">{compact ? pending.length : plural(pending.length, "pendiente", "pendientes")}</span>
               </>
             )}
+            {state === "downloading" && (
+              <>
+                <span className="shrink-0 font-semibold text-ink">Descargando</span>
+                {!compact && <span className="truncate text-subtle">datos de su cuenta</span>}
+              </>
+            )}
+            {state === "stale" && (
+              <>
+                <span className="shrink-0 font-semibold text-ink">Sin actualizar</span>
+                {!compact && <span className="truncate text-subtle">{fmtAgo(lastSyncAt)}</span>}
+              </>
+            )}
+            {state === "reauth" && (
+              <>
+                <span className="shrink-0 font-semibold text-ink">Vuelva a entrar</span>
+                {!compact && <span className="truncate text-subtle">sin sincronizar</span>}
+              </>
+            )}
+            {state === "unsaved" && (
+              <>
+                <span className="shrink-0 font-semibold text-ink">Sin guardar</span>
+                {!compact && <span className="truncate text-subtle">{saveFull ? "libere espacio" : "no cierre la app"}</span>}
+              </>
+            )}
           </motion.span>
         </AnimatePresence>
       )}
@@ -98,11 +159,12 @@ export function SyncChip({ collapsed, compact, slim }: { collapsed?: boolean; co
  * only shows once the queue has been busy for a moment instead of flashing after every capture.
  */
 export function MobileSyncPill({ hidden }: { hidden?: boolean }) {
-  const { offline, pending, syncing, queue } = useSyncSummary();
+  const { offline, pending, syncing, queue, saveError, saveFull } = useSyncSummary();
   const setOpen = useUi((s) => s.setSyncOpen);
   const count = pending.length + syncing.length;
   const failed = queue.some((q) => q.state === "error");
   const busy = !offline && count > 0;
+  const unsaved = !!saveError;
   const [lingers, setLingers] = useState(false);
   useEffect(() => {
     if (!busy) return;
@@ -112,10 +174,20 @@ export function MobileSyncPill({ hidden }: { hidden?: boolean }) {
       setLingers(false);
     };
   }, [busy]);
-  const show = !hidden && (offline || (busy && (lingers || failed)));
-  const warn = offline || failed;
-  const label = offline ? "Sin conexión" : failed ? "Error de envío" : "Enviando";
-  const detail = offline ? (count ? `${plural(count, "registro", "registros")} por enviar` : "se guarda en el dispositivo") : failed ? `${plural(count, "registro", "registros")} sin enviar` : plural(count, "registro", "registros");
+  const show = !hidden && (unsaved || offline || (busy && (lingers || failed)));
+  const warn = unsaved || offline || failed;
+  const label = unsaved ? "Sin guardar" : offline ? "Sin conexión" : failed ? "Error de envío" : "Enviando";
+  const detail = unsaved
+    ? saveFull
+      ? "el teléfono no tiene espacio"
+      : "no cierre la app"
+    : offline
+      ? count
+        ? `${plural(count, "registro", "registros")} por enviar`
+        : "se guarda en el dispositivo"
+      : failed
+        ? `${plural(count, "registro", "registros")} sin enviar`
+        : plural(count, "registro", "registros");
 
   return (
     <div role="status" aria-live="polite" className="pointer-events-none absolute inset-x-0 bottom-full flex justify-center px-4 pb-2">
@@ -157,6 +229,24 @@ const STATE_WORD: Record<SyncItem["state"], string> = {
   error: "No se pudo enviar",
 };
 
+/** A refusal the order's state explains (REVERSIBLE_HINTS): when the same request goes through. */
+const REVERSIBLE_ADVICE = "Si la orden se reabre, vuelve a estar a su cargo o se reprograma, pulse Reintentar.";
+
+/** What a queue row says under its label: why it waits, or why the server did not apply it (usted). */
+function rowDetail(q: SyncItem, waitFor: SyncItem | undefined, offline: boolean, account: boolean): string {
+  if (q.state === "sincronizado" || q.state === "sincronizando") return STATE_WORD[q.state];
+  if (q.state === "error") {
+    if (!q.problem) return STATE_WORD.error;
+    const why = q.problem.kind === "conflicto" ? `No se aplicó: ${q.problem.message}` : `No se pudo enviar: ${q.problem.message}`;
+    return REVERSIBLE_HINTS.has(q.problem.hint ?? "") ? `${why} ${REVERSIBLE_ADVICE}` : why;
+  }
+  if (offline) return STATE_WORD.pendiente;
+  if (waitFor)
+    return waitFor.state === "error" ? `Bloqueado por «${waitFor.label}», que no se pudo enviar` : `En espera de «${waitFor.label}»`;
+  if (q.problem && q.nextAt) return `${q.problem.message} (${fmtTime(q.nextAt)})`;
+  return account ? "En cola" : STATE_WORD.pendiente;
+}
+
 /**
  * Sync queue: right sheet on desktop, bottom sheet below lg (same chrome as every other modal). Status first, then
  * the queue newest-first; the retry button lives in the sticky footer so it is reachable however long the queue is.
@@ -165,9 +255,10 @@ const STATE_WORD: Record<SyncItem["state"], string> = {
 export function SyncSheet() {
   const open = useUi((s) => s.syncOpen);
   const setOpen = useUi((s) => s.setSyncOpen);
-  const { queue } = useSyncSummary();
+  const { queue, offline, account } = useSyncSummary();
   const retry = useAppStore((s) => s.retrySync);
-  const failed = queue.reduce((n, q) => n + (q.state === "error" ? 1 : 0), 0);
+  // Account sessions: only what a resend can help (a duplicate check-in, a reused op id… only Descartar fixes those).
+  const failed = queue.reduce((n, q) => n + ((account ? isBulkRetryable(q) : q.state === "error") ? 1 : 0), 0);
 
   return (
     <ModalShell
@@ -180,7 +271,7 @@ export function SyncSheet() {
       bodyClassName="pt-2"
       footer={
         failed > 0 ? (
-          <Button onClick={retry} className="h-11 rounded-[12px] px-5 text-[14px] font-semibold">
+          <Button onClick={retry} disabled={offline} className="h-11 rounded-[12px] px-5 text-[14px] font-semibold">
             <RefreshCw /> Reintentar {plural(failed, "envío", "envíos")}
           </Button>
         ) : undefined
@@ -192,17 +283,23 @@ export function SyncSheet() {
 }
 
 function SyncPanel() {
-  const { offline, queue, lastSyncAt } = useSyncSummary();
+  const { offline, queue, lastSyncAt, account, lastPullAt, pulling, pullInitial, pullError, needsReauth, saveError } = useSyncSummary();
+  const pullNow = useAppStore((s) => s.pullNow);
   const forced = useAppStore((s) => s.sync.forcedOffline);
   const browserOffline = useAppStore((s) => s.sync.browserOffline);
   const setForced = useAppStore((s) => s.setForcedOffline);
   const items = useMemo(() => [...queue].reverse(), [queue]);
+  const blockedBy = useMemo(() => waitsFor(queue), [queue]);
+  const [discarding, setDiscarding] = useState<SyncItem | null>(null);
+  const closeDiscard = useCallback(() => setDiscarding(null), []);
   const waiting = queue.filter((q) => q.state !== "sincronizado").length;
   const failed = queue.filter((q) => q.state === "error").length;
   useNow(30_000); // keeps "hace 2 min" honest while the sheet stays open
   const switchId = useId();
 
-  const status = offline
+  const status: { tone: "amber" | "red" | "blue"; icon: React.ReactNode; title: string; detail: string } = saveError
+    ? { tone: "red" as const, icon: <TriangleAlert className="size-5" />, title: "No se pudo guardar en el dispositivo", detail: saveError }
+    : offline
     ? {
         tone: "amber" as const,
         icon: <WifiOff className="size-5" />,
@@ -211,13 +308,29 @@ function SyncPanel() {
           ? `${plural(waiting, "registro", "registros")} ${waiting === 1 ? "espera" : "esperan"} conexión`
           : "Nada por enviar. Lo que se capture queda en el dispositivo.",
       }
+    : needsReauth
+      ? {
+          tone: "amber" as const,
+          icon: <KeyRound className="size-5" />,
+          title: "Vuelva a entrar",
+          detail: "La sesión de su cuenta ya no está abierta en este dispositivo. Sus datos y cambios siguen aquí: entre de nuevo para recibir y enviar cambios.",
+        }
     : failed
       ? {
           tone: "red" as const,
           icon: <TriangleAlert className="size-5" />,
           title: "Hay registros sin enviar",
-          detail: `${plural(failed, "registro", "registros")} con error. Reintente el envío o revise la conexión.`,
+          detail: account
+            ? `El servidor no aplicó ${plural(failed, "registro", "registros")}. Se conservan en el dispositivo: revise cada uno abajo para reintentarlo o descartarlo.`
+            : `${plural(failed, "registro", "registros")} con error. Reintente el envío o revise la conexión.`,
         }
+      : pulling && pullInitial
+        ? {
+            tone: "blue" as const,
+            icon: <Loader2 className="size-5 animate-spin" />,
+            title: "Descargando datos de su cuenta…",
+            detail: "Órdenes, jornadas, evidencias y postventa de su alcance. Puede seguir trabajando.",
+          }
       : waiting
         ? {
             tone: "blue" as const,
@@ -259,6 +372,39 @@ function SyncPanel() {
         </div>
       </div>
 
+      {account && (
+        <div className="flex min-h-14 flex-wrap items-center justify-between gap-x-4 gap-y-2 rounded-[16px] border border-hairline px-4 py-3 text-[14px]">
+          <span className="min-w-0">
+            <span className="block font-medium text-ink">Datos del servidor</span>
+            <span className={cn("block text-[12.5px] leading-snug", pullError && !offline ? "text-amber-fg" : "text-subtle")}>
+              {pulling
+                ? "Actualizando…"
+                : pullError && !offline
+                  ? pullError
+                  : lastPullAt
+                    ? `Actualizados ${fmtAgo(lastPullAt)} · ${fmtTime(lastPullAt)}`
+                    : "Aún no se descargan."}
+            </span>
+          </span>
+          {needsReauth ? (
+            <Button asChild variant="outline" className="h-10 rounded-[12px] border-line px-4 font-semibold">
+              <Link href="/login">
+                <KeyRound /> Entrar de nuevo
+              </Link>
+            </Button>
+          ) : (
+            <Button
+              variant="outline"
+              className="h-10 rounded-[12px] border-line px-4 font-semibold"
+              disabled={offline || pulling}
+              onClick={() => void pullNow({ manual: true })}
+            >
+              {pulling ? <Loader2 className="animate-spin" /> : <CloudDownload />} Actualizar ahora
+            </Button>
+          )}
+        </div>
+      )}
+
       <label className="flex min-h-14 cursor-pointer items-center justify-between gap-4 rounded-[16px] border border-hairline px-4 py-3 text-[14px]">
         <span className="min-w-0">
           <span id={`${switchId}-l`} className="block font-medium text-ink">
@@ -283,18 +429,195 @@ function SyncPanel() {
         ) : (
           <ul className="-mx-2">
             {items.map((q) => (
-              <QueueRow key={q.id} item={q} />
+              <QueueRow key={q.id} item={q} waitFor={blockedBy.get(q.id)} offline={offline} account={account} onDiscard={() => setDiscarding(q)} />
             ))}
           </ul>
         )}
       </section>
+      {account && <DiscardDialog item={discarding} onClose={closeDiscard} />}
     </div>
   );
 }
 
-function QueueRow({ item: q }: { item: SyncItem }) {
+/** "Fotos: 6, 2 registros de entrada o salida y 2 notas de bitácora" — the field captures a discard deletes, named. */
+function capturesText(set: SyncItem[]): string {
+  const sum = discardSummary(set);
+  const parts = [
+    sum.photos ? plural(sum.photos, "foto", "fotos") : "",
+    sum.checks ? plural(sum.checks, "registro de entrada o salida", "registros de entrada o salida") : "",
+    sum.notes ? plural(sum.notes, "nota de bitácora", "notas de bitácora") : "",
+  ].filter(Boolean);
+  return parts.length > 1 ? `${parts.slice(0, -1).join(", ")} y ${parts.at(-1)}` : (parts[0] ?? "");
+}
+
+/**
+ * What the confirmation adds once the photos left the app: a share never claims a copy on the phone (the target may have
+ * been a chat or the mail); a download asks to check Descargas.
+ */
+function keptNote(kept: CapturesKept | null, n: number): string {
+  if (kept === "compartidas")
+    return n === 1 ? " Si al compartirla no eligió «Guardar imagen», no quedó copia." : " Si al compartirlas no eligió «Guardar imagen», no quedó copia de las que compartió.";
+  if (kept === "descargadas") return n === 1 ? " La foto se descargó: revise que esté en Descargas." : " Las fotos se descargaron: revise que estén en Descargas.";
+  return "";
+}
+
+/**
+ * "Descartar": the change leaves the queue for good; the device goes back to what the server has. Photo captures it deletes
+ * can be saved on the phone first (discard-photos.tsx); later changes of the order that will probably be refused too are
+ * named, never taken along.
+ */
+function DiscardDialog({ item, onClose }: { item: SyncItem | null; onClose: () => void }) {
+  const queue = useAppStore((s) => s.sync.queue);
+  const photos = useAppStore((s) => s.photos);
+  const orders = useAppStore((s) => s.orders);
+  const discard = useAppStore((s) => s.discardSyncItem);
+  const set = useMemo(() => (item ? discardSet(queue, item.id) : []), [queue, item]);
+  const more = set.length - 1;
+  const captures = capturesText(set);
+  const sum = discardSummary(set);
+  // The answer may have been lost after the server applied it: what names it stays queued, and only what reports it without
+  // naming it (a case note about the photo) goes with it (discardSet).
+  const unknown = !!item && outcomeUnknown(item);
+  // A report after a refused closure, a check-out after a refused check-in: they stay queued and are named here.
+  const later = useMemo(() => (item ? likelyRefusedAfter(queue, item.id) : []), [queue, item]);
+  // The pictures the discard deletes (only once confirmed), offered to be saved on the phone first.
+  const pictures = useMemo(() => discardedCaptures(queue, set, photos), [queue, set, photos]);
+  const folios = useMemo(() => new Map(orders.map((o) => [o.id, o.folio])), [orders]);
+  const { files, filesKey, unreadable, retry } = useCaptureFiles(pictures, folios);
+  // How the photos left the app (shared, or downloaded): the confirmation says what that does and does not keep. It never
+  // replaces the checkbox. Not while some could not be read: those were never offered.
+  const [keptFor, setKeptFor] = useState<{ id: string; how: CapturesKept } | null>(null);
+  const kept = item && keptFor?.id === item.id && files.length > 0 && unreadable === 0 ? keptFor.how : null;
+  // A save under way (the share sheet open): the confirmation waits for it.
+  const [saving, setSaving] = useState(false);
+  // The item is being sent again (or went through) while the dialog was open: close it for good, never reopen by itself.
+  useEffect(() => {
+    if (item && !set.length) onClose();
+  }, [item, set.length, onClose]);
+  const many = set.length > 1;
+  const lost = many ? "estos cambios no llegarán" : "este cambio no llegará";
   return (
-    <li className="flex items-center gap-3 rounded-[12px] px-2 py-2.5 text-[13.5px]">
+    <ConfirmDialog
+      open={!!item && set.length > 0}
+      onOpenChange={(v) => !v && onClose()}
+      icon={<Trash2 />}
+      iconTone="amber"
+      title="Descartar este cambio"
+      description="No se enviará al servidor. Lo que este dispositivo muestra de ese registro vuelve a ser lo que tiene el servidor."
+      rows={[
+        { k: "Cambio", v: item?.label ?? "" },
+        ...(more > 0 ? [{ k: "Cambios que dependen de él", v: `${more} más` }] : []),
+        ...(sum.photos ? [{ k: "Fotos que se borran de la app", v: String(sum.photos) }] : []),
+        ...(sum.checks ? [{ k: "Registros de entrada o salida", v: String(sum.checks) }] : []),
+        ...(sum.notes ? [{ k: "Notas de bitácora", v: String(sum.notes) }] : []),
+      ]}
+      checkboxLabel={
+        captures
+          ? `Entiendo que ${lost} al servidor y que ${sum.photos + sum.checks + sum.notes === 1 ? "se borrará" : "se borrarán"} de la app: ${captures}.${keptNote(kept, files.length)}`
+          : `Entiendo que ${lost} al servidor.`
+      }
+      confirmLabel={more > 0 ? `Descartar ${set.length} cambios` : "Descartar"}
+      confirmDisabled={saving}
+      disabledHint="Termine de guardar las fotos"
+      destructive
+      onConfirm={() => {
+        const n = item ? discard(item.id) : 0;
+        if (n) toast.success(n === 1 ? "Cambio descartado" : `${n} cambios descartados`, { description: "Se vuelve a leer del servidor." });
+        onClose();
+      }}
+    >
+      {item?.problem && <p className="rounded-[14px] bg-soft px-4 py-3 text-[13.5px] leading-snug text-ink">{item.problem.message}</p>}
+      {unknown && (
+        <p className="mt-3 text-[13.5px] leading-snug text-subtle">
+          El último envío no tuvo respuesta: puede que el servidor ya lo haya aplicado. Si es así, este dispositivo lo volverá a
+          mostrar. Lo que depende de este cambio sigue en la cola y se enviará
+          {more > 0 ? ", salvo las notas que lo reportan: el servidor no podría comprobar si llegó." : "."}
+        </p>
+      )}
+      {more > 0 && (
+        <>
+          <p className="mt-3 text-[13.5px] leading-snug text-subtle">
+            {unknown
+              ? "Se descartan con él:"
+              : "Usan lo que se descarta (la orden, la foto, la jornada, el registro nuevo…), así que tampoco podrían aplicarse y se descartan con él:"}
+          </p>
+          <ul className="mt-2 max-h-40 space-y-1 overflow-y-auto rounded-[14px] border border-hairline px-4 py-2.5 text-[13px] leading-snug text-ink">
+            {set.slice(1).map((q) => (
+              <li key={q.id}>{q.label}</li>
+            ))}
+          </ul>
+        </>
+      )}
+      {later.length > 0 && (
+        <div className="mt-3 rounded-[14px] bg-amber-soft px-4 py-3 text-[13.5px] leading-snug text-amber-olive">
+          <p>
+            {later.length === 1
+              ? "Más adelante en la cola hay un cambio de la misma orden que lo necesita en el servidor:"
+              : `Más adelante en la cola hay ${later.length} cambios de la misma orden que lo necesitan en el servidor:`}
+          </p>
+          <ul className="mt-1.5 list-disc space-y-0.5 pl-5 text-ink">
+            {later.map((q) => (
+              <li key={q.id}>{q.label}</li>
+            ))}
+          </ul>
+          <p className="mt-1.5">
+            {later.length === 1
+              ? "Es probable que el servidor también lo rechace. No se descarta ahora: si lo rechaza, podrá descartarlo entonces."
+              : "Es probable que el servidor también los rechace. No se descartan ahora: si los rechaza, podrá descartarlos entonces."}
+          </p>
+        </div>
+      )}
+      {unreadable > 0 && item && (
+        <div role="alert" className="mt-3 rounded-[14px] bg-amber-soft px-4 py-3 text-[13.5px] leading-snug text-amber-olive">
+          <p>
+            {unreadable === 1
+              ? "No se pudo leer una de las fotos en este teléfono, así que ahora no se puede guardar. Si descarta, se borra de todos modos."
+              : `No se pudieron leer ${unreadable} de las fotos en este teléfono, así que ahora no se pueden guardar. Si descarta, se borran de todos modos.`}
+          </p>
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => {
+              // What was shared or downloaded so far covered fewer photos: the save step starts over with all of them.
+              setKeptFor(null);
+              retry();
+            }}
+            className="mt-2.5 h-10 rounded-[12px] border-line bg-surface px-4 font-semibold text-ink"
+          >
+            <RefreshCw aria-hidden /> Reintentar
+          </Button>
+        </div>
+      )}
+      {/* Keyed by the photos it offers, not their count: after «Reintentar» another photo may take an unreadable one's place,
+          and what was shared or downloaded is tracked per file. */}
+      {files.length > 0 && item && (
+        <SaveCapturesBox key={`${item.id}:${filesKey}`} files={files} kept={kept} onKept={(how) => setKeptFor({ id: item.id, how })} onBusy={setSaving} />
+      )}
+    </ConfirmDialog>
+  );
+}
+
+function QueueRow({
+  item: q,
+  waitFor,
+  offline,
+  account,
+  onDiscard,
+}: {
+  item: SyncItem;
+  waitFor?: SyncItem;
+  offline: boolean;
+  account: boolean;
+  onDiscard: () => void;
+}) {
+  const retry = useAppStore((s) => s.retrySyncItem);
+  const detail = rowDetail(q, waitFor, offline, account);
+  // Stopped items, and items retried after a server answer (a parent that may never arrive, a server that keeps failing): the
+  // person decides. An item waiting for the network only waits.
+  const stopped = account && isStopped(q);
+  const canRetry = stopped && !!q.op && !NO_RETRY_HINTS.has(q.problem?.hint ?? "");
+  return (
+    <li className="flex items-start gap-3 rounded-[12px] px-2 py-2.5 text-[13.5px]">
       <span
         className={cn(
           "inline-flex size-7 shrink-0 items-center justify-center rounded-full",
@@ -311,17 +634,42 @@ function QueueRow({ item: q }: { item: SyncItem }) {
       </span>
       <span className="min-w-0 flex-1">
         <span className="line-clamp-2 text-ink">
-          <span className="sr-only">{STATE_WORD[q.state]}: </span>
+          <span className="sr-only">{detail}: </span>
           {q.label}
         </span>
         {/* the icon alone must not carry the state: say it for everything that has not gone out yet */}
         {q.state !== "sincronizado" && (
-          <span aria-hidden className={cn("block text-[12px]", q.state === "error" ? "text-red-fg" : "text-subtle")}>
-            {STATE_WORD[q.state]}
+          <span aria-hidden className={cn("block text-[12px] leading-snug", q.state === "error" ? "text-red-fg" : "text-subtle")}>
+            {detail}
+          </span>
+        )}
+        {stopped && (
+          <span className="mt-1.5 flex flex-wrap gap-2">
+            {canRetry && (
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-8 rounded-[10px] border-line px-3 text-[12.5px] font-semibold"
+                disabled={offline}
+                onClick={() => retry(q.id)}
+                aria-label={`Reintentar «${q.label}»`}
+              >
+                <RefreshCw /> Reintentar
+              </Button>
+            )}
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-8 rounded-[10px] border-line px-3 text-[12.5px] font-semibold"
+              onClick={onDiscard}
+              aria-label={`Descartar «${q.label}»`}
+            >
+              <Trash2 /> Descartar
+            </Button>
           </span>
         )}
       </span>
-      <span className="shrink-0 text-[12px] text-subtle tabular">{fmtTime(q.at)}</span>
+      <span className="shrink-0 pt-1 text-[12px] text-subtle tabular">{fmtTime(q.at)}</span>
     </li>
   );
 }

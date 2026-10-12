@@ -12,6 +12,7 @@ import { EASE, rowVariants, staggerContainer } from "@/components/pk/motion";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Field, FormDialog, GatedButton, ListHead, NO_CATALOGS, inputCls, useDialogTarget } from "./shared";
+import { TEXT_LIMITS } from "@/lib/domain";
 
 /** Soft swatch for a service hue (same oklch recipe as client marks). */
 export function HueSwatch({ hue, size = 36 }: { hue: number; size?: number }) {
@@ -139,7 +140,7 @@ function ServiceTypeDialog({ serviceType, open, onOpenChange }: { serviceType: S
       onSubmit={() => {
         setSubmitted(true);
         if (!valid) return;
-        upsert({ id: serviceType?.id ?? uid("st"), name: name.trim(), short: short.trim(), hue, defaultHoursPerDay: hours });
+        if (!upsert({ id: serviceType?.id ?? uid("st"), name: name.trim(), short: short.trim(), hue, defaultHoursPerDay: hours })) return;
         toast.success(isNew ? `Tipo ${short.trim()} creado` : `${name.trim()} actualizado`);
         onOpenChange(false);
       }}
@@ -159,7 +160,7 @@ function ServiceTypeDialog({ serviceType, open, onOpenChange }: { serviceType: S
         </div>
         <div className="grid gap-4 sm:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)]">
           <Field label="Nombre" htmlFor="st-name" error={submitted ? errors.name : null}>
-            <Input id="st-name" value={name} onChange={(e) => setName(e.target.value)} placeholder="Ej. Limpieza profunda" className={inputCls} aria-invalid={submitted && !!errors.name} />
+            <Input id="st-name" value={name} onChange={(e) => setName(e.target.value)} placeholder="Ej. Limpieza profunda" maxLength={TEXT_LIMITS.serviceTypeName.max} className={inputCls} aria-invalid={submitted && !!errors.name} />
           </Field>
           <Field label="Etiqueta corta" htmlFor="st-short" error={submitted ? errors.short : null}>
             <Input id="st-short" value={short} onChange={(e) => setShort(e.target.value)} placeholder="Profunda" maxLength={18} className={inputCls} aria-invalid={submitted && !!errors.short} />

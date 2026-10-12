@@ -23,6 +23,7 @@ export function ReasonField({
   hint = "Queda registrado en la bitácora con su usuario.",
   id,
   min = REASON_MIN,
+  max = 2000,
   rows = 3,
   className,
 }: {
@@ -36,6 +37,8 @@ export function ReasonField({
   hint?: React.ReactNode;
   id?: string;
   min?: number;
+  /** Longest text the server stores for it (audit reasons: 2000; lib/domain TEXT_LIMITS). */
+  max?: number;
   rows?: number;
   className?: string;
 }) {
@@ -79,6 +82,7 @@ export function ReasonField({
         onChange={(e) => onChange(e.target.value)}
         placeholder={placeholder}
         rows={rows}
+        maxLength={max}
         aria-required
         aria-invalid={short || undefined}
         aria-describedby={noteId}

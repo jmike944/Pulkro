@@ -12,6 +12,7 @@ import { useLookups, useMediaQuery, useNow, useScopedData } from "@/lib/hooks";
 import { daysUntil, firstName, fmtDate, fmtDay, plural } from "@/lib/format";
 import { CASE_CATEGORY, CASE_CHANNEL, CASE_STATUS, ROLE_LABEL, SEVERITY, toneDot } from "@/lib/status";
 import type { CaseCategory, CaseChannel, Order, PostSaleCase, Severity } from "@/lib/types";
+import { TEXT_LIMITS } from "@/lib/domain";
 import { ClientMark } from "@/components/pk/client-mark";
 import { PersonAvatar } from "@/components/pk/bits";
 import { AuroraStat, BigButton, FlowHeading, FlowScreen, ItemCard, SuccessHero } from "@/components/pk/mobile";
@@ -279,6 +280,7 @@ function NewCaseFlow({ open, defaults, onOpenChange }: { open: boolean; defaults
           id="nc-desc"
           value={description}
           onChange={(e) => setDescription(e.target.value)}
+          maxLength={TEXT_LIMITS.description.max}
           placeholder="¿Qué reporta el cliente? ¿Dónde y desde cuándo?"
           aria-required
           aria-invalid={descShort || undefined}

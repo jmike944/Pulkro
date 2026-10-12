@@ -5,13 +5,14 @@ import { AnimatePresence, motion } from "motion/react";
 import { Loader2, LocateFixed, MapPin, TriangleAlert } from "lucide-react";
 import { toast } from "sonner";
 import { uid } from "@/lib/store";
-import { useAppStore } from "@/lib/hooks";
+import { useAppStore, useDemoSession } from "@/lib/hooks";
 import { fmtCoords } from "@/lib/format";
 import type { Client, Site } from "@/lib/types";
 import { GeoMap, readPosition } from "@/components/pk/geo-map";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Field, FormDialog, inputCls } from "./shared";
+import { TEXT_LIMITS } from "@/lib/domain";
 
 const MUNICIPALITIES = [
   "Monterrey",
@@ -42,6 +43,7 @@ export function SiteDialog({ client, site, open, onOpenChange }: { client: Clien
   const upsertSite = useAppStore((s) => s.upsertSite);
   const upsertClient = useAppStore((s) => s.upsertClient);
   const sites = useAppStore((s) => s.sites);
+  const demo = useDemoSession();
   const isNew = !site;
   const anchor = sites.find((x) => x.clientId === client.id) ?? null;
 
@@ -74,7 +76,7 @@ export function SiteDialog({ client, site, open, onOpenChange }: { client: Clien
   const locate = async () => {
     setLocating(true);
     const fallback = coordsValid ? { lat: la!, lng: ln! } : anchor ?? MTY;
-    const r = await readPosition(fallback);
+    const r = await readPosition(fallback, { demo });
     setLocating(false);
     setLat(r.lat.toFixed(6));
     setLng(r.lng.toFixed(6));
@@ -109,7 +111,7 @@ export function SiteDialog({ client, site, open, onOpenChange }: { client: Clien
           lat: Number(la!.toFixed(6)),
           lng: Number(ln!.toFixed(6)),
         };
-        upsertSite(next);
+        if (!upsertSite(next)) return;
         if (isNew) {
           const fresh = useAppStore.getState().clients.find((c) => c.id === client.id) ?? client;
           if (!fresh.siteIds.includes(next.id)) upsertClient({ ...fresh, siteIds: [...fresh.siteIds, next.id] });
@@ -120,7 +122,7 @@ export function SiteDialog({ client, site, open, onOpenChange }: { client: Clien
     >
       <div className="space-y-4">
         <Field label="Nombre del sitio" htmlFor="s-name" error={show("name")}>
-          <Input id="s-name" value={name} onChange={(e) => setName(e.target.value)} placeholder="Ej. Planta Escobedo" className={inputCls} aria-invalid={!!show("name")} />
+          <Input id="s-name" value={name} onChange={(e) => setName(e.target.value)} placeholder="Ej. Planta Escobedo" maxLength={TEXT_LIMITS.siteName.max} className={inputCls} aria-invalid={!!show("name")} />
         </Field>
         <div className="grid gap-4 sm:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)]">
           <Field label="Dirección" htmlFor="s-address" error={show("address")}>

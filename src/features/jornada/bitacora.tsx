@@ -9,7 +9,9 @@ import { cn } from "@/lib/utils";
 import { useAppStore, useLookups } from "@/lib/hooks";
 import { fmtAgo, fmtDay, fmtTime } from "@/lib/format";
 import { INCIDENT_TYPE } from "@/lib/status";
+import { TEXT_LIMITS } from "@/lib/domain";
 import { PersonAvatar } from "@/components/pk/bits";
+import { ClockWarning } from "@/components/pk/clock-warning";
 import { EASE } from "@/components/pk/motion";
 import { BigButton, FieldCaption, FlowHeading, FlowScreen } from "@/components/pk/mobile";
 import { Button } from "@/components/ui/button";
@@ -58,6 +60,7 @@ export function NoteComposer({ f }: { f: FieldReady }) {
           id={fieldId}
           value={text}
           onChange={(e) => setText(e.target.value)}
+          maxLength={TEXT_LIMITS.jornadaNote.max}
           onKeyDown={(e) => {
             if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) save();
           }}
@@ -107,6 +110,7 @@ export function NoteFlow({ f, open, onOpenChange }: { f: FieldReady; open: boole
       <FlowHeading eyebrow={<FlowEyebrow f={f} />} title="Nota de bitácora">
         Queda con su nombre y la hora del dispositivo, aunque no haya señal.
       </FlowHeading>
+      <ClockWarning className="mb-4" />
       <FieldCaption>
         <label htmlFor="note-flow">Nota</label>
       </FieldCaption>
@@ -115,6 +119,7 @@ export function NoteFlow({ f, open, onOpenChange }: { f: FieldReady; open: boole
         value={text}
         autoFocus
         onChange={(e) => setText(e.target.value)}
+        maxLength={TEXT_LIMITS.jornadaNote.max}
         placeholder="Avances, acuerdos con el cliente, pendientes…"
         className="min-h-[132px] rounded-[16px] border-field-line bg-field text-[16px]"
       />

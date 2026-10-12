@@ -7,6 +7,7 @@ import { cn } from "@/lib/utils";
 import { useAppStore, useNow, useScopedAudit, useScopedData, useSyncSummary } from "@/lib/hooks";
 import { fmtAgo, fmtNum, fmtRelativeDay, fmtTime, plural } from "@/lib/format";
 import type { SyncItem } from "@/lib/types";
+import { isBulkRetryable } from "@/lib/sync/queue";
 import { AuroraPanel, GlassCard } from "@/components/pk/aurora";
 import { AnimatedNumber, IconTile, MiniStat, SectionHeader } from "@/components/pk/bits";
 import { Segmented } from "@/components/pk/page";
@@ -66,7 +67,7 @@ const DECISIONS: { icon: React.ReactNode; title: string; status: DocStatus; text
 
 /** Sincronización y datos: offline-first model, live queue, device storage, backup and pending infra decisions. */
 export function SyncTab() {
-  const { offline, pending, syncing, lastSyncAt, queue } = useSyncSummary();
+  const { offline, pending, syncing, lastSyncAt, queue, account } = useSyncSummary();
   const forced = useAppStore((s) => s.sync.forcedOffline);
   const browserOffline = useAppStore((s) => s.sync.browserOffline);
   const setForced = useAppStore((s) => s.setForcedOffline);
@@ -80,6 +81,8 @@ export function SyncTab() {
   useNow(15_000);
 
   const errors = queue.filter((q) => q.state === "error").length;
+  // Account sessions: "Reintentar" only resends what a resend can help (the sync sheet offers Descartar for the rest).
+  const retryable = account ? queue.filter(isBulkRetryable).length : errors;
   const waiting = pending.length - errors;
   const sent = queue.filter((q) => q.state === "sincronizado").length;
   const toSend = pending.length + syncing.length;
@@ -122,10 +125,10 @@ export function SyncTab() {
               <SwitchLite checked={forced} onChange={setForced} label="Simular sin conexión" />
             </div>
             <AnimatePresence initial={false}>
-              {errors > 0 && (
+              {retryable > 0 && (
                 <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} exit={{ opacity: 0, height: 0 }} className="overflow-hidden">
                   <Button variant="outline" onClick={retry} disabled={offline} className="mt-3 h-11 w-full rounded-[12px] border-line font-semibold">
-                    <RefreshCw className="size-4" /> Reintentar {plural(errors, "envío", "envíos")} con error
+                    <RefreshCw className="size-4" /> Reintentar {plural(retryable, "envío", "envíos")} con error
                   </Button>
                 </motion.div>
               )}
@@ -254,9 +257,12 @@ function QueueActivity({ queue, offline }: { queue: SyncItem[]; offline: boolean
                   <div className="min-w-0 flex-1">
                     <p className="truncate text-[14.5px] font-medium text-ink">{q.label}</p>
                     <p className="text-[12.5px] text-subtle">
-                      {m.label}
+                      {q.state === "error" && q.problem ? (q.problem.kind === "conflicto" ? "No se aplicó" : "Error") : m.label}
                       {q.bytes ? ` · ${fmtBytes(q.bytes)}` : ""}
                     </p>
+                    {q.problem && q.state !== "sincronizado" && (
+                      <p className={cn("text-[12.5px] leading-snug", q.state === "error" ? "text-red-fg" : "text-subtle")}>{q.problem.message}</p>
+                    )}
                   </div>
                   <span className="shrink-0 text-right text-[12.5px] text-subtle tabular">
                     {fmtRelativeDay(q.at)}

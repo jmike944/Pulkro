@@ -84,7 +84,9 @@ export function StepReview({
                 Orden de servicio
               </p>
               <p className="mt-2.5 font-serif text-[34px] font-medium leading-none tracking-[-0.01em] text-ink tabular">{folio}</p>
-              <p className="mt-1.5 text-[12.5px] text-subtle">Folio provisional · se confirma al guardar</p>
+              <p className="mt-1.5 text-[12.5px] text-subtle">
+                {folio.startsWith("OS-PEND") ? "Folio provisional · el servidor asigna el definitivo al sincronizar" : "Folio provisional · se confirma al guardar"}
+              </p>
             </div>
             {draft.priority === "alta" && (
               <span className="inline-flex h-7 shrink-0 items-center gap-1 rounded-[8px] bg-red-soft px-2 text-[12px] font-semibold text-red-fg">

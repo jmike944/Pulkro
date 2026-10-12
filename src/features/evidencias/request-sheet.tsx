@@ -6,7 +6,8 @@ import { AnimatePresence, motion } from "motion/react";
 import { ArrowUpRight, Camera, ImagePlus, Loader2, Wand2 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
-import { useMediaQuery } from "@/lib/hooks";
+import { useDemoSession, useMediaQuery } from "@/lib/hooks";
+import { PermissionDeniedError } from "@/lib/store";
 import { plural } from "@/lib/format";
 import { Sheet, SheetContent, SheetDescription, SheetFooter, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
@@ -15,19 +16,23 @@ import { OrderStatusPill, TonePill } from "@/components/pk/status";
 import { BeforeAfter, PhotoThumb } from "@/components/pk/scene-photo";
 import { CAPTURE_HELP, PhotoCaptureButtons, usePhotoCapture } from "@/components/pk/photo-capture";
 import { ClientMark } from "@/components/pk/client-mark";
-import { AuroraStat, BigButton, FlowHeading, FlowScreen, ItemCard, SuccessHero } from "@/components/pk/mobile";
+import { ClockWarning } from "@/components/pk/clock-warning";
+import { AuroraStat, BigButton, FlowHeading, FlowScreen, ItemCard, MODAL_DESKTOP_QUERY, SuccessHero } from "@/components/pk/mobile";
 import { EASE } from "@/components/pk/motion";
 import { dueLabel, type EvidenceRequest } from "./evidence-data";
 import { PhotoLightbox, useLightbox } from "./photo-lightbox";
 import { CAPTURE_REASON, Guarded } from "./guarded";
-import { useRequestModel } from "./request-model";
+import { useRequestModel, type RequestModel } from "./request-model";
 import { AreaChips, History, NeededBox, PersonCard, ReceivedCard, RequestFacts, RingingBell } from "./request-sections";
 
 const NO_PHONE_REASON = "El supervisor no tiene teléfono registrado.";
+const REMINDED_REASON = "Ya se envió un recordatorio hoy: aparece en el historial.";
+/** Why "Recordar" is disabled (no phone, or already reminded today), or null when it can be sent. */
+const remindBlocked = (m: RequestModel) => (!m.supervisor?.phone ? NO_PHONE_REASON : m.remindedToday ? REMINDED_REASON : null);
 
 /**
- * Detail of one missing-evidence request: right Sheet on tablet/desktop, full-screen flow on phones
- * (one-tap camera in the sticky footer, success screen after the upload).
+ * Detail of one missing-evidence request: right Sheet from lg (the desktop panel), the phone flow below it
+ * (one-tap camera in the sticky footer, success screen after the upload; a page sheet on tablets).
  */
 export function RequestSheet({
   request,
@@ -41,7 +46,7 @@ export function RequestSheet({
   /** open requests in the current list (live), for the phone success screen */
   remaining: number;
 }) {
-  const isDesktop = useMediaQuery("(min-width: 768px)");
+  const isDesktop = useMediaQuery(MODAL_DESKTOP_QUERY);
   if (!isDesktop)
     return request ? <PhoneRequest key={request.key} request={request} open={open} onOpenChange={onOpenChange} remaining={remaining} /> : null;
   return (
@@ -53,7 +58,7 @@ export function RequestSheet({
   );
 }
 
-/* ───────────── desktop / tablet: right sheet ───────────── */
+/* ───────────── desktop: right sheet ───────────── */
 
 function DesktopRequest({ request }: { request: EvidenceRequest }) {
   const { model: m, remind, afterCapture, canCapture, canClose } = useRequestModel(request);
@@ -63,12 +68,13 @@ function DesktopRequest({ request }: { request: EvidenceRequest }) {
   const [wipe, setWipe] = useState(0);
   const [rings, setRings] = useState(0);
   const lb = useLightbox();
-  // tablets are touch: the tap bubble is still there, but the reasons are also printed like on the phone flow
+  // landscape tablets reach this sheet and are touch: the tap bubble is still there, but the reasons are also printed like on the phone flow
   const touch = useMediaQuery("(hover: none)");
 
   if (!m) return <SheetTitle className="sr-only">Solicitud no disponible</SheetTitle>;
   const { order, jornada, client, serviceType } = m;
   const captureArea = area || m.areaChoices[0] || "Área general";
+  const remindBlock = remindBlocked(m);
 
   const startCapture = () => {
     setCapturing(true);
@@ -77,7 +83,8 @@ function DesktopRequest({ request }: { request: EvidenceRequest }) {
 
   return (
     <>
-      <SheetHeader className="gap-0 border-b border-hairline p-6 pr-14">
+      {/* 68px on the right keeps the title clear of the 44px close button */}
+      <SheetHeader className="gap-0 border-b border-hairline p-6 pr-[68px]">
         <div className="flex flex-wrap items-center gap-2">
           <TonePill tone={m.statusTone} live={!m.resolved && request.overdue}>
             {m.statusLabel}
@@ -152,7 +159,7 @@ function DesktopRequest({ request }: { request: EvidenceRequest }) {
           <>
             {!m.isMine && (
               <p className="order-last w-full text-right text-[12px] text-subtle">
-                {touch && !m.supervisor?.phone ? NO_PHONE_REASON : "Recordatorio manual por WhatsApp · sin alertas automáticas"}
+                {touch && remindBlock ? remindBlock : "Recordatorio manual por WhatsApp · sin alertas automáticas"}
               </p>
             )}
             {touch && !canCapture && <p className="order-last w-full text-right text-[12px] leading-snug text-subtle">{CAPTURE_REASON}</p>}
@@ -167,10 +174,10 @@ function DesktopRequest({ request }: { request: EvidenceRequest }) {
               </Button>
             </Guarded>
             {!m.isMine && (
-              <Guarded reason={m.supervisor?.phone ? null : NO_PHONE_REASON}>
-                <Button disabled={!m.supervisor?.phone} onClick={() => remind() && setRings((n) => n + 1)} className="h-11 rounded-[12px] px-4 font-semibold">
+              <Guarded reason={remindBlock}>
+                <Button disabled={!!remindBlock} onClick={() => remind() && setRings((n) => n + 1)} className="h-11 rounded-[12px] px-4 font-semibold">
                   <RingingBell rings={rings} />
-                  Recordar a {m.supFirst}
+                  {m.remindedToday ? "Recordado hoy" : `Recordar a ${m.supFirst}`}
                 </Button>
               </Guarded>
             )}
@@ -198,6 +205,7 @@ function PhoneRequest({
 }) {
   const { model: m, remind, afterCapture, canCapture, canClose } = useRequestModel(request);
   const { capture, simulate, busy } = usePhotoCapture();
+  const demo = useDemoSession();
   const camRef = useRef<HTMLInputElement>(null);
   const galRef = useRef<HTMLInputElement>(null);
   const [area, setArea] = useState(() => request.reference[0]?.area ?? "");
@@ -214,6 +222,7 @@ function PhoneRequest({
 
   const { order, jornada, client, serviceType } = m;
   const captureArea = area || m.areaChoices[0] || "Área general";
+  const remindBlock = remindBlocked(m);
   const meta = { orderId: order.id, jornadaId: jornada.id, kind: request.kind, area: captureArea, serviceTypeId: order.serviceTypeId, selectedForReport: true };
 
   const onFiles = async (files: FileList | null, input: "camera" | "gallery") => {
@@ -278,27 +287,35 @@ function PhoneRequest({
     <div className="space-y-2.5">
       {canCapture ? (
         <>
+          <ClockWarning />
           <input ref={camRef} type="file" accept="image/*" capture="environment" hidden onChange={(e) => void onFiles(e.target.files, "camera").then(() => (e.target.value = ""))} />
           <input ref={galRef} type="file" accept="image/*" multiple hidden onChange={(e) => void onFiles(e.target.files, "gallery").then(() => (e.target.value = ""))} />
           <BigButton onClick={() => camRef.current?.click()} disabled={busy}>
             {busy ? <Loader2 className="animate-spin" /> : <Camera />} Tomar foto {m.kindLabel}
           </BigButton>
-          <div className="grid grid-cols-2 gap-2.5">
+          <div className={cn("grid gap-2.5", demo && "grid-cols-2")}>
             <Button variant="outline" disabled={busy} onClick={() => galRef.current?.click()} className="h-12 rounded-[14px] border-line-strong text-[15px] font-semibold">
               <ImagePlus /> Galería
             </Button>
-            <Button
-              variant="outline"
-              disabled={busy}
-              onClick={() => {
-                const id = simulate(meta);
-                toast.success("Foto de ejemplo agregada");
-                afterCapture([id], { toast: false });
-              }}
-              className="h-12 rounded-[14px] border-line-strong text-[15px] font-semibold"
-            >
-              <Wand2 /> Simular
-            </Button>
+            {demo && (
+              <Button
+                variant="outline"
+                disabled={busy}
+                onClick={() => {
+                  try {
+                    const id = simulate(meta);
+                    toast.success("Foto de ejemplo agregada");
+                    afterCapture([id], { toast: false });
+                  } catch (e) {
+                    // The store already told the user why it refused.
+                    if (!(e instanceof PermissionDeniedError)) throw e;
+                  }
+                }}
+                className="h-12 rounded-[14px] border-line-strong text-[15px] font-semibold"
+              >
+                <Wand2 /> Simular
+              </Button>
+            )}
           </div>
           <p className="text-center text-[12px] leading-snug text-subtle">{CAPTURE_HELP}</p>
         </>
@@ -307,12 +324,10 @@ function PhoneRequest({
       )}
       {!m.isMine && (
         <>
-          <BigButton variant={canCapture ? "outline" : "primary"} disabled={!m.supervisor?.phone} onClick={() => remind() && setRings((n) => n + 1)}>
-            <RingingBell rings={rings} /> Recordar a {m.supFirst}
+          <BigButton variant={canCapture ? "outline" : "primary"} disabled={!!remindBlock} onClick={() => remind() && setRings((n) => n + 1)}>
+            <RingingBell rings={rings} /> {m.remindedToday ? "Recordado hoy" : `Recordar a ${m.supFirst}`}
           </BigButton>
-          <p className="text-center text-[12px] text-subtle">
-            {m.supervisor?.phone ? "Recordatorio manual por WhatsApp · sin alertas automáticas" : NO_PHONE_REASON}
-          </p>
+          <p className="text-center text-[12px] text-subtle">{remindBlock ?? "Recordatorio manual por WhatsApp · sin alertas automáticas"}</p>
         </>
       )}
     </div>

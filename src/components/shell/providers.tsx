@@ -6,14 +6,23 @@ import { useOffline } from "next/offline";
 import { ThemeProvider, useTheme } from "next-themes";
 import { bootstrapStore, useAppStore } from "@/lib/store";
 import { useUi } from "@/lib/ui-store";
+import { usePullScheduler } from "@/lib/sync/use-pull-scheduler";
+import { isForwardingAuthLink } from "@/features/auth/auth-link-forward";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { Toaster } from "@/components/ui/sonner";
 import { Celebrate } from "@/components/pk/feedback";
 import { PwaRegistrar } from "./pwa";
+import { WriterGate } from "./writer-gate";
 
-/** Global client providers: theme (Claro / Oscuro / Sistema), store bootstrap (IndexedDB), connectivity, motion prefs, toasts. */
+/**
+ * Global client providers: theme (Claro / Oscuro / Sistema), store bootstrap (IndexedDB — only in the one tab per device that
+ * holds the data; the others show WriterGate's blocker), connectivity, the account pull schedule, motion prefs, toasts.
+ */
 export function Providers({ children }: { children: React.ReactNode }) {
   useEffect(() => {
+    // An e-mail link that landed here is on its way to /acceso/definir-contrasena (the root layout's inline script): this page
+    // is about to go, so nothing reads the store or the session, and the shell does not redirect it to /login first.
+    if (isForwardingAuthLink()) return;
     void bootstrapStore();
   }, []);
   return (
@@ -22,8 +31,9 @@ export function Providers({ children }: { children: React.ReactNode }) {
         <TooltipProvider delayDuration={250}>
           <ThemeColorSync />
           <ConnectivityWatcher />
+          <PullScheduler />
           <PwaRegistrar />
-          {children}
+          <WriterGate>{children}</WriterGate>
           <GlobalCelebrate />
           <Toaster position="top-center" richColors={false} closeButton />
         </TooltipProvider>
@@ -79,6 +89,12 @@ function ConnectivityWatcher() {
       window.removeEventListener("offline", update);
     };
   }, [nextOffline, setBrowserOffline, hydrated]);
+  return null;
+}
+
+/** Account sessions: pulls the server's changes on focus, reconnect and every minute (lib/sync). */
+function PullScheduler() {
+  usePullScheduler();
   return null;
 }
 
