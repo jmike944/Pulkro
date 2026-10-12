@@ -57,13 +57,18 @@ toggle "Verify JWT with legacy secret". If the first real call answers the gatew
 
 ## Known limitations
 
-- **Two invitation e-mails on a fast retry of the same `invite`** (accepted, owner decision 2026-10-11). The op id makes
-  the profile idempotent, but the e-mail is sent before it: a second request with the same `opId` that arrives while the
-  first is still between `inviteUserByEmail` and `provision_profile` (a double submit, or the app retrying after a lost
-  answer within that window) finds no profile yet and calls `inviteUserByEmail` too. GoTrue re-sends to the account it
-  just created, so the person gets two invitations; one account and one profile are created (the second
-  `provision_profile` answers `duplicate`). Each send issues a new link, so the earlier e-mail's link may no longer work:
-  the person uses the latest. No reservation step is added for this.
+- **Two invitation e-mails on a retry of the same `invite`** (accepted, owner decision 2026-10-11). The op id makes
+  the profile idempotent, but the e-mail is sent before it: a second request with the same `opId` that finds no profile
+  yet calls `inviteUserByEmail` too. That happens when it arrives while the first is still between `inviteUserByEmail`
+  and `provision_profile` (a double submit, or the app retrying after a lost answer within that window), and also when
+  the first never got to `provision_profile` at all — the function crashed, timed out or was stopped between the e-mail
+  and the profile: the auth user it created stays without a profile, and the app's retry of the unknown outcome (same
+  `opId`) e-mails again. GoTrue re-sends to the account the first call created, so the person gets two invitations; one
+  account and one profile result (the retry provisions it, or its `provision_profile` answers `duplicate`). Each send
+  issues a new link, so the earlier e-mail's link may no longer work: the person uses the latest. No reservation step is
+  added for this (it would need a migration and a redeploy). The app never promises that a retry sends no second e-mail:
+  after an unknown outcome the users screen says «si a la persona le llegan dos correos de invitación, que use el más
+  reciente» (`INVITE_UNKNOWN_MESSAGE`).
 
 ## Before deploying
 

@@ -109,12 +109,16 @@ calls it from Configuración → Usuarios in account sessions, online only ("Nec
 local store. «Reenviar invitación» sits in the person's «Editar» (active accounts other than one's own); its
 `already_active` answer is shown as information, not as an error.
 
-**Known limitation, accepted (owner decision 4, 2026-10-11): two invitation e-mails on a fast retry of the same
-`invite`.** The e-mail goes out before `provision_profile` stores the op: a second request with the same `opId` that
-arrives while the first is still between `inviteUserByEmail` and `provision_profile` (a double submit, a retry after a lost
-answer in that window) also finds no profile and calls `inviteUserByEmail`, and GoTrue re-sends to the account the first
-one just created. One account and one profile result (the second provision answers `duplicate`); the person gets two
-e-mails and uses the latest (each send issues a new link). No reservation step is added.
+**Known limitation, accepted (owner decision 4, 2026-10-11): two invitation e-mails on a retry of the same
+`invite`.** The e-mail goes out before `provision_profile` stores the op: a second request with the same `opId` that finds
+no profile yet also calls `inviteUserByEmail`, and GoTrue re-sends to the account the first one created. It finds none
+while the first is still between `inviteUserByEmail` and `provision_profile` (a double submit, a retry after a lost
+answer in that window), and also after the first crashed, timed out or was stopped between the e-mail and the profile
+(its auth user stays without a profile until the retry provisions it). One account and one profile result; the person
+gets two e-mails and uses the latest (each send issues a new link). No reservation step is added (it would need a
+migration and a redeploy). The app never promises otherwise: after an unknown outcome the users screen says the
+invitation can be sent again without creating another account, and that if two e-mails arrive the person uses the
+latest.
 
 **E-mail changes and sessions.** Dirección's change (`change_email`) ends the person's sessions in the same transaction as
 the profile update (`sync_profile_email` deletes their `auth.sessions`, refresh tokens included, like a deactivation): a

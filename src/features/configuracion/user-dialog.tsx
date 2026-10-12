@@ -17,6 +17,7 @@ import { DeactivateUserDialog } from "./deactivate-user";
 import { TEXT_LIMITS } from "@/lib/domain";
 import {
   ALREADY_ACTIVE,
+  INVITE_UNKNOWN_MESSAGE,
   NEEDS_CONNECTION,
   NEEDS_CONNECTION_DETAIL,
   REAUTH,
@@ -82,8 +83,8 @@ export function UserDialog({
   const errorRef = useRef<HTMLParagraphElement>(null);
   // An invitation whose answer never came (timeout, no answer, 5xx) may have gone out: the profile the pull then brings is
   // this same invitation, not another person's. While the form stays as it was sent, the address is not "taken" and
-  // "Enviar invitación" resends the same operation (same op id: the server answers its stored result, nothing is e-mailed
-  // twice). Holds the payload of that attempt.
+  // "Enviar invitación" resends the same operation (same op id: one account and one profile, but the e-mail may go out
+  // again — INVITE_UNKNOWN_MESSAGE). Holds the payload of that attempt.
   const [uncertainInvite, setUncertainInvite] = useState<string | null>(null);
   // bumped when the server answered another status than asked (a stale retry): the next "Guardar" is a new operation
   const [activeAttempt, setActiveAttempt] = useState(0);
@@ -204,8 +205,9 @@ export function UserDialog({
         if (!invited.ok) {
           const unknown = isUnknownOutcome(invited);
           setUncertainInvite(unknown ? JSON.stringify(inviteInput) : null);
+          // Never promised that a retry sends no second e-mail: it may (admin-users, «Known limitations»).
           setServerError(
-            unknown && invited.code !== "timeout" ? `${invited.message} Si la invitación ya salió, al enviarla de nuevo no se repite.` : invited.message,
+            unknown ? `${invited.code === "timeout" ? "El servidor no confirmó la respuesta a tiempo." : invited.message} ${INVITE_UNKNOWN_MESSAGE}` : invited.message,
           );
           return;
         }

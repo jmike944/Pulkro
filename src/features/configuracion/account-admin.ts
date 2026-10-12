@@ -28,6 +28,14 @@ const NETWORK_MESSAGE = "No hay conexión con el servidor. Revise su señal o su
 const UNREACHABLE_MESSAGE =
   "No se pudo contactar al servicio de cuentas. Intente de nuevo en unos minutos; si sigue igual, avise a quien administra el sistema.";
 const TIMEOUT_MESSAGE = "El servidor no confirmó la respuesta a tiempo. Vuelva a intentarlo: si el cambio ya se aplicó, no se repetirá.";
+/**
+ * An invitation whose answer never came. Sending it again (same op id) creates no second account, but the e-mail may go out
+ * twice: the function e-mails before it stores the operation, so a retry that finds no profile yet — the first still on its
+ * way, or stopped between the e-mail and the profile — e-mails again (admin-users README, «Known limitations»). Each e-mail
+ * carries a new link: the latest is the one that works.
+ */
+export const INVITE_UNKNOWN_MESSAGE =
+  "No se sabe si la invitación salió. Puede enviarla de nuevo sin crear otra cuenta; si a la persona le llegan dos correos de invitación, que use el más reciente.";
 const EXPIRED_MESSAGE = "Su sesión venció. Vuelva a iniciar sesión e intente de nuevo.";
 export const REAUTH = "Vuelva a entrar con su cuenta";
 export const REAUTH_DETAIL =
@@ -42,7 +50,8 @@ export type AdminFailure = { ok: false; code: string; message: string };
 
 /**
  * No answer, a timeout or a server error: the change may have been applied anyway. Sending the same operation again (same op
- * id and payload) completes it or answers the stored result; nothing is repeated.
+ * id and payload) completes it or answers the stored result; nothing is repeated — except an invitation's e-mail, which a
+ * retry may send again (INVITE_UNKNOWN_MESSAGE).
  */
 export const isUnknownOutcome = (failure: AdminFailure) =>
   ["network", "timeout", "unknown", "bad_response", "unavailable", "server_error"].includes(failure.code) || /^http_5\d\d$/.test(failure.code);
