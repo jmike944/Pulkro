@@ -1,10 +1,11 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useSearchParams } from "next/navigation";
 import { KeyRound } from "lucide-react";
 import { useAppStore } from "@/lib/hooks";
 import { Button } from "@/components/ui/button";
+import { loginHref } from "@/features/auth/safe-next";
 
 /**
  * "Vuelva a entrar": the browser has no Supabase session for the account on the device (expired or revoked refresh token,
@@ -15,6 +16,8 @@ import { Button } from "@/components/ui/button";
 export function ReauthBanner() {
   const show = useAppStore((s) => s.session.mode === "supabase" && s.session.signedIn && !!s.session.needsReauth);
   const pathname = usePathname();
+  // toString(), not .size (missing on iOS 15/16).
+  const query = useSearchParams().toString();
   if (!show) return null;
   return (
     <div
@@ -32,7 +35,7 @@ export function ReauthBanner() {
         </span>
       </p>
       <Button asChild className="h-10 rounded-[12px] px-4 text-[14px] font-semibold">
-        <Link href={`/login?next=${encodeURIComponent(pathname)}`}>Entrar de nuevo</Link>
+        <Link href={loginHref(pathname, query)}>Entrar de nuevo</Link>
       </Button>
     </div>
   );

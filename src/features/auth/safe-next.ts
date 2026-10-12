@@ -39,3 +39,14 @@ export function safeNext(next: string | null | undefined, origin?: string): stri
   if (AUTH_SCREENS.some((p) => screen === p || screen.startsWith(`${p}/`))) return "/";
   return `${path}${url.search}${url.hash}`;
 }
+
+/**
+ * The sign-in link that comes back to this page: `/login?next=<pathname + query>`. Every `/login?next=` link is built here.
+ * The query is kept (in-page state lives there: an open incident `?i=`, an order's closure `?cerrar=1`…) and the whole
+ * value is encoded once, as safeNext reads it back from useSearchParams. `search`: `location.search` ("?i=7"), a query
+ * without "?" ("i=7"), or useSearchParams()'s value.
+ */
+export function loginHref(pathname: string, search?: string | URLSearchParams): string {
+  const query = (typeof search === "string" ? search : (search?.toString() ?? "")).replace(/^\?/, "");
+  return `/login?next=${encodeURIComponent(query ? `${pathname}?${query}` : pathname)}`;
+}

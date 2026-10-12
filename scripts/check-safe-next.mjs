@@ -1,4 +1,5 @@
-// Checks safeNext (src/features/auth/safe-next.ts), the `/login?next=` filter, against open-redirect variants.
+// Checks safeNext (src/features/auth/safe-next.ts), the `/login?next=` filter, against open-redirect variants, and loginHref,
+// the one builder of those links: what it writes comes back through safeNext as the same page, its query included.
 // Usage: node scripts/check-safe-next.mjs
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
@@ -9,7 +10,7 @@ const file = 'src/features/auth/safe-next.ts';
 const compiled = ts.transpileModule(fs.readFileSync(file, 'utf8'), { compilerOptions: { module: ts.ModuleKind.CommonJS } }).outputText;
 const context = { exports: {}, URL, decodeURIComponent };
 vm.runInNewContext(compiled, context);
-const { safeNext } = context.exports;
+const { safeNext, loginHref } = context.exports;
 
 const ORIGIN = 'https://app.pulkro.test';
 const next = (raw) => safeNext(raw, ORIGIN);
@@ -80,4 +81,34 @@ for (let c = 0; c < 128; c++) {
   }
 }
 
-console.log(`check-safe-next: OK (${rejected.length} rejected, ${kept.length} kept, ${128 * 4} generated)`);
+/* ── loginHref → /login?next= → safeNext: back to the same page, its query kept ── */
+/** Where signing in from `href` goes: the `next` /login reads (decoded once, as useSearchParams does), through safeNext. */
+const comesBackTo = (href) => {
+  const url = new URL(href, ORIGIN);
+  assert.equal(url.pathname, '/login', href);
+  assert.deepEqual([...url.searchParams.keys()], ['next'], `${href}: the page's query stays inside next`);
+  return next(url.searchParams.get('next'));
+};
+const roundTrips = [
+  // location.search (with "?"), useSearchParams().toString() (without), a URLSearchParams, nothing
+  [['/ordenes/OS-24394', '?tab=fotos&i=3'], '/ordenes/OS-24394?tab=fotos&i=3'],
+  [['/incidencias', 'i=INC-0007&tab=fotos'], '/incidencias?i=INC-0007&tab=fotos'],
+  [['/incidencias', new URLSearchParams('i=INC-0007&tab=fotos')], '/incidencias?i=INC-0007&tab=fotos'],
+  [['/ordenes/OS-1', '?cerrar=1'], '/ordenes/OS-1?cerrar=1'],
+  [['/ordenes'], '/ordenes'],
+  [['/ordenes', ''], '/ordenes'],
+  [['/ordenes', '?'], '/ordenes'],
+  [['/ordenes', new URLSearchParams()], '/ordenes'],
+  // encoded values in the query survive both encodings unchanged, and a `next` in the page's query is just data
+  [['/buscar', '?q=a%26b%3Dc&n=%2F%2Fevil.example'], '/buscar?q=a%26b%3Dc&n=%2F%2Fevil.example'],
+  [['/x', '?next=%2F%2Fevil.example&a=1'], '/x?next=%2F%2Fevil.example&a=1'],
+];
+for (const [[pathname, search], expected] of roundTrips) {
+  assert.equal(comesBackTo(loginHref(pathname, search)), expected, `loginHref(${JSON.stringify(pathname)}, ${JSON.stringify(String(search))})`);
+}
+// Built from an off-origin or sign-in path, it still lands on "/" (safeNext decides, never the builder).
+for (const pathname of ['//evil.example', '/\\evil.example', '/login', '/acceso/definir-contrasena']) {
+  assert.equal(comesBackTo(loginHref(pathname, '?a=1')), '/', pathname);
+}
+
+console.log(`check-safe-next: OK (${rejected.length} rejected, ${kept.length} kept, ${128 * 4} generated, ${roundTrips.length} loginHref round trips)`);

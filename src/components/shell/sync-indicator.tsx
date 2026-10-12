@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useId, useMemo, useState } from "react";
 import { AnimatePresence, motion } from "motion/react";
 import Link from "next/link";
+import { usePathname, useSearchParams } from "next/navigation";
 import { Check, ChevronRight, CloudDownload, CloudOff, CloudUpload, KeyRound, Loader2, RefreshCw, Trash2, TriangleAlert, WifiOff } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -26,6 +27,7 @@ import { ModalShell } from "@/components/pk/modal-shell";
 import { ConfirmDialog } from "@/features/configuracion/shared";
 import { Switch } from "@/components/ui/switch";
 import { Button } from "@/components/ui/button";
+import { loginHref } from "@/features/auth/safe-next";
 import { SaveCapturesBox, useCaptureFiles, type CapturesKept } from "./discard-photos";
 
 /**
@@ -296,6 +298,10 @@ function SyncPanel() {
   const failed = queue.filter((q) => q.state === "error").length;
   useNow(30_000); // keeps "hace 2 min" honest while the sheet stays open
   const switchId = useId();
+  // «Entrar de nuevo» comes back to this page, its query included. The sheet renders only in the signed-in shell, after
+  // hydration: useSearchParams needs no Suspense here. toString(), not .size (missing on iOS 15/16).
+  const pathname = usePathname();
+  const query = useSearchParams().toString();
 
   const status: { tone: "amber" | "red" | "blue"; icon: React.ReactNode; title: string; detail: string } = saveError
     ? { tone: "red" as const, icon: <TriangleAlert className="size-5" />, title: "No se pudo guardar en el dispositivo", detail: saveError }
@@ -388,7 +394,7 @@ function SyncPanel() {
           </span>
           {needsReauth ? (
             <Button asChild variant="outline" className="h-10 rounded-[12px] border-line px-4 font-semibold">
-              <Link href="/login">
+              <Link href={loginHref(pathname, query)}>
                 <KeyRound /> Entrar de nuevo
               </Link>
             </Button>

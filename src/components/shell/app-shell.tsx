@@ -16,6 +16,7 @@ import { canSeeRoute } from "./nav";
 import { RouteNotAllowed } from "./out-of-scope";
 import { ReauthBanner } from "./reauth-banner";
 import { NoAccessView } from "@/features/auth/no-access-view";
+import { loginHref } from "@/features/auth/safe-next";
 
 /**
  * Authenticated chrome: canvas + sidebar (desktop) / top+bottom bars (mobile) + white work panel.
@@ -33,7 +34,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
 
   useEffect(() => {
-    if (hydrated && !signedIn) router.replace(`/login?next=${encodeURIComponent(pathname)}`);
+    // The query too (in-page state: ?i=, ?cerrar=1…), read here rather than with useSearchParams: the shell is prerendered.
+    if (hydrated && !signedIn) router.replace(loginHref(pathname, window.location.search));
   }, [hydrated, signedIn, router, pathname]);
 
   if (!hydrated || !signedIn) return <ShellSkeleton />;
