@@ -7,8 +7,8 @@ import { PermissionDeniedError } from "@/lib/store";
 import { useUi } from "@/lib/ui-store";
 import { mailtoLink, whatsappLink } from "@/lib/domain";
 import type { Report, ShareChannel } from "@/lib/types";
-import { buildReportPdf } from "./pdf-build";
-import { PhotosUnavailableError } from "./raster";
+import { buildReportPdf, reportPhotos } from "./pdf-build";
+import { PhotosUnavailableError, rasterizePhotos } from "./raster";
 import { hasProvisionalFolio, reportFileName, reportFingerprint, type ReportContext } from "./report-model";
 import { CHANNEL_TO_LABEL, DOWNLOAD_TARGET, canShareFile, downloadBlob, emailDraft, whatsappMessage } from "./share";
 
@@ -17,6 +17,7 @@ export type OutputStep = "registro" | "fotos" | "pdf" | "listo" | "error";
 /** A PDF being composed (new version or re-render of an existing one). */
 export type OutputTask = {
   orderId: string;
+  /** None while a new version's photos are read: it is registered only once they are ready. */
   reportId?: string;
   version: number;
   kind: "generate" | "prepare";
@@ -49,6 +50,16 @@ function provisional(ctx: ReportContext) {
   return true;
 }
 
+/** What a failed composition says, on the card and in a toast. */
+function failure(err: unknown): { error: string; description: string } {
+  // A server photo that could not be read now: nothing is cached (a placeholder in its place would be shared as the report).
+  if (err instanceof PhotosUnavailableError) {
+    return { error: err.message, description: err.message };
+  }
+  console.error(err);
+  return { error: "No se pudo componer el PDF en este dispositivo.", description: "Intente de nuevo. Si persiste, recargue la página." };
+}
+
 /**
  * PDF lifecycle for reports: generate a version (store.generateReport + PDF), re-render an existing
  * version on demand, and the three manual outputs. Every attempt is logged with store.logShare —
@@ -64,34 +75,37 @@ export function useReportOutputs() {
   const [blobs, setBlobs] = useState<Record<string, { blob: Blob; key: string }>>({});
   const [task, setTask] = useState<OutputTask | null>(null);
 
-  const compose = useCallback(async (ctx: ReportContext, report: Report, kind: OutputTask["kind"], root?: ParentNode | null) => {
-    const base = { orderId: ctx.order.id, reportId: report.id, version: report.version, kind };
-    setTask({ ...base, step: kind === "generate" ? "registro" : "fotos", done: 0, total: report.photoIds.length });
-    try {
-      const blob = await buildReportPdf({
-        ctx,
-        report,
-        root,
-        onStage: (st) =>
-          setTask((t) => (t && t.reportId === report.id ? { ...t, step: st.step, ...(st.step === "fotos" ? { done: st.done, total: st.total } : {}) } : t)),
-      });
-      setBlobs((b) => ({ ...b, [report.id]: { blob, key: reportFingerprint(ctx, report) } }));
-      setTask((t) => (t && t.reportId === report.id ? { ...t, step: "listo" } : t));
-      setTimeout(() => setTask((t) => (t && t.reportId === report.id && t.step === "listo" ? null : t)), 2200);
-      return blob;
-    } catch (err) {
-      // A server photo that could not be read now: nothing is cached (a placeholder in its place would be shared as the report).
-      if (err instanceof PhotosUnavailableError) {
-        setTask((t) => (t && t.reportId === report.id ? { ...t, step: "error", error: err.message } : t));
-        toast.error("No se pudo componer el PDF", { description: err.message });
+  /** The task `match` picks failed: the card says why, and a toast. */
+  const fail = useCallback((match: (t: OutputTask | null) => t is OutputTask, err: unknown) => {
+    const { error, description } = failure(err);
+    setTask((t) => (match(t) ? { ...t, step: "error", error } : t));
+    toast.error("No se pudo componer el PDF", { description });
+  }, []);
+
+  const compose = useCallback(
+    async (ctx: ReportContext, report: Report, kind: OutputTask["kind"], root?: ParentNode | null, images?: Record<string, string>) => {
+      const base = { orderId: ctx.order.id, reportId: report.id, version: report.version, kind };
+      setTask({ ...base, step: kind === "generate" ? "registro" : "fotos", done: 0, total: report.photoIds.length });
+      try {
+        const blob = await buildReportPdf({
+          ctx,
+          report,
+          root,
+          images,
+          onStage: (st) =>
+            setTask((t) => (t && t.reportId === report.id ? { ...t, step: st.step, ...(st.step === "fotos" ? { done: st.done, total: st.total } : {}) } : t)),
+        });
+        setBlobs((b) => ({ ...b, [report.id]: { blob, key: reportFingerprint(ctx, report) } }));
+        setTask((t) => (t && t.reportId === report.id ? { ...t, step: "listo" } : t));
+        setTimeout(() => setTask((t) => (t && t.reportId === report.id && t.step === "listo" ? null : t)), 2200);
+        return blob;
+      } catch (err) {
+        fail((t): t is OutputTask => !!t && t.reportId === report.id, err);
         return null;
       }
-      console.error(err);
-      setTask((t) => (t && t.reportId === report.id ? { ...t, step: "error", error: "No se pudo componer el PDF en este dispositivo." } : t));
-      toast.error("No se pudo componer el PDF", { description: "Intente de nuevo. Si persiste, recargue la página." });
-      return null;
-    }
-  }, []);
+    },
+    [fail],
+  );
 
   /** A PDF of this version, composed from what the device has now, is in memory. */
   const hasFresh = useCallback((ctx: ReportContext, report: Report) => blobs[report.id]?.key === reportFingerprint(ctx, report), [blobs]);
@@ -108,27 +122,49 @@ export function useReportOutputs() {
     [blobs, compose],
   );
 
-  /** New version → store.generateReport(orderId, photoIds, summary), then the PDF Blob. */
+  /**
+   * New version: its photos, then store.generateReport(orderId, photoIds, summary), then the PDF Blob. The photos are what
+   * can fail (a server photo the device keeps no copy of is downloaded), so they come first: the version is registered — and
+   * queued for the server — only once they are ready. A failure leaves no version without its PDF, and trying again does not
+   * number another one.
+   */
   const generate = useCallback(
     async (ctx: ReportContext, photoIds: string[], summary: string, opts: Opts = {}) => {
       if (!canShare) return null;
+      const orderId = ctx.order.id;
+      // The number store.generateReport will give it (the server numbers it again when it arrives).
+      const version = useAppStore.getState().reports.filter((r) => r.orderId === orderId).length + 1;
+      const photos = reportPhotos(ctx, photoIds);
+      const unregistered = (t: OutputTask | null): t is OutputTask => !!t && t.orderId === orderId && t.kind === "generate" && !t.reportId;
+      setTask({ orderId, version, kind: "generate", step: "fotos", done: 0, total: photos.length });
+      let images: Record<string, string>;
+      try {
+        images = await rasterizePhotos(photos, {
+          root: opts.root,
+          onProgress: (done, total) => setTask((t) => (unregistered(t) ? { ...t, done, total } : t)),
+        });
+      } catch (err) {
+        fail(unregistered, err);
+        return null;
+      }
       let rep: Report;
       try {
-        rep = generateReport(ctx.order.id, photoIds, summary.trim());
+        rep = generateReport(orderId, photoIds, summary.trim());
       } catch (e) {
+        setTask((t) => (unregistered(t) ? null : t));
         // The store refuses a reopened order whose closure was not validated again (or a role without the permission) and has
         // already told the user why with a toast; never let the rejection escape the click handler.
         if (e instanceof PermissionDeniedError) return null;
         throw e;
       }
-      const blob = await compose(ctx, rep, "generate", opts.root);
+      const blob = await compose(ctx, rep, "generate", opts.root, images);
       if (blob && !opts.quiet)
         toast.success(`Reporte v${rep.version} generado`, {
           description: rep.version > 1 ? `La v${rep.version - 1} queda en el historial de versiones.` : "Revíselo y compártalo manualmente con el cliente.",
         });
       return blob ? rep : null;
     },
-    [canShare, compose, generateReport],
+    [canShare, compose, fail, generateReport],
   );
 
   const record = useCallback(
