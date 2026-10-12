@@ -4,16 +4,18 @@
  * "Descartar" with photo captures in it (sync sheet): an unsent capture's picture exists only on this device, so before the
  * discard deletes it the person can save it on the phone.
  *  - Where the browser shares files (Android Chrome, iOS Safari: the share sheet's «Guardar imagen», Archivos…): up to 10
- *    photos and 45 MB per tap, as a share takes at most 10 files / 50 MB. Only a share the sheet took counts as saved.
+ *    photos and 45 MB per tap, as a share takes at most 10 files / 50 MB. A share the sheet took only means some target
+ *    accepted the files — WhatsApp, Mail, or «Guardar imagen» — and the page cannot tell which: those photos are
+ *    "compartidas", never "guardadas", and nothing claims a copy stayed on the phone.
  *  - Elsewhere, or when the share sheet cannot open: one download per tap, each its own button. A browser holds or blocks
- *    downloads that start without a tap, and a page cannot tell whether a download was kept, so a download is never
- *    reported as saved: the person is asked to check Descargas.
+ *    downloads that start without a tap, and a page cannot tell whether a download was kept: once every photo was
+ *    downloaded they count as "descargadas", and the person is asked to check Descargas.
  * Nothing here deletes anything: the pictures leave the device only when the discard is confirmed (discardItems), and the
  * confirmation waits while a save is under way.
  */
 import { useEffect, useState } from "react";
 import { format } from "date-fns";
-import { Check, Download, Loader2 } from "lucide-react";
+import { Check, Download, Loader2, Share2 } from "lucide-react";
 import { toast } from "sonner";
 import { getPhotoBlob } from "@/lib/photo-store";
 import type { DiscardedCapture } from "@/lib/sync/queue";
@@ -121,14 +123,31 @@ export function downloadFile(file: File) {
   setTimeout(() => URL.revokeObjectURL(url), 60_000);
 }
 
+/**
+ * How the photos left the app before the discard, once every one did (null: not yet). The confirmation's copy follows it;
+ * it never removes the confirmation's checkbox, and nothing is deleted before the discard is confirmed.
+ *  - "compartidas": the share sheet took at least one of them (the rest, if any, downloaded): no local copy is claimed;
+ *  - "descargadas": every one was downloaded — the only save that leaves a file, still to be checked in Descargas.
+ */
+export type CapturesKept = "compartidas" | "descargadas";
+
+/** `count` photos; the ones the share sheet took and the ones downloaded (indexes). */
+export function capturesKept(count: number, shared: ReadonlySet<number>, downloaded: ReadonlySet<number>): CapturesKept | null {
+  if (!count) return null;
+  for (let i = 0; i < count; i++) if (!shared.has(i) && !downloaded.has(i)) return null;
+  for (let i = 0; i < count; i++) if (!downloaded.has(i)) return "compartidas";
+  return "descargadas";
+}
+
 /** "fotos 1–10", "foto 11": the photos of a batch, numbered as the person sees them. */
 const batchName = (from: number, count: number) => (count === 1 ? `foto ${from + 1}` : `fotos ${from + 1}–${from + count}`);
 
 /**
  * The save step of the Descartar confirmation: shown above the checkbox while the discard deletes photos from the device.
- * `onSaved`: every photo went to the share sheet. `onBusy`: a share is under way (the confirmation waits).
+ * `kept` / `onKept`: how every photo left the app (capturesKept), once it did. `onBusy`: a share is under way (the
+ * confirmation waits). The buttons stay: a photo shared to a chat can still be shared again to «Guardar imagen».
  */
-export function SaveCapturesBox({ files, saved, onSaved, onBusy }: { files: File[]; saved: boolean; onSaved: () => void; onBusy: (busy: boolean) => void }) {
+export function SaveCapturesBox({ files, kept, onKept, onBusy }: { files: File[]; kept: CapturesKept | null; onKept: (how: CapturesKept) => void; onBusy: (busy: boolean) => void }) {
   const [busy, setBusy] = useState<number | null>(null);
   const [shared, setShared] = useState<ReadonlySet<number>>(new Set());
   const [downloaded, setDownloaded] = useState<ReadonlySet<number>>(new Set());
@@ -141,15 +160,23 @@ export function SaveCapturesBox({ files, saved, onSaved, onBusy }: { files: File
   const batches = shareBatches(files);
   const starts = batches.map((_, i) => batches.slice(0, i).reduce((n, b) => n + b.length, 0));
 
+  /** The photos (indexes) in the batches the share sheet took. */
+  const filesOf = (taken: ReadonlySet<number>) => new Set(batches.flatMap((b, k) => (taken.has(k) ? b.map((_, j) => starts[k] + j) : [])));
+  const settle = (sharedBatches: ReadonlySet<number>, got: ReadonlySet<number>) => {
+    const how = capturesKept(files.length, filesOf(sharedBatches), got);
+    if (how && how !== kept) onKept(how);
+  };
+
   const share = async (i: number) => {
     setBusy(i);
     onBusy(true);
     try {
       const how = await shareFiles(batches[i], navigator as ShareNav);
       if (how === "shared") {
+        // A target took them (a chat, the mail, or «Guardar imagen»): shared, not saved.
         const next = new Set(shared).add(i);
         setShared(next);
-        if (next.size === batches.length) onSaved();
+        settle(next, downloaded);
       } else if (how === "failed") {
         setDownloads(true);
         toast.message("No se pudo abrir el menú para compartir", { description: "Descargue las fotos una por una." });
@@ -161,23 +188,36 @@ export function SaveCapturesBox({ files, saved, onSaved, onBusy }: { files: File
   };
   const download = (i: number) => {
     downloadFile(files[i]);
-    setDownloaded((d) => new Set(d).add(i));
+    const next = new Set(downloaded).add(i);
+    setDownloaded(next);
+    settle(shared, next);
   };
 
-  // Files already in a batch the share sheet took need no download.
-  const sharedFile = (i: number) => batches.some((b, k) => shared.has(k) && i >= starts[k] && i < starts[k] + b.length);
-  const toDownload = files.map((_, i) => i).filter((i) => !sharedFile(i));
+  // Files already in a batch the share sheet took are not offered for download.
+  const sharedFiles = filesOf(shared);
+  const toDownload = files.map((_, i) => i).filter((i) => !sharedFiles.has(i));
   const requested = toDownload.filter((i) => downloaded.has(i)).length;
 
+  const mixed = kept === "compartidas" && downloaded.size > 0;
   return (
     <div className="mt-3 rounded-[14px] border border-amber-line bg-amber-wash px-4 py-3 text-[13.5px] leading-snug text-ink">
-      {saved ? (
+      {kept === "compartidas" ? (
+        <p className="flex gap-2">
+          <Share2 className="mt-0.5 size-4 shrink-0 text-amber-fg" aria-hidden />
+          <span>
+            {one
+              ? "La compartió desde el teléfono; si no eligió «Guardar imagen», no quedó copia. Al descartar se borra de la app."
+              : "Las compartió desde el teléfono; si no eligió «Guardar imagen», no quedó copia. Al descartar se borran de la app."}
+            {mixed && " Las que descargó: revise que estén en Descargas."}
+          </span>
+        </p>
+      ) : kept === "descargadas" ? (
         <p className="flex gap-2">
           <Check className="mt-0.5 size-4 shrink-0 text-teal-fg" aria-hidden />
           <span>
             {one
-              ? "Foto guardada en el teléfono. Al descartar se borra de la app; la copia guardada sigue en la galería o en Descargas."
-              : `${files.length} fotos guardadas en el teléfono. Al descartar se borran de la app; las copias guardadas siguen en la galería o en Descargas.`}
+              ? "Se descargó; revise que esté en Descargas antes de descartar: el navegador puede pedir permiso o no guardarla. Al descartar se borra de la app."
+              : "Se descargaron; revise que estén en Descargas antes de descartar: el navegador puede pedir permiso o no guardarlas. Al descartar se borran de la app."}
           </span>
         </p>
       ) : (
@@ -190,25 +230,30 @@ export function SaveCapturesBox({ files, saved, onSaved, onBusy }: { files: File
             : one
               ? "Guárdela antes de descartar: al descartar se borra de la app."
               : "Guárdelas antes de descartar: al descartar se borran de la app."}
+          {/* a share sheet also offers chats and the mail, which keep no copy here */}
+          {!downloads && (one ? " Al compartirla, elija «Guardar imagen» para que quede una copia en el teléfono." : " Al compartirlas, elija «Guardar imagen» para que quede una copia en el teléfono.")}
         </p>
       )}
-      {!saved && !downloads && (
+      {!downloads && (
         <div className="mt-2.5 space-y-2">
-          {batches.map((b, i) =>
-            shared.has(i) ? (
-              <p key={i} className="flex items-center gap-2 text-[13px] text-subtle">
-                <Check className="size-4 text-teal-fg" aria-hidden /> {batches.length === 1 ? (one ? "Foto guardada" : "Fotos guardadas") : `${batchName(starts[i], b.length)} guardada${b.length === 1 ? "" : "s"}`}
-              </p>
-            ) : (
-              <Button key={i} type="button" variant="outline" disabled={busy !== null} onClick={() => void share(i)} className="h-10 w-full rounded-[12px] border-line px-4 font-semibold">
-                {busy === i ? <Loader2 className="animate-spin" aria-hidden /> : <Download aria-hidden />}
-                {batches.length === 1 ? (one ? "Guardar foto en el teléfono" : "Guardar fotos en el teléfono") : `Guardar ${batchName(starts[i], b.length)}`}
+          {batches.map((b, i) => {
+            const label = batches.length === 1 ? (one ? "foto" : "fotos") : batchName(starts[i], b.length);
+            return (
+              <Button key={i} type="button" variant="outline" disabled={busy !== null} onClick={() => void share(i)} className="h-auto min-h-10 w-full rounded-[12px] border-line px-4 py-2 font-semibold">
+                {busy === i ? <Loader2 className="animate-spin" aria-hidden /> : shared.has(i) ? <Share2 aria-hidden /> : <Download aria-hidden />}
+                {shared.has(i)
+                  ? `${label.charAt(0).toUpperCase()}${label.slice(1)} ${b.length === 1 ? "compartida" : "compartidas"} · compartir de nuevo`
+                  : batches.length === 1
+                    ? one
+                      ? "Guardar foto en el teléfono"
+                      : "Guardar fotos en el teléfono"
+                    : `Guardar ${batchName(starts[i], b.length)}`}
               </Button>
-            ),
-          )}
+            );
+          })}
         </div>
       )}
-      {!saved && downloads && (
+      {downloads && (
         <>
           <ul className="mt-2.5 space-y-2">
             {toDownload.map((i) => (
@@ -223,13 +268,10 @@ export function SaveCapturesBox({ files, saved, onSaved, onBusy }: { files: File
               </li>
             ))}
           </ul>
-          {requested > 0 && (
+          {requested > 0 && requested < toDownload.length && (
             <p className="mt-2.5 text-[13px] text-amber-olive" aria-live="polite">
-              {requested === toDownload.length
-                ? `Se ${requested === 1 ? "pidió la descarga" : `pidieron las ${requested} descargas`}.`
-                : `Se pidieron ${requested} de ${toDownload.length} descargas.`}{" "}
-              Revise en Descargas que {toDownload.length === 1 ? "esté la foto" : "estén todas"} antes de descartar: el navegador puede pedir permiso
-              para descargar, o no guardarla{toDownload.length === 1 ? "" : "s"}.
+              Se pidieron {requested} de {toDownload.length} descargas. Revise en Descargas que estén todas antes de descartar: el navegador puede pedir
+              permiso para descargar, o no guardarlas.
             </p>
           )}
         </>

@@ -26,7 +26,7 @@ import { ModalShell } from "@/components/pk/modal-shell";
 import { ConfirmDialog } from "@/features/configuracion/shared";
 import { Switch } from "@/components/ui/switch";
 import { Button } from "@/components/ui/button";
-import { SaveCapturesBox, useCaptureFiles } from "./discard-photos";
+import { SaveCapturesBox, useCaptureFiles, type CapturesKept } from "./discard-photos";
 
 /**
  * Sidebar chip — the "Detection on · 4 min ago" equivalent for offline sync.
@@ -451,6 +451,17 @@ function capturesText(set: SyncItem[]): string {
 }
 
 /**
+ * What the confirmation adds once the photos left the app: a share never claims a copy on the phone (the target may have
+ * been a chat or the mail); a download asks to check Descargas.
+ */
+function keptNote(kept: CapturesKept | null, n: number): string {
+  if (kept === "compartidas")
+    return n === 1 ? " Si al compartirla no eligió «Guardar imagen», no quedó copia." : " Si al compartirlas no eligió «Guardar imagen», no quedó copia de las que compartió.";
+  if (kept === "descargadas") return n === 1 ? " La foto se descargó: revise que esté en Descargas." : " Las fotos se descargaron: revise que estén en Descargas.";
+  return "";
+}
+
+/**
  * "Descartar": the change leaves the queue for good; the device goes back to what the server has. Photo captures it deletes
  * can be saved on the phone first (discard-photos.tsx); later changes of the order that will probably be refused too are
  * named, never taken along.
@@ -472,8 +483,10 @@ function DiscardDialog({ item, onClose }: { item: SyncItem | null; onClose: () =
   const pictures = useMemo(() => discardedCaptures(queue, set, photos), [queue, set, photos]);
   const folios = useMemo(() => new Map(orders.map((o) => [o.id, o.folio])), [orders]);
   const files = useCaptureFiles(pictures, folios);
-  const [savedFor, setSavedFor] = useState<string | null>(null);
-  const saved = !!item && savedFor === item.id && files.length > 0;
+  // How the photos left the app (shared, or downloaded): the confirmation says what that does and does not keep. It never
+  // replaces the checkbox.
+  const [keptFor, setKeptFor] = useState<{ id: string; how: CapturesKept } | null>(null);
+  const kept = item && keptFor?.id === item.id && files.length > 0 ? keptFor.how : null;
   // A save under way (the share sheet open): the confirmation waits for it.
   const [saving, setSaving] = useState(false);
   // The item is being sent again (or went through) while the dialog was open: close it for good, never reopen by itself.
@@ -499,9 +512,7 @@ function DiscardDialog({ item, onClose }: { item: SyncItem | null; onClose: () =
       ]}
       checkboxLabel={
         captures
-          ? `Entiendo que ${lost} al servidor y que ${sum.photos + sum.checks + sum.notes === 1 ? "se borrará" : "se borrarán"} de la app: ${captures}.${
-              saved ? (files.length === 1 ? " La foto guardada sigue en la galería o en Descargas del teléfono." : " Las fotos guardadas siguen en la galería o en Descargas del teléfono.") : ""
-            }`
+          ? `Entiendo que ${lost} al servidor y que ${sum.photos + sum.checks + sum.notes === 1 ? "se borrará" : "se borrarán"} de la app: ${captures}.${keptNote(kept, files.length)}`
           : `Entiendo que ${lost} al servidor.`
       }
       confirmLabel={more > 0 ? `Descartar ${set.length} cambios` : "Descartar"}
@@ -554,7 +565,7 @@ function DiscardDialog({ item, onClose }: { item: SyncItem | null; onClose: () =
         </div>
       )}
       {files.length > 0 && item && (
-        <SaveCapturesBox key={item.id} files={files} saved={saved} onSaved={() => setSavedFor(item.id)} onBusy={setSaving} />
+        <SaveCapturesBox key={item.id} files={files} kept={kept} onKept={(how) => setKeptFor({ id: item.id, how })} onBusy={setSaving} />
       )}
     </ConfirmDialog>
   );
