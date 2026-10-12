@@ -389,8 +389,8 @@ export function requestPersistentStorage() {
 
 export const useAppStore = create<AppState>()(
   persist(
-    (setState, getState) => {
-      const api = { getState, setState };
+    (setState, getState, storeApi) => {
+      const api = { getState, setState, subscribe: storeApi.subscribe };
       const account = () => getState().session.mode === "supabase";
 
       /**

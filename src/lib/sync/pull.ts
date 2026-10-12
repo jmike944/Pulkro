@@ -158,6 +158,8 @@ async function run<T>(query: PromiseLike<Result>): Promise<T> {
 export type PullStore = {
   getState: () => AppState;
   setState: (fn: (st: AppState) => Partial<AppState>) => void;
+  /** Called after every change (the push cuts a photo upload short when its item may no longer be sent). */
+  subscribe?: (listener: (state: AppState, prev: AppState) => void) => () => void;
 };
 
 type Ctx = {

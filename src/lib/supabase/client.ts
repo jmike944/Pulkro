@@ -65,6 +65,19 @@ export function getSupabaseBrowserClient(): SupabaseBrowserClient {
 
 let bound: { token: string; client: SupabaseBrowserClient } | undefined;
 
+/** A signal that aborts when either does (AbortSignal.any where the browser has it: iOS 17.4+). */
+function eitherSignal(a: AbortSignal, b: AbortSignal): AbortSignal {
+  if (typeof AbortSignal.any === "function") return AbortSignal.any([a, b]);
+  const either = new AbortController();
+  const abort = () => either.abort();
+  if (a.aborted || b.aborted) abort();
+  else {
+    a.addEventListener("abort", abort, { once: true });
+    b.addEventListener("abort", abort, { once: true });
+  }
+  return either.signal;
+}
+
 /**
  * A data client (tables, RPCs, Storage) whose every request carries `accessToken`, whatever session the cookies hold by the
  * time the request goes out. The shared client reads the cookies on each request, and they are shared by every tab: an
@@ -72,8 +85,16 @@ let bound: { token: string; client: SupabaseBrowserClient } | undefined;
  * sync engine checks the session once per run and binds the run's requests to that session's token. It has no `auth`
  * (sessions are read and refreshed through getSupabaseBrowserClient): a token that expires answers 401, and the engine
  * refreshes and binds again.
+ *
+ * `signal`: a client for one request whose library call takes no signal of its own — a photo upload (storage-js' `upload`
+ * has none). Its fetch adds `signal` to the request, so aborting it cancels the request itself: a deadline, a sign-out or a
+ * discarded item does not leave a credentialed upload running that could land later as a file nothing links. Not cached.
  */
-export function getTokenClient(accessToken: string): SupabaseBrowserClient {
+export function getTokenClient(accessToken: string, signal?: AbortSignal): SupabaseBrowserClient {
+  if (signal) {
+    const abortable: typeof fetch = (input, init) => fetch(input, { ...init, signal: init?.signal ? eitherSignal(init.signal, signal) : signal });
+    return createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, { accessToken: async () => accessToken, global: { fetch: abortable } });
+  }
   if (bound?.token !== accessToken) {
     const client = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, { accessToken: async () => accessToken });
     bound = { token: accessToken, client };

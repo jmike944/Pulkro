@@ -16,7 +16,9 @@
  *  - Server times in the answers (check-in/out `server_at`, `reopened_at`) also read the server's clock (clock.ts).
  *  - Photos: one item, two steps. The picture goes to Storage first (`orders/<order>/<kind>/<photo>.jpg`, bucket
  *    `evidencias`, never upserted; "already exists" is success), the item remembers it, then `add_photo` links it. The photo
- *    then shows from Storage; its device copy is freed once a pull that started after the push confirmed it.
+ *    then shows from Storage; its device copy is freed once a pull that started after the push confirmed it. The upload is
+ *    cut — the request itself — after two minutes, and as soon as its item may no longer go (a sign-out, the device given
+ *    up to another tab): none keeps running to land later as a file nothing links.
  *  - After a burst that sent something, a pull brings the server's truth (merge.ts keeps rows with unsent items).
  */
 import { isAuthRetryableFetchError } from "@supabase/supabase-js";
@@ -205,7 +207,7 @@ async function burst(store: Store) {
     if (!canPush(st) || st.session.userId !== userId) break;
     const item = nextReady(st.sync.queue, Date.now());
     if (!item) break;
-    const step = await send(store, client, item, userId);
+    const step = await send(store, client, item, userId, auth.token);
     if (step === "sent") sent++;
     else if (step === "stop") break;
   }
@@ -219,7 +221,8 @@ async function burst(store: Store) {
 
 type Step = "sent" | "next" | "stop";
 
-async function send(store: Store, client: SupabaseBrowserClient, item: SyncItem, userId: string): Promise<Step> {
+/** `token`: the burst's access token (a photo upload goes through a client of its own, bound to it: see upload). */
+async function send(store: Store, client: SupabaseBrowserClient, item: SyncItem, userId: string, token: string): Promise<Step> {
   const op = item.op!;
   // Another tab may hold the device now (it may have discarded this item): nothing more leaves this one.
   if (!(await stillWriter())) return "stop";
@@ -232,7 +235,19 @@ async function send(store: Store, client: SupabaseBrowserClient, item: SyncItem,
     if (op.upload && !op.upload.uploaded) {
       const blob = await getPhotoBlob(op.upload.blobKey);
       if (blob) {
-        const outcome = await upload(client, op.upload, blob);
+        const watch = watchItem(store, item.id, userId);
+        let outcome: Outcome;
+        try {
+          outcome = await upload(token, op.upload, blob, watch.signal);
+        } finally {
+          watch.done();
+        }
+        // Cut short: the account signed out or changed, the tab gave the device up (its data is dropped), or pushing stopped
+        // (offline). Nothing more leaves this burst; the item, if it is still there, goes back in line as it was.
+        if (watch.signal.aborted) {
+          patchItem(store, item.id, { state: "pendiente" });
+          return "stop";
+        }
         if (outcome.kind !== "ok") return await settle(store, item, userId, outcome);
         patchItem(store, item.id, (q) => (q.op?.upload ? { op: { ...q.op, upload: { ...q.op.upload, uploaded: true } } } : {}));
       } else {
@@ -287,21 +302,49 @@ async function call(client: SupabaseBrowserClient, rpc: string, args: Record<str
   }
 }
 
-async function upload(client: SupabaseBrowserClient, u: NonNullable<NonNullable<SyncItem["op"]>["upload"]>, blob: Blob): Promise<Outcome> {
+/**
+ * Aborts once the item may no longer be sent from this tab: the account signed out or another one is on the device, the
+ * item left the queue (the device was wiped, or the tab gave it up and dropped its data), or pushing stopped (offline,
+ * re-authentication due). The same conditions as the check after the upload, watched while it runs. `done()` stops watching.
+ */
+function watchItem(store: Store, itemId: string, userId: string): { signal: AbortSignal; done: () => void } {
+  const watch = new AbortController();
+  const gone = (st: AppState) => !canPush(st) || st.session.userId !== userId || !st.sync.queue.some((q) => q.id === itemId);
+  if (gone(store.getState())) watch.abort();
+  const unsubscribe = store.subscribe?.((st) => {
+    if (!watch.signal.aborted && gone(st)) watch.abort();
+  });
+  return { signal: watch.signal, done: () => unsubscribe?.() };
+}
+
+/**
+ * The picture to Storage, cut at UPLOAD_TIMEOUT_MS or as soon as `stop` aborts. storage-js' upload takes no signal, so the
+ * request goes through a token client whose fetch carries one (getTokenClient with a signal): cutting it cancels the
+ * request itself. Only giving up on its promise would leave a credentialed upload running that could land later — after
+ * the item was discarded or the device wiped — as a file nothing links.
+ */
+async function upload(token: string, u: NonNullable<NonNullable<SyncItem["op"]>["upload"]>, blob: Blob, stop: AbortSignal): Promise<Outcome> {
+  if (stop.aborted) return { kind: "network", message: NETWORK_MESSAGE };
   const type = IMAGE_TYPES.includes(blob.type) ? blob.type : "image/jpeg";
   const file = blob.type === type ? blob : new Blob([blob], { type });
-  let timer: ReturnType<typeof setTimeout> | undefined;
+  const cut = new AbortController();
+  const abort = () => cut.abort();
+  const timer = setTimeout(abort, UPLOAD_TIMEOUT_MS);
+  stop.addEventListener("abort", abort, { once: true });
+  // Settles as soon as the request is cut, even if the request were slow to reject.
+  const cutOff = new Promise<"cut">((resolve) => cut.signal.addEventListener("abort", () => resolve("cut"), { once: true }));
   try {
     const res = await Promise.race([
-      client.storage.from(BUCKET).upload(u.path, file, { upsert: false, contentType: type, cacheControl: "31536000" }),
-      new Promise<"timeout">((resolve) => (timer = setTimeout(() => resolve("timeout"), UPLOAD_TIMEOUT_MS))),
+      getTokenClient(token, cut.signal).storage.from(BUCKET).upload(u.path, file, { upsert: false, contentType: type, cacheControl: "31536000" }),
+      cutOff,
     ]);
-    if (res === "timeout") return { kind: "network", message: NETWORK_MESSAGE };
+    if (res === "cut") return { kind: "network", message: NETWORK_MESSAGE };
     return classifyUpload((res.error as UploadError | null) ?? null);
   } catch (e) {
     return classifyUpload({ name: "StorageUnknownError", message: e instanceof Error ? e.message : String(e) });
   } finally {
     clearTimeout(timer);
+    stop.removeEventListener("abort", abort);
   }
 }
 
