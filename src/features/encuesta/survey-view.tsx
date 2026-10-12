@@ -5,7 +5,7 @@ import { motion } from "motion/react";
 import { CalendarDays, Sparkles, UserRound } from "lucide-react";
 import { useAppStore } from "@/lib/store";
 import { subscribeWriter, writerState } from "@/lib/device-storage";
-import { endSessionOnDevice, getSupabaseBrowserClient, isSupabaseConfigured } from "@/lib/supabase/client";
+import { cookieSessionUser, endSessionOnDevice, getSupabaseBrowserClient, isSupabaseConfigured, removeAuthCookies } from "@/lib/supabase/client";
 import { useSignOut } from "@/features/auth/use-sign-out";
 import { firstName, fmtDate, fmtLongDay } from "@/lib/format";
 import type { SurveyAnswers } from "@/lib/types";
@@ -118,11 +118,15 @@ function ServerSurvey({ token }: { token: string }) {
           onSignOut={
             staffSession
               ? requestSignOut
-              : () =>
-                  void endSessionOnDevice().finally(() => {
+              : () => {
+                  // The session the server saw is the one in the cookies: named now, before the sign-out waits, so a session
+                  // that lands meanwhile (a sign-in in another tab) stays. A cookie that cannot be read is only removed.
+                  const userId = cookieSessionUser();
+                  void (userId ? endSessionOnDevice({ userId }) : Promise.resolve(removeAuthCookies())).finally(() => {
                     setLoaded(null);
                     reload();
-                  })
+                  });
+                }
           }
         />
         {signOutDialog}

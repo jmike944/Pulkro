@@ -14,15 +14,17 @@ import { NO_PROFILE_MESSAGE } from "./auth-errors";
 import { CAPTURE_WAIT_MS, loadOwnProfile, otherAccountOnDevice, whenHydrated } from "./session";
 
 /**
- * Ends the session that was just opened and was not let in; the account the store holds has no session now either.
- * `inactiveUserId`: that account was refused for having no active profile — if it is the one on the device, it has no access.
+ * Ends the session that was just opened for `userId` and was not let in; the account the store holds has no session now
+ * either. Only that account's session ends: the profile read and the confirmation can take long, and by then another tab may
+ * have put another account's session in the shared cookies (a sign-in, an e-mail link) — that one stays.
+ * `inactive`: `userId` was refused for having no active profile — if it is the one on the device, it has no access.
  */
-async function leaveSession(inactiveUserId?: string) {
+async function leaveSession(userId: string, inactive = false) {
   try {
-    await endSessionOnDevice();
+    await endSessionOnDevice({ userId });
   } finally {
     await whenHydrated();
-    flagReauth(useAppStore, { noAccess: !!inactiveUserId && useAppStore.getState().session.userId === inactiveUserId });
+    flagReauth(useAppStore, { noAccess: inactive && useAppStore.getState().session.userId === userId });
   }
 }
 
@@ -57,13 +59,13 @@ export function useEnterAccount({ onEntered, onCancelled }: { onEntered: () => v
     async (supabase: SupabaseBrowserClient, userId: string): Promise<EnterResult> => {
       const profile = await loadOwnProfile(supabase, userId);
       if (!profile.ok) {
-        await leaveSession(profile.message === NO_PROFILE_MESSAGE ? userId : undefined);
+        await leaveSession(userId, profile.message === NO_PROFILE_MESSAGE);
         return { status: "refused", message: profile.message };
       }
       await whenHydrated();
       // A photo still being stored is no unsent change yet: wait for it, so another account's is counted, never wiped unseen.
       if (!(await whenCapturesSettled(CAPTURE_WAIT_MS)) && !holdsAccount(profile.user.id)) {
-        await leaveSession();
+        await leaveSession(profile.user.id);
         return { status: "refused", message: CAPTURES_BUSY };
       }
       // This tab's memory and what is saved on the device: a write of this tab that failed may have left another account there.
@@ -83,7 +85,7 @@ export function useEnterAccount({ onEntered, onCancelled }: { onEntered: () => v
 
   const cancel = async (p: Pending) => {
     try {
-      await leaveSession();
+      await leaveSession(p.user.id);
     } finally {
       onCancelled(`No entró: los cambios sin enviar de ${p.other.name} siguen en este dispositivo. Pídale que entre para enviarlos.`);
     }

@@ -169,12 +169,14 @@ export function cookieSessionUser(): string | undefined {
  *    AbortSignal.timeout). Offline there is nobody to tell.
  *  - Then the auth cookies are removed — only while they still hold the session that was there when the sign-out started:
  *    a session that landed meanwhile (the next person signing in, an e-mail link opened) stays.
- * `userId`: end that account's session only (the cookies may hold another account's by now: nothing is done then).
+ * `userId` (required): the account whose session ends, named by the caller before its first await. Only that account's
+ * session ends: the cookies may hold another account's by now (a sign-in or an e-mail link in another tab), and then nothing
+ * is done.
  */
-export async function endSessionOnDevice({ revoke = true, timeoutMs = 8000, userId }: { revoke?: boolean; timeoutMs?: number; userId?: string } = {}): Promise<void> {
+export async function endSessionOnDevice({ revoke = true, timeoutMs = 8000, userId }: { revoke?: boolean; timeoutMs?: number; userId: string }): Promise<void> {
   if (!isSupabaseConfigured) return;
   const owner = cookieSessionUser();
-  if (userId && owner && owner !== userId) return;
+  if (owner && owner !== userId) return;
   if (revoke && (typeof navigator === "undefined" || navigator.onLine !== false)) {
     const deadline = new AbortController();
     const timer = setTimeout(() => deadline.abort(), timeoutMs);
@@ -187,12 +189,12 @@ export async function endSessionOnDevice({ revoke = true, timeoutMs = 8000, user
           .catch(() => null),
         expired,
       ]);
-      // The session the sign-out started with (a cookie this code cannot read: whatever auth-js read), still valid — and, for
-      // `userId`, that account's (never another account's, even when the cookie could not be read).
+      // The session the sign-out started with (a cookie this code cannot read: whatever auth-js read), still valid — and
+      // `userId`'s (never another account's, even when the cookie could not be read).
       if (
         session &&
         (owner === undefined || session.user.id === owner) &&
-        (!userId || session.user.id === userId) &&
+        session.user.id === userId &&
         (session.expires_at ?? 0) * 1000 > Date.now()
       ) {
         await fetch(`${SUPABASE_URL}/auth/v1/logout?scope=local`, {
