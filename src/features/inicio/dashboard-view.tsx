@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useMemo, useState } from "react";
-import { isSameDay, parseISO } from "date-fns";
+import { differenceInMinutes, isSameDay, parseISO } from "date-fns";
 import { motion } from "motion/react";
 import { Camera, ChevronDown, Clock, MapPin, Sparkles, TrendingDown, TrendingUp } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -269,8 +269,16 @@ function TodayCard({
   const live = j.status === "en_curso";
   const antes = photosCount.filter((p) => p.kind === "antes").length;
   const despues = photosCount.filter((p) => p.kind === "despues").length;
+  // One figure per card, so every card carries the same rows: time on site while live, the jornada's length once closed,
+  // the planned hours before it starts.
+  const metric = live
+    ? { label: "Tiempo en sitio", value: fmtDuration(jornadaMinutes(j, now)) }
+    : j.status === "cerrada"
+      ? { label: "Duración", value: fmtDuration(jornadaMinutes(j)) }
+      : { label: "Plan", value: fmtDuration(differenceInMinutes(parseISO(j.plannedEnd), parseISO(j.plannedStart))) };
   return (
-    <motion.div variants={rowVariants} className="snap-start">
+    // `flex` lets the card fill the strip's height: every card in the row is as tall as the tallest one.
+    <motion.div variants={rowVariants} className="flex snap-start">
       <Link
         href={href(j, order)}
         className={cn(
@@ -288,22 +296,24 @@ function TodayCard({
             {order.folio} · J{j.dayIndex}/{order.plannedDays}
           </span>
         </div>
-        <p className={cn("relative mt-4 line-clamp-2 text-[16px] font-semibold leading-snug", live ? "text-white" : "text-ink")}>{order.title}</p>
-        <p className={cn("relative mt-1 flex items-center gap-1.5 truncate text-[13px]", live ? "text-white/70" : "text-subtle")}>
-          <MapPin className="size-3.5 shrink-0" /> {client?.shortName} · {site?.municipality}
+        {/* two lines reserved, so the place line sits at the same height in every card */}
+        <p className={cn("relative mt-4 line-clamp-2 min-h-[2lh] text-[16px] font-semibold leading-snug", live ? "text-white" : "text-ink")}>{order.title}</p>
+        <p className={cn("relative mt-1 flex items-center gap-1.5 text-[13px]", live ? "text-white/70" : "text-subtle")}>
+          <MapPin className="size-3.5 shrink-0" />
+          <span className="truncate">
+            {client?.shortName} · {site?.municipality}
+          </span>
         </p>
-        <div className="relative mt-5 flex items-end justify-between">
-          <div>
-            {live ? (
-              <>
-                <p className="text-[11px] uppercase tracking-[0.12em] text-white/50">Tiempo en sitio</p>
-                <p className="text-[24px] font-medium tracking-tight tabular">{fmtDuration(jornadaMinutes(j, now))}</p>
-              </>
-            ) : (
-              <AvatarStack people={crew} size={28} interactive={false} />
-            )}
+        {/* pinned to the bottom: figure + crew, then the evidence chips — the same rows in every card */}
+        <div className="relative mt-auto pt-5">
+          <div className="flex items-end justify-between gap-3">
+            <div className="min-w-0">
+              <p className={cn("text-[11px] uppercase tracking-[0.12em]", live ? "text-white/50" : "text-subtle")}>{metric.label}</p>
+              <p className="whitespace-nowrap text-[22px] font-medium leading-tight tracking-tight tabular">{metric.value}</p>
+            </div>
+            <AvatarStack people={crew} size={28} max={3} interactive={false} className={cn("shrink-0", live && "[&>span]:ring-brand-deep")} />
           </div>
-          <div className="flex gap-1.5 text-[11px] font-bold tracking-[0.06em]">
+          <div className="mt-3 flex gap-1.5 whitespace-nowrap text-[11px] font-bold tracking-[0.06em]">
             <span className={cn("rounded-md px-1.5 py-0.5", antes ? (live ? "bg-white/15 text-white" : "bg-amber-soft text-amber-fg") : live ? "bg-white/5 text-white/40" : "bg-muted text-faint")}>
               ANTES {antes || ""}
             </span>
