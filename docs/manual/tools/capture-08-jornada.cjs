@@ -331,7 +331,6 @@ async function main() {
   await snap(page, "08-cuadrilla");
   await crew.getByRole("button", { name: "Refuerzo por carga de trabajo" }).click();
   await page.waitForTimeout(500);
-  await snap(page, "08-cuadrilla-motivo");
   await crew.getByRole("button", { name: "Guardar cuadrilla" }).click();
   await noDialogs(page);
   await noToasts(page);
@@ -408,7 +407,6 @@ async function main() {
   await page.getByRole("button", { name: "Guardar desglose" }).click();
   await settle(page, 1500);
   await noToasts(page);
-  await snap(page, "08-desglose-guardado");
   await page.getByRole("button", { name: "Volver a la jornada" }).click();
   await noDialogs(page);
   await noToasts(page);

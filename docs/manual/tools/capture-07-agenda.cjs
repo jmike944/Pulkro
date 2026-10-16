@@ -1,5 +1,5 @@
 // Chapter 07 · Agenda y asignación (supervisor). Week / day / list views, workload strip and double bookings, the
-// "Por asignar" panel, scheduling an order (dates → crew → confirmation, desktop dialog and phone flow), the jornada sheet,
+// "Por asignar" panel, scheduling an order (dates → crew → confirmation), the jornada sheet,
 // changing the crew of one or all pending jornadas and rescheduling one jornada.
 //
 //   node tools/capture-07-agenda.cjs            (from docs/manual)
@@ -254,7 +254,6 @@ async function desk() {
   const busy = dlg.locator("ul li button", { hasText: "Otra cuadrilla" }).first();
   if (await busy.count()) await busy.click();
   await page.waitForTimeout(500);
-  await snap(page, "07-programar-cuadrilla", { el: dlg, padding: 0 });
   await dlg.getByRole("button", { name: /Continuar/ }).click();
   await settle(page, 900);
   await dlg.getByRole("checkbox").check();
@@ -269,7 +268,6 @@ async function desk() {
   await block.click();
   await settle(page, 1200);
   const sheet = page.getByRole("dialog");
-  await snap(page, "07-hoja", { el: sheet, padding: 0 });
 
   // Cambiar cuadrilla, applied to every pending jornada
   await sheet.getByRole("button", { name: /Cambiar cuadrilla/ }).click();
@@ -329,41 +327,8 @@ async function phone() {
   const { page, close } = await openAt({ device: "phone" });
   await page.goto(url("/agenda"));
   await settle(page, 2000);
-  await snap(page, "07-tel-inicio");
   await scrollTo(page, "section[aria-label]", 70);
   await snap(page, "07-tel-lista");
-  await page.evaluate(() => window.scrollTo(0, 0));
-  await page.getByRole("button", { name: "Semana", exact: true }).click();
-  await settle(page, 1500);
-  await scrollTo(page, "[data-day]", 150);
-  await snap(page, "07-tel-semana");
-
-  // Programar from the phone
-  await page.evaluate(() => window.scrollTo(0, 0));
-  await page.getByRole("button", { name: /Por asignar/ }).click();
-  await settle(page, 900);
-  await snap(page, "07-tel-por-asignar");
-  await page.getByRole("button", { name: "Programar", exact: true }).click();
-  await settle(page, 1200);
-  const dlg = page.getByRole("dialog").last();
-  await dlg.getByLabel("Inicio").first().fill("08:00");
-  await dlg.getByLabel("Término").first().fill("15:00");
-  await page.evaluate(() => document.activeElement && document.activeElement.blur());
-  await page.waitForTimeout(400);
-  await snap(page, "07-tel-programar");
-  await dlg.getByRole("button", { name: /Continuar/ }).click();
-  await settle(page, 900);
-  const people = dlg.locator("ul li button");
-  for (const i of [0, 1, 2]) await people.nth(i).click();
-  await page.waitForTimeout(400);
-  await snap(page, "07-tel-cuadrilla");
-  await dlg.getByRole("button", { name: /Continuar/ }).click();
-  await settle(page, 900);
-  await dlg.getByRole("checkbox").check();
-  await dlg.getByRole("button", { name: "Programar", exact: true }).click();
-  await settle(page, 2200);
-  await noToasts(page);
-  await snap(page, "07-tel-programada");
   await close();
 }
 

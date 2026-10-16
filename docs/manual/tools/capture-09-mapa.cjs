@@ -1,6 +1,5 @@
 // Chapter 09 · Mapa. The day's services of the supervisor at 11:00 (one in progress with an open incident, one finished,
-// one late without entrada): desktop page, the service sheet, the "Con incidencia" filter, the phone layout and the
-// supervisor filter that Dirección gets.
+// one late without entrada): desktop page, the service sheet and the phone layout.
 //
 //   node tools/capture-09-mapa.cjs              (from docs/manual)
 //
@@ -208,12 +207,6 @@ async function desk() {
   // the sheets (a taller window shows them whole)
   await page.setViewportSize({ width: 1440, height: 1100 });
   await settle(page, 800);
-  // the sheet of the late service
-  await page.locator('section[aria-label="Servicios del día"]').getByRole("button", { name: /Terza/ }).filter({ visible: true }).first().click();
-  await settle(page, 1500);
-  await snap(page, "09-hoja-sin-entrada", { el: page.getByRole("dialog"), padding: 0 });
-  await page.keyboard.press("Escape");
-  await noDialogs(page);
   // the sheet of the service in progress, with its incident
   await page.locator('section[aria-label="Servicios del día"]').getByRole("button", { name: /Bonafont/ }).filter({ visible: true }).first().click();
   await settle(page, 1500);
@@ -237,23 +230,9 @@ async function phone() {
   await close();
 }
 
-async function direccion() {
-  const { page, close } = await openAt({ role: "direccion", device: "desktop" });
-  await ff(page, "02:20:00"); // 11:00
-  await page.goto(url("/mapa"));
-  await settle(page, 3500);
-  const trigger = await page.getByRole("combobox", { name: "Supervisor" }).boundingBox();
-  await page.getByRole("combobox", { name: "Supervisor" }).click();
-  await settle(page, 800);
-  const menu = await page.getByRole("listbox").boundingBox();
-  const x = Math.min(trigger.x, menu.x) - 16;
-  await snap(page, "09-supervisor", { clip: { x, y: trigger.y - 16, width: Math.max(trigger.x + trigger.width, menu.x + menu.width) - x + 16, height: menu.y + menu.height - trigger.y + 32 } });
-  await close();
-}
-
 (async () => {
   const only = process.argv[2];
-  const parts = { desk, phone, direccion };
+  const parts = { desk, phone };
   for (const [name, fn] of Object.entries(parts)) if (!only || only === name) await fn();
   if (bp) await (await bp).close();
 })().catch(async (e) => {

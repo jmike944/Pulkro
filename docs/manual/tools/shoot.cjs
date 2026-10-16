@@ -22,7 +22,9 @@ const DEVICES = {
 };
 
 let browserPromise = null;
-const browser = () => (browserPromise ??= chromium.launch());
+// Native date and time inputs follow the browser's own language: render them as a phone set to Mexican Spanish would.
+const browser = () =>
+  (browserPromise ??= chromium.launch({ args: ["--lang=es-MX"], env: { ...process.env, LANG: "es_MX.UTF-8", LANGUAGE: "es_MX:es" } }));
 
 const url = (p) => (p.startsWith("http") ? p : BASE + p);
 

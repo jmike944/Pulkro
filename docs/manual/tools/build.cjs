@@ -159,6 +159,28 @@ const server = http.createServer((req, res) => {
     }
   });
 
+  // Bookmarks (chapters › sections) with their page numbers, for pdf-meta.py: the PDF's own outline needs a tagged PDF.
+  const outline = await page.evaluate(() => {
+    const pageOf = (el) => Number(el.closest(".pagedjs_page")?.dataset.pageNumber || 0);
+    const text = (el) => (el.dataset.toc || el.textContent).replace(/\s+/g, " ").trim();
+    const items = [];
+    const front = document.querySelector("#como-usar h1.front-title");
+    if (front) items.push({ title: text(front), page: pageOf(front), children: [] });
+    const toc = document.querySelector("#indice h1.front-title");
+    if (toc) items.push({ title: text(toc), page: pageOf(toc), children: [] });
+    // Paged.js splits each chapter section across pages: walk the headings in document order instead.
+    document.querySelectorAll(".opener h1, h2.section").forEach((h) => {
+      if (h.matches(".opener h1")) {
+        const num = h.closest(".opener").querySelector(".num")?.textContent.match(/Capítulo (\d+)/)?.[1];
+        items.push({ title: (num ? num + ". " : "") + text(h), page: pageOf(h), children: [] });
+      } else if (items.length && !h.closest(".front")) {
+        items[items.length - 1].children.push({ title: text(h), page: pageOf(h) });
+      }
+    });
+    return items;
+  });
+  fs.writeFileSync(path.join(ROOT, "build", "outline.json"), JSON.stringify(outline, null, 1));
+
   // Overflow check: content that runs past a page box is clipped in the PDF.
   const overflow = await page.evaluate(() =>
     [...document.querySelectorAll(".pagedjs_page")]
@@ -177,6 +199,7 @@ const server = http.createServer((req, res) => {
     ? path.join(ROOT, `build/draft-${only}.pdf`)
     : path.join(ROOT, light ? "Pulkro_Cuadrillas_Manual_de_Usuario_ligero.pdf" : "Pulkro_Cuadrillas_Manual_de_Usuario.pdf");
   await page.pdf({ path: outPdf, preferCSSPageSize: true, printBackground: true, displayHeaderFooter: false, outline: true, tagged: false });
+  if (!only) require("node:child_process").execFileSync("python3", [path.join(__dirname, "pdf-meta.py"), outPdf, path.join(ROOT, "build", "outline.json")], { stdio: "inherit" });
   console.log(`pdf → ${path.relative(process.cwd(), outPdf)}`);
   await browser.close();
   server.close();
