@@ -825,7 +825,8 @@ hr { border: 0; border-top: 1px solid var(--hairline); margin: 14pt 0; }
   padding: 5pt;
   background: rgb(255 255 255 / 0.55);
   border: 1px solid rgb(255 255 255 / 0.85);
-  box-shadow: 0 30px 60px -30px rgb(2 58 99 / 0.55);
+  /* no blurred shadows: the PDF stores them as soft-masked images, and some viewers (iOS) draw those as dark boxes */
+  box-shadow: 0 0 0 0.75pt rgb(2 58 99 / 0.1);
 }
 .cover .shots .desk img { display: block; width: 100%; border-radius: 11px; }
 .cover .shots .mob {
@@ -836,7 +837,7 @@ hr { border: 0; border-top: 1px solid var(--hairline); margin: 14pt 0; }
   background: #0e1726;
   border-radius: 26px;
   padding: 4pt;
-  box-shadow: 0 30px 50px -22px rgb(2 58 99 / 0.7);
+  box-shadow: 0 0 0 2.5pt rgb(255 255 255 / 0.7);
 }
 .cover .shots .mob img { display: block; width: 100%; border-radius: 22px; }
 .cover .foot {
