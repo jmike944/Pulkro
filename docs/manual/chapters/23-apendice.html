@@ -1,0 +1,175 @@
+<section class="chapter" id="cap-apendice">
+  <header class="opener">
+    <div class="num">Referencia</div>
+    <h1>Apéndice: <em>roles, permisos</em> y estados</h1>
+    <p class="desc">Tablas de consulta rápida: <b>qué puede hacer cada rol</b>, qué secciones ve, el significado de <b>cada estado y cada etiqueta</b> de la app y un glosario.</p>
+    <div class="glass">
+      <div><div class="eyebrow">En este capítulo</div><ul><li>Matriz de permisos</li><li>Secciones por rol</li><li>Estados de la orden</li><li>Jornadas, fotos y envíos</li><li>Incidencias</li><li>Postventa</li><li>Sincronización y ubicación</li><li>Glosario</li></ul></div>
+      <div class="who"><div class="eyebrow">Disponible para</div><span class="roles"><span class="role all">Todos los roles</span></span></div>
+    </div>
+  </header>
+
+  <p class="lead">La app tiene tres roles: <span class="pill navy">Dirección</span>, <span class="pill violet">Administración</span> y <span class="pill blue">Supervisor</span>. Cada persona tiene uno solo, asignado por Dirección, y una unidad (Matriz Monterrey, Apodaca o Saltillo). El personal de cuadrilla no tiene cuenta.</p>
+
+  <h2 class="section">Matriz de permisos</h2>
+  <p>Es la misma matriz de <b>Configuración › Usuarios y permisos</b> y de <span class="ui">Mis permisos</span>. <span class="yes">✓</span> indica que el rol puede hacerlo; <span class="no">—</span>, que no. Debajo de la marca va el alcance: <b>Su unidad</b> (solo la unidad de la persona), <b>Solo propias</b> (solo las órdenes asignadas a ella), <b>Unidad seleccionada</b> (la elegida en el filtro de unidad), <b>Sus asignaciones</b> y <b>Consulta</b> (ve la información pero no la cambia). Las filas con <b>*</b> están por definir con Pulkro: la app aplica la regla indicada mientras tanto.</p>
+  <table class="matrix">
+    <thead><tr><th>Acción</th><th>Dirección</th><th>Administración</th><th>Supervisor</th></tr></thead>
+    <tbody>
+      <tr><td><b>Crear orden</b><span class="cell-note">Solo Administración da de alta órdenes (decisión de Pulkro).</span></td><td class="no">—<span class="cell-note">Consulta</span></td><td class="yes">✓</td><td class="no">—</td></tr>
+      <tr><td><b>Editar orden</b></td><td class="no">—<span class="cell-note">Consulta</span></td><td class="yes">✓<span class="cell-note">Su unidad</span></td><td class="no">—</td></tr>
+      <tr><td><b>Editar datos operativos</b></td><td class="no">—<span class="cell-note">Consulta</span></td><td class="yes">✓<span class="cell-note">Su unidad</span></td><td class="yes">✓<span class="cell-note">Solo propias</span></td></tr>
+      <tr><td><b>Reprogramar y confirmar fechas</b><span class="cell-note">Mueve la agenda de la cuadrilla: lo decide el supervisor.</span></td><td class="no">—<span class="cell-note">Consulta</span></td><td class="no">—<span class="cell-note">Consulta</span></td><td class="yes">✓<span class="cell-note">Solo propias</span></td></tr>
+      <tr><td><b>Reabrir orden cerrada</b> *<span class="cell-note">Exige motivo y una nueva validación de cierre, y genera una nueva versión del reporte.</span></td><td class="no">—</td><td class="no">—</td><td class="yes">✓<span class="cell-note">Solo propias</span></td></tr>
+      <tr><td><b>Archivar orden</b><span class="cell-note">Cierra el ciclo postventa de una orden con reporte enviado.</span></td><td class="no">—</td><td class="yes">✓<span class="cell-note">Su unidad</span></td><td class="yes">✓<span class="cell-note">Solo propias</span></td></tr>
+      <tr><td><b>Asignar cuadrilla</b></td><td class="no">—<span class="cell-note">Consulta</span></td><td class="no">—<span class="cell-note">Consulta</span></td><td class="yes">✓<span class="cell-note">Solo propias</span></td></tr>
+      <tr><td><b>Capturar GPS, fotos e incidencias</b><span class="cell-note">Dirección y Administración consultan la jornada, sus fotos y sus incidencias; solo el supervisor captura.</span></td><td class="no">—<span class="cell-note">Consulta</span></td><td class="no">—<span class="cell-note">Consulta</span></td><td class="yes">✓<span class="cell-note">Solo propias</span></td></tr>
+      <tr><td><b>Autorizar cierre</b></td><td class="no">—<span class="cell-note">Consulta</span></td><td class="no">—<span class="cell-note">Consulta</span></td><td class="yes">✓<span class="cell-note">Solo propias</span></td></tr>
+      <tr><td><b>Generar y compartir reporte al cliente</b><span class="cell-note">Dirección y Administración descargan el PDF desde el detalle de la orden.</span></td><td class="no">—</td><td class="no">—</td><td class="yes">✓<span class="cell-note">Solo propias</span></td></tr>
+      <tr><td><b>Gestionar quejas y encuestas</b></td><td class="no">—<span class="cell-note">Consulta</span></td><td class="yes">✓<span class="cell-note">Su unidad</span></td><td class="yes">✓<span class="cell-note">Solo propias</span></td></tr>
+      <tr><td><b>Exportar PDF de la orden</b></td><td class="yes">✓</td><td class="yes">✓<span class="cell-note">Su unidad</span></td><td class="yes">✓<span class="cell-note">Solo propias</span></td></tr>
+      <tr><td><b>Exportar Excel</b></td><td class="yes">✓</td><td class="yes">✓<span class="cell-note">Su unidad</span></td><td class="no">—</td></tr>
+      <tr><td><b>Consultar indicadores</b><span class="cell-note">El supervisor ve sus propias cifras en Hoy.</span></td><td class="yes">✓</td><td class="yes">✓<span class="cell-note">Su unidad</span></td><td class="no">—</td></tr>
+      <tr><td><b>Exportar indicadores</b></td><td class="yes">✓</td><td class="yes">✓<span class="cell-note">Su unidad</span></td><td class="no">—</td></tr>
+      <tr><td><b>Exportar respaldo de datos</b></td><td class="yes">✓<span class="cell-note">Unidad seleccionada</span></td><td class="yes">✓<span class="cell-note">Su unidad</span></td><td class="no">—</td></tr>
+      <tr><td><b>Administrar usuarios y permisos</b> *<span class="cell-note">Hoy solo Dirección da de alta, edita y desactiva usuarios. Cada quien edita su propio teléfono.</span></td><td class="yes">✓</td><td class="no">—</td><td class="no">—</td></tr>
+      <tr><td><b>Administrar catálogos</b> *<span class="cell-note">Clientes, sitios y personal por unidad; tipos de servicio y materiales son de toda la empresa.</span></td><td class="yes">✓</td><td class="yes">✓<span class="cell-note">Su unidad</span></td><td class="no">—</td></tr>
+      <tr><td><b>Ver todas las unidades</b> *<span class="cell-note">Hoy solo Dirección ve otras unidades.</span></td><td class="yes">✓</td><td class="no">—<span class="cell-note">Su unidad</span></td><td class="no">—<span class="cell-note">Sus asignaciones</span></td></tr>
+    </tbody>
+  </table>
+  <div class="note rule"><b class="note-t">Regla de negocio</b><p>Lo que cada rol ve en todas las pantallas sigue la misma regla: el <b>supervisor</b>, sus órdenes asignadas; <b>Administración</b>, las de su unidad; <b>Dirección</b>, todas o la unidad elegida en el filtro de unidad, que se aplica a toda la app.</p></div>
+
+  <h2 class="section">Secciones por rol</h2>
+  <table class="matrix">
+    <thead><tr><th>Sección</th><th>Supervisor</th><th>Administración</th><th>Dirección</th></tr></thead>
+    <tbody>
+      <tr><td><b>Inicio</b> (en el teléfono, <b>Hoy</b>)</td><td class="yes">✓</td><td class="yes">✓</td><td class="yes">✓</td></tr>
+      <tr><td><b>Pendientes</b></td><td class="yes">✓</td><td class="yes">✓</td><td class="yes">✓</td></tr>
+      <tr><td colspan="4"><h4 style="margin:0">Operación</h4></td></tr>
+      <tr><td><b>Órdenes</b></td><td class="yes">✓</td><td class="yes">✓</td><td class="yes">✓</td></tr>
+      <tr><td><b>Nueva orden</b></td><td class="no">—</td><td class="yes">✓</td><td class="no">—</td></tr>
+      <tr><td><b>Mapa</b></td><td class="yes">✓</td><td class="yes">✓</td><td class="yes">✓</td></tr>
+      <tr><td><b>Agenda</b></td><td class="yes">✓</td><td class="no">—</td><td class="no">—</td></tr>
+      <tr><td><b>Evidencias</b></td><td class="yes">✓</td><td class="no">—</td><td class="no">—</td></tr>
+      <tr><td><b>Incidencias</b></td><td class="yes">✓</td><td class="no">—</td><td class="no">—</td></tr>
+      <tr><td><b>Pantalla de la jornada</b></td><td class="yes">✓</td><td class="yes">✓<span class="cell-note">Modo consulta</span></td><td class="yes">✓<span class="cell-note">Modo consulta</span></td></tr>
+      <tr><td colspan="4"><h4 style="margin:0">Seguimiento</h4></td></tr>
+      <tr><td><b>Reportes</b> y espacio para compartir el reporte</td><td class="yes">✓</td><td class="no">—</td><td class="no">—</td></tr>
+      <tr><td><b>Postventa</b></td><td class="yes">✓</td><td class="yes">✓</td><td class="yes">✓<span class="cell-note">Consulta</span></td></tr>
+      <tr><td><b>Clientes</b></td><td class="yes">✓<span class="cell-note">Los de sus órdenes</span></td><td class="yes">✓</td><td class="yes">✓</td></tr>
+      <tr><td><b>Bitácora</b></td><td class="yes">✓<span class="cell-note">Sus órdenes y acciones</span></td><td class="yes">✓</td><td class="yes">✓</td></tr>
+      <tr><td colspan="4"><h4 style="margin:0">Gestión</h4></td></tr>
+      <tr><td><b>Indicadores</b></td><td class="no">—</td><td class="yes">✓</td><td class="yes">✓</td></tr>
+      <tr><td><b>Equipo</b></td><td class="no">—</td><td class="yes">✓</td><td class="yes">✓</td></tr>
+      <tr><td colspan="4"><h4 style="margin:0">Sistema</h4></td></tr>
+      <tr><td><b>Configuración</b></td><td class="yes">✓<span class="cell-note">2 pestañas</span></td><td class="yes">✓<span class="cell-note">3 pestañas</span></td><td class="yes">✓<span class="cell-note">4 pestañas</span></td></tr>
+      <tr><td><b>Centro de ayuda</b></td><td class="yes">✓</td><td class="yes">✓</td><td class="yes">✓</td></tr>
+    </tbody>
+  </table>
+  <p>En el teléfono, la barra inferior tiene <b>Hoy</b>, <b>Órdenes</b>, una tercera pestaña (<b>Agenda</b> para el supervisor, <b>Indicadores</b> para Administración y Dirección), <b>Pendientes</b> y <b>Menú</b>, que reúne las demás secciones.</p>
+
+  <h2 class="section">Estados de la orden</h2>
+  <p>El ciclo principal de una orden es:</p>
+  <div class="flow"><span class="pill slate">Borrador</span><span class="arrow">→</span><span class="pill blue">Programada</span><span class="arrow">→</span><span class="pill blue">En ejecución</span><span class="arrow">→</span><span class="pill sky">Jornada cerrada</span><span class="arrow">→</span><span class="pill amber">Pendiente de validación</span><span class="arrow">→</span><span class="pill navy">Finalizada</span><span class="arrow">→</span><span class="pill teal">Reporte enviado</span><span class="arrow">→</span><span class="pill violet">Seguimiento postventa</span><span class="arrow">→</span><span class="pill slate">Archivada</span></div>
+  <p>Fuera del ciclo principal están <b>Cancelada</b>, <b>Reprogramada</b>, <b>Con incidencia</b> y <b>Reabierta</b>. Al resolver la incidencia o confirmar las nuevas fechas, la orden regresa al estado que le corresponde.</p>
+  <table>
+    <thead><tr><th>Estado</th><th>Significado</th></tr></thead>
+    <tbody>
+      <tr><td><span class="pill slate">Borrador</span></td><td>Alta incompleta, aún no programada.</td></tr>
+      <tr><td><span class="pill blue">Programada</span></td><td>Cuadrilla y jornadas asignadas.</td></tr>
+      <tr><td><span class="pill blue">En ejecución</span></td><td>Jornada en curso. Su punto parpadea.</td></tr>
+      <tr><td><span class="pill sky">Jornada cerrada</span></td><td>Una jornada terminó y quedan jornadas pendientes.</td></tr>
+      <tr><td><span class="pill amber">Pendiente de validación</span></td><td>Ejecución terminada, falta validar el cierre.</td></tr>
+      <tr><td><span class="pill navy">Finalizada</span></td><td>Cierre validado por el supervisor.</td></tr>
+      <tr><td><span class="pill teal">Reporte enviado</span></td><td>Envío manual iniciado (sin confirmación de entrega).</td></tr>
+      <tr><td><span class="pill violet">Seguimiento postventa</span></td><td>Encuesta o caso abierto.</td></tr>
+      <tr><td><span class="pill slate">Archivada</span></td><td>Ciclo completo.</td></tr>
+      <tr><td><span class="pill slate">Cancelada</span></td><td>Orden cancelada con motivo.</td></tr>
+      <tr><td><span class="pill amber">Reprogramada</span></td><td>Fechas movidas con motivo.</td></tr>
+      <tr><td><span class="pill red">Con incidencia</span></td><td>Incidencia abierta que bloquea.</td></tr>
+      <tr><td><span class="pill violet">Reabierta</span></td><td>Edición posterior al cierre. El siguiente reporte sale como una nueva versión.</td></tr>
+    </tbody>
+  </table>
+  <p>Una orden cuenta como <b>abierta</b> en Borrador, Programada, En ejecución, Jornada cerrada, Pendiente de validación, Con incidencia, Reprogramada y Reabierta, y como <b>terminada</b> en Finalizada, Reporte enviado, Seguimiento postventa y Archivada.</p>
+
+  <h2 class="section">Jornadas, fotos y envíos</h2>
+  <div class="cards three">
+    <div class="card"><span class="t">Jornada</span><p><span class="pill slate">Pendiente</span> aún sin entrada.<br><span class="pill blue">En curso</span> con entrada, sin salida.<br><span class="pill teal">Cerrada</span> con salida registrada.</p></div>
+    <div class="card"><span class="t">Tipo de foto</span><p><span class="pill amber">Antes</span> <span class="pill teal">Después</span><br><span class="pill red">Incidencia</span> <span class="pill violet">Postventa</span><br>Etiquetas extra: <b>Galería</b> (elegida de la galería) y <b>Revisar hora</b> (tomada fuera de la jornada).</p></div>
+    <div class="card"><span class="t">Canal de envío</span><p><b>WhatsApp</b>, <b>Correo</b> o <b>Descarga</b>. Cada envío queda con la nota «sin confirmación de entrega».</p></div>
+  </div>
+  <table class="kv">
+    <tr><td>Conformidad del cliente</td><td><b>Firma en el dispositivo</b>, <b>Verbal</b> o <b>Por correo</b>, con el nombre de quien acepta.</td></tr>
+    <tr><td>Origen de la ubicación</td><td><b>GPS en sitio</b>; <b>Ubicación manual justificada</b> (sin GPS o lejos del sitio, con nota); <b>Supervisión remota</b> (el supervisor no está en el sitio, con nota; el reporte lo indica sin mostrar coordenadas).</td></tr>
+  </table>
+
+  <h2 class="section">Incidencias</h2>
+  <table>
+    <thead><tr><th>Tipo</th><th>Severidad</th><th>Estado</th></tr></thead>
+    <tbody>
+      <tr><td><span class="pill red">Daños</span></td><td><span class="pill slate">Baja</span></td><td><b>Abierta</b>: sin resolver. Si se marcó que <b>bloquea el cierre</b>, la orden pasa a <span class="pill red">Con incidencia</span>.</td></tr>
+      <tr><td><span class="pill amber">Faltante de material</span></td><td><span class="pill amber">Media</span></td><td><b>Resuelta</b>: con resolución registrada; la orden regresa a su estado.</td></tr>
+      <tr><td><span class="pill amber">Faltante de personal</span></td><td><span class="pill red">Alta</span></td><td></td></tr>
+      <tr><td><span class="pill blue">Trabajo adicional</span></td><td></td><td></td></tr>
+      <tr><td><span class="pill violet">Retraso / ausencia</span></td><td></td><td></td></tr>
+      <tr><td><span class="pill red">Solicitud o queja en sitio</span></td><td></td><td></td></tr>
+      <tr><td><span class="pill slate">Otra</span></td><td></td><td></td></tr>
+    </tbody>
+  </table>
+
+  <h2 class="section">Postventa</h2>
+  <table>
+    <thead><tr><th>Estado del caso</th><th>Significado</th></tr></thead>
+    <tbody>
+      <tr><td><span class="pill red">Abierto</span></td><td>Sin atender.</td></tr>
+      <tr><td><span class="pill amber">En proceso</span></td><td>Responsable asignado.</td></tr>
+      <tr><td><span class="pill teal">Resuelto</span></td><td>Resolución registrada.</td></tr>
+      <tr><td><span class="pill slate">Cerrado</span></td><td>Confirmado con el cliente.</td></tr>
+    </tbody>
+  </table>
+  <table class="kv">
+    <tr><td>Categoría del caso</td><td>Calidad del servicio · Puntualidad · Conducta del personal · Daños a instalaciones · Trabajo incompleto · Facturación · Otro.</td></tr>
+    <tr><td>Canal por el que llegó</td><td>Teléfono · WhatsApp · Correo · Encuesta · Presencial.</td></tr>
+    <tr><td>Severidad</td><td>Baja · Media · Alta (las mismas de las incidencias).</td></tr>
+  </table>
+
+  <h2 class="section">Sincronización</h2>
+  <table>
+    <thead><tr><th>Estado del registro</th><th>Significado</th></tr></thead>
+    <tbody>
+      <tr><td><span class="pill amber">Pendiente</span></td><td>Guardado en el dispositivo, en espera de conexión.</td></tr>
+      <tr><td><span class="pill blue">Enviando</span></td><td>Subiendo al servidor.</td></tr>
+      <tr><td><span class="pill teal">Sincronizado</span></td><td>Ya está en el servidor, con la hora del servidor.</td></tr>
+      <tr><td><span class="pill red">Error</span></td><td>El servidor no lo aplicó; el motivo aparece debajo. Reintente o consulte a su supervisor.</td></tr>
+    </tbody>
+  </table>
+  <p>La fila de estado general (<b>Sincronizado</b>, <b>Sincronizando</b>, <b>Sin conexión</b>, <b>Vuelva a entrar</b>, <b>Sin guardar</b>…) se explica en el capítulo <em>Trabajo sin conexión y sincronización</em>.</p>
+
+  <h2 class="section">Glosario</h2>
+  <table class="kv">
+    <tr><td>Alcance</td><td>Lo que un rol puede ver: sus asignaciones, su unidad o la unidad elegida.</td></tr>
+    <tr><td>ANTES / DESPUÉS</td><td>Fotos obligatorias de cada área al iniciar y al terminar cada jornada.</td></tr>
+    <tr><td>Bitácora</td><td>Registro de cada cambio con usuario, fecha y motivo. También, las notas que el supervisor agrega en cada jornada.</td></tr>
+    <tr><td>Caso</td><td>Queja o seguimiento de postventa, con folio PV, responsable y fecha compromiso.</td></tr>
+    <tr><td>Cierre validado</td><td>Confirmación del supervisor de que el servicio terminó con la evidencia completa. Desde ese momento la orden cuenta como terminada.</td></tr>
+    <tr><td>Cola de sincronización</td><td>Registros capturados en el dispositivo que esperan llegar al servidor.</td></tr>
+    <tr><td>Conformidad</td><td>Aceptación del servicio por parte del cliente: firma, verbal o por correo.</td></tr>
+    <tr><td>CSAT</td><td>Promedio de la calificación general de las encuestas (1 a 5).</td></tr>
+    <tr><td>Cuadrilla</td><td>Personas asignadas a una jornada. Puede cambiar entre jornadas, con motivo.</td></tr>
+    <tr><td>Doble asignación</td><td>Una persona en dos jornadas abiertas el mismo día.</td></tr>
+    <tr><td>Entrada / Salida</td><td>Registro de llegada y de término de la jornada, con hora y ubicación.</td></tr>
+    <tr><td>Excepción autorizada</td><td>Permiso justificado para cerrar sin alguna foto obligatoria; queda en la bitácora y en el reporte.</td></tr>
+    <tr><td>Folio</td><td>Identificador único: OS para órdenes, INC para incidencias, PV para casos. Uno con «PEND» es provisional hasta sincronizar.</td></tr>
+    <tr><td>Horas asignadas</td><td>Duración de las jornadas en las que una persona está en la cuadrilla. No es tiempo individual.</td></tr>
+    <tr><td>Horas reales</td><td>Suma de entrada a salida de cada jornada.</td></tr>
+    <tr><td>Incidencia</td><td>Hecho registrado en campo (daños, faltantes, trabajo adicional, retrasos, quejas). Puede bloquear el cierre.</td></tr>
+    <tr><td>Jornada</td><td>Un día de trabajo de una orden. Una orden puede tener varias.</td></tr>
+    <tr><td>Modo consulta</td><td>Vista de solo lectura de una pantalla, por ejemplo la jornada para Dirección y Administración.</td></tr>
+    <tr><td>NPS</td><td>Porcentaje de clientes que recomendarían a Pulkro (9 o 10) menos el de quienes no (0 a 6).</td></tr>
+    <tr><td>Orden de servicio</td><td>El trabajo autorizado para un cliente y un sitio, con sus jornadas, cuadrilla, evidencia y reporte.</td></tr>
+    <tr><td>Reporte</td><td>PDF final del servicio con fotos y conformidad. Cada reapertura genera una nueva versión (v1, v2…).</td></tr>
+    <tr><td>Sitio</td><td>Lugar del cliente donde se hace el servicio, con dirección y coordenadas.</td></tr>
+    <tr><td>Supervisión remota</td><td>Registro de entrada o salida hecho por el supervisor sin estar en el sitio, con justificación.</td></tr>
+    <tr><td>Unidad</td><td>Sucursal de Pulkro: Matriz Monterrey, Apodaca o Saltillo.</td></tr>
+  </table>
+</section>

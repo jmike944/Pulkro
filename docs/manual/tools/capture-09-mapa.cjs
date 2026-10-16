@@ -183,6 +183,12 @@ async function addIncident(page) {
   await settle(page, 1000);
   const dlg = page.getByRole("dialog").last();
   await dlg.getByRole("button", { name: /Daños/ }).click();
+  // the phone flow asks type and severity first, then the description
+  const next = dlg.getByRole("button", { name: "Continuar" });
+  if (await next.count()) {
+    await next.click();
+    await settle(page, 800);
+  }
   await dlg.getByRole("textbox").first().fill("Se desprendió una lámina del techo en el andén 2; se acordonó el área.");
   await page.waitForTimeout(300);
   await dlg.getByRole("button", { name: "Registrar incidencia" }).click();
