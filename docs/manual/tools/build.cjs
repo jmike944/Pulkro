@@ -55,6 +55,34 @@ ${back.map(read).join("\n")}
   const uid = (base) => { let id = base || "s", n = 2; while (used.has(id)) id = base + "-" + n++; used.add(id); return id; };
   document.querySelectorAll("[id]").forEach((el) => used.add(el.id));
 
+  // Each chapter → .sec blocks (one per h2.section; the opener and intro form the first) → .sub blocks (one per h3).
+  // Before paginating, build.cjs measures them: a block that fits on a page is never split (it moves whole to the next
+  // page when it does not fit in what is left), a section longer than a page starts on a new page.
+  document.querySelectorAll("section.chapter").forEach((ch) => {
+    const groups = [];
+    let sec = null;
+    for (const k of [...ch.children]) {
+      if (!sec || k.matches("h2.section")) {
+        sec = document.createElement("div");
+        sec.className = k.matches("h2.section") ? "sec" : "sec sec-intro";
+        ch.insertBefore(sec, k);
+        groups.push(sec);
+      }
+      sec.appendChild(k);
+    }
+    for (const g of groups) {
+      let sub = null;
+      for (const k of [...g.children]) {
+        if (!sub || k.matches("h3")) {
+          sub = document.createElement("div");
+          sub.className = "sub";
+          g.insertBefore(sub, k);
+        }
+        sub.appendChild(k);
+      }
+    }
+  });
+
   // Markers are placed in % of the screenshot: wrap the image and its markers so the frame's padding does not shift them.
   document.querySelectorAll(".frame").forEach((fr) => {
     const marks = fr.querySelectorAll(":scope > .mark");
@@ -142,12 +170,105 @@ const server = http.createServer((req, res) => {
     const missing = [...document.images].filter((img) => !img.naturalWidth).map((img) => img.getAttribute("src"));
     if (missing.length) console.error("missing images: " + missing.join(", "));
   });
+  const blocks = await page.evaluate(() => {
+    // Lay the content out at the page's text width (Letter 8.5in − 2 × 0.78in) to measure each block.
+    const st = document.createElement("style");
+    st.textContent = "body { width: 6.94in; }";
+    document.head.append(st);
+    const pageHeight = (11 - 0.95 - 0.85) * 96 - 4; // the page's content box (883 px), with a little slack
+    const edge = (el, end) => {
+      let e = el;
+      while (e && e.matches(".sec, .sub")) e = end ? e.lastElementChild : e.firstElementChild;
+      return e ? parseFloat(getComputedStyle(e)[end ? "marginBottom" : "marginTop"]) || 0 : 0;
+    };
+    // Paged.js keeps the first element's top margin at the top of a page; a trailing bottom margin may run past it.
+    const height = (el) => el.getBoundingClientRect().height + edge(el, false);
+    const n = { kept: 0, tight: 0, long: 0, ratios: [] };
+    // A block that fits: kept whole. A little too tall (up to ~1.4 pages): try its "tight" layout (smaller screenshots and
+    // spacing) and keep it whole if that fits. Otherwise it is long: it starts on a new page and its sub-blocks follow
+    // the same rules.
+    const place = (el, canStartPage) => {
+      el.dataset.h = Math.round(height(el));
+      if (height(el) <= pageHeight) return el.classList.add("keep"), "keep";
+      if (height(el) <= pageHeight * 1.4) {
+        el.classList.add("tight");
+        el.dataset.h = Math.round(height(el));
+        if (height(el) <= pageHeight) return el.classList.add("keep"), "tight";
+        // Second step: smaller screenshots still.
+        el.classList.add("tighter");
+        el.dataset.h = Math.round(height(el));
+        if (height(el) <= pageHeight) return el.classList.add("keep"), "tight";
+        el.classList.remove("tight", "tighter");
+      }
+      if (canStartPage) el.classList.add("long");
+      return "long";
+    };
+    for (const sec of document.querySelectorAll(".sec")) {
+      const intro = sec.classList.contains("sec-intro");
+      const r = place(sec, !intro);
+      if (r === "keep") n.kept++;
+      else if (r === "tight") n.tight++;
+      else {
+        n.long++;
+        // Fewer pages in the tight layout (a shorter tail on its last page)? Keep it.
+        const pages = Math.ceil(height(sec) / pageHeight);
+        sec.classList.add("tight");
+        if (Math.ceil(height(sec) / pageHeight) >= pages) sec.classList.remove("tight");
+        const h = sec.querySelector("h2.section, .opener h1");
+        n.ratios.push((height(sec) / pageHeight).toFixed(2) + " " + (h ? h.textContent.trim().slice(0, 40) : "?"));
+        const subs = [...sec.querySelectorAll(":scope > .sub")];
+        // The section's opening (heading and first paragraphs) never stays alone at the top of its page: it goes
+        // with the next block when both fit on a page; otherwise that block flows right after it.
+        if (subs.length > 1) {
+          const pair = document.createElement("div");
+          pair.className = "sub";
+          sec.insertBefore(pair, subs[0]);
+          pair.append(subs[0], subs[1]);
+          pair.dataset.h = Math.round(height(pair));
+          if (height(pair) <= pageHeight) pair.classList.add("keep");
+          else place(subs[0], false);
+          subs.slice(2).forEach((sub) => place(sub, true));
+        } else if (subs[0]) subs[0].classList.remove("keep");
+      }
+      // The chapter opener becomes a title page of its own.
+      if (intro && r !== "long") sec.classList.add("divider");
+    }
+    st.remove();
+    return n;
+  });
+  console.log(`sections: ${blocks.kept} kept whole, ${blocks.tight} kept whole in their tight layout, ${blocks.long} longer than a page`);
+  if (process.env.PK_RATIOS) console.log(blocks.ratios.sort().join("\n"));
   const t0 = Date.now();
   const pages = await page.evaluate(async () => {
     const flow = await window.PagedPolyfill.preview();
     return flow.total;
   });
   console.log(`paginated: ${pages} pages in ${((Date.now() - t0) / 1000).toFixed(1)}s`);
+
+  // Check: no block that fits on a page was split (Paged.js gives the fragments of a split element the same data-ref).
+  const split = await page.evaluate(() => {
+    const pagesOf = new Map();
+    document.querySelectorAll(".pagedjs_page").forEach((pg, i) =>
+      pg.querySelectorAll(".keep[data-ref]").forEach((el) => pagesOf.set(el.dataset.ref, new Set([...(pagesOf.get(el.dataset.ref) || []), i + 1]))),
+    );
+    return [...pagesOf.entries()]
+      .filter(([, s]) => s.size > 1)
+      .map(([ref, s]) => {
+        const el = document.querySelector(`.keep[data-ref="${ref}"]`);
+        const h = el.querySelector("h2, h3, .opener h1");
+        return `${[...s].join("-")} (${el.className}; ${el.dataset.h || "?"}px; «${h ? h.textContent.trim().slice(0, 30) : el.textContent.trim().slice(0, 30)}»)`;
+      });
+  });
+  console.log(split.length ? `SPLIT keep blocks on pages: ${split.join(", ")}` : "no section that fits on a page was split");
+
+  // A section that opens a page needs no divider line above it.
+  await page.evaluate(() => {
+    for (const area of document.querySelectorAll(".pagedjs_page_content")) {
+      const top = area.getBoundingClientRect().top;
+      const h = [...area.querySelectorAll("h2.section")].find((el) => el.getBoundingClientRect().top - top < 40);
+      if (h) h.classList.add("page-top");
+    }
+  });
 
   // Running header (top right): the current chapter's title, set per page (Paged.js string-set mangles these values).
   await page.evaluate(() => {

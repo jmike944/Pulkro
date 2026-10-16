@@ -193,7 +193,58 @@ h2.section {
   padding-top: 12pt;
   border-top: 1px solid var(--hairline);
 }
-h2.section:first-child { border-top: 0; padding-top: 0; margin-top: 4pt; }
+:not(.sub) > h2.section:first-child,
+h2.section.page-top { border-top: 0; padding-top: 0; margin-top: 4pt; }
+
+/* Section blocks (tools/build.cjs measures them): one that fits on a page is never split; one longer than a page
+   starts on a new page, and its subsections follow the same rule. */
+.keep { break-inside: avoid; }
+.long { break-before: page; }
+
+/* "Tight" layout of a section slightly taller than a page: smaller screenshots and spacing so it fits on one. */
+.tight figure { margin: 8pt 0 9pt; }
+.tight figure.shot:not(.phone):not(.crop) { width: 82%; margin-left: auto; margin-right: auto; }
+.tight figure.shot.crop .frame img { max-width: 86%; }
+.tight figure.shot.crop.w40 .frame img { width: 2.4in; }
+.tight figure.shot.crop.w50 .frame img { width: 2.9in; }
+.tight figure.shot.crop.w60 .frame img { width: 3.5in; }
+.tight figure.shot.crop.w70 .frame img { width: 4.1in; }
+.tight figure.shot.crop.w80 .frame img { width: 4.7in; }
+.tight figure.shot.phone { width: 1.95in; }
+.tight .phones { margin: 8pt 0 9pt; gap: 14pt; }
+.tight .phones figure.shot.phone { width: 1.85in; }
+.tight .phones.three figure.shot.phone { width: 1.7in; }
+.tight .duo { grid-template-columns: 1.9in 1fr; margin: 8pt 0 9pt; }
+.tight .duo.right { grid-template-columns: 1fr 1.9in; }
+.tight .duo.wide { grid-template-columns: 2.7in 1fr; }
+.tight .duo.wide.right { grid-template-columns: 1fr 2.7in; }
+.tight p { margin-bottom: 6pt; }
+.tight td { padding-top: 4.5pt; padding-bottom: 4.5pt; }
+.tight .note { margin: 8pt 0 9pt; padding-top: 8pt; padding-bottom: 8pt; }
+.tight ol.steps > li { padding-bottom: 6pt; }
+.tighter figure.shot:not(.phone):not(.crop) { width: 70%; }
+.tighter figure.shot.crop .frame img { max-width: 74%; }
+.tighter figure.shot.crop.w40 .frame img { width: 2.1in; }
+.tighter figure.shot.crop.w50 .frame img { width: 2.5in; }
+.tighter figure.shot.crop.w60 .frame img { width: 3in; }
+.tighter figure.shot.crop.w70 .frame img { width: 3.5in; }
+.tighter figure.shot.crop.w80 .frame img { width: 4in; }
+.tighter figure.shot.phone { width: 1.75in; }
+.tighter .phones figure.shot.phone { width: 1.7in; }
+.tighter .phones.three figure.shot.phone { width: 1.55in; }
+.tighter .duo { grid-template-columns: 1.7in 1fr; }
+.tighter .duo.right { grid-template-columns: 1fr 1.7in; }
+.tighter .duo.wide { grid-template-columns: 2.4in 1fr; }
+.tighter .duo.wide.right { grid-template-columns: 1fr 2.4in; }
+
+/* Chapter title page: the opener grows into a full-page aurora panel, the introduction below it. */
+.sec-intro.divider { min-height: 8.9in; display: flex; flex-direction: column; break-after: page; }
+.sec-intro.divider > .sub:first-child { flex: 1; display: flex; flex-direction: column; }
+.sec-intro.divider .opener { flex: 1; display: flex; flex-direction: column; justify-content: flex-end; padding: 34pt 32pt 30pt; margin-bottom: 20pt; }
+.sec-intro.divider .opener .num { margin-bottom: auto; }
+.sec-intro.divider .opener h1 { font-size: 50pt; margin-top: 0; }
+.sec-intro.divider .opener .desc { font-size: 12pt; max-width: 88%; margin-bottom: 20pt; }
+.sec-intro.divider + .sec.long { break-before: auto; }
 h2.section + p.lead,
 h2.section + .lead { margin-top: 0; }
 
