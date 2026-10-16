@@ -55,8 +55,9 @@ export type Blocker = { id: string; label: string; detail?: string; severity: "b
 
 /**
  * Why an order can't be closed yet (doc §8: fotos obligatorias, jornadas, incidencias, sincronización).
- * Pass `role` so links point where that role can go: the supervisor to the jornada / incident screens, everyone else to
- * the matching tab of the order detail (field screens are supervisor-only).
+ * Pass `role` so links point where that role can act: the supervisor to the jornada / incident screens to capture or resolve,
+ * everyone else to the matching tab of the order detail (the incident screen is supervisor-only; the jornada screen opens for
+ * every role but only the supervisor captures there).
  */
 export function closureBlockers(
   order: Order,
@@ -248,7 +249,8 @@ type NextActionCtx = { jornadas: Jornada[]; photos: Photo[]; incidents: Incident
 /**
  * Single source of truth for "what should happen next" on an order (dashboard, lists, cards).
  * Pass `role` (ctx.role): the step is then only offered to whoever can take it; other roles get "Ver" into the order detail
- * (the matching tab), never a link to a screen of another role (field screens are supervisor-only).
+ * (the matching tab), never an action verb they can't carry out nor a link to a screen of another role. The raw step (no role)
+ * still points at /jornada/[id], which every role may open read-only (the order's featured card uses it).
  */
 export function nextAction(order: Order, ctx: NextActionCtx & { role?: Role }, now = new Date()): NextAction {
   const step = nextStep(order, ctx, now);

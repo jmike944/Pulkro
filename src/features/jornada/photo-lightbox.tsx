@@ -27,9 +27,8 @@ export function PhotoLightbox({
   index: number | null;
   onIndexChange: (i: number | null) => void;
 }) {
-  const selectReason = f.permissions.select ? null : `Solo el supervisor selecciona las fotos del reporte · ${f.roleLabel} tiene acceso de consulta.`;
-  const canDelete = f.permissions.capture && !f.locked;
-  const deleteReason = !f.permissions.capture ? `Solo el supervisor elimina evidencia · ${f.roleLabel} tiene acceso de consulta.` : f.locked;
+  const canDelete = !f.locked;
+  const deleteReason = f.locked;
 
   return (
     <SharedLightbox
@@ -41,17 +40,21 @@ export function PhotoLightbox({
       scope="jornada"
       actions={(photo, { index: i, total }) => (
         <>
-          <LightboxReportToggle photo={photo} blockedReason={selectReason} />
-          <DeletePhoto
-            photo={photo}
-            canDelete={canDelete}
-            reason={deleteReason}
-            onDelete={() => {
-              // keep the viewer on a photo that still exists: close when it was the last one, step back from the end of the list
-              if (total <= 1) onIndexChange(null);
-              else if (i === total - 1) onIndexChange(i - 1);
-            }}
-          />
+          {/* Read-only roles get neither control disabled: the "En reporte" badge already shows the selection, and the
+              header's Modo consulta note says the report photos and the evidence are the supervisor's. */}
+          {f.permissions.select && <LightboxReportToggle photo={photo} />}
+          {f.permissions.capture && (
+            <DeletePhoto
+              photo={photo}
+              canDelete={canDelete}
+              reason={deleteReason}
+              onDelete={() => {
+                // keep the viewer on a photo that still exists: close when it was the last one, step back from the end of the list
+                if (total <= 1) onIndexChange(null);
+                else if (i === total - 1) onIndexChange(i - 1);
+              }}
+            />
+          )}
         </>
       )}
     />

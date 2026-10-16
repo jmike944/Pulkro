@@ -54,9 +54,8 @@ export function OrderHeader() {
   const { order, client, site, serviceType, supervisor, active, now } = d;
   // sm+: actions sit at the top right. Phones: "⋯" shares a row with "Abrir jornada", or with the status pill when there is none.
   const wide = useMediaQuery("(min-width: 640px)");
-  // "Abrir jornada" goes to the field screen, which is the supervisor's: Dirección and Administración read the jornadas in their tab.
-  const showJornada =
-    d.perms.capture && !!active && (active.status === "en_curso" || (active.status === "pendiente" && isSameDay(parseISO(active.plannedStart), now)));
+  // The field screen opens for every role; without capture it is read-only, so the shortcut says "Ver jornada".
+  const showJornada = !!active && (active.status === "en_curso" || (active.status === "pendiente" && isSameDay(parseISO(active.plannedStart), now)));
 
   const meta = (
     <>
@@ -91,7 +90,7 @@ export function OrderHeader() {
       {showJornada && active && (
         <Button asChild variant="outline" className="h-10 rounded-[12px] border-line px-4 font-semibold shadow-[0_1px_2px_rgb(16_24_40/0.05)]">
           <Link href={`/jornada/${active.id}`}>
-            <Navigation className="size-4" /> Abrir jornada <span className="font-normal text-subtle">J{active.dayIndex}</span>
+            <Navigation className="size-4" /> {d.perms.capture ? "Abrir jornada" : "Ver jornada"} <span className="font-normal text-subtle">J{active.dayIndex}</span>
           </Link>
         </Button>
       )}

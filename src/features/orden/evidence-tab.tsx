@@ -40,7 +40,7 @@ export function EvidenceTab() {
             <b className="font-semibold text-ink">{selected}</b> seleccionadas para el reporte
           </p>
         </div>
-        {/* /evidencias and /jornada are the supervisor's screens: Dirección and Administración read the evidence right here */}
+        {/* /evidencias is the supervisor's screen: Dirección and Administración read the evidence right here */}
         {d.perms.capture && <UnderlineLink href={`/evidencias?orden=${order.folio}`}>Ver en Evidencias</UnderlineLink>}
       </div>
 
@@ -193,8 +193,8 @@ function PhotoGrid({ photos, missing, emptyText }: { photos: Photo[]; missing?: 
 }
 
 /**
- * Placeholder for a required photo that is not there yet. The supervisor gets a link to capture it in the jornada (the field
- * screen is theirs); Dirección and Administración see the same gap without a link into a screen their role can't open.
+ * Placeholder for a required photo that is not there yet. The supervisor gets a link to capture it in the jornada; Dirección
+ * and Administración see the same gap and who captures it (the link's promise, "Capturar", is not theirs).
  */
 function MissingTile({ missing, canOpen }: { missing: Missing; canOpen: boolean }) {
   const cls = cn(

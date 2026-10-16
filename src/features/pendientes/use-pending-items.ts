@@ -81,7 +81,7 @@ export function usePendingItems() {
     const supervisorOf = (orderId?: string) => shortPerson(lk.users.get(orderById.get(orderId ?? "")?.supervisorId ?? "")?.name) ?? "Supervisor";
     /**
      * `href` when the role may open it; otherwise the same information read-only in the order detail (Dirección and
-     * Administración never land on a supervisor-only screen: /jornada, /incidencias, /ordenes/…/reporte).
+     * Administración never land on a supervisor-only screen: /incidencias, /ordenes/…/reporte; /jornada opens read-only for them).
      */
     const reach = (href: string, fallback: string) => (canSeeRoute(role, href.split(/[?#]/)[0] || "/") ? href : fallback);
     const order = (folio: string, tab?: "jornadas" | "evidencia" | "incidencias") => (tab ? `/ordenes/${folio}?tab=${tab}` : `/ordenes/${folio}`);

@@ -100,7 +100,8 @@ function PendingState({ f, actions }: { f: FieldReady; actions: HeroActions }) {
             <BigAction icon={<LocateFixed />} label="Registrar entrada" sub="Hora del dispositivo + GPS" onClick={actions.checkIn} disabled={!!f.checkInBlock} />
           </Gate>
         ) : (
-          <ReadOnlyLine>Esperando el registro de entrada del supervisor.</ReadOnlyLine>
+          // A locked order (cancelled, closure validated) will get no entrada: say so instead of "waiting".
+          <ReadOnlyLine>{f.locked ?? "Esperando el registro de entrada del supervisor."}</ReadOnlyLine>
         )}
         {f.permissions.capture && f.checkInBlock && <p className="mt-2.5 text-[13px] leading-snug text-amber-glow">{f.checkInBlock}</p>}
       </div>
@@ -149,7 +150,7 @@ function LiveState({ f, actions }: { f: FieldReady; actions: HeroActions }) {
             <BigAction icon={<LogOut />} label="Registrar salida" sub="Cierre de la jornada con hora y GPS" onClick={actions.checkOut} disabled={!!f.checkOutBlock} variant="sky" />
           </Gate>
         ) : (
-          <ReadOnlyLine>La salida la registra el supervisor al terminar.</ReadOnlyLine>
+          <ReadOnlyLine>{f.locked ?? "La salida la registra el supervisor al terminar."}</ReadOnlyLine>
         )}
         {f.permissions.capture && f.antes.length === 0 && (
           <p className="mt-3 flex items-start gap-2 text-[13px] leading-snug text-amber-glow">
@@ -329,16 +330,18 @@ function BreakdownStrip({ f, onEdit }: { f: FieldReady; onEdit: () => void }) {
         <p className="text-[12px] font-semibold uppercase tracking-[0.12em] text-white/50">
           Desglose de horas · <span className="tabular text-white/80">{total.toFixed(1)} h</span>
         </p>
-        <Gate reason={f.breakdownBlock}>
-          <Button
-            variant="ghost"
-            onClick={onEdit}
-            disabled={!!f.breakdownBlock}
-            className="h-9 rounded-[10px] bg-white/10 px-3 text-[13px] font-semibold text-white hover:bg-white/20 hover:text-white disabled:opacity-40"
-          >
-            Editar
-          </Button>
-        </Gate>
+        {f.permissions.capture && (
+          <Gate reason={f.breakdownBlock}>
+            <Button
+              variant="ghost"
+              onClick={onEdit}
+              disabled={!!f.breakdownBlock}
+              className="h-9 rounded-[10px] bg-white/10 px-3 text-[13px] font-semibold text-white hover:bg-white/20 hover:text-white disabled:opacity-40"
+            >
+              Editar
+            </Button>
+          </Gate>
+        )}
       </div>
       <ul className="space-y-2.5">
         {items.map((b, i) => (
@@ -386,19 +389,22 @@ function CrewRow({ f, onChange, className }: { f: FieldReady; onChange: () => vo
         )}
         <div className="min-w-0">
           <p className="text-[14px] font-semibold">{f.crew.length ? `${f.crew.length} en cuadrilla` : "Sin cuadrilla asignada"}</p>
-          <p className="truncate text-[12.5px] text-white/60">{names || "Asigne al menos una persona"}</p>
+          <p className="truncate text-[12.5px] text-white/60">{names || (f.permissions.crew ? "Asigne al menos una persona" : "La asigna el supervisor")}</p>
         </div>
       </div>
-      <Gate reason={f.crewBlock}>
-        <Button
-          variant="ghost"
-          onClick={onChange}
-          disabled={!!f.crewBlock}
-          className="h-10 shrink-0 rounded-[12px] bg-white/10 px-3.5 font-semibold text-white hover:bg-white/20 hover:text-white disabled:opacity-40"
-        >
-          Cambiar
-        </Button>
-      </Gate>
+      {/* Read-only roles get no disabled "Cambiar": the crew is data for them (an empty crew says who assigns it). */}
+      {f.permissions.crew && (
+        <Gate reason={f.crewBlock}>
+          <Button
+            variant="ghost"
+            onClick={onChange}
+            disabled={!!f.crewBlock}
+            className="h-10 shrink-0 rounded-[12px] bg-white/10 px-3.5 font-semibold text-white hover:bg-white/20 hover:text-white disabled:opacity-40"
+          >
+            Cambiar
+          </Button>
+        </Gate>
+      )}
     </div>
   );
 }

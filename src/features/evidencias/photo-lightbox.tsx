@@ -19,6 +19,7 @@ import { KeyValues, PersonAvatar } from "@/components/pk/bits";
 import { SoftBadge } from "@/components/pk/status";
 import { Segmented } from "@/components/pk/page";
 import { EASE } from "@/components/pk/motion";
+import { useCanSeeRoute } from "@/components/shell/use-can-see-route";
 import { findPair } from "./evidence-data";
 
 const slide: Variants = {
@@ -144,6 +145,7 @@ function LightboxBody({
   close: () => void;
 }) {
   const lk = useLookups();
+  const canSee = useCanSeeRoute();
   const { orders, jornadas, incidents, queue } = useAppStore(
     useShallow((s) => ({ orders: s.orders, jornadas: s.jornadas, incidents: s.incidents, queue: s.sync.queue })),
   );
@@ -161,6 +163,14 @@ function LightboxBody({
   const client = order ? lk.clients.get(order.clientId) : undefined;
   const showOrder = scope !== "orden" && !!order;
   const showJornada = scope !== "jornada" && !!jornada;
+  // The incident screen is the supervisor's; the other roles read the incident in the order's Incidencias tab.
+  const incidentHref = incident
+    ? canSee("/incidencias")
+      ? `/incidencias?i=${incident.id}`
+      : order
+        ? `/ordenes/${order.folio}?tab=incidencias`
+        : undefined
+    : undefined;
 
   // What a screen reader hears when the dialog opens (the visible details are read as the user moves through them).
   const spoken = [
@@ -234,10 +244,12 @@ function LightboxBody({
     },
     incident && {
       k: "Incidencia",
-      v: (
-        <Link href={`/incidencias?i=${incident.id}`} className="text-link hover:underline">
+      v: incidentHref ? (
+        <Link href={incidentHref} className="text-link hover:underline">
           {incident.folio}
         </Link>
+      ) : (
+        incident.folio
       ),
     },
   ] as (Row | false | undefined)[]).filter((r): r is Row => !!r);

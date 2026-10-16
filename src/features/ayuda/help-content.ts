@@ -125,6 +125,12 @@ export const FAQ: { q: string; a: string; href?: string; linkLabel?: string }[] 
     linkLabel: "Ver mis permisos",
   },
   {
+    q: "¿Dirección y Administración pueden ver una jornada?",
+    a: "Sí, en modo consulta: horario, entrada y salida con su ubicación, cuadrilla, fotos, incidencias y bitácora. Se abre desde la pestaña Jornadas de cada orden. Solo el supervisor captura, asigna la cuadrilla y valida el cierre.",
+    href: "/ordenes",
+    linkLabel: "Ver órdenes",
+  },
+  {
     q: "¿La app confirma que el cliente recibió el reporte?",
     a: "No. El envío es manual: se registra quién lo inició y cuándo, pero nunca se afirma la entrega ni la lectura.",
   },

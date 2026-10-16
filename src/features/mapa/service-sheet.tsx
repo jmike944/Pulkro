@@ -4,7 +4,7 @@ import Link from "next/link";
 import { motion } from "motion/react";
 import { ArrowUpRight, CloudOff, Info, MapPin, TriangleAlert, X } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { useMediaQuery } from "@/lib/hooks";
+import { useCan, useMediaQuery } from "@/lib/hooks";
 import { GEO_SOURCE_LABEL, jornadaMinutes, mapsLink } from "@/lib/domain";
 import { fmtDuration, fmtTime, plural } from "@/lib/format";
 import { INCIDENT_TYPE, SEVERITY } from "@/lib/status";
@@ -72,6 +72,7 @@ function ServiceBody({ s, now }: { s: MapaService; now: Date }) {
   const late = isLate(s, now);
   const jornadaHref = `/jornada/${j.id}`;
   const canOpenJornada = canSee(jornadaHref);
+  const canCapture = useCan("field.capture");
   const minutes = jornadaMinutes(j, now);
 
   return (
@@ -247,7 +248,7 @@ function ServiceBody({ s, now }: { s: MapaService; now: Date }) {
         </Button>
         {canOpenJornada && (
           <Button asChild className="h-12 rounded-[12px] px-5 text-[15px] font-semibold sm:h-11 sm:text-[14px]">
-            <Link href={jornadaHref}>Abrir jornada</Link>
+            <Link href={jornadaHref}>{canCapture ? "Abrir jornada" : "Ver jornada"}</Link>
           </Button>
         )}
       </footer>

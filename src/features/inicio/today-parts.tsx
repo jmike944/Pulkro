@@ -103,7 +103,7 @@ function PhotoChip({ label, count, missing }: { label: string; count: number; mi
  */
 export function JornadaRow({ j, o, lk, now, photos }: { j: Jornada; o: Order; lk: Lookups; now: Date; photos: { antes: number; despues: number } }) {
   const canSee = useCanSeeRoute();
-  // the jornada screen is the supervisor's; other roles read the same jornada in the order detail
+  // the jornada screen opens for every role (read-only without field capture); the order tab is only a fallback
   const href = canSee(`/jornada/${j.id}`) ? `/jornada/${j.id}` : `/ordenes/${o.folio}?tab=jornadas`;
   const c = lk.clients.get(o.clientId);
   const site = lk.sites.get(o.siteId);

@@ -7,8 +7,10 @@ import type { AuditEntry, Client, Order, Role, User, Worker } from "./types";
  * Product-owner decisions applied here (oct 2026):
  *  - Only Administración creates orders; Dirección consults; supervisors do not create (no "Nueva orden" for them).
  *  - Indicadores (screen + KPI exports) only for Dirección and Administración; supervisors keep their own figures on Hoy.
- *  - Field screens (Agenda, Jornada, Evidencias, Incidencias, Reportes, report sharing) are supervisor-only; Dirección and
+ *  - Field screens (Agenda, Evidencias, Incidencias, Reportes, report sharing) are supervisor-only; Dirección and
  *    Administración see jornadas, evidence and incidents read-only inside the order detail and download its PDF there.
+ *  - The jornada screen (/jornada/[id]) opens for every role (oct 2026): Dirección and Administración read it in "Modo
+ *    consulta" — capture, crew, closure and report choices stay field.capture / crew.assign / closure.authorize / report.share.
  *  - Reopening is its own action: the supervisor reopens their own orders; Administración and Dirección do not.
  *  - Rescheduling / confirming dates is the supervisor's (it moves the crew's agenda).
  */
@@ -113,7 +115,8 @@ export const PERMISSION_ROWS: PermissionRow[] = [
     action: "field.capture",
     label: "Capturar GPS, fotos e incidencias",
     status: "confirmado",
-    scope: { direccion: "Consulta en la orden", administracion: "Consulta en la orden", supervisor: "Solo propias" },
+    scope: { direccion: "Consulta", administracion: "Consulta", supervisor: "Solo propias" },
+    note: "Dirección y Administración consultan la jornada, sus fotos y sus incidencias; solo el supervisor captura.",
   },
   {
     action: "closure.authorize",
