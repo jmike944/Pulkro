@@ -219,7 +219,9 @@ async function desk() {
   await page.getByRole("button", { name: "Día", exact: true }).click();
   await settle(page, 1500);
   await scrollTo(page, "h3", 20);
-  await snap(page, "07-dia");
+  // the day card, from its title to early afternoon
+  const card = await page.locator("h3").first().locator("xpath=ancestor::div[contains(@class,'rounded-[22px]')][1]").boundingBox();
+  await snap(page, "07-dia", { clip: { x: card.x - 12, y: card.y - 12, width: card.width + 24, height: Math.min(620, 900 - card.y) } });
   await page.getByRole("button", { name: "Semana", exact: true }).click();
   await settle(page, 1200);
   await page.evaluate(() => document.getElementById("main-scroll")?.scrollTo(0, 0));

@@ -92,9 +92,6 @@ const pct = (v, total) => `${((v / total) * 100).toFixed(1)}%`;
     });
     await clipShot(page, "18-horas-incidencias", { x: hb.x, y: hb.y, width: ib.x + ib.width - hb.x, height: Math.max(hb.height, ib.height) });
 
-    // Fase 2
-    box = await regionOf(page, "Requiere captura adicional", "^SECTION$");
-    await clipShot(page, "18-fase2", box, 20);
 
     // drill-down sheet from the funnel
     await page.locator("#main-scroll").evaluate((el) => el.scrollTo(0, 0));

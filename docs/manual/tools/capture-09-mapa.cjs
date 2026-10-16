@@ -205,6 +205,9 @@ async function desk() {
   await settle(page, 3500);
   await snap(page, "09-mapa");
 
+  // the sheets (a taller window shows them whole)
+  await page.setViewportSize({ width: 1440, height: 1100 });
+  await settle(page, 800);
   // the sheet of the late service
   await page.locator('section[aria-label="Servicios del día"]').getByRole("button", { name: /Terza/ }).filter({ visible: true }).first().click();
   await settle(page, 1500);
@@ -218,14 +221,6 @@ async function desk() {
   await page.keyboard.press("Escape");
   await noDialogs(page);
 
-  // filter: Con incidencia
-  await page.getByRole("button", { name: /Con incidencia/ }).click();
-  await settle(page, 1500);
-  const strip = page.getByRole("group", { name: "Filtrar por estado" });
-  const list = page.getByRole("region", { name: "Servicios del día" }).or(page.locator('section[aria-label="Servicios del día"]')).first();
-  const a = await strip.boundingBox();
-  const b = await list.boundingBox();
-  await snap(page, "09-filtro", { clip: { x: a.x - 16, y: a.y - 16, width: a.width + 32, height: Math.min(b.y + 220, 900) - a.y + 16 } });
   await close();
 }
 
@@ -247,9 +242,9 @@ async function direccion() {
   await ff(page, "02:20:00"); // 11:00
   await page.goto(url("/mapa"));
   await settle(page, 3500);
+  const trigger = await page.getByRole("combobox", { name: "Supervisor" }).boundingBox();
   await page.getByRole("combobox", { name: "Supervisor" }).click();
   await settle(page, 800);
-  const trigger = await page.getByRole("combobox", { name: "Supervisor" }).boundingBox();
   const menu = await page.getByRole("listbox").boundingBox();
   const x = Math.min(trigger.x, menu.x) - 16;
   await snap(page, "09-supervisor", { clip: { x, y: trigger.y - 16, width: Math.max(trigger.x + trigger.width, menu.x + menu.width) - x + 16, height: menu.y + menu.height - trigger.y + 32 } });

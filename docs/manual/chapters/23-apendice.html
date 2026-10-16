@@ -13,59 +13,57 @@
 
   <h2 class="section">Matriz de permisos</h2>
   <p>Es la misma matriz de <b>Configuración › Usuarios y permisos</b> y de <span class="ui">Mis permisos</span>. <span class="yes">✓</span> indica que el rol puede hacerlo; <span class="no">—</span>, que no. Debajo de la marca va el alcance: <b>Su unidad</b> (solo la unidad de la persona), <b>Solo propias</b> (solo las órdenes asignadas a ella), <b>Unidad seleccionada</b> (la elegida en el filtro de unidad), <b>Sus asignaciones</b> y <b>Consulta</b> (ve la información pero no la cambia). Las filas con <b>*</b> están por definir con Pulkro: la app aplica la regla indicada mientras tanto.</p>
-  <table class="matrix">
-    <colgroup><col style="width:52%"><col style="width:16%"><col style="width:16%"><col style="width:16%"></colgroup>
-    <thead><tr><th>Acción</th><th>Dirección</th><th>Administración</th><th>Supervisor</th></tr></thead>
+  <table class="matrix" style="table-layout:fixed">
+    <thead><tr><th style="width:52%">Acción</th><th style="width:16%">Dirección</th><th style="width:16%">Administración</th><th style="width:16%">Supervisor</th></tr></thead>
     <tbody>
-      <tr><td><b>Crear orden</b><span class="cell-note">Solo Administración da de alta órdenes (decisión de Pulkro).</span></td><td class="no">—<span class="cell-note">Consulta</span></td><td class="yes">✓</td><td class="no">—</td></tr>
-      <tr><td><b>Editar orden</b></td><td class="no">—<span class="cell-note">Consulta</span></td><td class="yes">✓<span class="cell-note">Su unidad</span></td><td class="no">—</td></tr>
-      <tr><td><b>Editar datos operativos</b></td><td class="no">—<span class="cell-note">Consulta</span></td><td class="yes">✓<span class="cell-note">Su unidad</span></td><td class="yes">✓<span class="cell-note">Solo propias</span></td></tr>
-      <tr><td><b>Reprogramar y confirmar fechas</b><span class="cell-note">Mueve la agenda de la cuadrilla: lo decide el supervisor.</span></td><td class="no">—<span class="cell-note">Consulta</span></td><td class="no">—<span class="cell-note">Consulta</span></td><td class="yes">✓<span class="cell-note">Solo propias</span></td></tr>
-      <tr><td><b>Reabrir orden cerrada</b> *<span class="cell-note">Exige motivo y una nueva validación de cierre, y genera una nueva versión del reporte.</span></td><td class="no">—</td><td class="no">—</td><td class="yes">✓<span class="cell-note">Solo propias</span></td></tr>
-      <tr><td><b>Archivar orden</b><span class="cell-note">Cierra el ciclo postventa de una orden con reporte enviado.</span></td><td class="no">—</td><td class="yes">✓<span class="cell-note">Su unidad</span></td><td class="yes">✓<span class="cell-note">Solo propias</span></td></tr>
-      <tr><td><b>Asignar cuadrilla</b></td><td class="no">—<span class="cell-note">Consulta</span></td><td class="no">—<span class="cell-note">Consulta</span></td><td class="yes">✓<span class="cell-note">Solo propias</span></td></tr>
-      <tr><td><b>Capturar GPS, fotos e incidencias</b><span class="cell-note">Dirección y Administración consultan la jornada, sus fotos y sus incidencias; solo el supervisor captura.</span></td><td class="no">—<span class="cell-note">Consulta</span></td><td class="no">—<span class="cell-note">Consulta</span></td><td class="yes">✓<span class="cell-note">Solo propias</span></td></tr>
-      <tr><td><b>Autorizar cierre</b></td><td class="no">—<span class="cell-note">Consulta</span></td><td class="no">—<span class="cell-note">Consulta</span></td><td class="yes">✓<span class="cell-note">Solo propias</span></td></tr>
-      <tr><td><b>Generar y compartir reporte al cliente</b><span class="cell-note">Dirección y Administración descargan el PDF desde el detalle de la orden.</span></td><td class="no">—</td><td class="no">—</td><td class="yes">✓<span class="cell-note">Solo propias</span></td></tr>
-      <tr><td><b>Gestionar quejas y encuestas</b></td><td class="no">—<span class="cell-note">Consulta</span></td><td class="yes">✓<span class="cell-note">Su unidad</span></td><td class="yes">✓<span class="cell-note">Solo propias</span></td></tr>
-      <tr><td><b>Exportar PDF de la orden</b></td><td class="yes">✓</td><td class="yes">✓<span class="cell-note">Su unidad</span></td><td class="yes">✓<span class="cell-note">Solo propias</span></td></tr>
-      <tr><td><b>Exportar Excel</b></td><td class="yes">✓</td><td class="yes">✓<span class="cell-note">Su unidad</span></td><td class="no">—</td></tr>
-      <tr><td><b>Consultar indicadores</b><span class="cell-note">El supervisor ve sus propias cifras en Hoy.</span></td><td class="yes">✓</td><td class="yes">✓<span class="cell-note">Su unidad</span></td><td class="no">—</td></tr>
-      <tr><td><b>Exportar indicadores</b></td><td class="yes">✓</td><td class="yes">✓<span class="cell-note">Su unidad</span></td><td class="no">—</td></tr>
-      <tr><td><b>Exportar respaldo de datos</b></td><td class="yes">✓<span class="cell-note">Unidad seleccionada</span></td><td class="yes">✓<span class="cell-note">Su unidad</span></td><td class="no">—</td></tr>
-      <tr><td><b>Administrar usuarios y permisos</b> *<span class="cell-note">Hoy solo Dirección da de alta, edita y desactiva usuarios. Cada quien edita su propio teléfono.</span></td><td class="yes">✓</td><td class="no">—</td><td class="no">—</td></tr>
-      <tr><td><b>Administrar catálogos</b> *<span class="cell-note">Clientes, sitios y personal por unidad; tipos de servicio y materiales son de toda la empresa.</span></td><td class="yes">✓</td><td class="yes">✓<span class="cell-note">Su unidad</span></td><td class="no">—</td></tr>
-      <tr><td><b>Ver todas las unidades</b> *<span class="cell-note">Hoy solo Dirección ve otras unidades.</span></td><td class="yes">✓</td><td class="no">—<span class="cell-note">Su unidad</span></td><td class="no">—<span class="cell-note">Sus asignaciones</span></td></tr>
+      <tr><td style="width:52%"><b>Crear orden</b><span class="cell-note">Solo Administración da de alta órdenes (decisión de Pulkro).</span></td><td class="no" style="width:16%">—<span class="cell-note">Consulta</span></td><td class="yes" style="width:16%">✓</td><td class="no" style="width:16%">—</td></tr>
+      <tr><td style="width:52%"><b>Editar orden</b></td><td class="no" style="width:16%">—<span class="cell-note">Consulta</span></td><td class="yes" style="width:16%">✓<span class="cell-note">Su unidad</span></td><td class="no" style="width:16%">—</td></tr>
+      <tr><td style="width:52%"><b>Editar datos operativos</b></td><td class="no" style="width:16%">—<span class="cell-note">Consulta</span></td><td class="yes" style="width:16%">✓<span class="cell-note">Su unidad</span></td><td class="yes" style="width:16%">✓<span class="cell-note">Solo propias</span></td></tr>
+      <tr><td style="width:52%"><b>Reprogramar y confirmar fechas</b><span class="cell-note">Mueve la agenda de la cuadrilla: lo decide el supervisor.</span></td><td class="no" style="width:16%">—<span class="cell-note">Consulta</span></td><td class="no" style="width:16%">—<span class="cell-note">Consulta</span></td><td class="yes" style="width:16%">✓<span class="cell-note">Solo propias</span></td></tr>
+      <tr><td style="width:52%"><b>Reabrir orden cerrada</b> *<span class="cell-note">Exige motivo y una nueva validación de cierre, y genera una nueva versión del reporte.</span></td><td class="no" style="width:16%">—</td><td class="no" style="width:16%">—</td><td class="yes" style="width:16%">✓<span class="cell-note">Solo propias</span></td></tr>
+      <tr><td style="width:52%"><b>Archivar orden</b><span class="cell-note">Cierra el ciclo postventa de una orden con reporte enviado.</span></td><td class="no" style="width:16%">—</td><td class="yes" style="width:16%">✓<span class="cell-note">Su unidad</span></td><td class="yes" style="width:16%">✓<span class="cell-note">Solo propias</span></td></tr>
+      <tr><td style="width:52%"><b>Asignar cuadrilla</b></td><td class="no" style="width:16%">—<span class="cell-note">Consulta</span></td><td class="no" style="width:16%">—<span class="cell-note">Consulta</span></td><td class="yes" style="width:16%">✓<span class="cell-note">Solo propias</span></td></tr>
+      <tr><td style="width:52%"><b>Capturar GPS, fotos e incidencias</b><span class="cell-note">Dirección y Administración consultan la jornada, sus fotos y sus incidencias; solo el supervisor captura.</span></td><td class="no" style="width:16%">—<span class="cell-note">Consulta</span></td><td class="no" style="width:16%">—<span class="cell-note">Consulta</span></td><td class="yes" style="width:16%">✓<span class="cell-note">Solo propias</span></td></tr>
+      <tr><td style="width:52%"><b>Autorizar cierre</b></td><td class="no" style="width:16%">—<span class="cell-note">Consulta</span></td><td class="no" style="width:16%">—<span class="cell-note">Consulta</span></td><td class="yes" style="width:16%">✓<span class="cell-note">Solo propias</span></td></tr>
+      <tr><td style="width:52%"><b>Generar y compartir reporte al cliente</b><span class="cell-note">Dirección y Administración descargan el PDF desde el detalle de la orden.</span></td><td class="no" style="width:16%">—</td><td class="no" style="width:16%">—</td><td class="yes" style="width:16%">✓<span class="cell-note">Solo propias</span></td></tr>
+      <tr><td style="width:52%"><b>Gestionar quejas y encuestas</b></td><td class="no" style="width:16%">—<span class="cell-note">Consulta</span></td><td class="yes" style="width:16%">✓<span class="cell-note">Su unidad</span></td><td class="yes" style="width:16%">✓<span class="cell-note">Solo propias</span></td></tr>
+      <tr><td style="width:52%"><b>Exportar PDF de la orden</b></td><td class="yes" style="width:16%">✓</td><td class="yes" style="width:16%">✓<span class="cell-note">Su unidad</span></td><td class="yes" style="width:16%">✓<span class="cell-note">Solo propias</span></td></tr>
+      <tr><td style="width:52%"><b>Exportar Excel</b></td><td class="yes" style="width:16%">✓</td><td class="yes" style="width:16%">✓<span class="cell-note">Su unidad</span></td><td class="no" style="width:16%">—</td></tr>
+      <tr><td style="width:52%"><b>Consultar indicadores</b><span class="cell-note">El supervisor ve sus propias cifras en Hoy.</span></td><td class="yes" style="width:16%">✓</td><td class="yes" style="width:16%">✓<span class="cell-note">Su unidad</span></td><td class="no" style="width:16%">—</td></tr>
+      <tr><td style="width:52%"><b>Exportar indicadores</b></td><td class="yes" style="width:16%">✓</td><td class="yes" style="width:16%">✓<span class="cell-note">Su unidad</span></td><td class="no" style="width:16%">—</td></tr>
+      <tr><td style="width:52%"><b>Exportar respaldo de datos</b></td><td class="yes" style="width:16%">✓<span class="cell-note">Unidad seleccionada</span></td><td class="yes" style="width:16%">✓<span class="cell-note">Su unidad</span></td><td class="no" style="width:16%">—</td></tr>
+      <tr><td style="width:52%"><b>Administrar usuarios y permisos</b> *<span class="cell-note">Hoy solo Dirección da de alta, edita y desactiva usuarios. Cada quien edita su propio teléfono.</span></td><td class="yes" style="width:16%">✓</td><td class="no" style="width:16%">—</td><td class="no" style="width:16%">—</td></tr>
+      <tr><td style="width:52%"><b>Administrar catálogos</b> *<span class="cell-note">Clientes, sitios y personal por unidad; tipos de servicio y materiales son de toda la empresa.</span></td><td class="yes" style="width:16%">✓</td><td class="yes" style="width:16%">✓<span class="cell-note">Su unidad</span></td><td class="no" style="width:16%">—</td></tr>
+      <tr><td style="width:52%"><b>Ver todas las unidades</b> *<span class="cell-note">Hoy solo Dirección ve otras unidades.</span></td><td class="yes" style="width:16%">✓</td><td class="no" style="width:16%">—<span class="cell-note">Su unidad</span></td><td class="no" style="width:16%">—<span class="cell-note">Sus asignaciones</span></td></tr>
     </tbody>
   </table>
   <div class="note rule"><b class="note-t">Regla de negocio</b><p>Lo que cada rol ve en todas las pantallas sigue la misma regla: el <b>supervisor</b>, sus órdenes asignadas; <b>Administración</b>, las de su unidad; <b>Dirección</b>, todas o la unidad elegida en el filtro de unidad, que se aplica a toda la app.</p></div>
 
   <h2 class="section">Secciones por rol</h2>
-  <table class="matrix">
-    <colgroup><col style="width:52%"><col style="width:16%"><col style="width:16%"><col style="width:16%"></colgroup>
-    <thead><tr><th>Sección</th><th>Supervisor</th><th>Administración</th><th>Dirección</th></tr></thead>
+  <table class="matrix" style="table-layout:fixed">
+    <thead><tr><th style="width:52%">Sección</th><th style="width:16%">Supervisor</th><th style="width:16%">Administración</th><th style="width:16%">Dirección</th></tr></thead>
     <tbody>
-      <tr><td><b>Inicio</b> (en el teléfono, <b>Hoy</b>)</td><td class="yes">✓</td><td class="yes">✓</td><td class="yes">✓</td></tr>
-      <tr><td><b>Pendientes</b></td><td class="yes">✓</td><td class="yes">✓</td><td class="yes">✓</td></tr>
+      <tr><td style="width:52%"><b>Inicio</b> (en el teléfono, <b>Hoy</b>)</td><td class="yes" style="width:16%">✓</td><td class="yes" style="width:16%">✓</td><td class="yes" style="width:16%">✓</td></tr>
+      <tr><td style="width:52%"><b>Pendientes</b></td><td class="yes" style="width:16%">✓</td><td class="yes" style="width:16%">✓</td><td class="yes" style="width:16%">✓</td></tr>
       <tr><td colspan="4"><h4 style="margin:0">Operación</h4></td></tr>
-      <tr><td><b>Órdenes</b></td><td class="yes">✓</td><td class="yes">✓</td><td class="yes">✓</td></tr>
-      <tr><td><b>Nueva orden</b></td><td class="no">—</td><td class="yes">✓</td><td class="no">—</td></tr>
-      <tr><td><b>Mapa</b></td><td class="yes">✓</td><td class="yes">✓</td><td class="yes">✓</td></tr>
-      <tr><td><b>Agenda</b></td><td class="yes">✓</td><td class="no">—</td><td class="no">—</td></tr>
-      <tr><td><b>Evidencias</b></td><td class="yes">✓</td><td class="no">—</td><td class="no">—</td></tr>
-      <tr><td><b>Incidencias</b></td><td class="yes">✓</td><td class="no">—</td><td class="no">—</td></tr>
-      <tr><td><b>Pantalla de la jornada</b></td><td class="yes">✓</td><td class="yes">✓<span class="cell-note">Modo consulta</span></td><td class="yes">✓<span class="cell-note">Modo consulta</span></td></tr>
+      <tr><td style="width:52%"><b>Órdenes</b></td><td class="yes" style="width:16%">✓</td><td class="yes" style="width:16%">✓</td><td class="yes" style="width:16%">✓</td></tr>
+      <tr><td style="width:52%"><b>Nueva orden</b></td><td class="no" style="width:16%">—</td><td class="yes" style="width:16%">✓</td><td class="no" style="width:16%">—</td></tr>
+      <tr><td style="width:52%"><b>Mapa</b></td><td class="yes" style="width:16%">✓</td><td class="yes" style="width:16%">✓</td><td class="yes" style="width:16%">✓</td></tr>
+      <tr><td style="width:52%"><b>Agenda</b></td><td class="yes" style="width:16%">✓</td><td class="no" style="width:16%">—</td><td class="no" style="width:16%">—</td></tr>
+      <tr><td style="width:52%"><b>Evidencias</b></td><td class="yes" style="width:16%">✓</td><td class="no" style="width:16%">—</td><td class="no" style="width:16%">—</td></tr>
+      <tr><td style="width:52%"><b>Incidencias</b></td><td class="yes" style="width:16%">✓</td><td class="no" style="width:16%">—</td><td class="no" style="width:16%">—</td></tr>
+      <tr><td style="width:52%"><b>Pantalla de la jornada</b></td><td class="yes" style="width:16%">✓</td><td class="yes" style="width:16%">✓<span class="cell-note">Modo consulta</span></td><td class="yes" style="width:16%">✓<span class="cell-note">Modo consulta</span></td></tr>
       <tr><td colspan="4"><h4 style="margin:0">Seguimiento</h4></td></tr>
-      <tr><td><b>Reportes</b> y espacio para compartir el reporte</td><td class="yes">✓</td><td class="no">—</td><td class="no">—</td></tr>
-      <tr><td><b>Postventa</b></td><td class="yes">✓</td><td class="yes">✓</td><td class="yes">✓<span class="cell-note">Consulta</span></td></tr>
-      <tr><td><b>Clientes</b></td><td class="yes">✓<span class="cell-note">Los de sus órdenes</span></td><td class="yes">✓</td><td class="yes">✓</td></tr>
-      <tr><td><b>Bitácora</b></td><td class="yes">✓<span class="cell-note">Sus órdenes y acciones</span></td><td class="yes">✓</td><td class="yes">✓</td></tr>
+      <tr><td style="width:52%"><b>Reportes</b> y espacio para compartir el reporte</td><td class="yes" style="width:16%">✓</td><td class="no" style="width:16%">—</td><td class="no" style="width:16%">—</td></tr>
+      <tr><td style="width:52%"><b>Postventa</b></td><td class="yes" style="width:16%">✓</td><td class="yes" style="width:16%">✓</td><td class="yes" style="width:16%">✓<span class="cell-note">Consulta</span></td></tr>
+      <tr><td style="width:52%"><b>Clientes</b></td><td class="yes" style="width:16%">✓<span class="cell-note">Los de sus órdenes</span></td><td class="yes" style="width:16%">✓</td><td class="yes" style="width:16%">✓</td></tr>
+      <tr><td style="width:52%"><b>Bitácora</b></td><td class="yes" style="width:16%">✓<span class="cell-note">Sus órdenes y acciones</span></td><td class="yes" style="width:16%">✓</td><td class="yes" style="width:16%">✓</td></tr>
       <tr><td colspan="4"><h4 style="margin:0">Gestión</h4></td></tr>
-      <tr><td><b>Indicadores</b></td><td class="no">—</td><td class="yes">✓</td><td class="yes">✓</td></tr>
-      <tr><td><b>Equipo</b></td><td class="no">—</td><td class="yes">✓</td><td class="yes">✓</td></tr>
+      <tr><td style="width:52%"><b>Indicadores</b></td><td class="no" style="width:16%">—</td><td class="yes" style="width:16%">✓</td><td class="yes" style="width:16%">✓</td></tr>
+      <tr><td style="width:52%"><b>Equipo</b></td><td class="no" style="width:16%">—</td><td class="yes" style="width:16%">✓</td><td class="yes" style="width:16%">✓</td></tr>
       <tr><td colspan="4"><h4 style="margin:0">Sistema</h4></td></tr>
-      <tr><td><b>Configuración</b></td><td class="yes">✓<span class="cell-note">2 pestañas</span></td><td class="yes">✓<span class="cell-note">3 pestañas</span></td><td class="yes">✓<span class="cell-note">4 pestañas</span></td></tr>
-      <tr><td><b>Centro de ayuda</b></td><td class="yes">✓</td><td class="yes">✓</td><td class="yes">✓</td></tr>
+      <tr><td style="width:52%"><b>Configuración</b></td><td class="yes" style="width:16%">✓<span class="cell-note">2 pestañas</span></td><td class="yes" style="width:16%">✓<span class="cell-note">3 pestañas</span></td><td class="yes" style="width:16%">✓<span class="cell-note">4 pestañas</span></td></tr>
+      <tr><td style="width:52%"><b>Centro de ayuda</b></td><td class="yes" style="width:16%">✓</td><td class="yes" style="width:16%">✓</td><td class="yes" style="width:16%">✓</td></tr>
     </tbody>
   </table>
   <p>En el teléfono, la barra inferior tiene <b>Hoy</b>, <b>Órdenes</b>, una tercera pestaña (<b>Agenda</b> para el supervisor, <b>Indicadores</b> para Administración y Dirección), <b>Pendientes</b> y <b>Menú</b>, que reúne las demás secciones.</p>

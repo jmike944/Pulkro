@@ -87,14 +87,6 @@ async function captureSomething(page) {
     await settle(page, 800);
     await snap(page, "21-escritorio-sin-conexion");
 
-    // the sync sheet
-    await page.getByRole("button", { name: /^Sin conexión/ }).first().click();
-    await settle(page, 1200);
-    const sh = await page.getByRole("dialog").boundingBox();
-    await snap(page, "21-cola-escritorio", { clip: { x: sh.x, y: 0, width: sh.width, height: 450 } });
-    await page.keyboard.press("Escape");
-    await settle(page, 600);
-
     await close();
   }
   await done();

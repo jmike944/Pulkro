@@ -60,13 +60,6 @@ const clip = (b, pad = 16, maxH = 99999) => ({ x: b.x - pad, y: b.y - pad, width
     await page.keyboard.press("Escape");
     await settle(page, 500);
 
-    // Mis datos
-    await page.getByRole("button", { name: "Mis datos" }).click();
-    await settle(page, 900);
-    await snap(page, "20-mis-datos", { el: page.getByRole("dialog"), padding: 0 });
-    await page.keyboard.press("Escape");
-    await settle(page, 600);
-
     // Editar usuario
     await page.getByRole("listitem").filter({ hasText: "Emilio Saucedo" }).getByRole("button", { name: "Editar" }).click();
     await settle(page, 1000);
@@ -93,13 +86,6 @@ const clip = (b, pad = 16, maxH = 99999) => ({ x: b.x - pad, y: b.y - pad, width
       return lis[8].getBoundingClientRect().bottom;
     });
     await snap(page, "20-matriz", { clip: { x: mb.x - 16, y: mb.y - 16, width: 1092, height: rowBottom - mb.y + 24 } });
-    // pending decisions box
-    const pd = page.getByText("Decisiones pendientes de permisos");
-    const legend = page.getByText("Permitido", { exact: true }).first();
-    const lb = await scrollTo(page, legend, 120);
-    await snap(page, "20-matriz-leyenda", { clip: { x: lb.x - 40, y: lb.y - 16, width: 1092, height: 84 } });
-    void pd;
-
     // Catálogos · Clientes y sitios (list), then the first client expanded (left column: the site map needs tiles)
     await page.getByRole("tab", { name: /Catálogos/ }).click();
     await settle(page, 1500);
@@ -132,12 +118,6 @@ const clip = (b, pad = 16, maxH = 99999) => ({ x: b.x - pad, y: b.y - pad, width
     await page.keyboard.press("Escape");
     await settle(page, 600);
 
-    // Tipos de servicio
-    await page.getByRole("button", { name: /^Tipos de servicio/ }).click();
-    await settle(page, 1500);
-    const tb = await scrollTo(page, page.getByRole("button", { name: /^Clientes y sitios/ }), 120);
-    await snap(page, "20-catalogo-servicios", { clip: { x: tb.x - 16, y: tb.y - 16, width: 1092, height: 560 } });
-
     // Privacidad
     // (a tab click right after changing the catalog section leaves the panel blank with reduced motion: load the tab by URL)
     await page.goto(url("/configuracion?tab=privacidad"));
@@ -158,11 +138,6 @@ const clip = (b, pad = 16, maxH = 99999) => ({ x: b.x - pad, y: b.y - pad, width
     const db = await scrollTo(page, dd, 100);
     const bk = await page.getByRole("button", { name: "Exportar respaldo (JSON)" }).boundingBox();
     await snap(page, "20-datos-dispositivo", { clip: { x: db.x - 16, y: db.y - 16, width: 1384 - db.x + 16, height: bk.y + bk.height + 76 - db.y } });
-    // Restablecer datos de demostración (confirmation)
-    await page.getByRole("button", { name: "Restablecer datos de demostración" }).click();
-    await settle(page, 900);
-    await snap(page, "20-restablecer", { el: page.getByRole("dialog"), padding: 0 });
-    await page.keyboard.press("Escape");
     await close();
   }
 

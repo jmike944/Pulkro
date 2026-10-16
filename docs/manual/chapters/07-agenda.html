@@ -1,0 +1,170 @@
+<section class="chapter" id="cap-agenda">
+  <header class="opener">
+    <div class="num">Operación</div>
+    <h1>Agenda y <em>asignación</em></h1>
+    <p class="desc">La agenda reúne <b>las jornadas de sus órdenes</b> por semana, por día o en lista. Desde aquí <b>programa fechas y cuadrillas</b>, reprograma una jornada y cambia al personal entre jornadas, siempre con un motivo que queda en la bitácora.</p>
+    <div class="glass">
+      <div><div class="eyebrow">En este capítulo</div><ul><li>La pantalla Agenda</li><li>Carga de personal y dobles asignaciones</li><li>Semana, Día y Lista</li><li>Estados de una jornada</li><li>Programar una orden</li><li>La hoja de la jornada</li><li>Cambiar cuadrilla y reprogramar</li><li>Una orden, varias jornadas</li></ul></div>
+      <div class="who"><div class="eyebrow">Disponible para</div><span class="roles"><span class="role sup">Supervisor</span><span class="role adm off">Administración</span><span class="role dir off">Dirección</span></span></div>
+    </div>
+  </header>
+
+  <p class="lead">Cada orden se ejecuta en una o varias <b>jornadas</b>: un día de trabajo con su horario, su cuadrilla, su entrada, su salida y sus fotos. La agenda es el lugar donde el supervisor decide <b>qué día</b> se trabaja y <b>con quién</b>.</p>
+  <p>La agenda es del supervisor: muestra solo las órdenes que tiene asignadas y el personal de su unidad. Dirección y Administración no la tienen en su menú; consultan las jornadas de cada orden en su pestaña <span class="ui">Jornadas</span> (consulte el capítulo <em>Órdenes</em>). En el escritorio se abre desde <span class="path">Operación<span class="sep">›</span>Agenda</span>; en el teléfono, desde la pestaña <span class="ui">Agenda</span> de la barra inferior.</p>
+
+  <h2 class="section">La pantalla Agenda</h2>
+  <p>Bajo el título, una línea resume la semana: cuántas jornadas hay, cuántas personas tienen trabajo asignado, cuántas órdenes siguen sin cuadrilla o con fechas por confirmar y cuántas jornadas están en curso en este momento.</p>
+  <figure class="shot"><div class="frame"><img src="shots/07-semana.jpg" alt="Agenda en el escritorio, vista Semana"><span class="mark" style="left:83.8%;top:15%">1</span><span class="mark" style="left:58.6%;top:29.2%">2</span><span class="mark" style="left:21.4%;top:34.2%">3</span><span class="mark" style="left:22.8%;top:47.9%">4</span><span class="mark" style="left:55.9%;top:68.6%">5</span><span class="mark" style="left:75.8%;top:29.3%">6</span></div><figcaption><b>Agenda en el escritorio.</b> La vista Semana con la carga de personal, el aviso de dobles asignaciones y el panel Por asignar.</figcaption></figure>
+  <ol class="legend">
+    <li><b>Navegación.</b> <span class="ui">Hoy</span> regresa a la fecha actual; las flechas pasan a la semana (o al día) anterior o siguiente.</li>
+    <li><b>Vistas.</b> <span class="ui">Semana</span>, <span class="ui">Día</span> y <span class="ui">Lista</span>.</li>
+    <li><b>Carga de personal.</b> Personas asignadas cada día contra las disponibles de su unidad.</li>
+    <li><b>Doble asignación.</b> Personas que tienen dos jornadas abiertas el mismo día.</li>
+    <li><b>Jornada.</b> Cada bloque es un día de trabajo de una orden. Púlselo para abrir su hoja.</li>
+    <li><b>Por asignar.</b> Órdenes sin cuadrilla o con fechas por confirmar, listas para programar.</li>
+  </ol>
+  <h3>Órdenes por asignar</h3>
+  <p>El panel <b>Por asignar</b> reúne las órdenes que necesitan su intervención antes de poder ejecutarse:</p>
+  <ul>
+    <li>Órdenes en <span class="pill slate">Borrador</span>: Administración las dio de alta y todavía no tienen jornadas ni cuadrilla. El botón dice <span class="ui primary">Programar</span>.</li>
+    <li>Órdenes <span class="pill amber">Reprogramada</span>: alguien movió sus fechas y usted debe confirmarlas. El botón dice <span class="ui primary">Confirmar fechas</span> y debajo aparece, en ámbar, el último motivo registrado.</li>
+  </ul>
+  <p>Cada tarjeta muestra el título, el folio y el cliente, el estado, la fecha y hora previstas y cuántas jornadas se planearon; toque el título para abrir la orden completa. Cuando no queda nada pendiente, el panel dice <b>Todo programado</b>. En pantallas anchas el panel ocupa la columna derecha; en pantallas más angostas y en el teléfono es una sección plegable arriba del calendario.</p>
+  <div class="note tip"><b class="note-t">Consejo</b><p>En el escritorio, las teclas <span class="kbd">←</span> y <span class="kbd">→</span> cambian de semana (o de día en la vista Día) y <span class="kbd">T</span> regresa a hoy, siempre que no esté escribiendo en un campo.</p></div>
+
+  <h2 class="section">Carga de personal y dobles asignaciones</h2>
+  <p>La franja <b>Carga de personal</b> muestra un recuadro por día. El número es la cantidad de personas con trabajo ese día frente a las <b>disponibles</b> de su unidad (personal activo). La barra cambia de color cuando el día se llena: <b>ámbar</b> a partir del 85 % de la plantilla y <b>rojo</b> cuando hay más asignaciones que personas. El triángulo ámbar indica cuántas personas tienen doble asignación ese día. Pulse un día para verlo en la vista Día.</p>
+  <figure class="shot crop w70"><div class="frame"><img src="shots/07-carga.jpg" alt="Franja de carga de personal y lista de dobles asignaciones"></div><figcaption><b>Carga de personal y dobles asignaciones.</b> El aviso abierto lista a cada persona con los folios y horarios que se le cruzan.</figcaption></figure>
+  <p>Una <b>doble asignación</b> es la misma persona en dos jornadas abiertas el mismo día. El aviso ámbar dice cuántas personas están en esa situación; púlselo para ver el detalle: el nombre, el día, si los horarios se <b>traslapan</b> o solo coinciden en el día, y un botón por cada jornada. Los botones con folio abren la hoja de esa jornada; cuando la otra jornada pertenece a una orden fuera de su alcance aparece como <span class="ui">Otra cuadrilla</span>, solo con su hora.</p>
+  <div class="note rule"><b class="note-t">Regla de negocio</b><p>La app <b>avisa</b> de las dobles asignaciones, pero no las impide: hay días en que una persona termina un servicio y pasa a otro. Usted decide si la deja así o si cambia la cuadrilla.</p></div>
+
+  <h2 class="section">Semana, Día y Lista</h2>
+  <p><b>Semana</b> muestra una columna por día, de lunes a sábado (el domingo aparece solo si hay trabajo). Hoy se resalta en azul con la etiqueta <span class="ui">Hoy</span> y una línea roja marca la hora actual entre las jornadas. Pulse el encabezado de un día para abrirlo en la vista Día.</p>
+  <p><b>Día</b> es una línea de tiempo de 06:00 a 22:00 (se amplía si hay trabajo nocturno) con cada jornada a la altura de su horario. Las jornadas que coinciden en horario se colocan lado a lado; la línea roja marca la hora actual y la parte ya transcurrida del día se sombrea.</p>
+  <figure class="shot crop w70"><div class="frame"><img src="shots/07-dia.jpg" alt="Vista Día de la agenda"></div><figcaption><b>Vista Día.</b> La jornada en curso aparece en azul marino; la línea roja marca la hora actual.</figcaption></figure>
+  <p><b>Lista</b> agrupa la semana por día, con una fila por jornada: horario, título de la orden, folio y cliente, número de jornada en órdenes de varios días, municipio, cuadrilla y estado. Es la vista más cómoda para leer en el teléfono.</p>
+  <div class="phones">
+    <figure class="shot phone"><div class="frame"><img src="shots/07-tel-lista.jpg" alt="Agenda en el teléfono, vista Lista"></div><figcaption><b>Lista.</b> La vista con la que abre la agenda en el teléfono.</figcaption></figure>
+    <figure class="shot phone"><div class="frame"><img src="shots/07-tel-semana.jpg" alt="Agenda en el teléfono, vista Semana"></div><figcaption><b>Semana.</b> Una tarjeta por día; deslice de lado para pasar de un día a otro.</figcaption></figure>
+  </div>
+  <div class="note phone-tip"><b class="note-t">En el teléfono</b><p>La agenda abre en <span class="ui">Lista</span> (en el escritorio, en <span class="ui">Semana</span>) y el panel <b>Por asignar</b> aparece plegado arriba del calendario. En <span class="ui">Semana</span>, la semana se abre en el día de hoy; en <span class="ui">Día</span>, si varias jornadas coinciden en horario, se listan por hora de inicio para que se lean completas.</p></div>
+
+  <h2 class="section">Estados de una jornada</h2>
+  <p>Cada bloque muestra el horario, el cliente, el folio (con <b>J2/3</b> si la orden tiene varias jornadas), las iniciales de la cuadrilla y, si aplica, el triángulo de doble asignación con su número. El color de la barra lateral y del punto indica el estado:</p>
+  <table>
+    <thead><tr><th>Estado</th><th>Cuándo aparece</th></tr></thead>
+    <tbody>
+      <tr><td><span class="pill blue">Programada</span></td><td>Tiene fecha y cuadrilla, y aún no llega su hora de inicio.</td></tr>
+      <tr><td><span class="pill sky">En curso</span></td><td>Ya tiene registro de entrada y aún no de salida. El bloque se pinta de azul marino.</td></tr>
+      <tr><td><span class="pill teal">Cerrada</span></td><td>Tiene entrada y salida registradas. Lleva una palomita.</td></tr>
+      <tr><td><span class="pill amber">Sin entrada</span></td><td>Pasó la hora de inicio y nadie ha registrado la entrada.</td></tr>
+      <tr><td><span class="pill slate">Sin cuadrilla</span></td><td>Tiene fecha pero nadie asignado. El bloque tiene borde punteado.</td></tr>
+      <tr><td><span class="pill amber">Por confirmar</span></td><td>La orden está <span class="pill amber">Reprogramada</span>: sus fechas esperan confirmación.</td></tr>
+      <tr><td><span class="pill red">Con incidencia</span></td><td>La orden tiene una incidencia abierta que impide el cierre.</td></tr>
+    </tbody>
+  </table>
+
+  <h2 class="section">Programar una orden</h2>
+  <p>Programar es darle a la orden sus <b>jornadas</b> (fecha y horario de cada día) y su <b>cuadrilla</b>. Se hace en tres pasos: <span class="ui">1. Fechas</span>, <span class="ui">2. Cuadrilla</span> y <span class="ui">3. Confirmar</span>. En el escritorio se abre un cuadro de diálogo; en el teléfono, una pantalla completa con los mismos pasos.</p>
+  <ol class="steps">
+    <li><b>Abra la orden por asignar.</b> En el panel <b>Por asignar</b>, pulse <span class="ui primary">Programar</span> (o <span class="ui primary">Confirmar fechas</span> si la orden fue reprogramada).</li>
+    <li><b>Revise las fechas.</b> La app propone una jornada por cada día planeado, a partir de la fecha y horario de la orden. Ajuste <span class="ui">Fecha</span>, <span class="ui">Inicio</span> y <span class="ui">Término</span> de cada jornada. <span class="ui">Agregar otro día</span> suma la siguiente fecha hábil (se salta los domingos); el bote de basura quita una jornada. Pulse <span class="ui primary">Continuar</span>.</li>
+    <li><b>Elija la cuadrilla.</b> Marque a las personas que trabajarán; puede buscar por nombre o especialidad. Pulse <span class="ui primary">Continuar</span>.</li>
+    <li><b>Confirme.</b> Revise el resumen, escriba el <b>motivo</b> (o elija una sugerencia), marque la casilla de confirmación y pulse <span class="ui primary">Programar</span>.</li>
+  </ol>
+  <div class="duo wide">
+    <figure class="shot crop"><div class="frame"><img src="shots/07-programar-fechas.jpg" alt="Paso Fechas con dos jornadas el mismo día marcadas en rojo"></div><figcaption><b>Paso 1, Fechas.</b> Dos jornadas el mismo día: la app marca ambas y no deja continuar.</figcaption></figure>
+    <div>
+      <h4>Lo que revisa la app</h4>
+      <p><span class="ui">Continuar</span> solo se activa cuando el paso está completo; mientras tanto, el pie del cuadro dice qué falta. Las fechas con problema se marcan en rojo:</p>
+      <ul>
+        <li><i>Ya hay otra jornada ese día</i>: una orden tiene <b>una jornada por día</b>.</li>
+        <li><i>Ya hay una jornada ejecutada ese día</i>: ese día ya se trabajó. Las jornadas ejecutadas aparecen arriba con un candado y la leyenda <i>se conserva</i>.</li>
+        <li><i>La fecha ya pasó</i>: elija hoy o un día posterior.</li>
+        <li><i>El término debe ser posterior al inicio, el mismo día</i>: cada jornada empieza y termina en el mismo día de calendario.</li>
+      </ul>
+      <p>El pie también muestra el resumen cuando todo está bien, por ejemplo <i>2 jornadas · 19 – 20 oct · 14 h</i>.</p>
+    </div>
+  </div>
+  <div class="duo wide right">
+    <div>
+      <h4>Cuadrilla y confirmación</h4>
+      <p>En el paso <b>Cuadrilla</b> solo aparece el personal activo de la unidad de la orden. Quien ya tiene otra jornada en esas fechas se muestra al final de la lista con un triángulo ámbar y el folio con la fecha (o <i>Otra cuadrilla</i> si esa orden no es suya). Puede elegirlo de todos modos.</p>
+      <p>El paso <b>Confirmar</b> resume sitio, jornadas, horas planeadas y cuadrilla, y advierte si alguien <i>quedará como doble asignación</i>. El <b>motivo</b> es obligatorio (al menos 5 caracteres); las sugerencias son <i>Programación inicial</i>, <i>Cliente confirmó fechas</i> y <i>Ajuste de disponibilidad</i>. La casilla confirma que la orden pasará a <span class="pill blue">Programada</span> y que el cambio queda en la bitácora.</p>
+    </div>
+    <figure class="shot crop"><div class="frame"><img src="shots/07-programar-confirmar.jpg" alt="Paso Confirmar con resumen, aviso de doble asignación, motivo y casilla"></div><figcaption><b>Paso 3, Confirmar.</b> Resumen, aviso de doble asignación, motivo y casilla.</figcaption></figure>
+  </div>
+  <p>Al confirmar, la orden pasa a <span class="pill blue">Programada</span> (si estaba reprogramada, recupera el estado que le corresponde) y el cambio queda en la bitácora con su usuario, la fecha y el motivo. En el escritorio aparece un aviso breve y la agenda salta a la semana de la primera jornada, con la orden resaltada. En el teléfono se muestra la pantalla <b>Orden programada</b> (o <b>Fechas confirmadas</b>); <span class="ui">Volver a la agenda</span> lo lleva a esa fecha. La app no avisa a la cuadrilla ni al cliente: comunique las fechas por los medios habituales.</p>
+  <div class="phones three">
+    <figure class="shot phone"><div class="frame"><img src="shots/07-tel-programar.jpg" alt="Paso Fechas en el teléfono"></div><figcaption><b>Fechas.</b> Los campos usan el calendario y el reloj del teléfono.</figcaption></figure>
+    <figure class="shot phone"><div class="frame"><img src="shots/07-tel-cuadrilla.jpg" alt="Paso Cuadrilla en el teléfono"></div><figcaption><b>Cuadrilla.</b> Toque a cada persona para marcarla.</figcaption></figure>
+    <figure class="shot phone"><div class="frame"><img src="shots/07-tel-programada.jpg" alt="Pantalla Orden programada"></div><figcaption><b>Orden programada.</b> Resumen de la primera jornada.</figcaption></figure>
+  </div>
+
+  <h2 class="section">La hoja de la jornada</h2>
+  <div class="duo">
+    <figure class="shot crop"><div class="frame"><img src="shots/07-hoja.jpg" alt="Hoja de una jornada programada"></div><figcaption><b>Hoja de la jornada.</b> Horario, jornadas de la orden, sitio, cuadrilla y acciones.</figcaption></figure>
+    <div>
+      <p>Pulse cualquier jornada, en cualquier vista, para abrir su hoja: en el escritorio se desliza desde la derecha y en el teléfono desde abajo.</p>
+      <ul>
+        <li><b>Estados.</b> El de la jornada, su número (<b>J1/2</b>) y el de la orden.</li>
+        <li><b>Horario.</b> Día, inicio, término y horas planeadas. En curso, desde qué hora hay gente en sitio; cerrada, la entrada, la salida y las horas reales; sin entrada, el aviso en ámbar.</li>
+        <li><b>Jornadas de la orden.</b> En órdenes de varios días, un botón por jornada (<span class="ui">J1 · 19 oct</span>, <span class="ui">J2 · 20 oct</span>…) para pasar de una a otra.</li>
+        <li><b>Sitio.</b> Cliente, sitio y dirección, con un botón para abrir la ruta en mapas.</li>
+        <li><b>Cuadrilla.</b> Cada persona con su especialidad y, si tiene otra jornada ese día, el aviso <i>También</i> con el folio y la hora.</li>
+        <li><b>Detalles.</b> Supervisor, unidad, servicio, contacto en sitio (tóquelo para llamar), referencia comercial, instrucciones especiales y los últimos cambios de cuadrilla.</li>
+      </ul>
+      <p>Abajo están <span class="ui primary">Abrir jornada</span> (la pantalla de campo, capítulo <em>La jornada en campo</em>), <span class="ui">Ver orden</span>, <span class="ui">Cambiar cuadrilla</span> y <span class="ui">Reprogramar</span>.</p>
+    </div>
+  </div>
+
+  <h2 class="section">Cambiar cuadrilla y reprogramar</h2>
+  <div class="duo wide">
+    <figure class="shot crop"><div class="frame"><img src="shots/07-cambiar-cuadrilla.jpg" alt="Cambiar cuadrilla con una persona que entra y otra que sale"></div><figcaption><b>Cambiar cuadrilla.</b> El cambio aplica a las dos jornadas pendientes de la orden.</figcaption></figure>
+    <div>
+      <h3>Cambiar la cuadrilla</h3>
+      <p>Las cuadrillas son variables: una orden puede cambiar de personal entre una jornada y otra. Desde la hoja, pulse <span class="ui">Cambiar cuadrilla</span>.</p>
+      <ol class="steps">
+        <li><b>Elija el alcance.</b> El cambio aplica a la jornada que abrió (<i>solo esta jornada</i>). Si hay otras jornadas pendientes, active <span class="ui">Aplicar a todas las jornadas pendientes</span>.</li>
+        <li><b>Marque y desmarque personas.</b> La app resume el cambio en <b>Entran</b> y <b>Salen</b>.</li>
+        <li><b>Indique el motivo</b> y pulse <span class="ui primary">Guardar cuadrilla</span>.</li>
+      </ol>
+      <p>Cada cambio queda en el <b>historial de cuadrilla</b> de la orden con la fecha, quién lo hizo y el motivo. La cuadrilla de una jornada <b>cerrada</b> ya no se cambia: es el registro de quién hizo el trabajo.</p>
+    </div>
+  </div>
+  <div class="duo wide right">
+    <div>
+      <h3>Reprogramar una jornada</h3>
+      <p>Para mover un solo día de trabajo, abra su hoja y pulse <span class="ui">Reprogramar</span>. Cambie la fecha o el horario, elija o escriba el motivo (<i>Solicitud del cliente</i>, <i>Acceso no disponible</i>, <i>Clima</i>, <i>Reasignación de personal</i>), marque la casilla y pulse <span class="ui primary">Reprogramar</span>. Las demás jornadas no se mueven y cada una conserva su cuadrilla.</p>
+      <ul>
+        <li>La nueva fecha no puede coincidir con otra jornada de la misma orden.</li>
+        <li>Debe ser posterior a la última jornada ya ejecutada.</li>
+        <li>Si no cambió ni la fecha ni el horario, el botón sigue inactivo.</li>
+      </ul>
+      <p>Con la casilla, usted confirma que avisará al contacto en sitio por los medios habituales: <b>la app no envía notificaciones</b>.</p>
+    </div>
+    <figure class="shot crop"><div class="frame"><img src="shots/07-reprogramar.jpg" alt="Reprogramar jornada con fecha anterior y nueva"></div><figcaption><b>Reprogramar jornada.</b> La tarjeta compara la fecha anterior con la nueva.</figcaption></figure>
+  </div>
+  <h3>Cuándo no se puede</h3>
+  <p>Si un botón de la hoja aparece atenuado, un candado explica por qué:</p>
+  <table class="kv">
+    <tr><td>Jornada en curso</td><td>No se reprograma: <i>La jornada ya inició: registre la salida o una incidencia.</i> La cuadrilla sí puede cambiar.</td></tr>
+    <tr><td>Jornada cerrada</td><td>Ni cuadrilla ni fecha: la jornada queda como se registró.</td></tr>
+    <tr><td>Orden finalizada, con reporte enviado, en seguimiento, archivada o cancelada</td><td><i>La orden está en “…”; su plan ya no cambia.</i></td></tr>
+  </table>
+
+  <h2 class="section">Una orden, varias jornadas</h2>
+  <div class="duo right">
+    <div>
+      <p>Una orden de varios días tiene <b>una jornada por día</b>. Cada jornada guarda su propia entrada, salida, fotos ANTES y DESPUÉS, bitácora y cuadrilla, pero la orden tiene <b>un solo cierre</b>, al terminar la última jornada (consulte el capítulo <em>Cierre y validación</em>).</p>
+      <ul>
+        <li>En la agenda, cada jornada se identifica como <b>J1/3</b>, <b>J2/3</b>, <b>J3/3</b>.</li>
+        <li>En la hoja, los botones de jornada muestran el estado de cada día con su punto de color: cerrada, en curso o pendiente.</li>
+        <li>Al cerrar una jornada que no es la última, la orden queda en <span class="pill sky">Jornada cerrada</span> hasta que empiece la siguiente.</li>
+        <li>El personal puede cambiar de una jornada a otra; cada cambio guarda su motivo.</li>
+        <li>Para sumar días o mover varias jornadas a la vez, use <span class="ui">Agregar jornada</span> o <span class="ui">Reprogramar</span> desde la orden (capítulo <em>Órdenes</em>); las jornadas ya trabajadas se conservan.</li>
+      </ul>
+    </div>
+    <figure class="shot crop"><div class="frame"><img src="shots/07-hoja-en-curso.jpg" alt="Hoja de la segunda jornada de una orden de tres días, en curso"></div><figcaption><b>Jornada 2 de 3, en curso.</b> J1 cerrada, J2 en curso, J3 pendiente. Reprogramar no está disponible porque la jornada ya inició.</figcaption></figure>
+  </div>
+</section>
