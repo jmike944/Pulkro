@@ -73,11 +73,14 @@ export function StatFilter<V extends string>({
                   transition={{ type: "spring", stiffness: 480, damping: 36 }}
                 />
               )}
-              <span className="relative flex items-center justify-between gap-2">
-                <span className="flex min-w-0 items-center gap-2 text-[13px] text-subtle">
-                  <StatusDot tone={it.tone} live={it.live && it.count > 0} />
-                  <span className={cn("truncate", on && "font-medium text-ink")}>{it.label}</span>
-                </span>
+              <span className="relative flex min-w-0 items-center gap-2 text-[13px] text-subtle">
+                <StatusDot tone={it.tone} live={it.live && it.count > 0} />
+                <span className={cn("truncate", on && "font-medium text-ink")}>{it.label}</span>
+              </span>
+              {/* The «Filtro» badge rides on the number's row, which has room to spare: on the label's row it cut «Con incidencia»
+                  short in the two-column phone layout. */}
+              <span className="relative mt-1.5 flex items-center justify-between gap-2">
+                <AnimatedNumber value={it.count} className="text-[26px] font-medium leading-none tracking-[-0.03em] text-ink" />
                 {on && (
                   <motion.span
                     initial={{ opacity: 0, scale: 0.6 }}
@@ -87,9 +90,6 @@ export function StatFilter<V extends string>({
                     Filtro
                   </motion.span>
                 )}
-              </span>
-              <span className="relative mt-1.5 flex items-baseline gap-2">
-                <AnimatedNumber value={it.count} className="text-[26px] font-medium leading-none tracking-[-0.03em] text-ink" />
               </span>
               <span className="relative mt-1 block truncate text-[12.5px] text-subtle">{it.sub}</span>
             </motion.button>
