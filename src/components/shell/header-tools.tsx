@@ -30,23 +30,39 @@ export function HeaderTools() {
   );
 }
 
+/**
+ * The palette (command-menu.tsx) opens out of the visible `[data-search-origin]` control and closes back into it: while it is
+ * open the control steps aside (the palette's copy of it stands in its place) and it comes back once the palette has shrunk
+ * into it — the delay matches the palette's closing morph.
+ */
+const ORIGIN_HIDDEN = "opacity-0 [transition:opacity_0s]";
+const ORIGIN_SHOWN = "[transition:opacity_120ms_ease_260ms,border-color_150ms,background-color_150ms,scale_150ms]";
+
 /** Round sand search button (opens the ⌘K palette) for phone headers. */
 export function SearchButton({ className }: { className?: string }) {
+  const open = useUi((s) => s.commandOpen);
   const setCommandOpen = useUi((s) => s.setCommandOpen);
   return (
     <button
       type="button"
       onClick={() => setCommandOpen(true)}
       aria-label="Buscar"
-      className={cn("inline-flex size-11 shrink-0 items-center justify-center rounded-full bg-sand text-ink transition active:scale-95 lg:hidden", className)}
+      aria-haspopup="dialog"
+      data-search-origin="button"
+      className={cn("inline-flex size-11 shrink-0 items-center justify-center rounded-full bg-sand text-ink active:scale-95 lg:hidden", open ? ORIGIN_HIDDEN : ORIGIN_SHOWN, className)}
     >
-      <Search className="size-[18px]" />
+      <SearchButtonFace />
     </button>
   );
 }
 
-/** Desktop (from `lg`): the ⌘K search pill of the card header — "Buscar órdenes, clientes, folios" + shortcut hint; opens the command palette. */
+export function SearchButtonFace() {
+  return <Search className="size-[18px]" />;
+}
+
+/** Desktop (from `lg`): the ⌘K search pill, centered in the card header — "Buscar órdenes, clientes, folios" + shortcut hint; opens the command palette. */
 export function SearchPill({ className }: { className?: string }) {
+  const open = useUi((s) => s.commandOpen);
   const setCommandOpen = useUi((s) => s.setCommandOpen);
   return (
     <button
@@ -54,15 +70,26 @@ export function SearchPill({ className }: { className?: string }) {
       onClick={() => setCommandOpen(true)}
       aria-haspopup="dialog"
       aria-keyshortcuts="Control+K Meta+K"
+      data-search-origin="pill"
       className={cn(
-        "hidden h-10 w-[clamp(240px,24vw,380px)] items-center gap-2.5 rounded-[14px] border border-hairline bg-surface px-3.5 text-left text-[14px] text-faint shadow-[0_1px_2px_rgb(16_24_40/0.03)] transition hover:border-line-strong lg:flex",
+        "hidden h-10 w-[clamp(220px,22vw,420px)] items-center gap-2.5 rounded-[14px] border border-hairline bg-surface px-3.5 text-left text-[14px] text-faint shadow-[0_1px_2px_rgb(16_24_40/0.03)] hover:border-line-strong lg:flex",
+        open ? ORIGIN_HIDDEN : ORIGIN_SHOWN,
         className,
       )}
     >
+      <SearchPillFace />
+    </button>
+  );
+}
+
+/** What the pill shows; the palette draws the same face where the pill was while it grows out of it. */
+export function SearchPillFace() {
+  return (
+    <>
       <Search className="size-[17px] shrink-0 text-subtle" />
       <span className="flex-1 truncate">Buscar órdenes, clientes, folios</span>
       <Kbd className="bg-tile text-[11px]">⌘K</Kbd>
-    </button>
+    </>
   );
 }
 

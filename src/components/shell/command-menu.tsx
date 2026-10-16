@@ -1,8 +1,10 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Command as Cmdk } from "cmdk";
+import { AnimatePresence, animate, motion, usePresence, useReducedMotion, type AnimationPlaybackControls } from "motion/react";
+import { Dialog as DialogPrimitive } from "radix-ui";
 import { ArrowUpRight, ClipboardList, Map as MapIcon, Plus, Search, WifiOff, type LucideIcon } from "lucide-react";
 import type { Client, Order, Worker } from "@/lib/types";
 import { useCan, useLookups, useMediaQuery, useScopedCatalog, useScopedData } from "@/lib/hooks";
@@ -11,11 +13,12 @@ import { cn } from "@/lib/utils";
 import { fmtDay, fmtLongDay } from "@/lib/format";
 import { mapsLink } from "@/lib/domain";
 import { ORDER_STATUS } from "@/lib/status";
-import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
 import { Kbd } from "@/components/ui/kbd";
 import { AvatarStack, PersonAvatar } from "@/components/pk/bits";
 import { ClientMark } from "@/components/pk/client-mark";
 import { OrderStatusPill, StatusDot } from "@/components/pk/status";
+import { EASE } from "@/components/pk/motion";
+import { SearchButtonFace, SearchPillFace } from "./header-tools";
 import { canSeeRoute, navFor, type NavItem } from "./nav";
 
 /**
@@ -230,20 +233,24 @@ export function CommandMenu() {
   };
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent
-        showCloseButton={false}
-        className={cn(
-          "flex flex-col gap-0 overflow-hidden rounded-[22px] p-0 shadow-lift",
-          "top-[max(12px,env(safe-area-inset-top))] translate-y-0 max-sm:max-w-[calc(100%-1rem)] lg:top-[11vh]",
-          "sm:max-w-[min(820px,calc(100%-2rem))]",
-        )}
-      >
-        <DialogTitle className="sr-only">Buscar en Pulkro</DialogTitle>
-        <DialogDescription className="sr-only">Órdenes, clientes, personal y secciones de su alcance</DialogDescription>
+    <DialogPrimitive.Root open={open} onOpenChange={onOpenChange}>
+      <AnimatePresence>
+        {open && (
+          <DialogPrimitive.Portal forceMount>
+            <DialogPrimitive.Overlay asChild forceMount>
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1, transition: { duration: 0.2 } }}
+                exit={{ opacity: 0, transition: { duration: 0.22, delay: 0.08 } }}
+                className="fixed inset-0 isolate z-50 bg-black/10 supports-backdrop-filter:backdrop-blur-xs dark:bg-black/55"
+              />
+            </DialogPrimitive.Overlay>
+            <PalettePanel wide={wide}>
+        <DialogPrimitive.Title className="sr-only">Buscar en Pulkro</DialogPrimitive.Title>
+        <DialogPrimitive.Description className="sr-only">Órdenes, clientes, personal y secciones de su alcance</DialogPrimitive.Description>
         <Cmdk shouldFilter={false} loop value={current?.key ?? ""} onValueChange={setSelected} className="flex min-h-0 min-w-0 flex-col" label="Buscar en Pulkro">
           {/* query row */}
-          <div className="flex items-center gap-3 border-b border-hairline px-4 lg:px-5">
+          <div data-palette-row="" className="flex items-center gap-3 border-b border-hairline px-4 lg:px-5">
             <Search className="size-5 shrink-0 text-subtle" aria-hidden />
             <Cmdk.Input
               value={query}
@@ -313,8 +320,180 @@ export function CommandMenu() {
             </div>
           )}
         </Cmdk>
-      </DialogContent>
-    </Dialog>
+            </PalettePanel>
+          </DialogPrimitive.Portal>
+        )}
+      </AnimatePresence>
+    </DialogPrimitive.Root>
+  );
+}
+
+/* ─────────────────────────── Opening morph ─────────────────────────── */
+
+type Origin = { rect: DOMRect; radius: number; kind: "pill" | "button" };
+
+/** The search control the palette grows out of: the header pill (lg) or the round phone button — only if it is on screen. */
+function findOrigin(): Origin | null {
+  for (const el of document.querySelectorAll<HTMLElement>("[data-search-origin]")) {
+    const rect = el.getBoundingClientRect();
+    if (!rect.width || rect.bottom <= 0 || rect.top >= window.innerHeight) continue;
+    // `rounded-full` computes to a huge radius (≈1.7e7px): cap it at the shape's own half-size, which draws the same circle
+    // and keeps the clip interpolable.
+    const radius = Math.min(parseFloat(getComputedStyle(el).borderTopLeftRadius) || 0, rect.width / 2, rect.height / 2);
+    return { rect, radius, kind: el.dataset.searchOrigin === "button" ? "button" : "pill" };
+  }
+  return null;
+}
+
+/**
+ * The clip once open: it stays, with room around the panel for its lift shadow (--sh-lift reaches ~52px below, ~28px aside and
+ * ~4px above), so the open palette looks exactly unclipped and closing starts from a known value.
+ */
+const SHADOW_ROOM = "inset(-24px -40px -64px -40px round 22px)";
+
+/**
+ * The palette's panel. It opens out of the search control that launched it (or the one on screen, for ⌘K): a copy of the
+ * control's face sits where the control was, the panel is clipped to that shape and grows into place while the copy fades
+ * into the query row; closing runs it backwards into the control. On wide screens the panel is centered under the pill.
+ * Without an origin on screen, or with reduced motion, it just fades.
+ *
+ * Only transform, clip-path and opacity animate (no layout); the row, list and preview keep their final layout throughout.
+ */
+function PalettePanel({ wide, children }: { wide: boolean; children: React.ReactNode }) {
+  const panelRef = useRef<HTMLDivElement>(null);
+  const ghostRef = useRef<HTMLDivElement>(null);
+  const bodyRef = useRef<HTMLDivElement>(null);
+  const reduced = useReducedMotion();
+  const [isPresent, safeToRemove] = usePresence();
+  // Read once, when the palette mounts: the control it opens from decides the copy drawn in its place.
+  const [origin] = useState(findOrigin);
+  /** Where the panel starts (offset and clip window), so closing can run the opening backwards. */
+  const from = useRef<{ x: number; y: number; clip: string } | null>(null);
+  const closing = useRef(false);
+  const running = useRef<AnimationPlaybackControls[]>([]);
+  /** Bumped on every run, so a stopped closing never removes a palette that was reopened meanwhile. */
+  const run = useRef(0);
+
+  const stop = () => {
+    run.current++;
+    running.current.forEach((a) => a.stop());
+    running.current = [];
+  };
+
+  /** Into place: offset and clip to the open state, the copy out, the content in. */
+  const grow = (panel: HTMLElement, ghost: HTMLElement, body: HTMLElement, start?: { x: number; y: number; clip: string }) => {
+    running.current = [
+      animate(panel, start ? { x: [start.x, 0], y: [start.y, 0], clipPath: [start.clip, SHADOW_ROOM] } : { x: 0, y: 0, clipPath: SHADOW_ROOM }, { duration: 0.46, ease: EASE }),
+      animate(ghost, { opacity: 0 }, { duration: 0.16, ease: "easeOut", delay: 0.04 }),
+      animate(body, { opacity: 1 }, { duration: 0.24, ease: "easeOut", delay: 0.08 }),
+    ];
+  };
+
+  useLayoutEffect(() => {
+    const panel = panelRef.current;
+    const ghost = ghostRef.current;
+    const body = bodyRef.current;
+    if (!panel || !ghost || !body) return;
+    if (!origin || reduced) {
+      ghost.style.display = "none";
+      running.current = [animate(panel, { opacity: [0, 1], y: [-6, 0] }, { duration: 0.18, ease: EASE })];
+      return stop;
+    }
+    // Measure the resting panel (an effect that runs twice in development finds the first run's offset and clip).
+    panel.style.transform = "";
+    panel.style.clipPath = "";
+    const p = origin.rect;
+    if (wide && origin.kind === "pill") {
+      const w = panel.offsetWidth;
+      panel.style.left = `${Math.min(Math.max(p.left + p.width / 2, 16 + w / 2), window.innerWidth - 16 - w / 2)}px`;
+    }
+    const d = panel.getBoundingClientRect();
+    const row = panel.querySelector<HTMLElement>("[data-palette-row]");
+    // The window covers the left end of the query row, vertically centred on it, so the copy's icon lands on the row's icon.
+    const top = Math.max(0, ((row?.offsetHeight ?? p.height) - p.height) / 2);
+    const px = (n: number) => `${Math.round(Math.max(0, n) * 10) / 10}px`;
+    const start = {
+      x: p.left - d.left,
+      y: p.top - d.top - top,
+      clip: `inset(${px(top)} ${px(d.width - p.width)} ${px(d.height - top - p.height)} 0px round ${px(origin.radius)})`,
+    };
+    from.current = start;
+    Object.assign(ghost.style, { top: `${top}px`, width: `${p.width}px`, height: `${p.height}px`, borderRadius: `${origin.radius}px`, opacity: "1" });
+    // First frame by hand, before paint: the panel shows exactly the control it replaces.
+    panel.style.transform = `translateX(${start.x}px) translateY(${start.y}px)`;
+    panel.style.clipPath = start.clip;
+    body.style.opacity = "0";
+    try {
+      grow(panel, ghost, body, start);
+    } catch {
+      // Never leave the search stuck in the control's shape: show it in place.
+      Object.assign(panel.style, { transform: "", clipPath: "" });
+      body.style.opacity = "1";
+      ghost.style.opacity = "0";
+      from.current = null;
+    }
+    return stop;
+    // Mount-only: the palette is remounted on every opening (a reopening while it closes is handled below).
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  useEffect(() => {
+    const panel = panelRef.current;
+    const ghost = ghostRef.current;
+    const body = bodyRef.current;
+    if (isPresent) {
+      // Reopened while it was closing (⌘K twice quickly): grow back from where it got to.
+      if (!closing.current) return;
+      closing.current = false;
+      stop();
+      if (panel && ghost && body && from.current && !reduced) grow(panel, ghost, body);
+      else if (panel) running.current = [animate(panel, { opacity: 1, y: 0 }, { duration: 0.14 })];
+      return;
+    }
+    closing.current = true;
+    stop();
+    const mine = run.current;
+    const done = () => {
+      if (mine === run.current && closing.current) safeToRemove();
+    };
+    if (!panel) return safeToRemove();
+    if (!ghost || !body || !from.current || reduced) {
+      const fade = animate(panel, { opacity: 0, y: -4 }, { duration: 0.14 });
+      running.current = [fade];
+      void fade.finished.then(done);
+      return;
+    }
+    // Back into the control, from wherever the opening got to.
+    const shrunk = animate(panel, { x: from.current.x, y: from.current.y, clipPath: from.current.clip }, { duration: 0.3, ease: [0.4, 0, 0.2, 1] });
+    running.current = [shrunk, animate(body, { opacity: 0 }, { duration: 0.12, ease: "easeIn" }), animate(ghost, { opacity: 1 }, { duration: 0.14, ease: "easeOut", delay: 0.06 })];
+    void shrunk.finished.then(done);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isPresent]);
+
+  return (
+    <DialogPrimitive.Content
+      ref={panelRef}
+      forceMount
+      className={cn(
+        "fixed left-1/2 z-50 flex w-full -translate-x-1/2 flex-col overflow-hidden rounded-[22px] bg-popover text-sm text-popover-foreground shadow-lift ring-1 ring-foreground/10 outline-none",
+        "top-[max(12px,env(safe-area-inset-top))] max-w-[calc(100%-1rem)] sm:max-w-[min(820px,calc(100%-2rem))] lg:top-[11vh]",
+      )}
+    >
+      <div ref={bodyRef} className="flex min-h-0 min-w-0 flex-col">
+        {children}
+      </div>
+      {/* the control's face, drawn where it was: visible only while the panel grows out of it or shrinks back into it */}
+      <div
+        ref={ghostRef}
+        aria-hidden
+        className={cn(
+          "pointer-events-none absolute left-0 flex items-center opacity-0",
+          origin?.kind === "button" ? "justify-center bg-sand text-ink" : "gap-2.5 border border-hairline bg-surface px-3.5 text-[14px] text-faint",
+        )}
+      >
+        {origin?.kind === "button" ? <SearchButtonFace /> : <SearchPillFace />}
+      </div>
+    </DialogPrimitive.Content>
   );
 }
 
