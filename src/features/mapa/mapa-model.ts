@@ -4,6 +4,7 @@
  * that keep two services at the same site from hiding each other.
  */
 import { parseISO } from "date-fns";
+import { fmtTime, plural } from "@/lib/format";
 import type { Tone } from "@/lib/status";
 import type { Client, Incident, Jornada, Order, ServiceType, Site, User, Worker } from "@/lib/types";
 import { dayKey } from "@/features/agenda/agenda-model";
@@ -80,13 +81,45 @@ export function matchesStatus(s: MapaService, f: StatusFilter) {
   return s.status === f;
 }
 
-export function statusCounts(services: MapaService[]) {
-  const out = { todos: services.length, en_curso: 0, terminada: 0, por_iniciar: 0, incidencia: 0 } satisfies Record<StatusFilter, number>;
-  for (const s of services) {
-    out[s.status]++;
-    if (s.openIncidents.length) out.incidencia++;
-  }
-  return out;
+type StatusStat = { count: number; sub: string };
+
+/** Earliest of some ISO times, or undefined. */
+const earliest = (isos: (string | undefined)[]) =>
+  isos.filter((x): x is string => !!x).sort((a, b) => a.localeCompare(b))[0];
+
+/**
+ * The day's counters (one per status filter) with a line of context each, like the Órdenes stages: who has been on site
+ * since when, closed services still missing a photo, services late to start (or the next start), incidents that block a
+ * closure.
+ */
+export function statusStats(services: MapaService[], now: Date): Record<Exclude<StatusFilter, "todos">, StatusStat> {
+  const of = (st: ServiceStatus) => services.filter((s) => s.status === st);
+  const live = of("en_curso");
+  const done = of("terminada");
+  const waiting = of("por_iniciar");
+  const withIncident = services.filter((s) => s.openIncidents.length > 0);
+
+  const since = earliest(live.map((s) => s.j.checkIn?.deviceAt));
+  const missingPhotos = done.filter((s) => !s.photos.antes || !s.photos.despues).length;
+  const late = waiting.filter((s) => isLate(s, now)).length;
+  const next = earliest(waiting.map((s) => s.j.plannedStart));
+  const blocking = withIncident.filter((s) => s.openIncidents.some((i) => i.blocksClosure)).length;
+
+  return {
+    en_curso: { count: live.length, sub: !live.length ? "nadie en sitio" : since ? `en sitio desde ${fmtTime(since)}` : "en sitio" },
+    terminada: {
+      count: done.length,
+      sub: !done.length ? "ninguna todavía" : missingPhotos ? plural(missingPhotos, "con fotos pendientes", "con fotos pendientes") : "con fotos completas",
+    },
+    por_iniciar: {
+      count: waiting.length,
+      sub: !waiting.length ? "sin pendientes" : late ? plural(late, "con retraso", "con retraso") : next ? `próximo a las ${fmtTime(next)}` : "por iniciar",
+    },
+    incidencia: {
+      count: withIncident.length,
+      sub: !withIncident.length ? "ninguna abierta" : blocking ? plural(blocking, "bloquea el cierre", "bloquean el cierre") : "sin bloqueos",
+    },
+  };
 }
 
 /* ───────────── pins ───────────── */

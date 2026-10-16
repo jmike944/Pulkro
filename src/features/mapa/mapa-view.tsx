@@ -19,7 +19,7 @@ import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger } from "@/components/ui/select";
 import { DocTag } from "@/features/configuracion/shared";
 import { dayKey, longDay, parseFecha } from "@/features/agenda/agenda-model";
-import { INCIDENT_TONE, SERVICE_STATUS, matchesStatus, siteNudges, statusCounts, type StatusFilter } from "./mapa-model";
+import { INCIDENT_TONE, SERVICE_STATUS, matchesStatus, siteNudges, statusStats, type StatusFilter } from "./mapa-model";
 import { useMapaData } from "./use-mapa-data";
 import { ServiceMap, type MapaPin } from "./service-map";
 import { ServiceList } from "./service-list";
@@ -73,7 +73,7 @@ export function MapaView() {
   const showSupFilter = manager && supervisors.length > 1;
   const sup = showSupFilter && supervisors.some((s) => s.id === supChoice) ? supChoice : ALL;
   const bySup = useMemo(() => (sup === ALL ? services : services.filter((s) => s.order.supervisorId === sup)), [services, sup]);
-  const counts = useMemo(() => statusCounts(bySup), [bySup]);
+  const stats = useMemo(() => statusStats(bySup, now), [bySup, now]);
   const visible = useMemo(() => bySup.filter((s) => matchesStatus(s, status)), [bySup, status]);
 
   const selected = services.find((s) => s.id === selectedId) ?? null;
@@ -128,14 +128,14 @@ export function MapaView() {
   /* ── copy ── */
   const when = isToday ? "hoy" : `el ${longDay(day).toLowerCase()}`;
   const description =
-    counts.todos === 0 ? (
+    bySup.length === 0 ? (
       <>Sin servicios {when} en su alcance.</>
     ) : (
       <>
-        <b>{counts.en_curso} en curso</b>, <b>{plural(counts.terminada, "terminada", "terminadas")}</b> y <b>{counts.por_iniciar} por iniciar</b> {when}
-        {counts.incidencia > 0 ? (
+        <b>{stats.en_curso.count} en curso</b>, <b>{plural(stats.terminada.count, "terminada", "terminadas")}</b> y <b>{stats.por_iniciar.count} por iniciar</b> {when}
+        {stats.incidencia.count > 0 ? (
           <>
-            ; <b>{counts.incidencia} con incidencia abierta</b>.
+            ; <b>{stats.incidencia.count} con incidencia abierta</b>.
           </>
         ) : (
           "."
@@ -203,7 +203,7 @@ export function MapaView() {
         {showSupFilter && <SupervisorSelect supervisors={supervisors} value={sup} onChange={setSupChoice} />}
       </div>
 
-      <StatusStrip counts={counts} value={status} onChange={setStatus} />
+      <StatusStrip stats={stats} value={status} onChange={setStatus} />
 
       {/* ── map + list ── */}
       <div className="mt-5 grid gap-6 lg:mt-6 lg:grid-cols-[minmax(0,1.55fr)_minmax(0,1fr)] lg:items-start lg:gap-8">
