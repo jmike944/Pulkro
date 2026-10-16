@@ -1,0 +1,123 @@
+<section class="chapter" id="cap-evidencias">
+  <header class="opener">
+    <div class="num">Operación</div>
+    <h1>Evidencias</h1>
+    <p class="desc">Toda la evidencia fotográfica de su operación en un solo lugar: <b>qué foto falta</b> para poder cerrar, la <b>galería</b> con su hora, origen y ubicación, y el <b>cumplimiento</b> de fotos ANTES y DESPUÉS.</p>
+    <div class="glass">
+      <div><div class="eyebrow">En este capítulo</div><ul><li>La pantalla Evidencias</li><li>Solicitudes de evidencia</li><li>Subir la foto que falta</li><li>Galería y filtros</li><li>Marcas de revisión</li><li>El visor de fotos</li><li>Cumplimiento fotográfico</li><li>Excepciones de evidencia</li></ul></div>
+      <div class="who"><div class="eyebrow">Disponible para</div><span class="roles"><span class="role sup">Supervisor</span><span class="role adm off">Administración</span><span class="role dir off">Dirección</span></span></div>
+    </div>
+  </header>
+
+  <p class="lead">Cada jornada ejecutada necesita al menos una foto <b>ANTES</b> y una foto <b>DESPUÉS</b>. Son requisito para validar el cierre de la orden y son lo que el cliente ve en el reporte. Esta pantalla le ayuda a que ninguna falte.</p>
+
+  <h2 class="section">La pantalla Evidencias</h2>
+  <p>Abra <span class="ui">Evidencias</span> en el grupo <b>Operación</b> del menú. La pantalla es del supervisor y muestra solo las órdenes a su cargo. Dirección y Administración consultan las mismas fotos, en modo de solo lectura, en la pestaña <span class="ui">Evidencia</span> de cada orden (consulte el capítulo <em>Órdenes</em>).</p>
+  <p>Debajo del título, una frase resume el estado: cuántas fotos faltan y si alguna ya venció. La pantalla tiene tres pestañas, cada una con su contador.</p>
+
+
+  <h2 class="section">Solicitudes de evidencia</h2>
+  <p>Una <b>solicitud de evidencia</b> es un aviso que la app crea sola cuando una jornada ejecutada no tiene la foto que le corresponde. Nadie la da de alta: aparece y desaparece según las fotos que existen.</p>
+  <table>
+    <thead><tr><th>Falta</th><th>Se pide desde</th><th>Vence</th></tr></thead>
+    <tbody>
+      <tr><td><b>Foto ANTES</b></td><td>El registro de entrada de la jornada</td><td>Al final del día siguiente a la entrada</td></tr>
+      <tr><td><b>Foto DESPUÉS</b></td><td>El registro de salida (mientras la cuadrilla sigue en sitio no se pide)</td><td>Al final del día siguiente a la salida</td></tr>
+    </tbody>
+  </table>
+  <figure class="shot"><div class="frame"><img src="shots/10-pendientes.jpg" alt="Pestaña Pendientes de Evidencias con una solicitud abierta"><span class="mark" style="left:20.6%;top:37.8%">1</span><span class="mark" style="left:20.6%;top:48.7%">2</span><span class="mark" style="left:71.6%;top:57.8%">3</span><span class="mark" style="left:20.6%;top:90%">4</span></div><figcaption><b>Evidencias, pestaña Pendientes.</b> Una foto DESPUÉS falta en la orden OS-24393 y vence hoy.</figcaption></figure>
+  <ol class="legend">
+    <li><b>Pestañas.</b> <span class="ui">Pendientes</span>, <span class="ui">Galería</span> y <span class="ui">Cumplimiento</span>, con el número de solicitudes, de fotos y el porcentaje del año.</li>
+    <li><b>Filtros.</b> <span class="ui">Estado</span> (Abiertas o Vencidas) y, si hay más de uno, <span class="ui">Supervisor</span>.</li>
+    <li><b>Indicadores.</b> Solicitudes abiertas, vencidas y el tiempo de respuesta de las fotos DESPUÉS.</li>
+    <li><b>Solicitud.</b> Qué foto falta, en qué orden y jornada, desde cuándo y cuándo vence.</li>
+  </ol>
+  <p>Cada fila indica <span class="ui">Requerido para cierre</span> y el plazo: <span class="pill slate">Vence en 2 días</span>, <span class="pill amber">Vence hoy</span> o <span class="pill red">Vencida por 1 día</span>. Las vencidas aparecen primero. Con el filtro <span class="ui">Estado: Vencidas</span> ve solo las que ya pasaron su plazo.</p>
+  <p>Los tres indicadores de arriba:</p>
+  <ul>
+    <li><b>Abiertas</b>: solicitudes pendientes y cuántas órdenes afectan.</li>
+    <li><b>Vencidas</b>: las que pasaron su plazo. Si hay alguna, el indicador le dice <span class="ui">Súbalas hoy</span>.</li>
+    <li><b>Respuesta</b>: cuánto tarda en llegar la primera foto DESPUÉS una vez registrada la salida, en promedio de los últimos 30 días. Si todas se tomaron antes de salir, dice <b>En sitio</b>.</li>
+  </ul>
+  <div class="note rule"><b class="note-t">Regla de negocio</b><p>Las solicitudes de órdenes canceladas y de cierres validados con una excepción autorizada no aparecen: ya no se espera esa foto.</p></div>
+
+  <h2 class="section">Subir la foto que falta</h2>
+  <div class="duo">
+    <figure class="shot crop"><div class="frame"><img src="shots/10-solicitud.jpg" alt="Panel de detalle de una solicitud de foto DESPUÉS"></div><figcaption><b>Detalle de la solicitud.</b> Las fotos ANTES de la jornada sirven de referencia para el encuadre.</figcaption></figure>
+    <div>
+      <p>Pulse una fila para abrir su detalle. En escritorio se abre un panel a la derecha con:</p>
+      <ul>
+        <li><b>Solicitud</b>: estado, vencimiento, estado del cierre de la orden y horas reales.</li>
+        <li><b>Qué se necesita</b>: la foto que falta, las áreas trabajadas y las fotos ANTES de referencia (púlselas para verlas grandes).</li>
+        <li><b>Historial</b>: entrada, fotos ANTES, salida, plazo vencido y foto recibida, con fecha y hora.</li>
+      </ul>
+      <ol class="steps">
+        <li><b>Pulse <span class="ui primary">Subir foto DESPUÉS</span>.</b> O <span class="ui">Subir foto ANTES</span>, según la solicitud.</li>
+        <li><b>Elija el área de la foto.</b> Las áreas de las fotos ANTES aparecen primero.</li>
+        <li><b>Tome la foto o elíjala de la galería.</b> <span class="ui">Tomar foto</span> abre la cámara; <span class="ui">Galería</span>, las fotos del dispositivo.</li>
+      </ol>
+      <p>Al guardarse, la solicitud pasa a <span class="pill teal">Recibida</span> y el panel muestra la comparación ANTES y DESPUÉS. Si con esa foto la orden queda lista, aparece <span class="ui primary">Validar cierre</span>.</p>
+    </div>
+  </div>
+
+  <h3>En el teléfono</h3>
+  <p>En el teléfono la solicitud se abre a pantalla completa, con el botón grande <span class="ui primary">Tomar foto DESPUÉS</span> abajo, al alcance del pulgar. Al subirla verá la pantalla <b>Evidencia recibida</b> con la comparación y el número de solicitudes que siguen abiertas.</p>
+  <div class="phones three">
+    <figure class="shot phone"><div class="frame"><img src="shots/10-tel-pendientes.jpg" alt="Lista de pendientes de evidencia en el teléfono"></div><figcaption><b>Pendientes</b> en el teléfono.</figcaption></figure>
+    <figure class="shot phone"><div class="frame"><img src="shots/10-tel-solicitud.jpg" alt="Solicitud de foto DESPUÉS en el teléfono"></div><figcaption><b>La solicitud</b> con la cámara a un toque.</figcaption></figure>
+    <figure class="shot phone"><div class="frame"><img src="shots/10-tel-recibida.jpg" alt="Pantalla Evidencia recibida con comparación antes y después"></div><figcaption><b>Evidencia recibida</b> y siguiente paso.</figcaption></figure>
+  </div>
+  <div class="note warn"><b class="note-t">Importante</b><p>Si falta una foto ANTES y el área ya se limpió, <b>no recree la escena</b>. Documente el motivo y registre una excepción autorizada al validar el cierre (vea <em>Excepciones de evidencia</em>, más adelante).</p></div>
+  <div class="note phone-tip"><b class="note-t">En el teléfono</b><p>Cada foto guarda la hora real de la toma, si es de cámara o de galería y su ubicación. Sin señal, la foto se guarda en el teléfono con marca de pendiente y se envía sola al recuperar la conexión.</p></div>
+
+  <h2 class="section">Galería y filtros</h2>
+  <p>La pestaña <span class="ui">Galería</span> reúne todas las fotos de sus órdenes, de la más reciente a la más antigua: ANTES, DESPUÉS, de incidencias y de postventa.</p>
+  <figure class="shot"><div class="frame"><img src="shots/10-galeria-filtro.jpg" alt="Galería filtrada por cliente con una foto marcada Galería y Revisar hora"></div><figcaption><b>Galería filtrada por cliente.</b> Cada foto muestra su tipo, área, fecha y hora; la tercera lleva las marcas Galería y Revisar hora.</figcaption></figure>
+  <p>Arriba están los filtros <span class="ui">Tipo</span>, <span class="ui">Cliente</span>, <span class="ui">Supervisor</span> (si hay varios) y <span class="ui">Fechas</span>; <span class="ui">Limpiar</span> los quita todos. A la derecha, el total de fotos y de órdenes que cumplen los filtros. Al pasar el puntero sobre una foto aparece el folio de su orden.</p>
+  <p><span class="ui">Fechas</span> ofrece <span class="ui">Todas las fechas</span>, <span class="ui">Hoy</span>, <span class="ui">Últimos 7 días</span>, <span class="ui">Últimos 30 días</span>, <span class="ui">Este año</span> o un rango que usted marca en el calendario. En el teléfono se abre como una hoja; su botón dice cuántas fotos verá, por ejemplo <span class="ui primary">Ver 38 fotos</span>. La galería carga 24 fotos a la vez: pulse <span class="ui">Mostrar más</span> al final para ver las siguientes.</p>
+
+  <h3>Marcas de revisión</h3>
+  <p>Algunas fotos llevan una marca sobre la miniatura. No impiden nada, pero le piden revisar la foto antes de confiar en ella:</p>
+  <table>
+    <thead><tr><th>Marca</th><th>Qué significa</th></tr></thead>
+    <tbody>
+      <tr><td><span class="ui">Galería</span></td><td>La foto se eligió de la galería del dispositivo en lugar de tomarse con la cámara de la app. Su hora es la de la toma, no la de la captura; si la foto no trae ubicación, se guarda la del teléfono al adjuntarla.</td></tr>
+      <tr><td><span class="pill amber">Revisar hora</span></td><td>La hora real de la toma cae fuera de la jornada: una foto ANTES tomada después de la salida o una foto DESPUÉS tomada antes de la entrada. Se guarda, pero queda marcada para revisión en la bitácora.</td></tr>
+      <tr><td><span class="pill amber">Pendiente</span></td><td>La foto está en el dispositivo y aún no se sincroniza.</td></tr>
+    </tbody>
+  </table>
+
+  <h2 class="section">El visor de fotos</h2>
+  <p>Pulse cualquier foto para abrirla en grande. El visor es el mismo en toda la app (galería, orden, jornada, incidencias y solicitudes). Recorra las fotos con las flechas de la pantalla, con las teclas <span class="kbd">←</span> <span class="kbd">→</span> o, en el teléfono, deslizando el dedo.</p>
+  <p>Cuando la foto tiene pareja (una ANTES y una DESPUÉS de la misma área), el visor muestra el selector <span class="ui">Foto</span> · <span class="ui">Antes y después</span>. En <b>Antes y después</b> las dos fotos se superponen y una barra divide la imagen: <b>deslice el control</b> a izquierda o derecha para descubrir el resultado. La misma comparación aparece al subir una foto desde una solicitud.</p>
+  <figure class="shot crop w80"><div class="frame"><img src="shots/10-comparar.jpg" alt="Visor en modo Antes y después con los datos de captura"></div><figcaption><b>Visor en modo Antes y después.</b> A la derecha, los datos con los que se capturó la foto DESPUÉS.</figcaption></figure>
+  <table class="kv">
+    <tr><td>Etiquetas</td><td>Tipo de foto; <span class="ui">En reporte</span> si está elegida para el reporte; <span class="pill amber">Sin sincronizar</span> si aún no llega al servidor.</td></tr>
+    <tr><td>Orden, Cliente, Jornada</td><td>Con vínculo a la orden y a la jornada.</td></tr>
+    <tr><td>Capturó</td><td>Quién tomó la foto.</td></tr>
+    <tr><td>Hora</td><td>Fecha y hora de la toma, y de dónde sale: guardada en la foto, fecha del archivo o momento en que se adjuntó.</td></tr>
+    <tr><td>Origen</td><td><b>Cámara de la app</b> o <b>Galería del dispositivo</b>.</td></tr>
+    <tr><td>GPS</td><td>Coordenadas (púlselas para abrir el mapa) y su fuente: el GPS guardado en la foto, la ubicación del teléfono al tomarla o la del teléfono al adjuntarla, que puede no ser la de la toma.</td></tr>
+    <tr><td>Incidencia</td><td>Folio de la incidencia, si la foto pertenece a una.</td></tr>
+  </table>
+  <p>El botón <span class="ui">Evidencia de la orden</span> lleva a la pestaña de evidencia de esa orden.</p>
+
+  <h2 class="section">Cumplimiento fotográfico</h2>
+  <p>La pestaña <span class="ui">Cumplimiento</span> mide cuántos cierres validados tienen fotos ANTES y DESPUÉS en cada jornada. Elija el periodo con <span class="ui">Mes</span>, <span class="ui">90 días</span> o <span class="ui">Año</span>.</p>
+  <figure class="shot crop w70"><div class="frame"><img src="shots/10-cumplimiento.jpg" alt="Pestaña Cumplimiento con el anillo de porcentaje y el avance por supervisor"></div><figcaption><b>Cumplimiento del año.</b> 41 de 44 cierres con evidencia completa y 3 con excepción.</figcaption></figure>
+  <ul>
+    <li><b>Anillo de cumplimiento</b>: porcentaje de cierres con evidencia completa, desglosado en <b>Completos</b>, <b>Con excepción</b> y <b>Sin evidencia</b>. Un consejo le dice qué foto falta más (ANTES o DESPUÉS).</li>
+    <li><b>Por supervisor</b>: cierres completos de cada supervisor y cuántos llevaron excepción.</li>
+    <li><b>Excepciones autorizadas</b> y <b>Cierres sin evidencia completa</b> (debajo): los cierres sin alguna foto, con el motivo y quién lo autorizó, y los validados sin foto ni excepción, con <span class="ui">Ver solicitud</span>.</li>
+  </ul>
+
+  <h2 class="section">Excepciones de evidencia</h2>
+  <p>A veces una foto no se puede tomar: el cliente cerró el área al terminar o no permitió fotografiarla. Para esos casos existe la <b>excepción de evidencia</b>:</p>
+  <ul>
+    <li>Se registra <b>solo al validar el cierre</b>, en la sección <span class="ui">Excepción de evidencia</span>, con una justificación de al menos 15 caracteres.</li>
+    <li>Queda <b>autorizada a nombre del supervisor</b> que valida, con fecha y hora.</li>
+    <li>Aparece en el reporte del cliente como <b>Excepción de evidencia autorizada</b>, en la bitácora y en la pestaña Cumplimiento.</li>
+    <li>Las solicitudes de esa orden dejan de aparecer en Pendientes.</li>
+    <li>Es para casos reales, no un atajo. El paso a paso está en el capítulo <em>Cierre y validación</em>.</li>
+  </ul>
+</section>

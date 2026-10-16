@@ -1,0 +1,126 @@
+<section class="chapter" id="cap-incidencias">
+  <header class="opener">
+    <div class="num">Operación</div>
+    <h1>Incidencias</h1>
+    <p class="desc">Lo que sale del plan en campo, registrado con <b>tipo, severidad, descripción y fotos</b>. Una incidencia puede <b>impedir el cierre</b> de la orden hasta que se resuelva.</p>
+    <div class="glass">
+      <div><div class="eyebrow">En este capítulo</div><ul><li>Tipos y severidad</li><li>Impide el cierre</li><li>Registrar una incidencia</li><li>En el teléfono</li><li>La pantalla Incidencias</li><li>Detalle e historial</li><li>Resolver una incidencia</li><li>Qué pasa con la orden</li></ul></div>
+      <div class="who"><div class="eyebrow">Disponible para</div><span class="roles"><span class="role sup">Supervisor</span><span class="role adm off">Administración</span><span class="role dir off">Dirección</span></span></div>
+    </div>
+  </header>
+
+  <p class="lead">Un daño, un material que no llegó, una persona que faltó, un trabajo extra que pidió el cliente: todo eso es una <b>incidencia</b>. Registrarla en el momento, con foto, deja constancia para la orden, para la bitácora y para el reporte que recibe el cliente.</p>
+  <p>La pantalla <span class="ui">Incidencias</span> (grupo <b>Operación</b>) es del supervisor: ahí registra, consulta y resuelve las incidencias de sus órdenes. También puede registrarlas desde la jornada en campo y desde el detalle de la orden. Dirección y Administración las consultan en la pestaña <span class="ui">Incidencias</span> de cada orden, sin poder registrar ni resolver.</p>
+
+  <h2 class="section">Tipos y severidad</h2>
+  <p>Cada incidencia lleva un tipo y una severidad. El tipo dice qué pasó; la severidad, qué tan grave es.</p>
+  <table>
+    <thead><tr><th>Tipo</th><th>Úselo cuando…</th></tr></thead>
+    <tbody>
+      <tr><td><b>Daños</b></td><td>Algo se rompió o se dañó en el sitio, o se encontró dañado.</td></tr>
+      <tr><td><b>Faltante de material</b></td><td>No llegó o se terminó un insumo, químico o equipo.</td></tr>
+      <tr><td><b>Faltante de personal</b></td><td>La cuadrilla llegó incompleta.</td></tr>
+      <tr><td><b>Trabajo adicional</b></td><td>El cliente pidió algo fuera del alcance de la orden.</td></tr>
+      <tr><td><b>Retraso / ausencia</b></td><td>Se llegó tarde, no se pudo entrar o el contacto no estaba.</td></tr>
+      <tr><td><b>Solicitud o queja en sitio</b></td><td>El cliente pidió un cambio o expresó una queja durante el servicio.</td></tr>
+      <tr><td><b>Otra</b></td><td>Cualquier otra situación que deba quedar registrada.</td></tr>
+    </tbody>
+  </table>
+  <p>La severidad es <span class="pill slate">Baja</span>, <span class="pill amber">Media</span> (la que viene marcada) o <span class="pill red">Alta</span>.</p>
+
+  <h3>Impide el cierre</h3>
+  <p>Al registrarla, usted decide si la incidencia <b>impide el cierre</b>. Si activa esa opción, la orden pasa a <span class="pill red">Con incidencia</span> y nadie puede validar su cierre hasta que la incidencia se resuelva. Si no la activa, la incidencia queda abierta, se documenta en la orden y en el reporte, pero no detiene la validación.</p>
+  <div class="note warn"><b class="note-t">Importante</b><p>Los criterios para decidir qué incidencias deben impedir el cierre están por definir. Por ahora lo decide el supervisor al registrarla.</p></div>
+
+  <h2 class="section">Registrar una incidencia</h2>
+  <p>Pulse <span class="ui primary">Registrar incidencia</span>. Desde la pantalla Incidencias primero elige la orden: aparecen sus órdenes activas (en ejecución, con incidencia, pendientes de validación, con jornada cerrada, reabiertas, programadas o reprogramadas) y puede buscarlas por folio, cliente o sitio. Desde la jornada o la orden, ese paso no aparece porque la orden ya está elegida.</p>
+  <div class="duo wide">
+    <figure class="shot crop"><div class="frame"><img src="shots/11-reg-tipo.jpg" alt="Formulario Registrar incidencia con tipo y severidad"></div><figcaption><b>Tipo, severidad y jornada.</b> El botón Cambiar orden regresa al paso anterior.</figcaption></figure>
+    <div>
+      <ol class="steps">
+        <li><b>Elija la orden.</b> Toque la orden donde ocurrió.</li>
+        <li><b>Elija el tipo y la severidad.</b> El elegido se marca con un borde azul.</li>
+        <li><b>Revise la jornada.</b> Si la orden tiene varias, viene marcada la que está en curso (o la última); cámbiela si ocurrió en otra.</li>
+        <li><b>Describa lo ocurrido.</b> Al menos 6 caracteres: qué pasó, dónde y qué se hizo al respecto.</li>
+        <li><b>Agregue fotos (opcional).</b> <span class="ui">Tomar foto</span> o <span class="ui">Galería</span>. Toque la ✕ de una miniatura para quitarla.</li>
+        <li><b>Decida si impide el cierre.</b> Active <span class="ui">Impide el cierre</span> si la orden no debe cerrarse hasta resolverla.</li>
+        <li><b>Pulse <span class="ui primary">Registrar incidencia</span>.</b></li>
+      </ol>
+    </div>
+  </div>
+  <div class="duo wide right">
+    <div>
+      <p>Mientras falte algo, el formulario lo dice junto al botón (por ejemplo, <i>Describa lo ocurrido (mínimo 6 caracteres)</i>) y el botón queda desactivado. Si una foto se está guardando, espere a que termine.</p>
+      <p>Con <span class="ui">Impide el cierre</span> activado, el recuadro se pone rojo y muestra el cambio exacto de estado de la orden, por ejemplo <span class="pill blue">En ejecución</span> → <span class="pill red">Con incidencia</span>.</p>
+      <p>Al registrarla, la incidencia recibe un folio (<b>INC-0399</b>, por ejemplo), queda en la bitácora de la orden con su usuario, la fecha y las fotos, y se abre su detalle.</p>
+      <div class="note tip"><b class="note-t">Consejo</b><p>Si cierra el formulario con texto o fotos sin guardar, la app pregunta <b>¿Descartar cambios?</b> antes de borrarlos.</p></div>
+    </div>
+    <figure class="shot crop"><div class="frame"><img src="shots/11-reg-detalle.jpg" alt="Descripción, fotos e interruptor Impide el cierre"></div><figcaption><b>Descripción, fotos e Impide el cierre.</b> El recuadro rojo anticipa el nuevo estado de la orden.</figcaption></figure>
+  </div>
+  <div class="note rule"><b class="note-t">Regla de negocio</b><p>Solo el supervisor asignado registra incidencias, y solo en órdenes abiertas. En una orden ya cerrada hay que reabrirla primero; el cambio genera una nueva versión del reporte.</p></div>
+
+  <h3>En el teléfono</h3>
+  <p>En el teléfono el registro es un flujo de pantalla completa en pasos (<b>Orden</b>, <b>Tipo y severidad</b>, <b>Descripción y fotos</b>), con una barra de avance arriba. <span class="ui primary">Continuar</span> avanza y la flecha ‹ regresa sin perder lo capturado. Al terminar aparece <b>Incidencia registrada</b> con su folio; <span class="ui">Ver incidencia</span> la abre.</p>
+  <div class="phones three">
+    <figure class="shot phone"><div class="frame"><img src="shots/11-tel-tipo.jpg" alt="Paso Qué pasó: tipo y severidad"></div><figcaption><b>¿Qué pasó?</b> Tipo y severidad.</figcaption></figure>
+    <figure class="shot phone"><div class="frame"><img src="shots/11-tel-detalle.jpg" alt="Paso de descripción y fotos con Impide el cierre activado"></div><figcaption><b>Descripción y fotos.</b> Con Impide el cierre activado.</figcaption></figure>
+    <figure class="shot phone"><div class="frame"><img src="shots/11-tel-registrada.jpg" alt="Pantalla Incidencia registrada"></div><figcaption><b>Incidencia registrada.</b> La orden queda Con incidencia.</figcaption></figure>
+  </div>
+  <div class="note phone-tip"><b class="note-t">En el teléfono</b><p>Sin señal, la incidencia y sus fotos se guardan en el teléfono con marca de pendiente y se envían solas al recuperar la conexión.</p></div>
+
+  <h2 class="section">La pantalla Incidencias</h2>
+  <p>Arriba, cuatro contadores y la distribución por tipo; abajo, la lista. La frase bajo el título resume cuántas están abiertas y cuántas impiden el cierre.</p>
+  <figure class="shot"><div class="frame"><img src="shots/11-incidencias.jpg" alt="Pantalla Incidencias con contadores, distribución por tipo y lista"><span class="mark" style="left:20.6%;top:25.8%">1</span><span class="mark" style="left:65.4%;top:26.2%">2</span><span class="mark" style="left:91%;top:20.5%">3</span><span class="mark" style="left:20.6%;top:74.4%">4</span><span class="mark" style="left:20.6%;top:81.8%">5</span></div><figcaption><b>Incidencias.</b> Una incidencia abierta de severidad alta detiene una orden.</figcaption></figure>
+  <ol class="legend">
+    <li><b>Contadores.</b> <b>Abiertas</b> (cuántas de severidad alta), <b>Bloquean cierre</b> (órdenes detenidas), <b>Resueltas 30 días</b> y <b>Tiempo medio</b> de resolución de los últimos 90 días.</li>
+    <li><b>Por tipo.</b> Incidencias del año por tipo. Un consejo señala la causa más frecuente.</li>
+    <li><b>Registrar incidencia.</b> Abre el formulario. <span class="ui">Exportar</span> aparece desactivado: la exportación a Excel es para Dirección y Administración.</li>
+    <li><b>Pestañas.</b> <span class="ui">Abiertas</span>, <span class="ui">Resueltas</span> y <span class="ui">Todas</span>.</li>
+    <li><b>Filtros y búsqueda.</b> <span class="ui">Tipo</span>, <span class="ui">Severidad</span>, <span class="ui">Cliente</span> (y <span class="ui">Supervisor</span> si hay varios); busque por folio, orden o texto.</li>
+  </ol>
+  <p>En <span class="ui">Abiertas</span> el orden es: primero las que impiden el cierre, luego por severidad y luego las más recientes. Cada fila muestra el folio y el tipo, la descripción con miniaturas de las fotos, la orden y el cliente, la severidad, el estado y la fecha.</p>
+
+  <h2 class="section">Detalle e historial</h2>
+  <div class="duo">
+    <figure class="shot crop"><div class="frame"><img src="shots/11-detalle.jpg" alt="Panel de detalle de una incidencia abierta que impide el cierre"></div><figcaption><b>Detalle de la incidencia.</b> El recuadro rojo indica que la orden está detenida.</figcaption></figure>
+    <div>
+      <p>Pulse una fila para abrir el detalle (en escritorio, un panel a la derecha; en el teléfono, a pantalla completa):</p>
+      <ul>
+        <li><b>Encabezado</b>: tipo, folio, cuándo se registró, orden, cliente y jornada, con las etiquetas de estado, severidad e <span class="pill red">Impide el cierre</span>.</li>
+        <li><b>Descripción</b> y <b>Fotos</b>: toque una foto para abrirla en el visor.</li>
+        <li><b>Efecto en el cierre</b>: si impide o no el cierre y el estado actual de la orden.</li>
+        <li><b>Detalle</b>: orden, cliente, sitio, jornada, supervisor y quién la registró.</li>
+        <li><b>Seguimiento</b>: el historial con fecha y hora: <i>Incidencia registrada</i>, <i>Cierre detenido</i> y <i>Pendiente de resolución</i> o <i>Resuelta · cierre liberado</i>.</li>
+      </ul>
+      <p><span class="ui">Ver orden</span> abre la pestaña Incidencias de la orden.</p>
+    </div>
+  </div>
+
+  <h2 class="section">Resolver una incidencia</h2>
+  <div class="duo right">
+    <div>
+      <ol class="steps">
+        <li><b>Abra la incidencia abierta.</b></li>
+        <li><b>Escriba la resolución.</b> En <span class="ui">Resolución</span>, toque una frase sugerida o escriba qué se hizo y con quién se acordó.</li>
+        <li><b>Pulse <span class="ui primary">Marcar como resuelta</span>.</b> Se activa cuando la resolución tiene al menos 6 caracteres.</li>
+      </ol>
+      <p>La resolución queda en la bitácora con su nombre y la hora, y se imprime en el reporte del cliente junto a la incidencia.</p>
+    </div>
+    <figure class="shot crop"><div class="frame"><img src="shots/11-resolucion.jpg" alt="Campo Resolución con frases sugeridas"></div><figcaption><b>Resolución.</b> Frases sugeridas para escribir menos.</figcaption></figure>
+  </div>
+
+  <h3>Qué pasa con la orden</h3>
+  <div class="duo">
+    <figure class="shot phone"><div class="frame"><img src="shots/11-tel-resuelta.jpg" alt="Pantalla Incidencia resuelta con el nuevo estado de la orden"></div><figcaption><b>Incidencia resuelta.</b> La app dice el cambio de estado.</figcaption></figure>
+    <div>
+      <p>Si la orden estaba <span class="pill red">Con incidencia</span> y ya no le queda <b>ninguna otra incidencia abierta que impida el cierre</b>, la orden se libera sola:</p>
+      <ul>
+        <li>Si estaba <span class="pill violet">Reabierta</span> o <span class="pill amber">Reprogramada</span>, vuelve a ese estado.</li>
+        <li>Si no, toma el estado que le dan sus jornadas: <span class="pill blue">En ejecución</span>, <span class="pill sky">Jornada cerrada</span>, <span class="pill blue">Programada</span> o <span class="pill amber">Pendiente de validación</span>.</li>
+      </ul>
+      <p>La app avisa el cambio, por ejemplo: <i>OS-24397 pasó de “Con incidencia” a “En ejecución”</i>. Si aún quedan otras incidencias que impiden el cierre, lo dice y la orden sigue detenida.</p>
+      <p>Cuando con esa resolución la orden queda lista, aparece <span class="ui primary">Validar cierre</span> (o <span class="ui primary">Ir al cierre</span> en el detalle). El cierre se explica en el capítulo <em>Cierre y validación</em>.</p>
+      <div class="note rule"><b class="note-t">Regla de negocio</b><p>Una incidencia que impide el cierre no admite excepción: hay que resolverla para poder cerrar.</p></div>
+    </div>
+  </div>
+</section>

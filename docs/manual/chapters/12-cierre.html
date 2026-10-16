@@ -1,0 +1,131 @@
+<section class="chapter" id="cap-cierre">
+  <header class="opener">
+    <div class="num">Seguimiento</div>
+    <h1>Cierre y <em>validación</em></h1>
+    <p class="desc">El supervisor revisa que el servicio esté completo, registra la <b>conformidad del cliente</b> y valida el cierre. La orden queda <b>Finalizada</b> y lista para generar el reporte.</p>
+    <div class="glass">
+      <div><div class="eyebrow">En este capítulo</div><ul><li>Cuándo se puede cerrar</li><li>La revisión</li><li>Un cierre bloqueado</li><li>Excepción de evidencia</li><li>Conformidad del cliente</li><li>Confirmar y validar</li><li>En el teléfono</li><li>Reabrir una orden cerrada</li></ul></div>
+      <div class="who"><div class="eyebrow">Disponible para</div><span class="roles"><span class="role sup">Supervisor</span><span class="role adm off">Administración</span><span class="role dir off">Dirección</span></span></div>
+    </div>
+  </header>
+
+  <p class="lead">Una orden puede tener varias jornadas, pero tiene <b>un solo cierre</b>. Validarlo es la declaración formal de que el servicio se ejecutó conforme a la orden: por eso solo lo hace el supervisor asignado, y la app no lo permite mientras falte evidencia o haya pendientes que lo impidan.</p>
+  <p>Dirección y Administración ven el estado del cierre en cada orden, pero no lo validan: el botón aparece desactivado con el aviso <i>Solo el supervisor autoriza el cierre</i>.</p>
+
+  <h2 class="section">Cuándo se puede cerrar</h2>
+  <p>El cierre se abre para órdenes en <span class="pill amber">Pendiente de validación</span> (todas las jornadas tienen registro de salida), <span class="pill violet">Reabierta</span> o <span class="pill red">Con incidencia</span>; en este último caso, solo para ver qué falta. En el detalle de la orden, la tarjeta de la derecha dice si la orden está lista.</p>
+  <p>También puede llegar al cierre desde <span class="ui">Pendientes</span> (<span class="ui primary">Validar cierre</span>), desde la lista de órdenes (<span class="ui">Cerrar</span>), al subir la última foto que faltaba, al resolver la última incidencia que lo impedía y desde la página del reporte.</p>
+  <figure class="shot"><div class="frame"><img src="shots/12-orden-lista.jpg" alt="Detalle de una orden lista para validar el cierre"><span class="mark" style="left:71%;top:61.3%">1</span><span class="mark" style="left:71%;top:76.1%">2</span><span class="mark" style="left:20.6%;top:90.2%">3</span></div><figcaption><b>Orden lista para cierre.</b> Dos jornadas cerradas y evidencia completa.</figcaption></figure>
+  <ol class="legend">
+    <li><b>Listo para validar.</b> Jornadas cerradas, evidencia completa (4 de 4) y sin incidencias que lo impidan.</li>
+    <li><b>Validar cierre.</b> Abre la validación. Si falta alguna foto, aparece <span class="ui primary">Completar evidencia</span> y, debajo, <span class="ui">Validar con excepción autorizada</span>.</li>
+    <li><b>Línea de tiempo.</b> El paso <i>Validación de cierre</i> sigue <b>Pendiente</b>.</li>
+  </ol>
+
+  <h2 class="section">La revisión: qué impide cerrar</h2>
+  <p>La ventana <b>Validar cierre de OS-…</b> empieza con la <b>Revisión</b>: una lista de requisitos, cada uno con su marca: palomita verde si se cumple, ✕ roja si bloquea y ! ámbar si es solo un aviso. Debajo siguen la conformidad del cliente, la descripción para el reporte y la confirmación.</p>
+  <table>
+    <thead><tr><th>Requisito</th><th>Si falta</th></tr></thead>
+    <tbody>
+      <tr><td>Jornadas con salida registrada</td><td>Bloquea. No admite excepción.</td></tr>
+      <tr><td>Fotos ANTES en cada jornada</td><td>Bloquea, salvo excepción autorizada.</td></tr>
+      <tr><td>Fotos DESPUÉS en cada jornada</td><td>Bloquea, salvo excepción autorizada.</td></tr>
+      <tr><td>Sin incidencias que impidan el cierre</td><td>Bloquea. No admite excepción. Las abiertas que no bloquean solo son aviso y se incluyen en el reporte.</td></tr>
+      <tr><td>Registros sincronizados</td><td>Aviso. Puede cerrar, pero el PDF definitivo espera a que todo se sincronice.</td></tr>
+    </tbody>
+  </table>
+  <div class="duo wide">
+    <figure class="shot crop"><div class="frame"><img src="shots/12-dlg-revision.jpg" alt="Diálogo Validar cierre con la lista de revisión completa"></div><figcaption><b>Validar cierre.</b> Todos los requisitos en verde.</figcaption></figure>
+    <div>
+      <p>Cuando todo está en verde, como en la figura, puede pasar directo a la conformidad del cliente.</p>
+      <p>Cada requisito pendiente trae un vínculo para resolverlo, como <span class="ui">Capturar en Jornada 1</span> o <span class="ui">Resolver INC-0399</span>. Al pulsarlo, la ventana se cierra y la app lo lleva a la jornada o a la incidencia; si ya había capturado algo, primero pregunta <b>¿Descartar cambios?</b></p>
+      <p>Mientras falte algo, el botón <span class="ui">Validar cierre</span> sigue desactivado y, a su lado, la app dice qué falta, por ejemplo <i>Pida al cliente que firme en el recuadro</i>.</p>
+    </div>
+  </div>
+
+  <h3>Un cierre bloqueado</h3>
+  <div class="duo wide right">
+    <div>
+      <p>Si hay jornadas sin salida o una incidencia que impide el cierre, la revisión lo marca en rojo y la ventana muestra el aviso: <i>Las jornadas sin salida y las incidencias que impiden el cierre no admiten excepción. Resuélvalas y vuelva a validar.</i></p>
+      <p>El botón <span class="ui">Validar cierre</span> queda desactivado y, a su lado, la app dice qué falta: <i>Resuelva los bloqueos de la lista</i>. Use <span class="ui">Ir a incidencias</span> o el vínculo del requisito para atenderlo; para resolver una incidencia, consulte el capítulo <em>Incidencias</em>.</p>
+    </div>
+    <figure class="shot crop"><div class="frame"><img src="shots/12-dlg-bloqueado.jpg" alt="Cierre bloqueado por una incidencia abierta"></div><figcaption><b>Cierre bloqueado.</b> La incidencia INC-0399 debe resolverse primero.</figcaption></figure>
+  </div>
+
+  <h2 class="section">Excepción de evidencia</h2>
+  <div class="duo wide">
+    <figure class="shot crop"><div class="frame"><img src="shots/12-dlg-excepcion.jpg" alt="Sección Excepción de evidencia con la justificación escrita"></div><figcaption><b>Excepción de evidencia.</b> La foto que falta queda cubierta por la justificación.</figcaption></figure>
+    <div>
+      <p>Cuando solo faltan fotos ANTES o DESPUÉS, el cierre se puede validar con una <b>excepción autorizada</b>. Debajo de la revisión aparece la sección <span class="ui">Excepción de evidencia</span>.</p>
+      <ol class="steps">
+        <li><b>Abra el cierre.</b> Use <span class="ui">Validar con excepción autorizada</span> en la tarjeta de la orden.</li>
+        <li><b>Escriba la justificación.</b> En <span class="ui">Justificación de la excepción</span>, explique por qué no hay foto (mínimo 15 caracteres).</li>
+        <li><b>Revise la lista.</b> El requisito cambia a ámbar con la nota <i>cubierto por la excepción</i>.</li>
+        <li><b>Continúe con la conformidad y la confirmación</b>, como en cualquier cierre.</li>
+      </ol>
+      <p>La excepción queda autorizada a su nombre, con fecha y hora, y es visible en el reporte del cliente, en la bitácora y en la pestaña Cumplimiento de Evidencias.</p>
+    </div>
+  </div>
+  <div class="note rule"><b class="note-t">Regla de negocio</b><p>Las fotos ANTES y DESPUÉS son obligatorias. La excepción existe para casos reales (el cliente cerró el área, no permitió fotografiarla) y nunca se oculta: el cliente la ve en su reporte.</p></div>
+
+  <h2 class="section">Conformidad del cliente</h2>
+  <div class="duo">
+    <figure class="shot phone"><div class="frame"><img src="shots/12-tel-paso2.jpg" alt="Paso de conformidad con la firma del cliente en el teléfono"></div><figcaption><b>Firma en el dispositivo.</b> El cliente firma con el dedo.</figcaption></figure>
+    <div>
+      <p>Registre quién aceptó el servicio y cómo. Elija uno de tres métodos:</p>
+      <table>
+        <thead><tr><th>Método</th><th>Cuándo</th><th>Qué se captura</th></tr></thead>
+        <tbody>
+          <tr><td><b>Firma en el dispositivo</b></td><td>El cliente firma en el teléfono del supervisor.</td><td>Firma obligatoria en el recuadro.</td></tr>
+          <tr><td><b>Verbal</b></td><td>Aceptó en sitio de palabra.</td><td><span class="ui">Comentario (opcional)</span>.</td></tr>
+          <tr><td><b>Por correo</b></td><td>Confirmó por correo electrónico.</td><td><span class="ui">Referencia del correo (opcional)</span>: asunto o fecha.</td></tr>
+        </tbody>
+      </table>
+      <p>En los tres casos se pide el <span class="ui">Nombre de quien acepta</span> (viene el contacto en sitio de la orden) y el <span class="ui">Puesto o relación</span>.</p>
+      <p>Para la firma, entregue el teléfono al cliente: firma con el dedo sobre la línea del recuadro <i>Firme aquí</i>. <span class="ui">Borrar</span> limpia el recuadro para firmar de nuevo.</p>
+    </div>
+  </div>
+
+  <h2 class="section">Confirmar y validar</h2>
+  <div class="duo wide right">
+    <div>
+      <ol class="steps">
+        <li><b>Revise la descripción para el reporte.</b> Viene redactada con el tipo de servicio, el sitio y las actividades. Ajústela si hace falta (mínimo 10 caracteres): aparece en el PDF que recibe el cliente.</li>
+        <li><b>Marque la confirmación.</b> <i>Confirmo que el servicio se ejecutó conforme a la orden y que la evidencia es correcta.</i></li>
+        <li><b>Pulse <span class="ui primary">Validar cierre</span>.</b> Mientras falte algo, el botón está desactivado y la app dice qué: <i>Pida al cliente que firme en el recuadro</i>, <i>Marque la casilla de confirmación</i>…</li>
+      </ol>
+      <p>La app vuelve a revisar todas las reglas al validar. Sin conexión, el cierre se guarda en el dispositivo y se sincroniza después.</p>
+    </div>
+    <figure class="shot crop"><div class="frame"><img src="shots/12-dlg-confirmar.jpg" alt="Firma capturada, descripción para el reporte y casilla de confirmación"></div><figcaption><b>Firma, descripción y confirmación.</b> Listo para validar.</figcaption></figure>
+  </div>
+
+  <h3>El resultado: Finalizada</h3>
+  <p>Al validar, la orden pasa a <span class="pill navy">Finalizada</span>. La ventana <b>Cierre validado</b> muestra la orden con la hora y la conformidad tal como aparecerá en el reporte. El siguiente paso es <span class="ui primary">Generar reporte</span> (consulte el capítulo <em>Reportes y envío al cliente</em>). El cierre queda en la bitácora con su usuario, la fecha y, si la hubo, la excepción.</p>
+  <figure class="shot crop w50"><div class="frame"><img src="shots/12-validado.jpg" alt="Ventana Cierre validado"></div><figcaption><b>Cierre validado.</b> La orden queda Finalizada y lista para el reporte v1.</figcaption></figure>
+
+  <h2 class="section">En el teléfono</h2>
+  <p>En el teléfono el cierre es un flujo de pantalla completa en tres pasos: <b>Revise la evidencia</b>, <b>Conformidad del cliente</b> y <b>Confirme el cierre</b>. <span class="ui primary">Continuar</span> avanza solo cuando el paso está completo y la flecha ‹ regresa sin perder la firma ni el texto. El tercer paso muestra <b>Así aparece en el reporte</b>: la conformidad (y la excepción, si la hay) como la verá el cliente.</p>
+  <div class="phones three">
+    <figure class="shot phone"><div class="frame"><img src="shots/12-tel-paso1.jpg" alt="Paso 1: Revise la evidencia"></div><figcaption><b>Paso 1.</b> Revise la evidencia.</figcaption></figure>
+    <figure class="shot phone"><div class="frame"><img src="shots/12-tel-paso3.jpg" alt="Paso 3: Confirme el cierre"></div><figcaption><b>Paso 3.</b> Confirme el cierre.</figcaption></figure>
+    <figure class="shot phone"><div class="frame"><img src="shots/12-tel-validado.jpg" alt="Pantalla Cierre validado en el teléfono"></div><figcaption><b>Cierre validado.</b> Generar reporte es el siguiente paso.</figcaption></figure>
+  </div>
+  <div class="note phone-tip"><b class="note-t">En el teléfono</b><p>Valide el cierre en sitio, con el cliente presente: así la firma queda capturada en el mismo momento y el reporte puede salir enseguida.</p></div>
+
+  <h2 class="section">Reabrir una orden cerrada</h2>
+  <div class="access">Disponible para <span class="roles"><span class="role sup">Supervisor</span><span class="role adm off">Administración</span><span class="role dir off">Dirección</span></span></div>
+  <p>Si después del cierre hay que corregir algo (datos del reporte, un repaso que pidió el cliente, fotos adicionales), el supervisor reabre la orden. Se pueden reabrir órdenes <span class="pill navy">Finalizada</span>, <span class="pill teal">Reporte enviado</span> o <span class="pill violet">Seguimiento postventa</span>, y solo las propias.</p>
+  <div class="duo">
+    <figure class="shot crop"><div class="frame"><img src="shots/12-reabrir.jpg" alt="Diálogo Reabrir con el motivo y la confirmación"></div><figcaption><b>Reabrir.</b> El motivo es obligatorio y queda en la bitácora.</figcaption></figure>
+    <div>
+      <ol class="steps">
+        <li><b>Abra el menú ⋯ de la orden</b> (<span class="ui">Más acciones</span>) y elija <span class="ui">Reabrir</span>.</li>
+        <li><b>Revise el resumen.</b> Cierre validado, reporte vigente, envíos registrados y estado actual.</li>
+        <li><b>Escriba el motivo.</b> Toque una sugerencia o escriba el suyo (mínimo 5 caracteres).</li>
+        <li><b>Marque la confirmación</b> y pulse <span class="ui primary">Reabrir orden</span>.</li>
+      </ol>
+      <p>La orden pasa a <span class="pill violet">Reabierta</span>. El cierre anterior <b>queda sin efecto</b>: la línea de tiempo lo indica y el reporte pide <span class="ui">Validar cierre otra vez</span>.</p>
+    </div>
+  </div>
+  <div class="note rule"><b class="note-t">Regla de negocio</b><p>Toda edición después del cierre genera una <b>nueva versión</b> del reporte. Tras reabrir hay que validar el cierre de nuevo (con las mismas reglas de fotos y conformidad); al generar el reporte sale como v2, luego v3… Las versiones anteriores y sus envíos se conservan en el historial.</p></div>
+</section>

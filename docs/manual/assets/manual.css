@@ -89,6 +89,7 @@
 
   @top-left {
     content: "Pulkro Cuadrillas · Manual de usuario";
+    white-space: nowrap;
     font-family: var(--sans);
     font-size: 7.5pt;
     color: var(--faint);
@@ -98,6 +99,8 @@
   }
   @top-right {
     content: string(chapter);
+    white-space: nowrap;
+    text-align: right;
     font-family: var(--sans);
     font-size: 7.5pt;
     font-weight: 600;
@@ -532,6 +535,7 @@ figcaption .fig {
 
 /* Numbered markers placed over a screenshot (absolute, in % of the image) and the legend that explains them. */
 .frame { position: relative; }
+.frame .pin { position: relative; display: block; }
 .mark {
   position: absolute;
   transform: translate(-50%, -50%);
@@ -946,3 +950,7 @@ hr { border: 0; border-top: 1px solid var(--hairline); margin: 14pt 0; }
 .backcover .t { font-family: var(--serif); font-size: 28pt; line-height: 1.08; color: #fff; margin: 16pt 0 8pt; letter-spacing: -0.02em; }
 .backcover .t em { color: var(--sky); }
 .backcover p { font-size: 9.5pt; max-width: 4.4in; }
+
+/* Paged.js sizes the top margin boxes before the per-page chapter title is set: give the title the room it needs. */
+.pagedjs_margin-top { grid-template-columns: 40% 0 60% !important; }
+.pagedjs_margin-top-right .pagedjs_margin-content::after { white-space: nowrap; }

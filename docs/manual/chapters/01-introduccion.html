@@ -1,0 +1,139 @@
+<section class="chapter" id="cap-introduccion">
+  <header class="opener">
+    <div class="num">Introducción</div>
+    <h1>Conozca Pulkro <em>Cuadrillas</em></h1>
+    <p class="desc">La app interna de Pulkro para llevar cada servicio de limpieza <b>de la orden autorizada al reporte con fotos</b> y a la <b>postventa</b>, con un solo registro que comparten campo y oficina.</p>
+    <div class="glass">
+      <div><div class="eyebrow">En este capítulo</div><ul><li>Para qué sirve la app</li><li>Los tres roles</li><li>Conceptos clave</li><li>El flujo de un servicio</li><li>Los estados de una orden</li><li>Reglas que conviene conocer</li><li>Teléfono y escritorio</li></ul></div>
+      <div class="who"><div class="eyebrow">Disponible para</div><span class="roles"><span class="role sup">Supervisor</span><span class="role adm">Administración</span><span class="role dir">Dirección</span></span></div>
+    </div>
+  </header>
+
+  <p class="lead">Pulkro Cuadrillas reúne en una sola app lo que antes vivía en papel, mensajes y hojas de cálculo: quién va a cada servicio, a qué hora entró y salió la cuadrilla, qué fotos se tomaron, qué pasó en el sitio, cuándo se cerró el trabajo y qué opinó el cliente.</p>
+
+  <h2 class="section">Para qué sirve la app</h2>
+  <p>Pulkro presta servicios de limpieza en Monterrey y su zona con cuadrillas que cambian de un servicio a otro. La app acompaña cada servicio desde que llega <b>ya autorizado</b> hasta que el cliente lo califica:</p>
+  <ul>
+    <li><b>Administración</b> da de alta la orden de servicio con el cliente, el sitio, las actividades, los materiales y el contacto en sitio.</li>
+    <li>El <b>supervisor</b> arma la cuadrilla, programa las jornadas y, en el sitio, registra la entrada y la salida con hora y ubicación, toma las fotos ANTES y DESPUÉS y anota las incidencias.</li>
+    <li>Al terminar, el supervisor <b>valida el cierre</b>, genera el reporte con fotos y lo comparte con el cliente por WhatsApp o correo.</li>
+    <li>Después viene la <b>postventa</b>: la encuesta de satisfacción, las quejas y su seguimiento.</li>
+    <li><b>Dirección</b> y <b>Administración</b> consultan el historial, los indicadores y exportan la información de su alcance.</li>
+  </ul>
+  <div class="cards">
+    <div class="card tint"><span class="t">Lo que la app no hace</span><p>No cotiza ni autoriza servicios: el trabajo llega autorizado desde el sistema comercial. Tampoco envía alertas automáticas: lo que espera acción de cada quien se reúne en <span class="ui">Pendientes</span> y en las notificaciones de la app.</p></div>
+    <div class="card tint"><span class="t">El cliente no entra a la app</span><p>El cliente no tiene cuenta ni instala nada. Recibe el reporte por WhatsApp o correo y responde la encuesta desde un enlace que abre en su teléfono o computadora.</p></div>
+  </div>
+  <p>Los trabajadores de la cuadrilla tampoco necesitan usar la app: el supervisor captura por ellos y puede cambiar la cuadrilla entre jornadas.</p>
+
+  <h2 class="section">Los tres roles</h2>
+  <p>Cada persona entra con su cuenta individual y un rol. El rol decide <b>qué puede hacer</b>; la unidad y las asignaciones deciden <b>qué información ve</b>. Nadie ve más de lo que le corresponde, ni siquiera en la búsqueda o en los indicadores.</p>
+  <table>
+    <thead><tr><th style="width:17%">Rol</th><th style="width:45%">Qué hace</th><th>Qué ve</th></tr></thead>
+    <tbody>
+      <tr><td><span class="role sup">Supervisor</span></td><td>Organiza la cuadrilla y las jornadas, registra entrada y salida con GPS, toma las fotos, registra y resuelve incidencias, valida el cierre, genera y comparte el reporte, reabre sus órdenes cerradas y atiende la postventa de sus servicios. Trabaja sobre todo desde el teléfono.</td><td><b>Sus asignaciones</b>: las órdenes en las que es el supervisor y los clientes de esas órdenes. Sus propias cifras aparecen en Hoy.</td></tr>
+      <tr><td><span class="role adm">Administración</span></td><td>Da de alta y edita las órdenes, envía encuestas y gestiona los casos de postventa, consulta las jornadas, fotos e incidencias de cada orden, revisa indicadores, exporta PDF y Excel y mantiene los catálogos de su unidad.</td><td><b>Su unidad</b>: todas las órdenes, clientes y personal de la unidad a la que pertenece.</td></tr>
+      <tr><td><span class="role dir">Dirección</span></td><td>Consulta la operación completa, los indicadores y las exportaciones, administra las cuentas de usuario y los catálogos. No captura en campo ni da de alta órdenes.</td><td><b>Todas las unidades</b> o la unidad que elija en el selector de unidad.</td></tr>
+    </tbody>
+  </table>
+  <p>Las secciones del menú también cambian con el rol. Esta es la vista general; la matriz completa de permisos está en el capítulo <i>Apéndice: roles, permisos y estados</i>.</p>
+  <table class="matrix">
+    <thead><tr><th>Sección</th><th>Supervisor</th><th>Administración</th><th>Dirección</th></tr></thead>
+    <tbody>
+      <tr><td>Inicio · Pendientes · Órdenes · Mapa</td><td class="yes">✓</td><td class="yes">✓</td><td class="yes">✓</td></tr>
+      <tr><td>Agenda · Evidencias · Incidencias · Reportes</td><td class="yes">✓</td><td class="no">—<span class="cell-note">Consulta en la orden</span></td><td class="no">—<span class="cell-note">Consulta en la orden</span></td></tr>
+      <tr><td>Postventa · Clientes · Bitácora</td><td class="yes">✓</td><td class="yes">✓</td><td class="yes">✓</td></tr>
+      <tr><td>Indicadores · Equipo</td><td class="no">—</td><td class="yes">✓</td><td class="yes">✓</td></tr>
+      <tr><td>Nueva orden</td><td class="no">—</td><td class="yes">✓</td><td class="no">—</td></tr>
+      <tr><td>Configuración · Centro de ayuda</td><td class="yes">✓</td><td class="yes">✓</td><td class="yes">✓</td></tr>
+    </tbody>
+  </table>
+  <div class="note rule"><b class="note-t">Regla de negocio</b><p>Dirección y Administración pueden abrir una jornada en <b>modo consulta</b>: ven horario, entrada y salida con su ubicación, cuadrilla, fotos e incidencias, pero solo el supervisor captura, asigna la cuadrilla y valida el cierre.</p></div>
+
+  <h2 class="section">Conceptos clave</h2>
+  <p>Estos términos aparecen en todas las pantallas y en el resto del manual.</p>
+  <table class="kv">
+    <tbody>
+      <tr><td>Orden de servicio y folio</td><td>Un servicio autorizado para un cliente en un sitio. Cada orden tiene un <b>folio único</b>, como OS-24397, que sirve para buscarla en cualquier pantalla.</td></tr>
+      <tr><td>Unidad</td><td>La sucursal a la que pertenecen las órdenes, los clientes y el personal: Matriz Monterrey, Apodaca y Saltillo.</td></tr>
+      <tr><td>Jornada</td><td>Cada día de trabajo de una orden en el sitio. Una orden puede tener una o varias jornadas; cada una guarda su entrada y salida, sus fotos, sus incidencias y su bitácora. «J2/3» significa jornada 2 de 3.</td></tr>
+      <tr><td>Cuadrilla</td><td>Las personas que trabajan en una jornada. Es variable: el supervisor la arma para cada servicio y puede cambiarla entre jornadas; cada cambio guarda el motivo.</td></tr>
+      <tr><td>Supervisor</td><td>La persona responsable de la orden en campo. Captura toda la operación y autoriza el cierre.</td></tr>
+      <tr><td>Entrada y salida</td><td>El registro de llegada y de término de una jornada, con hora y ubicación GPS del teléfono.</td></tr>
+      <tr><td>Evidencia ANTES / DESPUÉS</td><td>Las fotos de cada área antes de empezar y al terminar. Son <b>obligatorias para cerrar</b> la orden; cada foto guarda área, hora y ubicación.</td></tr>
+      <tr><td>Incidencia</td><td>Algo que pasó en el sitio: daños, faltante de material o de personal, trabajo adicional, retraso o ausencia, solicitud o queja en sitio u otra. Lleva folio (INC-…), severidad y fotos, y puede <b>impedir el cierre</b> hasta que se resuelva.</td></tr>
+      <tr><td>Cierre</td><td>La validación final que hace el supervisor: todas las jornadas con ANTES y DESPUÉS, sin incidencias que bloqueen y con la conformidad del cliente. Una orden de varias jornadas tiene un solo cierre.</td></tr>
+      <tr><td>Reporte y versiones</td><td>El PDF con marca Pulkro que recibe el cliente: un reporte final por servicio. Si la orden se reabre para corregir algo, el siguiente reporte sale como una <b>nueva versión</b> (v2, v3…).</td></tr>
+      <tr><td>Caso de postventa</td><td>Una queja o seguimiento con el cliente, con folio (PV-…), categoría, responsable y fecha compromiso. Pasa por Abierto, En proceso, Resuelto y Cerrado.</td></tr>
+      <tr><td>Encuesta</td><td>El enlace que se envía al cliente para calificar el servicio de 1 a 5 (en general, calidad de la limpieza, puntualidad y trato del personal) y dejar un comentario, sin instalar nada.</td></tr>
+      <tr><td>Pendiente</td><td>Una tarea que espera la acción de alguien: validar un cierre, tomar una foto faltante, compartir un reporte, atender un caso.</td></tr>
+      <tr><td>Bitácora</td><td>El registro de cada cambio: quién lo hizo, cuándo y con qué motivo.</td></tr>
+    </tbody>
+  </table>
+
+  <h2 class="section">El flujo de un servicio</h2>
+  <p>El <span class="ui">Centro de ayuda</span> de la app muestra el flujo completo en 15 pasos, organizados en tres fases. Al tocar un paso, el panel de la derecha explica quién lo hace, dónde se hace en la app y bajo qué regla; <span class="ui primary">Ver recorrido</span> avanza paso por paso.</p>
+  <table>
+    <thead><tr><th style="width:20%">Fase</th><th style="width:44%">Pasos</th><th>Quién</th></tr></thead>
+    <tbody>
+      <tr><td><b>Planeación</b><span class="cell-note">01–05</span></td><td>Llega el trabajo autorizado, se da de alta la orden, se asigna la cuadrilla, se programan las jornadas y, al llegar al sitio, se registra la entrada con hora y GPS.</td><td>Administración da de alta la orden; el supervisor hace el resto.</td></tr>
+      <tr><td><b>Ejecución en campo</b><span class="cell-note">06–10</span></td><td>Fotos ANTES, trabajo y registro de incidencias, salida con hora y GPS y fotos DESPUÉS. Si quedan jornadas, se vuelve a la entrada del siguiente día.</td><td>Supervisor.</td></tr>
+      <tr><td><b>Cierre y postventa</b><span class="cell-note">11–15</span></td><td>Si la evidencia está completa se valida el cierre; luego se eligen las fotos, se genera el PDF, se comparte, se envía la encuesta y se da seguimiento. Al final, historial, indicadores y exportación.</td><td>Supervisor; postventa con Administración; consulta de Dirección y Administración.</td></tr>
+    </tbody>
+  </table>
+  <figure class="shot crop w80"><div class="frame"><img src="shots/01-flujo-operativo.jpg" alt="Diagrama del flujo operativo y postventa en el Centro de ayuda"></div><figcaption><b>Flujo operativo y postventa.</b> Los pasos bajan por Planeación, suben por Ejecución en campo y bajan por Cierre y postventa; los pasos 10 y 11 son decisiones.</figcaption></figure>
+  <div class="note tip"><b class="note-t">Consejo</b><p>Las dos decisiones controlan el cierre: <b>¿quedan jornadas pendientes?</b> (si sí, la orden pasa a <span class="pill sky">Jornada cerrada</span> y se repite la jornada) y <b>¿evidencia completa y cierre validado?</b> (si no, se corrige la evidencia o se registra una excepción autorizada).</p></div>
+
+  <h2 class="section">Los estados de una orden</h2>
+  <p>Cada orden muestra su estado con una etiqueta de color. El camino normal es este:</p>
+  <div class="flow"><span class="pill slate">Borrador</span><span class="arrow">→</span><span class="pill blue">Programada</span><span class="arrow">→</span><span class="pill blue">En ejecución</span><span class="arrow">→</span><span class="pill sky">Jornada cerrada</span><span class="arrow">→</span><span class="pill amber">Pendiente de validación</span><span class="arrow">→</span><span class="pill navy">Finalizada</span><span class="arrow">→</span><span class="pill teal">Reporte enviado</span><span class="arrow">→</span><span class="pill violet">Seguimiento postventa</span><span class="arrow">→</span><span class="pill slate">Archivada</span></div>
+  <table>
+    <thead><tr><th style="width:30%">Estado</th><th>Qué significa</th></tr></thead>
+    <tbody>
+      <tr><td><span class="pill slate">Borrador</span></td><td>Alta incompleta: la orden existe, pero aún no tiene cuadrilla ni fechas.</td></tr>
+      <tr><td><span class="pill blue">Programada</span></td><td>Cuadrilla y jornadas asignadas; espera el día del servicio.</td></tr>
+      <tr><td><span class="pill blue">En ejecución</span></td><td>Hay una jornada en curso: la cuadrilla registró su entrada.</td></tr>
+      <tr><td><span class="pill sky">Jornada cerrada</span></td><td>Terminó una jornada y quedan otras pendientes (servicios de varios días).</td></tr>
+      <tr><td><span class="pill amber">Pendiente de validación</span></td><td>Terminó la ejecución; falta que el supervisor valide el cierre.</td></tr>
+      <tr><td><span class="pill navy">Finalizada</span></td><td>Cierre validado por el supervisor; sigue generar y compartir el reporte.</td></tr>
+      <tr><td><span class="pill teal">Reporte enviado</span></td><td>El supervisor inició el envío manual del reporte al cliente.</td></tr>
+      <tr><td><span class="pill violet">Seguimiento postventa</span></td><td>Se envió la encuesta o hay un caso de postventa abierto.</td></tr>
+      <tr><td><span class="pill slate">Archivada</span></td><td>Ciclo completo: se cerró el seguimiento de la orden.</td></tr>
+    </tbody>
+  </table>
+  <p>Además hay cuatro estados que salen del camino normal:</p>
+  <table>
+    <thead><tr><th style="width:30%">Estado</th><th>Qué significa</th></tr></thead>
+    <tbody>
+      <tr><td><span class="pill red">Con incidencia</span></td><td>Hay una incidencia abierta que impide el cierre. Al resolverla, la orden regresa al estado que le corresponde.</td></tr>
+      <tr><td><span class="pill amber">Reprogramada</span></td><td>Las fechas se movieron con un motivo; el supervisor confirma las nuevas fechas.</td></tr>
+      <tr><td><span class="pill violet">Reabierta</span></td><td>Se reabrió después del cierre para corregir algo. Exige motivo, una nueva validación del cierre y genera una nueva versión del reporte.</td></tr>
+      <tr><td><span class="pill slate">Cancelada</span></td><td>La orden se canceló con un motivo.</td></tr>
+    </tbody>
+  </table>
+  <p>Cada cambio de estado queda en la bitácora con el usuario, la fecha y el motivo. Los estados de jornadas, incidencias y casos de postventa se explican en sus capítulos y se resumen en el capítulo <i>Apéndice: roles, permisos y estados</i>.</p>
+
+  <h2 class="section">Reglas que conviene conocer</h2>
+  <p>Algunas reglas del negocio explican por qué la app pide ciertos datos o no deja avanzar. Vale la pena tenerlas presentes desde el principio.</p>
+  <div class="note rule"><b class="note-t">Fotos ANTES y DESPUÉS</b><p>Sin fotos ANTES y DESPUÉS en cada jornada no se puede cerrar la orden. La única salida es una excepción autorizada y justificada, que queda en la bitácora y en el reporte.</p></div>
+  <div class="note rule"><b class="note-t">Envío manual, sin confirmación de entrega</b><p>El reporte se comparte desde el teléfono por WhatsApp o correo. La app guarda quién inició el envío y cuándo, pero nunca afirma que el cliente lo recibió o lo leyó.</p></div>
+  <div class="note rule"><b class="note-t">Sin señal, con marca de pendiente</b><p>Entradas, salidas, fotos e incidencias se capturan aunque no haya conexión: quedan en el teléfono como pendientes de enviar y se envían solas al volver la señal. El reporte definitivo no se comparte mientras falten datos por sincronizar.</p></div>
+  <div class="note rule"><b class="note-t">Cambios después del cierre</b><p>Para corregir una orden cerrada hay que reabrirla con un motivo; al validar de nuevo el cierre, el reporte sale como una nueva versión y el cambio queda en la bitácora.</p></div>
+  <div class="note rule"><b class="note-t">Cada quien ve su alcance</b><p>El supervisor ve sus asignaciones; Administración, su unidad; Dirección, todas las unidades o la que elija. Si no encuentra una orden, probablemente pertenece a otra unidad o a otro supervisor.</p></div>
+  <h2 class="section">Teléfono y escritorio</h2>
+  <p>Pulkro Cuadrillas es una app web que se instala en el teléfono como cualquier otra app (consulte el capítulo <i>Entrar a la app</i>). Se usa sobre todo en el teléfono: ahí el supervisor hace todo el trabajo de campo, aun sin señal. En una computadora o tableta grande la misma app aprovecha el espacio: un menú lateral con todas las secciones, tablas con más columnas y paneles uno al lado del otro.</p>
+  <div class="duo">
+    <figure class="shot phone"><div class="frame"><img src="shots/01-ordenes-telefono.jpg" alt="La sección Órdenes en el teléfono"></div><figcaption><b>Órdenes en el teléfono.</b> La misma información, en tarjetas.</figcaption></figure>
+    <div>
+      <h3>Lo que cambia en el teléfono</h3>
+      <ul>
+        <li>Abajo hay una <b>barra de pestañas</b>: <span class="ui">Hoy</span>, <span class="ui">Órdenes</span>, <span class="ui">Agenda</span> o <span class="ui">Indicadores</span>, <span class="ui">Pendientes</span> y <span class="ui">Menú</span>.</li>
+        <li>Inicio se llama <b>Hoy</b> y pone primero el siguiente paso.</li>
+        <li>Las tablas se convierten en tarjetas que se tocan para abrir el detalle.</li>
+        <li>Las tareas de varios pasos (entrada con GPS, fotos, cierre, compartir el reporte) se abren a pantalla completa y terminan con una confirmación.</li>
+        <li>Arriba de cada pantalla están la búsqueda y el botón con sus iniciales, que abre su perfil.</li>
+      </ul>
+      <p>En la computadora, en cambio, la lista de Órdenes es una tabla con columnas para supervisor, estado, jornadas, evidencia y horas, y un menú lateral reúne todas las secciones. Los datos son los mismos en los dos tamaños: lo que se captura en el teléfono aparece en la computadora en cuanto se sincroniza. El capítulo <i>La pantalla y la navegación</i> recorre ambas pantallas.</p>
+    </div>
+  </div>
+</section>

@@ -53,6 +53,17 @@ ${back.map(read).join("\n")}
   const uid = (base) => { let id = base || "s", n = 2; while (used.has(id)) id = base + "-" + n++; used.add(id); return id; };
   document.querySelectorAll("[id]").forEach((el) => used.add(el.id));
 
+  // Markers are placed in % of the screenshot: wrap the image and its markers so the frame's padding does not shift them.
+  document.querySelectorAll(".frame").forEach((fr) => {
+    const marks = fr.querySelectorAll(":scope > .mark");
+    const img = fr.querySelector(":scope > img");
+    if (!marks.length || !img) return;
+    const pin = document.createElement("span");
+    pin.className = "pin";
+    fr.insertBefore(pin, img);
+    pin.append(img, ...marks);
+  });
+
   // Chapters and their sections → TOC; figures → "Figura <chapter>.<n>".
   const toc = document.getElementById("indice");
   const items = [];
