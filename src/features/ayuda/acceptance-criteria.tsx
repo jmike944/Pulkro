@@ -29,7 +29,8 @@ export function AcceptanceCriteria() {
 
   const items: Criterion[] = useMemo(() => {
     const folio = new Map(orders.map((o) => [o.id, o.folio]));
-    // Field screens are the supervisor's; Dirección and Administración read the same record inside the order (tabs).
+    // Field screens are the supervisor's; Dirección and Administración read the same record inside the order (tabs), and the
+    // jornada screen, which opens read-only for them.
     const reach = (links: { label: string; href: string }[]) => {
       const ok = links.filter((l) => canSee(l.href));
       return ok.length ? ok : [{ label: "Órdenes", href: "/ordenes" }];

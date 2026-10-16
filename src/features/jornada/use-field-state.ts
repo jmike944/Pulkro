@@ -115,7 +115,8 @@ function buildState(b: FieldBundle, role: ReturnType<typeof useCurrentUser>["rol
   const currentStep = steps.findIndex((s) => !s.done);
 
   const evidence = orderEvidence(order, jornadas, photos);
-  const blockers = closureBlockers(order, jornadas, photos, incidents, pendingSync.filter((q) => q.state !== "sincronizando").length);
+  // With the role, blocker links point where this role can go (read-only roles: the order's tabs, not /incidencias).
+  const blockers = closureBlockers(order, jornadas, photos, incidents, pendingSync.filter((q) => q.state !== "sincronizando").length, role);
 
   return {
     ...b,

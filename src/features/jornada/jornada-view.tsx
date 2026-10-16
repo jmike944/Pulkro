@@ -10,6 +10,7 @@ import { jornadaMinutes } from "@/lib/domain";
 import { fmtDuration, fmtTime } from "@/lib/format";
 import { Shimmer } from "@/components/pk/feedback";
 import { NotFoundOrOutOfScope } from "@/components/shell/out-of-scope";
+import { useCanSeeRoute } from "@/components/shell/use-can-see-route";
 import { ClockWarning } from "@/components/pk/clock-warning";
 import { IncidentSheet } from "@/components/pk/incident-sheet";
 import { useFieldState, type FieldReady, type FieldWarning } from "./use-field-state";
@@ -29,12 +30,19 @@ import { useFlowState } from "./flow-bits";
 import { fmtShortDay, stampHow } from "./field-bits";
 import { useMinWidth } from "./use-min-width";
 
-/** /jornada/[id] — the supervisor's field screen (doc §3 pasos 5–11, §4.2, §6, §8). */
+/**
+ * /jornada/[id] — the supervisor's field screen (doc §3 pasos 5–11, §4.2, §6, §8). Dirección and Administración open it
+ * read-only: every capture control follows field.capture (use-field-state.ts → permissions).
+ */
 export function JornadaView({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
   const res = useFieldState(id);
+  const canSeeAgenda = useCanSeeRoute()("/agenda");
   // One state for "doesn't exist" and "outside your scope" (doc §2): never which of the two, never the record's name.
-  if (res.status !== "ok") return <NotFoundOrOutOfScope subject="Esta jornada" backHref="/agenda" backLabel="Volver a la agenda" />;
+  if (res.status !== "ok") {
+    const back = canSeeAgenda ? { href: "/agenda", label: "Volver a la agenda" } : { href: "/ordenes", label: "Volver a Órdenes" };
+    return <NotFoundOrOutOfScope subject="Esta jornada" backHref={back.href} backLabel={back.label} />;
+  }
   return <FieldScreen f={res.f} />;
 }
 
@@ -111,8 +119,9 @@ function FieldScreen({ f }: { f: FieldReady }) {
       <div className="grid gap-10 @min-[880px]:grid-cols-[minmax(0,1fr)_minmax(290px,340px)] @min-[1080px]:gap-14">
         <div className="mx-auto w-full min-w-0 max-w-2xl space-y-10">
           <div className="space-y-5">
-            {/* Inline captures (photo sections, the Bitácora composer) live on this page: one warning for all of them. */}
-            <ClockWarning />
+            {/* Inline captures (photo sections, the Bitácora composer) live on this page: one warning for all of them. Read-only
+                roles capture nothing here, so a skewed clock is not theirs to fix. */}
+            {f.permissions.capture && <ClockWarning />}
             <StepRail steps={f.steps} current={f.currentStep} />
             <HeroCard f={f} actions={actions} />
             {f.jornada.status === "cerrada" && <NextStep f={f} />}

@@ -136,20 +136,17 @@ export function useTeamData() {
         .sort((a, b) => a.plannedStart.localeCompare(b.plannedStart));
       const inField = js.find((j) => j.status === "en_curso");
       const next = js.find((j) => j.status === "pendiente");
-      // Equipo is for Dirección and Administración, who read a jornada inside its order (the field screen is the supervisor's).
-      const jornadasHref = (orderId: string) => {
-        const folio = orderById.get(orderId)?.folio;
-        return folio ? `/ordenes/${folio}?tab=jornadas` : undefined;
-      };
+      // Equipo is for Dirección and Administración: the pill opens that jornada's screen, read-only for them.
+      const jornadaHref = (jornadaId: string) => `/jornada/${jornadaId}`;
       if (inField) {
         supervisorToday.set(u.id, {
           label: `En campo · ${orderById.get(inField.orderId)?.folio} desde ${inField.checkIn ? fmtTime(inField.checkIn.deviceAt) : fmtTime(inField.plannedStart)}`,
           tone: "sky",
           live: true,
-          href: jornadasHref(inField.orderId),
+          href: jornadaHref(inField.id),
         });
       } else if (next) {
-        supervisorToday.set(u.id, { label: `Jornada hoy · ${fmtTime(next.plannedStart)}`, tone: "blue", live: false, href: jornadasHref(next.orderId) });
+        supervisorToday.set(u.id, { label: `Jornada hoy · ${fmtTime(next.plannedStart)}`, tone: "blue", live: false, href: jornadaHref(next.id) });
       } else if (js.length) {
         supervisorToday.set(u.id, { label: "Jornadas de hoy cerradas", tone: "teal", live: false });
       } else supervisorToday.set(u.id, { label: "Disponible", tone: "slate", live: false });

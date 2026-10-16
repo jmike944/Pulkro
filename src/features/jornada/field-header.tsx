@@ -104,7 +104,8 @@ export function FieldHeader({ f }: { f: FieldReady }) {
         >
           <Eye className="mt-0.5 size-4 shrink-0 text-ink/60" />
           <span>
-            <b className="font-semibold text-ink">Modo consulta.</b> {f.roleLabel} ve toda la jornada; la entrada, salida, fotos, incidencias y notas las captura el supervisor en sitio, y solo él autoriza el cierre y elige las fotos del reporte.
+            <b className="font-semibold text-ink">Modo consulta.</b> {f.roleLabel} ve la jornada completa. La entrada, la salida, las fotos, las incidencias y las notas las
+            captura el supervisor en sitio; el cierre y las fotos del reporte también son decisión del supervisor.
           </span>
         </motion.p>
       )}
@@ -136,7 +137,8 @@ function Narrative({ f }: { f: FieldReady }) {
     >
       {jornada.status === "pendiente" && (
         <>
-          Inicio programado a las <b>{fmtTime(jornada.plannedStart)}</b> con cuadrilla de <b>{f.crew.length}</b>. Registre la entrada al llegar al sitio.
+          Inicio programado a las <b>{fmtTime(jornada.plannedStart)}</b> con cuadrilla de <b>{f.crew.length}</b>.{" "}
+          {f.permissions.capture ? "Registre la entrada al llegar al sitio." : (f.locked ?? "El supervisor registra la entrada al llegar al sitio.")}
         </>
       )}
       {jornada.status === "en_curso" && (
@@ -178,7 +180,10 @@ function ConnectivityBanner({ f }: { f: FieldReady }) {
             <WifiOff className="size-[18px]" />
           </span>
           <span className="min-w-0 flex-1 text-[14px] leading-snug text-amber-olive">
-            <b className="font-semibold text-amber-olive-ink">Sin conexión</b> · lo que capture se guarda en el dispositivo y se sincroniza al volver la señal
+            <b className="font-semibold text-amber-olive-ink">Sin conexión</b> ·{" "}
+            {f.permissions.capture
+              ? "lo que capture se guarda en el dispositivo y se sincroniza al volver la señal"
+              : "se muestra lo último que llegó a este dispositivo; se actualiza al volver la señal"}
           </span>
           <span className="shrink-0 rounded-full bg-surface/80 px-2.5 py-1 text-[12.5px] font-semibold text-amber-fg tabular">
             {pending} {pending === 1 ? "pendiente" : "pendientes"}

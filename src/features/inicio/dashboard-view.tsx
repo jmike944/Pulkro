@@ -36,8 +36,8 @@ function DesktopDashboard() {
   const now = useNow(60_000);
   const [month, setMonthIdx] = useState(now.getMonth());
   const canSee = useCanSeeRoute();
-  // Agenda, Jornada, Incidencias and Evidencias are supervisor screens: other roles get the map, the order detail,
-  // the orders with incidents and Indicadores › Calidad instead (never the "not available for your role" page).
+  // Agenda, Incidencias and Evidencias are supervisor screens: other roles get the map, the orders with incidents and
+  // Indicadores › Calidad instead (never the "not available for your role" page). Jornadas open for every role, read-only.
   const dayLink = canSee("/agenda") ? { href: "/agenda", label: "Abrir agenda" } : { href: "/mapa", label: "Ver mapa" };
   const incidentsLink = canSee("/incidencias") ? { href: "/incidencias", label: "Ver incidencias" } : { href: "/ordenes?tab=incidencia", label: "Ver órdenes con incidencia" };
   const complianceHref = canSee("/evidencias") ? "/evidencias" : canSee("/indicadores") ? "/indicadores?tab=calidad" : undefined;

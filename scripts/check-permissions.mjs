@@ -29,7 +29,10 @@ const director = { id: 'dir', role: 'direccion', unitId: 'mty' };
 
 /* ── role actions (product decisions) ── */
 for (const action of ['order.create', 'view.kpis', 'export.kpis', 'export.backup']) assert.equal(can('supervisor', action), false, action);
-for (const action of ['order.reschedule', 'order.reopen', 'field.capture', 'crew.assign', 'report.share']) assert.equal(can('administracion', action), false, action);
+// Supervisor-only actions: with them false, Dirección and Administración read the jornada screen without capturing anything.
+for (const role of ['direccion', 'administracion'])
+  for (const action of ['order.reschedule', 'order.reopen', 'field.capture', 'crew.assign', 'closure.authorize', 'report.share'])
+    assert.equal(can(role, action), false, `${role} ${action}`);
 assert.equal(can('supervisor', 'field.capture'), true);
 assert.equal(can('administracion', 'order.create'), true);
 assert.equal(can('direccion', 'order.create'), false, 'Dirección creates no orders');
@@ -66,7 +69,7 @@ assert.equal(canSeeAuditEntry(director, { by: 'other', entityId: 'cli_apo' }, { 
 assert.equal(canSeeAuditEntry(supervisor, { by: 'other', entityId: 'cli_mty' }, recordCtx('mty')), false);
 
 /* ── routes (nav.ts → canSeeRoute: sidebar, Menú, ⌘K and the shell guard) ── */
-const FIELD_ROUTES = ['/agenda', '/jornada/j_1', '/evidencias', '/incidencias', '/reportes', '/ordenes/OS-1/reporte'];
+const FIELD_ROUTES = ['/agenda', '/evidencias', '/incidencias', '/reportes', '/ordenes/OS-1/reporte'];
 const MANAGEMENT_ROUTES = ['/indicadores', '/equipo'];
 for (const route of FIELD_ROUTES) {
   assert.equal(canSeeRoute('supervisor', route), true, `supervisor ${route}`);
@@ -82,6 +85,8 @@ for (const role of ['direccion', 'supervisor']) assert.equal(canSeeRoute(role, '
 for (const role of ['direccion', 'administracion', 'supervisor']) {
   for (const route of ['/ordenes', '/ordenes/OS-1', '/postventa', '/mapa', '/clientes']) assert.equal(canSeeRoute(role, route), true, `${role} ${route}`);
 }
+// The jornada screen opens for every role, read-only without the supervisor-only actions asserted above.
+for (const role of ['direccion', 'administracion', 'supervisor']) assert.equal(canSeeRoute(role, '/jornada/j_1'), true, `${role} /jornada/j_1`);
 // Bitácora (Seguimiento) is open to every role: its data is already scoped per role (canSeeAuditEntry above), supervisors see only their own.
 for (const role of ['direccion', 'administracion', 'supervisor']) assert.equal(canSeeRoute(role, '/bitacora'), true, `${role} /bitacora`);
 

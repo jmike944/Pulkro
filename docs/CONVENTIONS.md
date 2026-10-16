@@ -46,6 +46,8 @@ export default function Page({ params }: PageProps<"/ordenes/[folio]">) {
 - **zustand v5 pitfall:** a selector must not build new arrays/objects (`s => s.orders.filter(...)` → infinite loop). Select raw slices and derive with `useMemo`, or use `useShallow`.
 - Business rules live in `src/lib/domain.ts` (`orderEvidence`, `closureBlockers`, `nextAction`, `jornadaMinutes`, `whatsappLink`, `mailtoLink`, `mapsLink`). Indicators in `src/lib/metrics.ts`. Reuse, don't re-implement.
 - Status labels/tones: `src/lib/status.ts` (`ORDER_STATUS`, `INCIDENT_TYPE`, `CASE_STATUS`, `SEVERITY`, …). Permissions: `src/lib/permissions.ts` — hide or disable actions the role can't do and say why in a tooltip.
+  A screen a role may only read (the jornada for Dirección and Administración) hides its capture controls instead of disabling each one
+  and says so once, in a «Modo consulta» note; disabled + tooltip is for a control the role has but the record's state blocks.
 
 ## Design language (match the Clawback reference screens)
 Read `src/features/inicio/dashboard-view.tsx` — it is the reference implementation. Then reuse:

@@ -120,10 +120,10 @@ function JornadaCard({ j, today }: { j: Jornada; today: boolean }) {
   const incs = incidents.filter((i) => i.jornadaId === j.id).length;
   const crewGate: Gate = !d.perms.crew ? { ok: false, reason: DENY.crew } : j.status === "cerrada" || d.isTerminal ? { ok: false, reason: "La jornada ya está cerrada." } : { ok: true };
 
-  // The field screen (/jornada) is the supervisor's; Dirección and Administración read the jornada right here.
-  const canOpen = d.perms.capture;
-  const openLabel = live ? "Continuar jornada" : j.status === "pendiente" && today ? "Registrar entrada" : "Abrir jornada";
-  const primary = live || (j.status === "pendiente" && today);
+  // The field screen (/jornada) opens for every role; without field capture it is read-only, so it is "Ver jornada".
+  const capture = d.perms.capture;
+  const openLabel = !capture ? "Ver jornada" : live ? "Continuar jornada" : j.status === "pendiente" && today ? "Registrar entrada" : "Abrir jornada";
+  const primary = capture && (live || (j.status === "pendiente" && today));
 
   return (
     <motion.li
@@ -206,15 +206,13 @@ function JornadaCard({ j, today }: { j: Jornada; today: boolean }) {
             <TriangleAlert className="size-4" /> Registrar incidencia
           </Button>
         </Gated>
-        {canOpen && (
-          <Button
-            asChild
-            variant={primary ? "default" : "outline"}
-            className={cn("h-10 rounded-[12px] px-4 text-[14px] font-semibold", !primary && "border-line shadow-[0_1px_2px_rgb(16_24_40/0.05)]")}
-          >
-            <Link href={`/jornada/${j.id}`}>{openLabel}</Link>
-          </Button>
-        )}
+        <Button
+          asChild
+          variant={primary ? "default" : "outline"}
+          className={cn("h-10 rounded-[12px] px-4 text-[14px] font-semibold", !primary && "border-line shadow-[0_1px_2px_rgb(16_24_40/0.05)]")}
+        >
+          <Link href={`/jornada/${j.id}`}>{openLabel}</Link>
+        </Button>
       </div>
     </motion.li>
   );

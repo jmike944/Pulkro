@@ -12,6 +12,7 @@ import { INCIDENT_TYPE, SEVERITY, toneSoftBg, toneText } from "@/lib/status";
 import type { Incident, Photo } from "@/lib/types";
 import { TEXT_LIMITS } from "@/lib/domain";
 import { INCIDENT_ICONS } from "@/components/pk/incident-sheet";
+import { useCanSeeRoute } from "@/components/shell/use-can-see-route";
 import { PhotoImage } from "@/components/pk/scene-photo";
 import { SoftBadge, ToneText } from "@/components/pk/status";
 import { EASE, rowVariants, staggerContainer } from "@/components/pk/motion";
@@ -58,7 +59,10 @@ export function IncidentsSection({ f, onNew }: { f: FieldReady; onNew: () => voi
             <CircleCheck className="size-5" />
           </span>
           <p className="text-[14px] text-subtle">
-            <b className="font-semibold text-ink">Sin incidencias en esta jornada.</b> Si algo pasa en sitio, regístrelo con fotos para que quede en el reporte.
+            <b className="font-semibold text-ink">Sin incidencias en esta jornada.</b>{" "}
+            {!readOnly
+              ? "Si algo pasa en sitio, regístrelo con fotos para que quede en el reporte."
+              : !f.locked && "Si el supervisor registra alguna, aparecerá aquí con sus fotos."}
           </p>
         </div>
       ) : (
@@ -81,6 +85,8 @@ function IncidentRow({ f, inc, photos }: { f: FieldReady; inc: Incident; photos:
   const Icon = INCIDENT_ICONS[inc.type];
   const isOpen = inc.status === "abierta";
   const canResolve = f.permissions.capture && !f.locked;
+  // The incident screen is the supervisor's; the other roles read the incident in the order's Incidencias tab.
+  const detailHref = useCanSeeRoute()("/incidencias") ? `/incidencias?i=${inc.id}` : `/ordenes/${f.order.folio}?tab=incidencias`;
 
   const resolve = () => {
     if (text.trim().length < 6) {
@@ -136,7 +142,7 @@ function IncidentRow({ f, inc, photos }: { f: FieldReady; inc: Incident; photos:
               {isOpen ? "Abierta" : "Resuelta"}
             </ToneText>
             <Button asChild variant="ghost" className="h-10 rounded-[12px] px-3 text-subtle">
-              <Link href={`/incidencias?i=${inc.id}`}>
+              <Link href={detailHref}>
                 Ver <ArrowUpRight />
               </Link>
             </Button>
@@ -152,7 +158,7 @@ function IncidentRow({ f, inc, photos }: { f: FieldReady; inc: Incident; photos:
                 </Button>
               </Gate>
             )}
-            {isOpen && !f.permissions.capture && (
+            {isOpen && !f.permissions.capture && !f.locked && (
               <span className="inline-flex items-center gap-1.5 text-[12.5px] text-subtle">
                 <Lock className="size-3.5" /> La resuelve el supervisor
               </span>

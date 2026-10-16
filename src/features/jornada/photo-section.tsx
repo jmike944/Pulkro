@@ -24,17 +24,20 @@ import type { FieldReady } from "./use-field-state";
 
 type Kind = "antes" | "despues";
 
-const COPY: Record<Kind, { title: string; id: string; hint: string; empty: string }> = {
+/** `hint` instructs whoever takes the photos; `viewHint` describes them to a read-only role. */
+const COPY: Record<Kind, { title: string; id: string; hint: string; viewHint: string; empty: string }> = {
   antes: {
     title: "Fotos ANTES",
     id: "fotos-antes",
     hint: "Antes de iniciar los trabajos, una por área. Son obligatorias para el cierre.",
+    viewHint: "Tomadas antes de iniciar los trabajos, una por área. Son obligatorias para el cierre.",
     empty: "Sin fotos ANTES todavía",
   },
   despues: {
     title: "Fotos DESPUÉS",
     id: "fotos-despues",
     hint: "Al terminar, desde el mismo ángulo que la foto ANTES. Son obligatorias para el cierre.",
+    viewHint: "Tomadas al terminar, desde el mismo ángulo que la foto ANTES. Son obligatorias para el cierre.",
     empty: "Sin fotos DESPUÉS todavía",
   },
 };
@@ -197,7 +200,7 @@ export function PhotoSection({ f, kind }: { f: FieldReady; kind: Kind }) {
             </motion.span>
           </AnimatePresence>
         }
-        subtitle={copy.hint}
+        subtitle={readOnly ? copy.viewHint : copy.hint}
       />
 
       {!readOnly &&
@@ -241,10 +244,10 @@ export function PhotoSection({ f, kind }: { f: FieldReady; kind: Kind }) {
           <div className="min-w-0">
             <p className="text-[15px] font-semibold text-ink">{copy.empty}</p>
             <p className="text-[13.5px] text-subtle">
-              {readOnly
-                ? "El supervisor las captura desde su teléfono."
-                : f.locked
-                  ? "La orden ya no admite captura en campo."
+              {f.locked
+                ? "La orden ya no admite captura en campo."
+                : readOnly
+                  ? "El supervisor las captura desde su teléfono."
                   : f.photoBlock
                     ? "Se habilitan al registrar la entrada."
                     : "Elija el área y tome la foto; se guarda aunque no haya señal."}

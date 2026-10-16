@@ -50,7 +50,10 @@ export type NavItem = {
   roles?: Role[];
 };
 
-/** Field screens are the supervisor's: Dirección and Administración see jornadas, evidence and incidents inside the order. */
+/**
+ * Field screens are the supervisor's (Agenda, Evidencias, Incidencias, Reportes, the report workspace): Dirección and Administración
+ * see evidence and incidents inside the order. The jornada screen is not one of them: it opens for every role (see ROUTE_RULES).
+ */
 const FIELD: Role[] = ["supervisor"];
 /** Indicadores (and their exports) and the Equipo directory are for Dirección and Administración; supervisors see their own figures on Hoy. */
 const MANAGEMENT: Role[] = ["direccion", "administracion"];
@@ -128,7 +131,8 @@ const ROUTE_RULES: { match: (pathname: string) => boolean; allows: (role: Role) 
   { match: (p) => p === "/ordenes/nueva" || p.startsWith("/ordenes/nueva/"), allows: (r) => can(r, "order.create") },
   // The report share/send workspace; Dirección and Administración download the order PDF from the order detail.
   { match: (p) => /^\/ordenes\/[^/]+\/reporte(\/|$)/.test(p), allows: (r) => FIELD.includes(r) },
-  { match: (p) => isActive(p, "/jornada"), allows: (r) => FIELD.includes(r) },
+  // The jornada screen opens for every role; inside it, capture follows field.capture, so Dirección and Administración read it only.
+  { match: (p) => isActive(p, "/jornada"), allows: () => true },
 ];
 
 /** Whether `role` may open `pathname` (dynamic segments included: /jornada/[id], /ordenes/[folio]/reporte…). Unknown routes → true. */

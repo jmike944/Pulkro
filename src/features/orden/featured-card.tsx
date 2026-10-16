@@ -45,10 +45,11 @@ type Cta = {
 
 /** Next step for this order, mapped from domain.nextAction() to a concrete CTA. */
 function resolveCta(d: OrderDetail, ui: OrderUi): Cta | null {
-  const { order, action, perms } = d;
+  const { order, perms } = d;
   const folio = order.folio;
-  if (!perms.capture && ["Entrada", "Continuar", "Solicitar"].includes(action.label))
-    return { label: "Ver detalle operativo", icon: CalendarDays, gate: OPEN, onClick: () => ui.setTab(action.label === "Solicitar" ? "evidencia" : "jornadas", { scroll: true }) };
+  // The role-scoped action turns the field steps into "Ver" for roles that don't capture; the jornada screen opens for them
+  // read-only, so map the raw step instead and label it as a view ("Ver jornada de hoy", "Ver evidencia faltante"…).
+  const action = !perms.capture && ["Entrada", "Continuar", "Solicitar"].includes(d.step.label) ? d.step : d.action;
   if (!perms.share && ["Generar", "Compartir"].includes(action.label))
     return { label: "Ver resumen", icon: FileText, gate: OPEN, onClick: () => ui.setTab("resumen", { scroll: true }) };
 
@@ -68,7 +69,7 @@ function resolveCta(d: OrderDetail, ui: OrderUi): Cta | null {
         icon: Camera,
         gate: OPEN,
         href: action.href,
-        secondary: { label: "Validar con excepción autorizada", gate: d.gates.closure, onClick: ui.openClosure },
+        secondary: perms.closure ? { label: "Validar con excepción autorizada", gate: d.gates.closure, onClick: ui.openClosure } : undefined,
       };
     case "Cerrar":
       return { label: "Validar cierre", icon: ShieldCheck, gate: d.gates.closure, onClick: ui.openClosure, shine: d.gates.closure.ok };

@@ -38,7 +38,7 @@ export function BeforeAfterSection({ f }: { f: FieldReady }) {
         title="Antes y después"
         subtitle={
           <span className="inline-flex items-center gap-1.5">
-            <MoveHorizontal className="size-4" /> Desliza el jalador para comparar · {pairs.length} {pairs.length === 1 ? "área" : "áreas"}
+            <MoveHorizontal className="size-4" /> Deslice el jalador para comparar · {pairs.length} {pairs.length === 1 ? "área" : "áreas"}
           </span>
         }
       />

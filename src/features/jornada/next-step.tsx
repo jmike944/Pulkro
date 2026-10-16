@@ -1,22 +1,30 @@
 "use client";
 
 import { motion } from "motion/react";
-import { CalendarClock, Check, CircleAlert, ClipboardCheck, FileText, ShieldAlert, X } from "lucide-react";
+import { CalendarClock, Check, CircleAlert, ClipboardCheck, ClipboardList, FileText, ShieldAlert, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { fmtDateTime, fmtTime, plural } from "@/lib/format";
 import { DONE_STATUSES } from "@/lib/status";
 import { PulkroMark } from "@/components/pk/brand";
 import { BigButton, NextStepCard } from "@/components/pk/mobile";
 import { rowVariants, staggerContainer } from "@/components/pk/motion";
-import { Gate, fmtShortDay } from "./field-bits";
+import { useCanSeeRoute } from "@/components/shell/use-can-see-route";
+import { fmtShortDay } from "./field-bits";
 import type { FieldReady } from "./use-field-state";
 
 /**
  * What happens after this jornada closes (doc §3, pasos 10–11): another jornada pending → its link;
- * otherwise the closure validation with the required-evidence checklist.
+ * otherwise the closure validation with the required-evidence checklist. Read-only roles (Dirección, Administración)
+ * see the same checklist and go to the order instead: closing and the report workspace are the supervisor's.
  */
 export function NextStep({ f }: { f: FieldReady }) {
   const { order } = f;
+  const canSeeReport = useCanSeeRoute()(`/ordenes/${order.folio}/reporte`);
+  const orderButton = (
+    <BigButton href={`/ordenes/${order.folio}`} variant="outline">
+      <ClipboardList /> Ver orden
+    </BigButton>
+  );
   const avatar = <PulkroMark className="size-11 rounded-[13px]" />;
   // The next pending day, or any other jornada of the order still open (skipped / in progress).
   const nextJornada = f.nextJornada ?? f.jornadas.find((j) => j.id !== f.jornada.id && j.status !== "cerrada");
@@ -41,7 +49,11 @@ export function NextStep({ f }: { f: FieldReady }) {
             en {f.site.name}. Cada jornada guarda su propia entrada, salida y fotos; el cierre definitivo es uno solo al terminar la última.
           </>
         }
-        action={<BigButton href={`/jornada/${nextJornada.id}`}>Abrir Jornada {nextJornada.dayIndex}</BigButton>}
+        action={
+          <BigButton href={`/jornada/${nextJornada.id}`}>
+            {f.permissions.capture ? "Abrir" : "Ver"} Jornada {nextJornada.dayIndex}
+          </BigButton>
+        }
       />
     );
   }
@@ -53,11 +65,21 @@ export function NextStep({ f }: { f: FieldReady }) {
         name="Cierre validado"
         sub={order.closure ? fmtDateTime(order.closure.validatedAt) : order.folio}
         value={order.folio}
-        message={<>La orden ya tiene cierre definitivo. Desde el reporte se seleccionan las fotos y se comparte con el cliente por WhatsApp o correo.</>}
+        message={
+          canSeeReport ? (
+            <>La orden ya tiene cierre definitivo. Desde el reporte se seleccionan las fotos y se comparte con el cliente por WhatsApp o correo.</>
+          ) : (
+            <>La orden ya tiene cierre definitivo. Su PDF se descarga desde el detalle de la orden.</>
+          )
+        }
         action={
-          <BigButton href={`/ordenes/${order.folio}/reporte`} variant="outline">
-            <FileText /> Ver reporte
-          </BigButton>
+          canSeeReport ? (
+            <BigButton href={`/ordenes/${order.folio}/reporte`} variant="outline">
+              <FileText /> Ver reporte
+            </BigButton>
+          ) : (
+            orderButton
+          )
         }
       />
     );
@@ -66,13 +88,14 @@ export function NextStep({ f }: { f: FieldReady }) {
   if (order.status === "cancelada") return null;
 
   const blocking = f.blockers.filter((b) => b.severity === "block");
-  const blockingIncident = f.blockers.find((b) => b.severity === "block" && b.href?.startsWith("/incidencias"));
-  const closeReason = f.permissions.close ? null : `Solo el supervisor autoriza el cierre · ${f.roleLabel} tiene acceso de consulta.`;
+  // By identity, not by href: the blockers' links depend on the role.
+  const blockingIncident = f.blockers.find((b) => b.severity === "block" && f.incidents.some((i) => i.id === b.id));
+  const readOnly = !f.permissions.close;
 
   return (
     <NextStepCard
       avatar={avatar}
-      name={blocking.length ? "Revisar antes de cerrar" : "Listo para validar cierre"}
+      name={blocking.length ? (readOnly ? "Pendiente antes del cierre" : "Revisar antes de cerrar") : "Listo para validar cierre"}
       sub={`${order.folio} · ${f.total} ${f.total === 1 ? "jornada" : "jornadas"}`}
       value={
         <span className={cn("inline-flex items-center gap-1.5 text-[15px]", blocking.length ? "text-amber-fg" : "text-teal-fg")}>
@@ -86,19 +109,20 @@ export function NextStep({ f }: { f: FieldReady }) {
           {blocking.length > 0 && !blockingIncident && (
             <p className="mt-3 text-[13.5px] leading-snug text-subtle">Si falta una foto obligatoria, el cierre solo procede con una excepción autorizada y justificada.</p>
           )}
+          {readOnly && <p className="mt-3 text-[13.5px] leading-snug text-subtle">El supervisor valida el cierre desde la orden.</p>}
         </>
       }
       action={
-        blockingIncident ? (
+        readOnly ? (
+          orderButton
+        ) : blockingIncident ? (
           <BigButton href={blockingIncident.href} variant="outline">
             <ShieldAlert /> Resolver incidencia
           </BigButton>
         ) : (
-          <Gate reason={closeReason} className="w-full">
-            <BigButton href={`/ordenes/${order.folio}?cerrar=1`} disabled={!!closeReason}>
-              <ClipboardCheck /> Validar cierre
-            </BigButton>
-          </Gate>
+          <BigButton href={`/ordenes/${order.folio}?cerrar=1`}>
+            <ClipboardCheck /> Validar cierre
+          </BigButton>
         )
       }
     />
@@ -133,8 +157,10 @@ export function EvidenceChecklist({ f }: { f: FieldReady }) {
     warn: blockingIncidents.length === 0 && otherOpen.length > 0,
     detail: blockingIncidents.length ? blockingIncidents.map((i) => i.folio).join(", ") : otherOpen.length ? `${plural(otherOpen.length, "abierta", "abiertas")} sin bloqueo` : undefined,
   });
+  // The queue is this device's: it says something about the field records only on the phone that captures them.
   const pending = f.pendingSync.length;
-  checks.push({ id: "sync", label: "Registros sincronizados", ok: pending === 0, warn: pending > 0, detail: pending ? `${pending} por enviar` : undefined });
+  if (f.permissions.capture)
+    checks.push({ id: "sync", label: "Registros sincronizados", ok: pending === 0, warn: pending > 0, detail: pending ? `${pending} por enviar` : undefined });
 
   return (
     <motion.ul variants={staggerContainer(0.04, 0.2)} initial="hidden" animate="show" className="space-y-2">
