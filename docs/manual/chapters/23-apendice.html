@@ -14,6 +14,7 @@
   <h2 class="section">Matriz de permisos</h2>
   <p>Es la misma matriz de <b>Configuración › Usuarios y permisos</b> y de <span class="ui">Mis permisos</span>. <span class="yes">✓</span> indica que el rol puede hacerlo; <span class="no">—</span>, que no. Debajo de la marca va el alcance: <b>Su unidad</b> (solo la unidad de la persona), <b>Solo propias</b> (solo las órdenes asignadas a ella), <b>Unidad seleccionada</b> (la elegida en el filtro de unidad), <b>Sus asignaciones</b> y <b>Consulta</b> (ve la información pero no la cambia). Las filas con <b>*</b> están por definir con Pulkro: la app aplica la regla indicada mientras tanto.</p>
   <table class="matrix">
+    <colgroup><col style="width:52%"><col style="width:16%"><col style="width:16%"><col style="width:16%"></colgroup>
     <thead><tr><th>Acción</th><th>Dirección</th><th>Administración</th><th>Supervisor</th></tr></thead>
     <tbody>
       <tr><td><b>Crear orden</b><span class="cell-note">Solo Administración da de alta órdenes (decisión de Pulkro).</span></td><td class="no">—<span class="cell-note">Consulta</span></td><td class="yes">✓</td><td class="no">—</td></tr>
@@ -41,6 +42,7 @@
 
   <h2 class="section">Secciones por rol</h2>
   <table class="matrix">
+    <colgroup><col style="width:52%"><col style="width:16%"><col style="width:16%"><col style="width:16%"></colgroup>
     <thead><tr><th>Sección</th><th>Supervisor</th><th>Administración</th><th>Dirección</th></tr></thead>
     <tbody>
       <tr><td><b>Inicio</b> (en el teléfono, <b>Hoy</b>)</td><td class="yes">✓</td><td class="yes">✓</td><td class="yes">✓</td></tr>
@@ -104,18 +106,11 @@
   </table>
 
   <h2 class="section">Incidencias</h2>
-  <table>
-    <thead><tr><th>Tipo</th><th>Severidad</th><th>Estado</th></tr></thead>
-    <tbody>
-      <tr><td><span class="pill red">Daños</span></td><td><span class="pill slate">Baja</span></td><td><b>Abierta</b>: sin resolver. Si se marcó que <b>bloquea el cierre</b>, la orden pasa a <span class="pill red">Con incidencia</span>.</td></tr>
-      <tr><td><span class="pill amber">Faltante de material</span></td><td><span class="pill amber">Media</span></td><td><b>Resuelta</b>: con resolución registrada; la orden regresa a su estado.</td></tr>
-      <tr><td><span class="pill amber">Faltante de personal</span></td><td><span class="pill red">Alta</span></td><td></td></tr>
-      <tr><td><span class="pill blue">Trabajo adicional</span></td><td></td><td></td></tr>
-      <tr><td><span class="pill violet">Retraso / ausencia</span></td><td></td><td></td></tr>
-      <tr><td><span class="pill red">Solicitud o queja en sitio</span></td><td></td><td></td></tr>
-      <tr><td><span class="pill slate">Otra</span></td><td></td><td></td></tr>
-    </tbody>
-  </table>
+  <div class="cards three">
+    <div class="card"><span class="t">Tipo</span><p><span class="pill red">Daños</span><br><span class="pill amber">Faltante de material</span><br><span class="pill amber">Faltante de personal</span><br><span class="pill blue">Trabajo adicional</span><br><span class="pill violet">Retraso / ausencia</span><br><span class="pill red">Solicitud o queja en sitio</span><br><span class="pill slate">Otra</span></p></div>
+    <div class="card"><span class="t">Severidad</span><p><span class="pill slate">Baja</span> <span class="pill amber">Media</span> <span class="pill red">Alta</span></p><p>La misma escala se usa en los casos de postventa.</p></div>
+    <div class="card"><span class="t">Estado</span><p><b>Abierta</b>: sin resolver. Si al registrarla se marcó que <b>bloquea el cierre</b>, la orden pasa a <span class="pill red">Con incidencia</span>.</p><p><b>Resuelta</b>: con resolución registrada; la orden regresa al estado que le corresponde.</p></div>
+  </div>
 
   <h2 class="section">Postventa</h2>
   <table>
@@ -130,7 +125,6 @@
   <table class="kv">
     <tr><td>Categoría del caso</td><td>Calidad del servicio · Puntualidad · Conducta del personal · Daños a instalaciones · Trabajo incompleto · Facturación · Otro.</td></tr>
     <tr><td>Canal por el que llegó</td><td>Teléfono · WhatsApp · Correo · Encuesta · Presencial.</td></tr>
-    <tr><td>Severidad</td><td>Baja · Media · Alta (las mismas de las incidencias).</td></tr>
   </table>
 
   <h2 class="section">Sincronización</h2>
