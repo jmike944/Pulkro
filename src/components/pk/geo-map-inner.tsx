@@ -7,7 +7,8 @@ import { Circle, MapContainer, Marker, Polyline, Tooltip, useMap } from "react-l
 import { Basemap } from "./basemap";
 import type { GeoMapProps } from "./geo-map";
 
-// CSS variables (the pin HTML lives in the page DOM, and SVG paint attributes accept var()), so pins follow the theme.
+// CSS variables (the pin HTML lives in the page DOM, and SVG paint attributes accept var()), so pins follow the theme; the ring
+// is the surface color, like the Mapa pins (features/mapa/service-map-inner.tsx).
 const COLORS = { site: "var(--brand)", checkin: "var(--st-blue)", checkout: "var(--st-teal)", live: "var(--sky)", alert: "var(--st-red)" } as const;
 
 function pin(kind: keyof typeof COLORS, label?: string) {
@@ -20,7 +21,7 @@ function pin(kind: keyof typeof COLORS, label?: string) {
     html: `
       <div style="position:relative;width:28px;height:28px">
         ${pulse ? `<span style="position:absolute;inset:0;border-radius:999px;background:${color};opacity:.35;animation:ping-soft 2.4s cubic-bezier(0,0,.2,1) infinite"></span>` : ""}
-        <span style="position:absolute;inset:6px;border-radius:999px;background:${color};border:3px solid #fff;box-shadow:0 4px 12px rgba(2,58,99,.35)"></span>
+        <span style="position:absolute;inset:6px;border-radius:999px;background:${color};border:3px solid var(--surface);box-shadow:0 4px 12px rgba(2,58,99,.35)"></span>
         ${label ? `<span style="position:absolute;left:50%;top:-18px;transform:translateX(-50%);white-space:nowrap;font:600 11px/1 var(--font-geist),system-ui;color:var(--ink);background:var(--surface);padding:3px 6px;border-radius:6px;box-shadow:0 2px 8px rgba(16,24,40,.15)">${label}</span>` : ""}
       </div>`,
   });

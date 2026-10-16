@@ -319,6 +319,25 @@
   --shimmer-b: #f8f9fb;
   --map-bg: #eef2f6;
   --map-attribution: rgb(255 255 255 / 0.7);
+  /* Basemap (basemap.tsx recolors the vector style with these; plain hex/rgb: MapLibre parses them, not var()/color-mix).
+     Land is --map-bg; water leans to Pulkro sky, parks to the teal tone, motorways carry a hint of the blue tint. */
+  --map-water: #cfe6f5;
+  --map-water-label: #3f7cad;
+  --map-park: #e0efe9;
+  --map-residential: #e9edf3;
+  --map-building: #e2e7ee;
+  --map-building-line: #d5dce5;
+  --map-road: #ffffff;
+  --map-road-casing: #d9dfe7;
+  --map-path: #e4e8ee;
+  --map-motorway: #e3f1fd;
+  --map-motorway-casing: #bfd6ea;
+  --map-rail: #d5dbe3;
+  --map-boundary: #b4bfcc;
+  --map-label: #5b6675;
+  --map-label-strong: #3b4554;
+  --map-road-label: #667085;
+  --map-halo: rgb(255 255 255 / 0.9);
   --hl: rgb(255 255 255); /* 1px top highlight on inset cards (shadow-[0_1px_0_var(--hl)_inset]) */
 
   --sh-soft: 0 1px 2px rgb(16 24 40 / 0.04), 0 10px 28px -14px rgb(16 24 40 / 0.14);
@@ -475,6 +494,24 @@
     --shimmer-b: #1c3450;
     --map-bg: #0c1c2e;
     --map-attribution: rgb(10 24 40 / 0.75);
+    /* Basemap in the navy family: water a deeper, bluer navy, parks a teal-navy, roads stepping lighter than the land. */
+    --map-water: #0a2846;
+    --map-water-label: #6fa6d6;
+    --map-park: #0f2933;
+    --map-residential: #0e1f33;
+    --map-building: #142a42;
+    --map-building-line: #1e3854;
+    --map-road: #233f5e;
+    --map-road-casing: #1a3048;
+    --map-path: #1a3048;
+    --map-motorway: #335a82;
+    --map-motorway-casing: #1f3a58;
+    --map-rail: #233f5e;
+    --map-boundary: #40607f;
+    --map-label: #96a6ba;
+    --map-label-strong: #c8d4e2;
+    --map-road-label: #8294ab;
+    --map-halo: rgb(12 28 46 / 0.85);
     --hl: rgb(255 255 255 / 0.07);
 
     --sh-soft: 0 1px 2px rgb(0 0 0 / 0.35), 0 10px 28px -14px rgb(0 0 0 / 0.55);
@@ -610,7 +647,9 @@
   }
 }
 
-/* Leaflet (maps) — the basemap is OpenFreeMap vector tiles via MapLibre (Positron / Dark styles), so no tile filters */
+/* Leaflet (maps) — the basemap is OpenFreeMap vector tiles via MapLibre, recolored with the --map-* tokens (basemap.tsx),
+   so no tile filters. Leaflet's own chrome (zoom buttons, tooltips) takes the app's surfaces too; leaflet.css loads later,
+   so these rules carry the container class for specificity. */
 .leaflet-container {
   font-family: var(--font-geist), system-ui, sans-serif;
   background: var(--map-bg);
@@ -625,4 +664,44 @@
 .dark .leaflet-control-attribution,
 .dark .leaflet-control-attribution a {
   color: var(--subtle) !important;
+}
+/* three classes: `.leaflet-touch .leaflet-bar` (2px black border, no shadow) would win a tie */
+.leaflet-container .leaflet-control.leaflet-bar {
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: var(--sh-soft);
+}
+.leaflet-container .leaflet-bar a {
+  background-color: var(--surface);
+  border-bottom-color: var(--hairline);
+  color: var(--ink);
+}
+.leaflet-container .leaflet-bar a:hover,
+.leaflet-container .leaflet-bar a:focus-visible {
+  background-color: var(--soft);
+}
+.leaflet-container .leaflet-bar a.leaflet-disabled {
+  background-color: var(--surface);
+  color: var(--ghost);
+}
+.leaflet-container .leaflet-tooltip {
+  background-color: var(--surface);
+  border-color: var(--line);
+  border-radius: 8px;
+  color: var(--ink);
+  font: 500 12px/1.3 var(--font-geist), system-ui, sans-serif;
+  box-shadow: var(--sh-soft);
+}
+.leaflet-container .leaflet-tooltip-top::before {
+  border-top-color: var(--surface);
+}
+.leaflet-container .leaflet-tooltip-bottom::before {
+  border-bottom-color: var(--surface);
+}
+.leaflet-container .leaflet-tooltip-left::before {
+  border-left-color: var(--surface);
+}
+.leaflet-container .leaflet-tooltip-right::before {
+  border-right-color: var(--surface);
 }
