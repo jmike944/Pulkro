@@ -14,6 +14,8 @@ const CHAPTERS = path.join(ROOT, "chapters");
 const args = process.argv.slice(2);
 const only = args.includes("--only") ? args[args.indexOf("--only") + 1] : null;
 const htmlOnly = args.includes("--html");
+// --light: a smaller PDF for e-mail and WhatsApp, with screen-resolution screenshots (tools/light-shots.py).
+const light = args.includes("--light");
 
 const files = fs
   .readdirSync(CHAPTERS)
@@ -106,10 +108,12 @@ ${back.map(read).join("\n")}
 </body>
 </html>`;
 
-const outHtml = path.join(ROOT, only ? `build/draft-${only}.html` : "manual.html");
+const outHtml = path.join(ROOT, only ? `build/draft-${only}.html` : light ? "build/manual-ligero.html" : "manual.html");
 fs.mkdirSync(path.dirname(outHtml), { recursive: true });
 // Draft files live one level down: point their relative URLs back at the manual root.
-fs.writeFileSync(outHtml, only ? html.replace("<head>", '<head>\n<base href="../">') : html);
+if (light) require("node:child_process").execFileSync("python3", [path.join(__dirname, "light-shots.py")], { stdio: "inherit" });
+const page_ = light ? html.replaceAll('src="shots/', 'src="build/light/shots/') : html;
+fs.writeFileSync(outHtml, only || light ? page_.replace("<head>", '<head>\n<base href="../">') : page_);
 console.log(`html → ${path.relative(process.cwd(), outHtml)} (${files.length} files)`);
 if (htmlOnly) process.exit(0);
 
@@ -169,8 +173,10 @@ const server = http.createServer((req, res) => {
   );
   if (overflow.length) console.log("OVERFLOW:\n  " + overflow.join("\n  "));
 
-  const outPdf = only ? path.join(ROOT, `build/draft-${only}.pdf`) : path.join(ROOT, "Pulkro_Cuadrillas_Manual_de_Usuario.pdf");
-  await page.pdf({ path: outPdf, preferCSSPageSize: true, printBackground: true, displayHeaderFooter: false, outline: true, tagged: true });
+  const outPdf = only
+    ? path.join(ROOT, `build/draft-${only}.pdf`)
+    : path.join(ROOT, light ? "Pulkro_Cuadrillas_Manual_de_Usuario_ligero.pdf" : "Pulkro_Cuadrillas_Manual_de_Usuario.pdf");
+  await page.pdf({ path: outPdf, preferCSSPageSize: true, printBackground: true, displayHeaderFooter: false, outline: true, tagged: false });
   console.log(`pdf → ${path.relative(process.cwd(), outPdf)}`);
   await browser.close();
   server.close();
