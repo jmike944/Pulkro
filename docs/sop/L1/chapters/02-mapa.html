@@ -1,0 +1,74 @@
+<section class="chapter" id="l1-mapa">
+  <header class="opener">
+    <div class="num">Procesos</div>
+    <h1>Mapa de <em>procesos</em></h1>
+    <p class="desc">Seis procesos operativos forman la cadena que va del trabajo autorizado al cliente atendido; los estratégicos la dirigen y los de soporte la sostienen.</p>
+  </header>
+
+  <h2 class="section">El mapa</h2>
+  <div class="pmap">
+    <div class="band strat">
+      <div class="lbl">Procesos estratégicos · Dirección</div>
+      <div class="boxes">
+        <div class="box"><span class="code">E1</span>Control de la operación e indicadores</div>
+        <div class="box"><span class="code">E2</span>Políticas, decisiones y mejora</div>
+      </div>
+    </div>
+    <div class="band core">
+      <div class="lbl">Procesos operativos · la cadena del servicio</div>
+      <div class="ends">
+        <div class="end"><small>Entrada</small>Trabajo autorizado por el sistema comercial</div>
+        <div class="chain">
+          <div class="chev"><span class="code">O1</span>Alta de la orden</div>
+          <div class="chev"><span class="code">O2</span>Programación y cuadrilla</div>
+          <div class="chev alt"><span class="code">O3</span>Ejecución en campo</div>
+          <div class="chev"><span class="code">O4</span>Cierre y validación</div>
+          <div class="chev"><span class="code">O5</span>Reporte al cliente</div>
+          <div class="chev"><span class="code">O6</span>Postventa</div>
+        </div>
+        <div class="end"><small>Salida</small>Cliente atendido, con reporte y encuesta</div>
+      </div>
+    </div>
+    <div class="band supp">
+      <div class="lbl">Procesos de soporte</div>
+      <div class="boxes">
+        <div class="box"><span class="code">S1</span>Usuarios, permisos y catálogos</div>
+        <div class="box"><span class="code">S2</span>Sincronización y operación sin conexión</div>
+        <div class="box"><span class="code">S3</span>Trazabilidad y bitácora</div>
+      </div>
+    </div>
+  </div>
+
+  <h2 class="section">Inventario de procesos</h2>
+  <table>
+    <thead><tr><th style="width:7%">Clave</th><th style="width:25%">Proceso</th><th>Propósito</th><th style="width:17%">Dueño</th><th style="width:17%">Procedimiento</th></tr></thead>
+    <tbody>
+      <tr><td class="pcode">E1</td><td><b>Control de la operación e indicadores</b></td><td>Revisar el avance, la calidad y la carga de trabajo, y decidir con datos.</td><td><span class="role dir">Dirección</span></td><td class="mono">PK-SOP-L2-09</td></tr>
+      <tr><td class="pcode">E2</td><td><b>Políticas, decisiones y mejora</b></td><td>Fijar las reglas de este documento, cerrar las decisiones pendientes y mantener la documentación al día.</td><td><span class="role dir">Dirección</span></td><td class="mono">PK-SOP-L1</td></tr>
+      <tr><td class="pcode">O1</td><td><b>Alta de la orden de servicio</b></td><td>Convertir el trabajo autorizado en una orden completa: cliente, sitio, actividades, materiales, fechas y supervisor.</td><td><span class="role adm">Administración</span></td><td class="mono">PK-SOP-L2-01</td></tr>
+      <tr><td class="pcode">O2</td><td><b>Programación y asignación de cuadrilla</b></td><td>Programar las jornadas y armar la cuadrilla de cada una; reprogramar con motivo.</td><td><span class="role sup">Supervisor</span></td><td class="mono">PK-SOP-L2-02</td></tr>
+      <tr><td class="pcode">O3</td><td><b>Ejecución en campo</b></td><td>Ejecutar cada jornada con entrada y salida con hora y GPS, fotos ANTES y DESPUÉS, bitácora e incidencias.</td><td><span class="role sup">Supervisor</span></td><td class="mono">PK-SOP-L2-03 · 04 · 05</td></tr>
+      <tr><td class="pcode">O4</td><td><b>Cierre y validación</b></td><td>Validar una sola vez que el servicio está completo, con la conformidad del cliente.</td><td><span class="role sup">Supervisor</span></td><td class="mono">PK-SOP-L2-06</td></tr>
+      <tr><td class="pcode">O5</td><td><b>Reporte al cliente</b></td><td>Generar el reporte final con fotos y compartirlo por WhatsApp o correo.</td><td><span class="role sup">Supervisor</span></td><td class="mono">PK-SOP-L2-07</td></tr>
+      <tr><td class="pcode">O6</td><td><b>Postventa</b></td><td>Medir la satisfacción, atender quejas y dar seguimiento hasta cerrar el ciclo de la orden.</td><td><span class="role adm">Administración</span></td><td class="mono">PK-SOP-L2-08</td></tr>
+      <tr><td class="pcode">S1</td><td><b>Usuarios, permisos y catálogos</b></td><td>Dar acceso a cada persona con su rol y unidad, y mantener clientes, sitios, servicios, materiales y personal.</td><td><span class="role dir">Dirección</span></td><td class="mono">PK-SOP-L2-10</td></tr>
+      <tr><td class="pcode">S2</td><td><b>Sincronización y operación sin conexión</b></td><td>Que la captura nunca se detenga por falta de señal y que todo llegue al servidor.</td><td><span class="role dir">Dirección</span></td><td class="mono">PK-SOP-L2-11</td></tr>
+      <tr><td class="pcode">S3</td><td><b>Trazabilidad y bitácora</b></td><td>Que cada cambio quede registrado con usuario, fecha y motivo.</td><td><span class="role dir">Dirección</span></td><td>La app, en todos</td></tr>
+    </tbody>
+  </table>
+
+  <h2 class="section">Cómo se conectan</h2>
+  <table>
+    <thead><tr><th style="width:24%">De</th><th style="width:24%">A</th><th>Lo que pasa de uno a otro</th></tr></thead>
+    <tbody>
+      <tr><td>Sistema comercial</td><td>O1 Alta de la orden</td><td>El trabajo autorizado. Hoy se captura a mano; la referencia comercial queda en la orden.</td></tr>
+      <tr><td>O1 Alta de la orden</td><td>O2 Programación</td><td>La orden en <span class="pill slate">Borrador</span>, con supervisor y fechas propuestas.</td></tr>
+      <tr><td>O2 Programación</td><td>O3 Ejecución</td><td>Jornadas programadas con cuadrilla: la orden en <span class="pill blue">Programada</span>.</td></tr>
+      <tr><td>O3 Ejecución</td><td>O4 Cierre</td><td>Todas las jornadas con salida: la orden en <span class="pill amber">Pendiente de validación</span>.</td></tr>
+      <tr><td>O4 Cierre</td><td>O5 Reporte</td><td>La orden <span class="pill navy">Finalizada</span> con conformidad del cliente.</td></tr>
+      <tr><td>O5 Reporte</td><td>O6 Postventa</td><td>El reporte compartido: la orden en <span class="pill teal">Reporte enviado</span> y después en <span class="pill violet">Seguimiento postventa</span>.</td></tr>
+      <tr><td>O6 Postventa</td><td>E1 Control</td><td>Calificaciones, quejas y su resolución; la orden <span class="pill slate">Archivada</span> al cerrar el ciclo.</td></tr>
+      <tr><td>Todos</td><td>E1 Control · S3 Bitácora</td><td>Cada registro alimenta Pendientes, Indicadores y la bitácora sin captura adicional.</td></tr>
+    </tbody>
+  </table>
+</section>

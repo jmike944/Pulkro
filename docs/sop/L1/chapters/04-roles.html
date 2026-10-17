@@ -1,0 +1,51 @@
+<section class="chapter" id="l1-roles">
+  <header class="opener">
+    <div class="num">Personas</div>
+    <h1>Roles y <em>responsabilidades</em></h1>
+    <p class="desc">Tres roles usan la app. El rol decide qué puede hacer cada persona; la unidad y sus asignaciones deciden qué información ve.</p>
+  </header>
+
+  <h2 class="section">Los roles</h2>
+  <div class="cards three">
+    <div class="card">
+      <span class="t"><span class="role dir">Dirección</span></span>
+      <p>Responde por la operación completa. Ve todas las unidades o la que elija, revisa indicadores y bitácora, exporta, da de alta a los usuarios y administra los catálogos. Consulta órdenes y jornadas sin capturar en campo.</p>
+    </div>
+    <div class="card">
+      <span class="t"><span class="role adm">Administración</span></span>
+      <p>Da de alta las órdenes de su unidad, las edita y cancela, administra los catálogos, lleva la postventa con los supervisores y consulta indicadores y exportaciones de su unidad.</p>
+    </div>
+    <div class="card">
+      <span class="t"><span class="role sup">Supervisor</span></span>
+      <p>Responde por sus servicios en campo: arma la cuadrilla, programa y reprograma jornadas, registra entrada, salida, fotos e incidencias, valida el cierre, comparte el reporte y atiende la postventa de sus órdenes.</p>
+    </div>
+  </div>
+  <table class="kv">
+    <tbody>
+      <tr><td>Cuadrilla</td><td>Los trabajadores no están obligados a usar la app. El supervisor captura por ellos y puede cambiar la cuadrilla entre jornadas; cada cambio guarda el motivo.</td></tr>
+      <tr><td>Cliente</td><td>No tiene cuenta. Da su conformidad en sitio (firma en el teléfono del supervisor, de palabra o por correo), recibe el reporte por WhatsApp o correo y responde la encuesta desde un enlace.</td></tr>
+      <tr><td>Alcance de la información</td><td>Supervisor: sus asignaciones. Administración: su unidad. Dirección: todas las unidades o la que elija.</td></tr>
+    </tbody>
+  </table>
+
+  <h2 class="section">Responsabilidades por proceso</h2>
+  <table class="raci">
+    <thead><tr><th>Proceso</th><th>Dirección</th><th>Administración</th><th>Supervisor</th><th>Cliente</th></tr></thead>
+    <tbody>
+      <tr><td><span class="pcode">E1</span> Control de la operación e indicadores</td><td><span class="ra a">A</span></td><td><span class="ra r">R</span></td><td><span class="ra i">I</span></td><td></td></tr>
+      <tr><td><span class="pcode">E2</span> Políticas, decisiones y mejora</td><td><span class="ra a">A</span></td><td><span class="ra c">C</span></td><td><span class="ra c">C</span></td><td></td></tr>
+      <tr><td><span class="pcode">O1</span> Alta de la orden</td><td><span class="ra i">I</span></td><td><span class="ra a">A</span></td><td><span class="ra i">I</span></td><td></td></tr>
+      <tr><td><span class="pcode">O2</span> Programación y cuadrilla</td><td><span class="ra i">I</span></td><td><span class="ra i">I</span></td><td><span class="ra a">A</span></td><td></td></tr>
+      <tr><td><span class="pcode">O3</span> Ejecución en campo</td><td><span class="ra i">I</span></td><td><span class="ra i">I</span></td><td><span class="ra a">A</span></td><td></td></tr>
+      <tr><td><span class="pcode">O4</span> Cierre y validación</td><td><span class="ra i">I</span></td><td><span class="ra i">I</span></td><td><span class="ra a">A</span></td><td><span class="ra c">C</span></td></tr>
+      <tr><td><span class="pcode">O5</span> Reporte al cliente</td><td><span class="ra i">I</span></td><td><span class="ra i">I</span></td><td><span class="ra a">A</span></td><td><span class="ra i">I</span></td></tr>
+      <tr><td><span class="pcode">O6</span> Postventa</td><td><span class="ra i">I</span></td><td><span class="ra a">A</span></td><td><span class="ra r">R</span></td><td><span class="ra c">C</span></td></tr>
+      <tr><td><span class="pcode">S1</span> Usuarios, permisos y catálogos</td><td><span class="ra a">A</span></td><td><span class="ra r">R</span></td><td><span class="ra i">I</span></td><td></td></tr>
+      <tr><td><span class="pcode">S2</span> Sincronización sin conexión</td><td><span class="ra a">A</span></td><td><span class="ra r">R</span></td><td><span class="ra r">R</span></td><td></td></tr>
+      <tr><td><span class="pcode">S3</span> Trazabilidad y bitácora</td><td><span class="ra a">A</span></td><td><span class="ra i">I</span></td><td><span class="ra i">I</span></td><td></td></tr>
+    </tbody>
+  </table>
+  <div class="raci-legend"><span><span class="ra r">R</span>Responsable: hace</span><span><span class="ra a">A</span>Aprueba y responde por el resultado</span><span><span class="ra c">C</span>Consultado</span><span><span class="ra i">I</span>Informado: lo ve en la app</span></div>
+  <p>En S1, Dirección da de alta, edita y desactiva usuarios; Dirección y Administración mantienen los catálogos. En S2, cada persona responde por enviar lo que capturó en su teléfono. El detalle por actividad está en cada procedimiento y la matriz completa de permisos, en el apéndice del manual de usuario.</p>
+  <div class="note warn"><b class="note-t">Por decidir</b><p>Quién crea usuarios, quién edita órdenes cerradas y quién ve información de otras unidades está marcado como pendiente en el documento maestro. La app ya opera con la asignación de esta tabla; la confirmación formal está <span class="tbd">Por definir</span>.</p></div>
+</section>

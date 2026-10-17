@@ -1,16 +1,18 @@
 """Sets the PDF's document properties (Chromium only writes the title) and its bookmarks.
-Usage: pdf-meta.py <file.pdf> [outline.json]  (outline.json: [{title, page, children: [{title, page}]}], pages 1-based)"""
+Usage: pdf-meta.py <file.pdf> [outline.json] [meta.json]
+  outline.json: [{title, page, children: [{title, page}]}], pages 1-based · meta.json: {title, subject, keywords}"""
 import json
 import sys
 from pypdf import PdfReader, PdfWriter
 
 path = sys.argv[1]
+meta = json.load(open(sys.argv[3], encoding="utf-8")) if len(sys.argv) > 3 else {}
 writer = PdfWriter(clone_from=PdfReader(path))
 writer.add_metadata({
-    "/Title": "Pulkro Cuadrillas · Manual de usuario",
+    "/Title": meta.get("title", "Pulkro Cuadrillas · Manual de usuario"),
     "/Author": "Pulkro Compañía de Servicios",
-    "/Subject": "Control operativo y postventa de cuadrillas de limpieza: guía de uso para Supervisor, Administración y Dirección",
-    "/Keywords": "Pulkro, cuadrillas, órdenes, jornadas, evidencias, reportes, postventa, manual",
+    "/Subject": meta.get("subject", ""),
+    "/Keywords": meta.get("keywords", ""),
 })
 if len(sys.argv) > 2:
     for ch in json.load(open(sys.argv[2], encoding="utf-8")):

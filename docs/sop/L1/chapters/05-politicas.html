@@ -1,0 +1,57 @@
+<section class="chapter" id="l1-politicas">
+  <header class="opener">
+    <div class="num">Reglas</div>
+    <h1>Políticas <em>operativas</em></h1>
+    <p class="desc">Las reglas que todos cumplen en cada servicio, sin excepción salvo la que la propia política prevé. La app las hace cumplir; los procedimientos dicen cómo.</p>
+  </header>
+
+  <h2 class="section">Políticas de servicio</h2>
+  <h3>P-01 · Solo se ejecuta trabajo autorizado</h3>
+  <p><b>Toda orden nace de un servicio autorizado por el sistema comercial.</b> La captación, cotización y autorización ocurren fuera de esta app. Hoy Administración da de alta cada orden a mano con su referencia comercial; la integración automática es una fase posterior.</p>
+  <table class="kv"><tbody><tr><td>Cómo se cumple</td><td>Solo Administración crea órdenes; la referencia comercial queda en la orden.</td></tr><tr><td>Procedimientos</td><td class="mono">PK-SOP-L2-01</td></tr></tbody></table>
+
+  <h3>P-02 · Cada orden tiene un supervisor responsable</h3>
+  <p><b>El supervisor asignado responde por la orden de principio a fin:</b> arma la cuadrilla, ejecuta, valida el cierre y comparte el reporte. Las cuadrillas son variables y pueden cambiar entre jornadas.</p>
+  <table class="kv"><tbody><tr><td>Cómo se cumple</td><td>Solo el supervisor asigna cuadrilla, captura en campo y valida el cierre; cada cambio de cuadrilla guarda el motivo.</td></tr><tr><td>Procedimientos</td><td class="mono">PK-SOP-L2-02 · 03 · 06</td></tr></tbody></table>
+
+  <h3>P-03 · Entrada y salida con hora y ubicación</h3>
+  <p><b>Cada jornada registra su entrada y su salida con hora y GPS,</b> en ese orden y sin duplicados. Si no hay señal, permiso de ubicación o el supervisor está lejos del sitio, el registro exige una justificación; la supervisión remota se permite, justificada, y el reporte la señala.</p>
+  <table class="kv"><tbody><tr><td>Cómo se cumple</td><td>La app guarda coordenadas, precisión y hora; no permite salida sin entrada ni registros repetidos.</td></tr><tr><td>Procedimientos</td><td class="mono">PK-SOP-L2-03</td></tr></tbody></table>
+
+  <h3>P-04 · Evidencia ANTES y DESPUÉS obligatoria</h3>
+  <p><b>Cada jornada lleva al menos una foto ANTES y una DESPUÉS.</b> La única salida es una excepción autorizada por el supervisor con justificación escrita, que el cliente ve en su reporte. Una escena nunca se recrea.</p>
+  <table class="kv"><tbody><tr><td>Cómo se cumple</td><td>Cada foto guarda hora real, origen (cámara o galería) y ubicación; la app pide las fotos que faltan y bloquea el cierre sin ellas.</td></tr><tr><td>Procedimientos</td><td class="mono">PK-SOP-L2-03 · 05 · 06</td></tr></tbody></table>
+
+  <h3>P-05 · Las incidencias se registran en el momento</h3>
+  <p><b>Daños, faltantes de material o personal, trabajos adicionales, retrasos, ausencias y quejas se registran</b> con tipo, severidad, descripción y fotos. El supervisor decide si la incidencia impide el cierre.</p>
+  <table class="kv"><tbody><tr><td>Cómo se cumple</td><td>Una incidencia que impide el cierre lo bloquea hasta resolverse; las demás pasan al reporte.</td></tr><tr><td>Criterios de bloqueo</td><td><span class="tbd">Por definir</span></td></tr><tr><td>Procedimientos</td><td class="mono">PK-SOP-L2-04</td></tr></tbody></table>
+
+  <h3>P-06 · Un solo cierre, con conformidad del cliente</h3>
+  <p><b>Una orden de varias jornadas tiene un solo cierre</b>, que valida su supervisor con la conformidad del cliente registrada. Después del cierre, toda corrección exige reabrir la orden con motivo y genera una nueva versión del reporte.</p>
+  <table class="kv"><tbody><tr><td>Cómo se cumple</td><td>La app revisa jornadas, fotos e incidencias antes de validar; la reapertura queda en la bitácora y el reporte sale como v2, v3…</td></tr><tr><td>Procedimientos</td><td class="mono">PK-SOP-L2-06 · 07</td></tr></tbody></table>
+
+  <h2 class="section">Políticas de información</h2>
+  <h3>P-07 · El envío al cliente es manual y no afirma entrega</h3>
+  <p><b>El reporte se comparte desde el teléfono por WhatsApp o correo.</b> Se registra quién inició el envío y cuándo, pero nunca se afirma que el cliente lo recibió o lo leyó.</p>
+  <table class="kv"><tbody><tr><td>Cómo se cumple</td><td>Cada intento queda con la nota «sin confirmación de entrega».</td></tr><tr><td>Procedimientos</td><td class="mono">PK-SOP-L2-07 · 08</td></tr></tbody></table>
+
+  <h3>P-08 · Sin señal no se detiene la captura</h3>
+  <p><b>Entradas, salidas, fotos, incidencias y cierres se capturan aunque no haya conexión</b>, con marca de pendiente, y se envían solos al volver la señal. El reporte definitivo no se comparte mientras falten datos por sincronizar.</p>
+  <table class="kv"><tbody><tr><td>Cómo se cumple</td><td>Cola de sincronización con estados visibles; el envío del reporte espera a que todo llegue.</td></tr><tr><td>Procedimientos</td><td class="mono">PK-SOP-L2-11</td></tr></tbody></table>
+
+  <h3>P-09 · Todo cambio deja rastro</h3>
+  <p><b>Cada alta, cambio de estado, reasignación, reapertura, excepción y envío queda en la bitácora</b> con usuario, fecha y, cuando aplica, motivo. Nadie edita la bitácora: incluso eliminar una foto deja su propio registro.</p>
+  <table class="kv"><tbody><tr><td>Cómo se cumple</td><td>La app escribe la bitácora sola; cada rol la consulta según su alcance.</td></tr><tr><td>Procedimientos</td><td class="mono">PK-SOP-L2-09 y todos</td></tr></tbody></table>
+
+  <h3>P-10 · Cada quien ve lo que le corresponde</h3>
+  <p><b>El acceso es individual y por rol y unidad:</b> el supervisor ve sus asignaciones, Administración su unidad y Dirección todas las unidades o la que elija. Las cuentas las da de alta Dirección.</p>
+  <table class="kv"><tbody><tr><td>Cómo se cumple</td><td>Cuenta individual con invitación por correo; permisos por rol; pantallas y acciones fuera del rol no aparecen.</td></tr><tr><td>Procedimientos</td><td class="mono">PK-SOP-L2-10</td></tr></tbody></table>
+
+  <h3>P-11 · Privacidad de fotos, ubicación y firmas</h3>
+  <p><b>Las fotos, la ubicación, las firmas y los datos de clientes se usan solo para documentar el servicio.</b> El aviso de privacidad está en Configuración › Privacidad.</p>
+  <table class="kv"><tbody><tr><td>Retención y eliminación</td><td><span class="tbd">Por definir</span>, según la normativa aplicable.</td></tr><tr><td>Procedimientos</td><td class="mono">PK-SOP-L2-10 · 11</td></tr></tbody></table>
+
+  <h3>P-12 · El cliente no necesita cuenta</h3>
+  <p><b>El cliente no inicia sesión ni instala nada:</b> recibe el reporte por WhatsApp o correo y responde la encuesta desde un enlace. Sus quejas se registran como casos con folio, aunque lleguen por teléfono o WhatsApp.</p>
+  <table class="kv"><tbody><tr><td>Cómo se cumple</td><td>Encuesta pública por enlace; registro manual de respuestas y casos.</td></tr><tr><td>Procedimientos</td><td class="mono">PK-SOP-L2-08</td></tr></tbody></table>
+</section>

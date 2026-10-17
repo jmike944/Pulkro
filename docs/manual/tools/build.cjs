@@ -1,17 +1,34 @@
-// Builds the user manual: chapters/*.html (files starting with "_" are skipped) → manual.html → PDF (Paged.js in Chromium).
+// Builds a Pulkro document — the user manual (L3) by default, or the SOP documents (L1, L2) — from chapters/*.html
+// (files starting with "_" are skipped) → HTML → PDF (Paged.js in Chromium), with the shared design in docs/manual/assets.
 //
-//   node docs/manual/tools/build.cjs            → manual.html + Pulkro_Cuadrillas_Manual_de_Usuario.pdf
-//   node docs/manual/tools/build.cjs --html     → manual.html only
-//   node docs/manual/tools/build.cjs --only 05,06  → a draft PDF (build/draft-05,06.pdf) with just the chapters whose file starts with 05 or 06
+//   node docs/manual/tools/build.cjs                      → the manual: manual.html + Pulkro_Cuadrillas_Manual_de_Usuario.pdf
+//   node docs/manual/tools/build.cjs --doc docs/sop/L2    → the document in that folder (its doc.json names the PDF and labels)
+//   node docs/manual/tools/build.cjs --html               → the HTML only
+//   node docs/manual/tools/build.cjs --only 05,06         → a draft PDF (build/draft-05,06.pdf) with just the chapters whose file starts with 05 or 06
+//   node docs/manual/tools/build.cjs --light              → the manual with screen-resolution screenshots (e-mail, WhatsApp)
 //
 // The table of contents, section ids and figure numbers are generated in the page before Paged.js paginates it.
 const fs = require("node:fs");
 const path = require("node:path");
 const { chromium } = require("/opt/node22/lib/node_modules/playwright");
 
-const ROOT = path.join(__dirname, "..");
-const CHAPTERS = path.join(ROOT, "chapters");
+const MANUAL = path.join(__dirname, ".."); // shared assets, fonts, tools and the manual's screenshots
+const DOCS = path.join(MANUAL, ".."); // served root: every document's HTML and the shared assets are under it
 const args = process.argv.slice(2);
+const ROOT = args.includes("--doc") ? path.resolve(args[args.indexOf("--doc") + 1]) : MANUAL;
+const CHAPTERS = path.join(ROOT, "chapters");
+const CONF = {
+  title: "Pulkro Cuadrillas · Manual de usuario",
+  label: "Pulkro Cuadrillas · Manual de usuario", // running header, top left
+  pdf: "Pulkro_Cuadrillas_Manual_de_Usuario.pdf",
+  lightPdf: "Pulkro_Cuadrillas_Manual_de_Usuario_ligero.pdf",
+  html: "manual.html",
+  subject: "Control operativo y postventa de cuadrillas de limpieza: guía de uso para Supervisor, Administración y Dirección",
+  keywords: "Pulkro, cuadrillas, órdenes, jornadas, evidencias, reportes, postventa, manual",
+  chapterLabel: "Capítulo",
+  dividers: true, // chapter openers become title pages
+  ...(fs.existsSync(path.join(ROOT, "doc.json")) ? JSON.parse(fs.readFileSync(path.join(ROOT, "doc.json"), "utf8")) : {}),
+};
 const only = args.includes("--only") ? args[args.indexOf("--only") + 1] : null;
 const htmlOnly = args.includes("--html");
 // --light: a smaller PDF for e-mail and WhatsApp, with screen-resolution screenshots (tools/light-shots.py).
@@ -23,7 +40,7 @@ const files = fs
   .filter((f) => !only || only.split(",").some((p) => f.startsWith(p)) || f.startsWith("00-a"))
   .sort();
 
-const svg = (f) => fs.readFileSync(path.join(ROOT, "assets", f), "utf8").replace(/<\?xml[^>]*>/, "");
+const svg = (f) => fs.readFileSync(path.join(MANUAL, "assets", f), "utf8").replace(/<\?xml[^>]*>/, "");
 // <!--emblem--> / <!--letters--> → the brand SVGs inline (they paint with currentColor).
 const read = (f) =>
   fs
@@ -38,8 +55,9 @@ const html = `<!doctype html>
 <html lang="es-MX">
 <head>
 <meta charset="utf-8">
-<title>Pulkro Cuadrillas · Manual de usuario</title>
+<title>${CONF.title}</title>
 <link rel="stylesheet" href="assets/manual.css">
+<style>:root { --pk-doc: ${JSON.stringify(CONF.label)}; }</style>
 <script>window.PagedConfig = { auto: false };</script>
 <script src="assets/paged.polyfill.js"></script>
 </head>
@@ -50,9 +68,24 @@ ${body.map(read).join("\n")}
 ${back.map(read).join("\n")}
 <script>
 (function () {
+  const CHAPTER_LABEL = ${JSON.stringify(CONF.chapterLabel)};
+  const TOC_SECTIONS = ${JSON.stringify(CONF.tocSections !== false)};
   const slug = (s) => s.toLowerCase().normalize("NFD").replace(/[\\u0300-\\u036f]/g, "").replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 60);
   const used = new Set();
-  const uid = (base) => { let id = base || "s", n = 2; while (used.has(id)) id = base + "-" + n++; used.add(id); return id; };
+  const uid = (base) => {
+    base = /^[a-z]/.test(base || "") ? base : "s-" + (base || "");
+    let id = base, n = 2;
+    while (used.has(id)) id = base + "-" + n++;
+    used.add(id);
+    return id;
+  };
+  // A heading's text; a numbered SOP section ("<span class=no>1</span>Objetivo") reads "1. Objetivo".
+  const headText = (h) => {
+    if (h.dataset.toc) return h.dataset.toc;
+    const no = h.querySelector(".no");
+    const rest = [...h.childNodes].filter((n) => n !== no).map((n) => n.textContent).join("").trim();
+    return no ? no.textContent.trim() + ". " + rest : rest;
+  };
   document.querySelectorAll("[id]").forEach((el) => used.add(el.id));
 
   // Each chapter → .sec blocks (one per h2.section; the opener and intro form the first) → .sub blocks (one per h3).
@@ -100,13 +133,15 @@ ${back.map(read).join("\n")}
   document.querySelectorAll("section.chapter").forEach((ch, i) => {
     const n = i + 1;
     if (!ch.id) ch.id = uid("cap-" + n);
-    const h1 = ch.querySelector(".opener h1, h1");
+    const h1 = ch.querySelector(".opener h1, .sop-head h1, h1");
     const num = ch.querySelector(".opener .num");
-    if (num && !num.dataset.keep) num.textContent = "Capítulo " + n + (num.textContent.trim() ? " · " + num.textContent.trim() : "");
+    // A procedure carries its own code (data-code); chapters are numbered.
+    const code = ch.dataset.code;
+    if (num && !num.dataset.keep) num.textContent = (code || CHAPTER_LABEL + " " + n) + (num.textContent.trim() ? " · " + num.textContent.trim() : "");
     const secs = [];
     ch.querySelectorAll("h2.section").forEach((h) => {
-      if (!h.id) h.id = uid(slug(h.textContent));
-      if (!h.dataset.notoc) secs.push({ id: h.id, t: h.dataset.toc || h.textContent.trim() });
+      if (!h.id) h.id = uid(slug(headText(h)));
+      if (!h.dataset.notoc && TOC_SECTIONS) secs.push({ id: h.id, t: headText(h) });
     });
     let f = 0;
     ch.querySelectorAll("figure.shot figcaption").forEach((c) => {
@@ -116,7 +151,7 @@ ${back.map(read).join("\n")}
       s.textContent = "Figura " + n + "." + f;
       c.prepend(s);
     });
-    items.push({ n, id: ch.id, t: (h1 && (h1.dataset.toc || h1.textContent.trim())) || "", secs });
+    items.push({ n: code || String(n).padStart(2, "0"), id: ch.id, t: (h1 && (h1.dataset.toc || h1.textContent.trim())) || "", secs });
   });
   if (toc) {
     toc.innerHTML =
@@ -124,7 +159,7 @@ ${back.map(read).join("\n")}
       items
         .map(
           (c) =>
-            '<li><a class="ch" href="#' + c.id + '"><span class="n">' + String(c.n).padStart(2, "0") + '</span><span class="t">' + c.t + "</span></a>" +
+            '<li><a class="ch" href="#' + c.id + '"><span class="n">' + c.n + '</span><span class="t">' + c.t + "</span></a>" +
             (c.secs.length ? "<ol>" + c.secs.map((s) => '<li><a href="#' + s.id + '"><span class="t">' + s.t + "</span></a></li>").join("") + "</ol>" : "") +
             "</li>",
         )
@@ -136,12 +171,17 @@ ${back.map(read).join("\n")}
 </body>
 </html>`;
 
-const outHtml = path.join(ROOT, only ? `build/draft-${only}.html` : light ? "build/manual-ligero.html" : "manual.html");
+const outHtml = path.join(ROOT, only ? `build/draft-${only}.html` : light ? "build/manual-ligero.html" : CONF.html || "build/document.html");
 fs.mkdirSync(path.dirname(outHtml), { recursive: true });
-// Draft files live one level down: point their relative URLs back at the manual root.
+fs.mkdirSync(path.join(ROOT, "build"), { recursive: true });
+// Shared assets and the manual's screenshots, relative to where this HTML is written.
 if (light) require("node:child_process").execFileSync("python3", [path.join(__dirname, "light-shots.py")], { stdio: "inherit" });
-const page_ = light ? html.replaceAll('src="shots/', 'src="build/light/shots/') : html;
-fs.writeFileSync(outHtml, only || light ? page_.replace("<head>", '<head>\n<base href="../">') : page_);
+const rel = path.relative(path.dirname(outHtml), MANUAL).split(path.sep).join("/") || ".";
+const page_ = html
+  .replaceAll('href="assets/', `href="${rel}/assets/`)
+  .replaceAll('src="assets/', `src="${rel}/assets/`)
+  .replaceAll('src="shots/', light ? `src="${rel}/build/light/shots/` : `src="${rel}/shots/`);
+fs.writeFileSync(outHtml, page_);
 console.log(`html → ${path.relative(process.cwd(), outHtml)} (${files.length} files)`);
 if (htmlOnly) process.exit(0);
 
@@ -149,8 +189,8 @@ if (htmlOnly) process.exit(0);
 const http = require("node:http");
 const TYPES = { ".html": "text/html; charset=utf-8", ".css": "text/css", ".js": "text/javascript", ".jpg": "image/jpeg", ".png": "image/png", ".svg": "image/svg+xml", ".woff2": "font/woff2" };
 const server = http.createServer((req, res) => {
-  const file = path.join(ROOT, decodeURIComponent(new URL(req.url, "http://x").pathname));
-  if (!file.startsWith(ROOT) || !fs.existsSync(file) || fs.statSync(file).isDirectory()) return res.writeHead(404).end();
+  const file = path.join(DOCS, decodeURIComponent(new URL(req.url, "http://x").pathname));
+  if (!file.startsWith(DOCS) || !fs.existsSync(file) || fs.statSync(file).isDirectory()) return res.writeHead(404).end();
   res.writeHead(200, { "Content-Type": TYPES[path.extname(file)] ?? "application/octet-stream" });
   fs.createReadStream(file).pipe(res);
 });
@@ -163,14 +203,14 @@ const server = http.createServer((req, res) => {
     if (m.type() === "error" || m.type() === "warning") console.log("[page]", m.text());
   });
   page.on("pageerror", (e) => console.log("[pageerror]", e.message));
-  await page.goto(`http://127.0.0.1:${server.address().port}/${path.relative(ROOT, outHtml)}`, { waitUntil: "load" });
+  await page.goto(`http://127.0.0.1:${server.address().port}/${path.relative(DOCS, outHtml).split(path.sep).join("/")}`, { waitUntil: "load" });
   await page.evaluate(async () => {
     await document.fonts.ready;
     await Promise.all([...document.images].map((img) => (img.complete ? Promise.resolve() : img.decode().catch(() => {}))));
     const missing = [...document.images].filter((img) => !img.naturalWidth).map((img) => img.getAttribute("src"));
     if (missing.length) console.error("missing images: " + missing.join(", "));
   });
-  const blocks = await page.evaluate(() => {
+  const blocks = await page.evaluate((dividers) => {
     // Lay the content out at the page's text width (Letter 8.5in − 2 × 0.78in) to measure each block.
     const st = document.createElement("style");
     st.textContent = "body { width: 6.94in; }";
@@ -231,11 +271,11 @@ const server = http.createServer((req, res) => {
         } else if (subs[0]) subs[0].classList.remove("keep");
       }
       // The chapter opener becomes a title page of its own.
-      if (intro && r !== "long") sec.classList.add("divider");
+      if (dividers && intro && r !== "long" && sec.querySelector(".opener")) sec.classList.add("divider");
     }
     st.remove();
     return n;
-  });
+  }, CONF.dividers);
   console.log(`sections: ${blocks.kept} kept whole, ${blocks.tight} kept whole in their tight layout, ${blocks.long} longer than a page`);
   if (process.env.PK_RATIOS) console.log(blocks.ratios.sort().join("\n"));
   const t0 = Date.now();
@@ -274,7 +314,7 @@ const server = http.createServer((req, res) => {
   await page.evaluate(() => {
     let current = "";
     for (const pg of document.querySelectorAll(".pagedjs_page")) {
-      const h = pg.querySelector(".opener h1, h1.front-title");
+      const h = pg.querySelector(".opener h1, .sop-head h1, h1.front-title");
       if (h) current = (h.dataset.toc || h.textContent).replace(/\s+/g, " ").trim();
       pg.style.setProperty("--pagedjs-string-first-chapter", JSON.stringify(current));
     }
@@ -283,17 +323,24 @@ const server = http.createServer((req, res) => {
   // Bookmarks (chapters › sections) with their page numbers, for pdf-meta.py: the PDF's own outline needs a tagged PDF.
   const outline = await page.evaluate(() => {
     const pageOf = (el) => Number(el.closest(".pagedjs_page")?.dataset.pageNumber || 0);
-    const text = (el) => (el.dataset.toc || el.textContent).replace(/\s+/g, " ").trim();
+    const text = (el) => {
+      if (el.dataset.toc) return el.dataset.toc;
+      const no = el.querySelector(".no");
+      const rest = [...el.childNodes].filter((n) => n !== no).map((n) => n.textContent).join("");
+      return ((no ? no.textContent.trim() + ". " : "") + rest).replace(/\s+/g, " ").trim();
+    };
     const items = [];
-    const front = document.querySelector("#como-usar h1.front-title");
-    if (front) items.push({ title: text(front), page: pageOf(front), children: [] });
+    document.querySelectorAll(".front h1.front-title").forEach((h) => {
+      if (!h.closest("#indice")) items.push({ title: text(h), page: pageOf(h), children: [] });
+    });
     const toc = document.querySelector("#indice h1.front-title");
     if (toc) items.push({ title: text(toc), page: pageOf(toc), children: [] });
     // Paged.js splits each chapter section across pages: walk the headings in document order instead.
-    document.querySelectorAll(".opener h1, h2.section").forEach((h) => {
-      if (h.matches(".opener h1")) {
-        const num = h.closest(".opener").querySelector(".num")?.textContent.match(/Capítulo (\d+)/)?.[1];
-        items.push({ title: (num ? num + ". " : "") + text(h), page: pageOf(h), children: [] });
+    document.querySelectorAll(".opener h1, .sop-head h1, h2.section").forEach((h) => {
+      if (h.matches(".opener h1, .sop-head h1")) {
+        const ch = h.closest("section.chapter");
+        const num = ch?.dataset.code || h.closest(".opener")?.querySelector(".num")?.textContent.match(/\S+ (\d+)/)?.[1];
+        items.push({ title: (num ? num + (ch?.dataset.code ? " · " : ". ") : "") + text(h), page: pageOf(h), children: [] });
       } else if (items.length && !h.closest(".front")) {
         items[items.length - 1].children.push({ title: text(h), page: pageOf(h) });
       }
@@ -316,11 +363,11 @@ const server = http.createServer((req, res) => {
   );
   if (overflow.length) console.log("OVERFLOW:\n  " + overflow.join("\n  "));
 
-  const outPdf = only
-    ? path.join(ROOT, `build/draft-${only}.pdf`)
-    : path.join(ROOT, light ? "Pulkro_Cuadrillas_Manual_de_Usuario_ligero.pdf" : "Pulkro_Cuadrillas_Manual_de_Usuario.pdf");
+  const outPdf = path.join(ROOT, only ? `build/draft-${only}.pdf` : light ? CONF.lightPdf : CONF.pdf);
   await page.pdf({ path: outPdf, preferCSSPageSize: true, printBackground: true, displayHeaderFooter: false, outline: true, tagged: false });
-  if (!only) require("node:child_process").execFileSync("python3", [path.join(__dirname, "pdf-meta.py"), outPdf, path.join(ROOT, "build", "outline.json")], { stdio: "inherit" });
+  const meta = path.join(ROOT, "build", "meta.json");
+  fs.writeFileSync(meta, JSON.stringify({ title: CONF.title, subject: CONF.subject, keywords: CONF.keywords }));
+  if (!only) require("node:child_process").execFileSync("python3", [path.join(__dirname, "pdf-meta.py"), outPdf, path.join(ROOT, "build", "outline.json"), meta], { stdio: "inherit" });
   console.log(`pdf → ${path.relative(process.cwd(), outPdf)}`);
   await browser.close();
   server.close();

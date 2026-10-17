@@ -1,0 +1,11 @@
+{
+  "title": "Pulkro Cuadrillas · Mapa de procesos y políticas operativas (SOP Nivel 1)",
+  "label": "Pulkro Cuadrillas · SOP Nivel 1 · Procesos y políticas",
+  "pdf": "../Pulkro_Cuadrillas_SOP_L1_Procesos_y_Politicas.pdf",
+  "html": "build/document.html",
+  "subject": "Mapa de procesos, políticas operativas, responsables e indicadores de Pulkro Cuadrillas",
+  "keywords": "Pulkro, SOP, mapa de procesos, políticas, cuadrillas, indicadores, RACI",
+  "chapterLabel": "Sección",
+  "dividers": false,
+  "tocSections": true
+}

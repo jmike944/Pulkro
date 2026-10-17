@@ -89,7 +89,7 @@
   margin: 0.95in 0.78in 0.85in 0.78in;
 
   @top-left {
-    content: "Pulkro Cuadrillas · Manual de usuario";
+    content: var(--pk-doc);
     white-space: nowrap;
     font-family: var(--sans);
     font-size: 7.5pt;
@@ -941,7 +941,8 @@ hr { border: 0; border-top: 1px solid var(--hairline); margin: 14pt 0; }
   font-weight: 600;
   color: var(--blue-ink);
   letter-spacing: 0.08em;
-  width: 16pt;
+  min-width: 16pt;
+  white-space: nowrap;
   flex: none;
 }
 .toc a.ch .t { flex: 1; }
@@ -993,3 +994,322 @@ hr { border: 0; border-top: 1px solid var(--hairline); margin: 14pt 0; }
 /* Paged.js sizes the top margin boxes before the per-page chapter title is set: give the title the room it needs. */
 .pagedjs_margin-top { grid-template-columns: 40% 0 60% !important; }
 .pagedjs_margin-top-right .pagedjs_margin-content::after { white-space: nowrap; }
+
+/* ═════════════════════════════ SOP documents (L1 · L2) ═════════════════════════════
+   Same tokens as the manual. Role colors: Supervisor teal · Administración rose · Dirección blue · Cliente violet ·
+   App (sistema) slate.                                                                                              */
+
+:root {
+  --r-sup-bg: #dff6f2; --r-sup-fg: #0b6b60;
+  --r-adm-bg: #fbe7f3; --r-adm-fg: #8b2463;
+  --r-dir-bg: #e3f3fb; --r-dir-fg: #11507e;
+  --r-cli-bg: #f1edff; --r-cli-fg: #4b33b5;
+  --r-app-bg: #eef1f5; --r-app-fg: #3b4554;
+}
+.role.cli::before { content: "CL"; background: var(--r-cli-bg); color: var(--r-cli-fg); }
+.role.app::before { content: "APP"; background: var(--r-app-bg); color: var(--r-app-fg); width: auto; padding: 0 3pt; border-radius: 99px; }
+
+/* "Por definir": a decision Pulkro has not taken yet. */
+.tbd {
+  display: inline-block;
+  font-size: 0.82em;
+  font-weight: 600;
+  color: var(--amber-ink);
+  background: var(--amber-soft);
+  border: 1px dashed var(--amber-line-strong, #f3c97a);
+  border-radius: 6px;
+  padding: 0 4pt;
+  white-space: nowrap;
+}
+
+/* Procedure header (L2): the document-control card that opens each procedure. */
+.sop-head {
+  border: 1px solid var(--line);
+  border-radius: 22px;
+  overflow: hidden;
+  margin: 0 0 16pt;
+  break-inside: avoid;
+  background: var(--surface);
+}
+.sop-head .band {
+  background: var(--aurora-base) url("bg-aurora.jpg") center / 100% 100% no-repeat;
+  padding: 12pt 16pt 11pt;
+}
+.sop-head .band .top { display: flex; align-items: center; gap: 8pt; }
+.sop-head .code {
+  font-family: var(--mono);
+  font-size: 7.6pt;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  color: #fff;
+  background: var(--brand-deep);
+  border-radius: 99px;
+  padding: 2.5pt 7pt;
+}
+.sop-head .lvl { font-size: 7.4pt; font-weight: 600; letter-spacing: 0.14em; text-transform: uppercase; color: var(--blue-ink); }
+.sop-head h1 {
+  font-family: var(--serif-display);
+  font-weight: 400;
+  font-size: 25pt;
+  line-height: 1.05;
+  letter-spacing: -0.02em;
+  color: var(--ink);
+  margin: 7pt 0 4pt;
+}
+.sop-head .purpose { font-size: 9.4pt; line-height: 1.45; color: var(--ink-soft); margin: 0; max-width: 94%; }
+.sop-head .meta {
+  display: grid;
+  grid-template-columns: 1.15fr 1fr 0.8fr 0.8fr;
+  margin: 0;
+  border-top: 1px solid var(--hairline);
+}
+.sop-head .meta > div { padding: 6pt 10pt 7pt; border-right: 1px solid var(--hairline); }
+.sop-head .meta > div:last-child { border-right: 0; }
+.sop-head .meta .wide { grid-column: span 2; border-top: 1px solid var(--hairline); }
+.sop-head .meta .full { grid-column: 1 / -1; border-top: 1px solid var(--hairline); border-right: 0; }
+.sop-head dt { font-size: 6.6pt; font-weight: 600; letter-spacing: 0.12em; text-transform: uppercase; color: var(--subtle); margin-bottom: 2.5pt; }
+.sop-head dd { margin: 0; font-size: 8.2pt; color: var(--ink); font-weight: 500; line-height: 1.38; }
+.sop-head dd .role { font-size: 7.2pt; }
+
+/* Numbered SOP section titles inside a procedure ("1. Objetivo") */
+h2.section .no { font-family: var(--sans); font-size: 9pt; font-weight: 600; color: var(--blue-ink); margin-right: 6pt; letter-spacing: 0.04em; vertical-align: 3pt; }
+
+/* RACI matrix */
+table.raci td, table.raci th { text-align: center; }
+table.raci td:first-child, table.raci th:first-child { text-align: left; }
+.ra {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 16pt;
+  height: 16pt;
+  border-radius: 99px;
+  font-size: 7.4pt;
+  font-weight: 700;
+}
+.ra.r { background: var(--brand-deep); color: #fff; }
+.ra.a { background: var(--azure); color: #fff; }
+.ra.c { background: var(--blue-soft); color: var(--link); border: 1px solid var(--blue-line); }
+.ra.i { background: var(--tile); color: var(--subtle); border: 1px solid var(--line); }
+.raci-legend { display: flex; flex-wrap: wrap; gap: 4pt 14pt; font-size: 7.8pt; color: var(--subtle); margin: -6pt 0 12pt; }
+.raci-legend span { display: inline-flex; align-items: center; gap: 4pt; }
+.raci-legend .ra { width: 12pt; height: 12pt; font-size: 6pt; }
+
+/* Procedure steps table: step · role · activity · record in the app */
+table.proc { font-size: 8.7pt; }
+table.proc td { padding-top: 7pt; padding-bottom: 7pt; }
+table.proc td.n { width: 22pt; padding-right: 0; }
+table.proc td.n span {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 16pt;
+  height: 16pt;
+  border-radius: 99px;
+  background: var(--brand-deep);
+  color: #fff;
+  font-size: 7.4pt;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+table.proc td.n span.dec { background: var(--st-amber); border-radius: 4pt; transform: rotate(45deg); width: 13pt; height: 13pt; }
+table.proc td.n span.dec i { transform: rotate(-45deg); font-style: normal; }
+table.proc td.who { width: 92pt; }
+table.proc td.rec { width: 128pt; color: var(--ink-muted); font-size: 8.2pt; }
+table.proc td b.t { display: block; color: var(--ink); margin-bottom: 1.5pt; }
+table.proc .l3 { display: block; margin-top: 3pt; font-size: 7.4pt; color: var(--link); font-weight: 600; }
+table.proc .l3::before { content: "L3 › "; color: var(--faint); font-weight: 500; }
+
+/* Flow strip: the procedure at a glance (boxes colored by role, decisions in amber) */
+.flowstrip {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: stretch;
+  gap: 6pt 0;
+  margin: 8pt 0 14pt;
+  break-inside: avoid;
+}
+.flowstrip .st {
+  position: relative;
+  flex: 0 0 auto;
+  width: 82pt;
+  min-height: 46pt;
+  border-radius: 12px;
+  padding: 6pt 7pt;
+  font-size: 7.5pt;
+  line-height: 1.3;
+  font-weight: 600;
+  color: var(--ink);
+  border: 1px solid transparent;
+  margin-right: 14pt;
+}
+.flowstrip .st:not(:last-child)::after {
+  content: "→";
+  position: absolute;
+  right: -12pt;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--faint);
+  font-weight: 400;
+  font-size: 10pt;
+}
+.flowstrip .st small { display: block; font-size: 6.2pt; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; margin-bottom: 2pt; }
+.flowstrip .sup { background: var(--r-sup-bg); } .flowstrip .sup small { color: var(--r-sup-fg); }
+.flowstrip .adm { background: var(--r-adm-bg); } .flowstrip .adm small { color: var(--r-adm-fg); }
+.flowstrip .dir { background: var(--r-dir-bg); } .flowstrip .dir small { color: var(--r-dir-fg); }
+.flowstrip .cli { background: var(--r-cli-bg); } .flowstrip .cli small { color: var(--r-cli-fg); }
+.flowstrip .app { background: var(--r-app-bg); } .flowstrip .app small { color: var(--r-app-fg); }
+.flowstrip .dec { background: var(--amber-wash); border: 1px dashed var(--amber-line-strong, #f3c97a); }
+.flowstrip .dec small { color: var(--amber-ink); }
+.flowstrip .end { background: var(--brand-deep); color: #fff; }
+.flowstrip .end small { color: var(--sky); }
+
+/* Document control: revision table and signatures */
+.signs { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 14pt; margin: 14pt 0 10pt; break-inside: avoid; }
+.signs .s { border-top: 1px solid var(--line-strong); padding-top: 5pt; min-height: 54pt; display: flex; flex-direction: column; justify-content: flex-end; }
+.signs .s .role-l { font-size: 6.8pt; font-weight: 600; letter-spacing: 0.12em; text-transform: uppercase; color: var(--subtle); }
+.signs .s .who { font-size: 8.8pt; color: var(--ink); font-weight: 500; margin-top: 2pt; }
+.signs .s .line { height: 30pt; border-bottom: 1px solid var(--ink-muted); margin-bottom: 5pt; }
+
+/* L1 · document pyramid */
+.pyramid { margin: 10pt auto 14pt; width: 5.6in; break-inside: avoid; }
+.pyramid .lv { display: grid; grid-template-columns: 1fr 2.2in; align-items: center; gap: 12pt; margin-bottom: 5pt; }
+.pyramid .shape {
+  height: 46pt;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  font-weight: 600;
+  font-size: 9pt;
+  text-align: center;
+  line-height: 1.25;
+  margin: 0 auto;
+}
+.pyramid .lv:nth-child(1) .shape { width: 34%; background: var(--brand-deep); clip-path: polygon(50% 0, 100% 100%, 0 100%); padding-top: 14pt; font-size: 8pt; }
+.pyramid .lv:nth-child(2) .shape { width: 56%; background: var(--brand); clip-path: polygon(19.6% 0, 80.4% 0, 100% 100%, 0 100%); }
+.pyramid .lv:nth-child(3) .shape { width: 78%; background: #1667e0; clip-path: polygon(14.1% 0, 85.9% 0, 100% 100%, 0 100%); }
+.pyramid .lv:nth-child(4) .shape { width: 100%; background: var(--sky); color: var(--brand-deep); clip-path: polygon(11% 0, 89% 0, 100% 100%, 0 100%); }
+.pyramid .lv .what { font-size: 8.4pt; line-height: 1.4; color: var(--ink-soft); }
+.pyramid .lv .what b { display: block; color: var(--ink); font-size: 9pt; }
+.pyramid .lv .what .ref { display: block; font-family: var(--mono); font-size: 7.2pt; color: var(--subtle); margin-top: 1pt; }
+
+/* L1 · process map: strategic band, value chain (chevrons), support band */
+.pmap { margin: 8pt 0 14pt; break-inside: avoid; }
+.pmap .band {
+  border-radius: 16px;
+  padding: 8pt 10pt 10pt;
+  margin-bottom: 8pt;
+}
+.pmap .band > .lbl { font-size: 6.8pt; font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase; margin-bottom: 6pt; }
+.pmap .band.strat { background: var(--r-dir-bg); } .pmap .band.strat > .lbl { color: var(--r-dir-fg); }
+.pmap .band.supp { background: var(--well); } .pmap .band.supp > .lbl { color: var(--ink-muted); }
+.pmap .band.core { background: var(--aurora-base) url("bg-aurora.jpg") center / 100% 100% no-repeat; }
+.pmap .band.core > .lbl { color: var(--blue-ink); }
+.pmap .boxes { display: flex; gap: 6pt; }
+.pmap .box {
+  flex: 1;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 6pt 7pt;
+  font-size: 7.8pt;
+  line-height: 1.3;
+  color: var(--ink);
+  font-weight: 600;
+}
+.pmap .box .code { display: block; font-family: var(--mono); font-size: 6.4pt; color: var(--subtle); font-weight: 500; margin-bottom: 1.5pt; }
+.pmap .chain { display: flex; align-items: stretch; }
+.pmap .chain .chev {
+  flex: 1;
+  background: var(--surface);
+  color: var(--ink);
+  font-size: 7.6pt;
+  font-weight: 600;
+  line-height: 1.25;
+  padding: 9pt 6pt 9pt 15pt;
+  margin-right: -5pt;
+  clip-path: polygon(0 0, calc(100% - 10pt) 0, 100% 50%, calc(100% - 10pt) 100%, 0 100%, 10pt 50%);
+  min-height: 52pt;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+.pmap .chain .chev:first-child { clip-path: polygon(0 0, calc(100% - 10pt) 0, 100% 50%, calc(100% - 10pt) 100%, 0 100%); padding-left: 9pt; }
+.pmap .chain .chev .code { font-family: var(--mono); font-size: 6.2pt; color: var(--subtle); font-weight: 500; margin-bottom: 1.5pt; }
+.pmap .chain .chev.alt { background: var(--brand-deep); color: #fff; }
+.pmap .chain .chev.alt .code { color: var(--sky); }
+.pmap .ends { display: grid; grid-template-columns: 0.9in 1fr 0.9in; align-items: center; gap: 6pt; }
+.pmap .end {
+  font-size: 7.2pt;
+  line-height: 1.3;
+  color: var(--r-cli-fg);
+  background: var(--r-cli-bg);
+  border-radius: 10px;
+  padding: 6pt 7pt;
+  font-weight: 600;
+  text-align: center;
+}
+.pmap .end small { display: block; font-size: 6pt; letter-spacing: 0.12em; text-transform: uppercase; font-weight: 700; margin-bottom: 2pt; }
+
+/* L1 · swimlanes: rows = roles, columns = steps */
+.lanes { margin: 8pt 0 14pt; break-inside: avoid; border: 1px solid var(--line); border-radius: 16px; overflow: hidden; }
+.lanes .lane { display: grid; grid-template-columns: 0.95in repeat(var(--cols, 8), 1fr); border-top: 1px solid var(--hairline); min-height: 44pt; }
+.lanes .lane:first-child { border-top: 0; }
+.lanes .lane > .who {
+  display: flex;
+  align-items: center;
+  padding: 6pt 8pt;
+  font-size: 7.6pt;
+  font-weight: 700;
+  border-right: 1px solid var(--hairline);
+}
+.lanes .lane.sup > .who { background: var(--r-sup-bg); color: var(--r-sup-fg); }
+.lanes .lane.adm > .who { background: var(--r-adm-bg); color: var(--r-adm-fg); }
+.lanes .lane.dir > .who { background: var(--r-dir-bg); color: var(--r-dir-fg); }
+.lanes .lane.cli > .who { background: var(--r-cli-bg); color: var(--r-cli-fg); }
+.lanes .lane.app > .who { background: var(--r-app-bg); color: var(--r-app-fg); }
+.lanes .cell { padding: 5pt 3pt; display: flex; align-items: center; justify-content: center; }
+.lanes .act {
+  width: 100%;
+  border-radius: 8px;
+  border: 1px solid var(--line);
+  background: var(--surface);
+  font-size: 6.6pt;
+  line-height: 1.25;
+  font-weight: 600;
+  color: var(--ink);
+  padding: 4pt 4pt;
+  text-align: center;
+}
+.lanes .act .n { display: block; font-family: var(--mono); font-size: 5.8pt; color: var(--subtle); font-weight: 500; }
+.lanes .act.dec { background: var(--amber-wash); border: 1px dashed var(--amber-line-strong, #f3c97a); }
+.lanes .act.key { background: var(--brand-deep); border-color: var(--brand-deep); color: #fff; }
+.lanes .act.key .n { color: var(--sky); }
+.lanes .head { display: grid; grid-template-columns: 0.95in repeat(var(--cols, 8), 1fr); background: var(--soft); border-bottom: 1px solid var(--line); }
+.lanes .head > div { font-size: 6.4pt; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: var(--subtle); padding: 5pt 4pt; text-align: center; }
+.lanes .head > div:first-child { text-align: left; padding-left: 8pt; }
+
+/* SOP covers: the document's map instead of screenshots */
+.cover .docmap { position: absolute; left: 0.75in; right: 0.75in; top: 5.0in; display: grid; grid-template-columns: repeat(3, 1fr); gap: 8pt; }
+.cover .docmap.two { grid-template-columns: repeat(2, 1fr); }
+.cover .docmap .c {
+  background: rgb(255 255 255 / 0.8);
+  border: 1px solid rgb(255 255 255 / 0.95);
+  border-radius: 14px;
+  padding: 8pt 10pt 9pt;
+}
+.cover .docmap .c .k { font-family: var(--mono); font-size: 6.8pt; color: var(--blue-ink); letter-spacing: 0.02em; }
+.cover .docmap .c .v { font-size: 9.4pt; font-weight: 600; color: var(--ink); line-height: 1.25; margin-top: 2pt; }
+.cover .docmap .c .o { font-size: 7pt; color: var(--ink-muted); margin-top: 3pt; }
+.cover .docmap .c.navy { background: var(--brand-deep); border-color: var(--brand-deep); }
+.cover .docmap .c.navy .k { color: var(--sky); }
+.cover .docmap .c.navy .v { color: #fff; }
+.cover .docmap .c.navy .o { color: #c8d4e2; }
+
+/* Without title pages, a long first section starts right under its chapter opener (the chapter already opened a page). */
+.sec-intro:not(.divider) + .sec.long { break-before: auto; }
+
+/* Process codes (E1, O1, S1): sans, so the letter O never reads as a zero */
+.pcode { font-family: var(--sans); font-weight: 600; color: var(--blue-ink); letter-spacing: 0.02em; }
+.pmap .box .code, .pmap .chain .chev .code, .lanes .act .n { font-family: var(--sans); font-weight: 700; letter-spacing: 0.04em; }
