@@ -1,0 +1,167 @@
+<section class="chapter" id="pk-sop-l2-10" data-code="PK-SOP-L2-10">
+  <header class="sop-head">
+    <div class="band">
+      <div class="top"><span class="code">PK-SOP-L2-10</span><span class="lvl">Procedimiento · Nivel 2</span></div>
+      <h1>Administración de usuarios, permisos y catálogos</h1>
+      <p class="purpose">Dirección da de alta, cambia y desactiva las cuentas de quienes usan la app; Dirección y Administración mantienen los catálogos con que se dan de alta y programan las órdenes.</p>
+    </div>
+    <dl class="meta">
+      <div><dt>Dueño del proceso</dt><dd><span class="role dir">Dirección</span></dd></div>
+      <div><dt>Participan</dt><dd><span class="roles"><span class="role adm">Administración</span><span class="role sup">Supervisor</span><span class="role app">La app</span></span></dd></div>
+      <div><dt>Versión</dt><dd>1.0 · borrador</dd></div>
+      <div><dt>Emisión</dt><dd>17 oct 2026</dd></div>
+      <div class="wide"><dt>Empieza cuando</dt><dd>Una persona se incorpora, cambia de rol o de unidad o deja de usar la app, o un cliente, sitio, servicio, material o trabajador debe darse de alta o corregirse.</dd></div>
+      <div class="wide"><dt>Termina cuando</dt><dd>La cuenta queda activa con su rol y unidad (o desactivada, sin órdenes sin supervisor) y el catálogo al día, todo registrado en la bitácora.</dd></div>
+      <div class="full"><dt>Instrucción de trabajo (Nivel 3)</dt><dd>Manual de usuario › Configuración › Usuarios: invitar, editar y desactivar · Configuración › Matriz de permisos · Configuración › Catálogos · Entrar a la app › Su primera entrada</dd></div>
+    </dl>
+  </header>
+
+  <h2 class="section"><span class="no">1</span>Objetivo</h2>
+  <p>Que cada persona entre con <b>su propia cuenta</b>, con el rol y la unidad de su puesto; que quien deja la app pierda el acceso <b>sin perder su historial</b>, y que los catálogos estén completos y correctos.</p>
+
+  <h2 class="section"><span class="no">2</span>Alcance</h2>
+  <table class="kv">
+    <tbody>
+      <tr><td>Aplica a</td><td>Cuentas de todos los roles y unidades, permisos, catálogos y aviso de privacidad.</td></tr>
+      <tr><td>No incluye</td><td>Reasignar órdenes (<span class="mono">PK-SOP-L2-01</span>) y los datos del dispositivo (<span class="mono">PK-SOP-L2-11</span>).</td></tr>
+      <tr><td>Entradas</td><td>Alta, cambio o baja de una persona; datos nuevos de un catálogo.</td></tr>
+      <tr><td>Salidas</td><td>Cuenta y catálogo al día, con su movimiento en la bitácora.</td></tr>
+    </tbody>
+  </table>
+
+  <h2 class="section"><span class="no">3</span>Responsabilidades</h2>
+  <table class="raci">
+    <thead><tr><th>Actividad</th><th>Supervisor</th><th>Administración</th><th>Dirección</th></tr></thead>
+    <tbody>
+      <tr><td>Invitar a una persona</td><td></td><td><span class="ra i">I</span></td><td><span class="ra a">A</span></td></tr>
+      <tr><td>Definir su contraseña y entrar (la persona invitada)</td><td><span class="ra r">R</span></td><td><span class="ra r">R</span></td><td><span class="ra r">R</span></td></tr>
+      <tr><td>Cambiar rol, unidad o correo; desactivar o reactivar</td><td><span class="ra i">I</span></td><td><span class="ra i">I</span></td><td><span class="ra a">A</span></td></tr>
+      <tr><td>Reasignar las órdenes de un supervisor desactivado</td><td><span class="ra i">I</span></td><td><span class="ra a">A</span></td><td><span class="ra i">I</span></td></tr>
+      <tr><td>Mantener los catálogos</td><td><span class="ra i">I</span></td><td><span class="ra r">R</span></td><td><span class="ra a">A</span></td></tr>
+      <tr><td>Revisar permisos y aviso de privacidad</td><td><span class="ra i">I</span></td><td><span class="ra i">I</span></td><td><span class="ra a">A</span></td></tr>
+    </tbody>
+  </table>
+  <div class="raci-legend"><span><span class="ra r">R</span>Responsable</span><span><span class="ra a">A</span>Aprueba y responde por el resultado</span><span><span class="ra c">C</span>Consultado</span><span><span class="ra i">I</span>Informado</span></div>
+  <p>Hoy solo Dirección administra cuentas; quién crea usuarios y recupera cuentas es una decisión pendiente (<span class="tbd">Por definir</span>). Los catálogos los mantienen Dirección y Administración, esta solo en su unidad; quién los administra formalmente también está <span class="tbd">Por definir</span>. Cada persona actualiza su propio teléfono.</p>
+
+  <h2 class="section"><span class="no">4</span>Definiciones</h2>
+  <table class="kv">
+    <tbody>
+      <tr><td>Cuenta</td><td>Acceso individual con correo y una contraseña que define la propia persona. El personal de cuadrilla no tiene cuenta.</td></tr>
+      <tr><td>Rol y unidad</td><td>Dirección, Administración o Supervisor, y la unidad (Matriz Monterrey, Apodaca o Saltillo). Deciden qué puede hacer y qué ve la persona.</td></tr>
+      <tr><td>Matriz de permisos</td><td>Las 19 acciones de la app para los tres roles, con su alcance («Su unidad», «Solo propias»…) y su estado: decidida, sujeta a aprobación o por definir.</td></tr>
+      <tr><td>Catálogos</td><td>Clientes y sitios, tipos de servicio, materiales y personal. Clientes, sitios y personal son por unidad; tipos de servicio y materiales, de toda la empresa.</td></tr>
+    </tbody>
+  </table>
+
+  <h2 class="section"><span class="no">5</span>Desarrollo</h2>
+  <div class="flowstrip">
+    <div class="st dir"><small>Dirección</small>Datos de la persona</div>
+    <div class="st dec"><small>Decisión</small>¿Ya tiene cuenta?</div>
+    <div class="st dir"><small>Dirección</small>Enviar invitación</div>
+    <div class="st app"><small>La app</small>Correo con enlace de un solo uso</div>
+    <div class="st dec"><small>Decisión</small>¿El enlace funciona?</div>
+    <div class="st end"><small>Resultado</small>Cuenta activa y permisos revisados</div>
+  </div>
+  <table class="proc">
+    <thead><tr><th></th><th>Responsable</th><th>Actividad</th><th>Registro en la app</th></tr></thead>
+    <tbody>
+      <tr><td class="n"><span>1</span></td><td class="who"><span class="role dir">Dirección</span></td><td><b class="t">Confirmar los datos de la persona</b>Nombre completo, rol, puesto, unidad, correo (con él inicia sesión) y teléfono. Quién solicita y autoriza un alta: <span class="tbd">Por definir</span>.</td><td class="rec">—</td></tr>
+      <tr><td class="n"><span class="dec"><i>?</i></span></td><td class="who"><span class="role dir">Dirección</span></td><td><b class="t">¿La persona ya tiene cuenta, activa o desactivada?</b><b>Sí:</b> editarla o reactivarla (5.1, 5.2); un correo no se repite. <b>No:</b> continuar.</td><td class="rec">Lista de usuarios.</td></tr>
+      <tr><td class="n"><span>2</span></td><td class="who"><span class="role dir">Dirección</span><br><span class="role app">La app</span></td><td><b class="t">Enviar la invitación</b>Configuración › <span class="ui">Usuarios y permisos</span> › <span class="ui primary">Nuevo usuario</span>, capturar los datos y pulsar <span class="ui primary">Enviar invitación</span>. Necesita conexión.<span class="l3">Configuración › Invitar a una persona</span></td><td class="rec">Usuario en la lista; movimiento <i>Usuario</i> en la bitácora.</td></tr>
+      <tr><td class="n"><span>3</span></td><td class="who"><span class="role all">La persona invitada</span></td><td><b class="t">Definir la contraseña y entrar</b>Abre el correo <i>Su acceso a Pulkro Cuadrillas</i>, pulsa <b>Definir mi contraseña</b> (de preferencia en el teléfono donde trabajará), escribe una contraseña de 12 caracteres o más con minúscula, mayúscula y número y pulsa <span class="ui primary">Guardar y entrar</span>.<span class="l3">Entrar a la app › Su primera entrada</span></td><td class="rec">Cuenta activa.</td></tr>
+      <tr><td class="n"><span class="dec"><i>?</i></span></td><td class="who"><span class="role dir">Dirección</span></td><td><b class="t">¿El enlace no llegó o ya no funciona?</b><b>Sí:</b> la persona pulsa <span class="ui primary">Pedir un enlace nuevo</span>, o Dirección usa <span class="ui">Reenviar invitación</span> en <span class="ui">Editar</span>; vale el correo más reciente. <b>No:</b> continuar.</td><td class="rec">—</td></tr>
+      <tr><td class="n"><span>4</span></td><td class="who"><span class="role all">La persona invitada</span></td><td><b class="t">Revisar su perfil y sus permisos</b>En Configuración, comprobar rol y unidad en <b>Mi perfil</b> y lo que su rol puede hacer en <span class="ui">Mis permisos</span>; corregir su teléfono en <span class="ui">Mis datos</span>.<span class="l3">Configuración › Mi perfil y Mis permisos</span></td><td class="rec">Cambio de teléfono en la bitácora.</td></tr>
+    </tbody>
+  </table>
+
+  <h3>5.1 Cambio de rol, unidad o correo</h3>
+  <table class="proc">
+    <thead><tr><th></th><th>Responsable</th><th>Actividad</th><th>Registro en la app</th></tr></thead>
+    <tbody>
+      <tr><td class="n"><span>1</span></td><td class="who"><span class="role dir">Dirección</span></td><td><b class="t">Editar y guardar</b><span class="ui">Editar</span> en la fila del usuario: cambiar <b>Rol</b>, <b>Puesto</b>, <b>Unidad</b>, <b>Correo</b> o <b>Teléfono</b> y guardar. Si cambia el correo, se cierran sus sesiones y entra con el nuevo: avisarle.<span class="l3">Configuración › Editar un usuario</span></td><td class="rec">Movimiento <i>Usuario</i> en la bitácora.</td></tr>
+      <tr><td class="n"><span class="dec"><i>?</i></span></td><td class="who"><span class="role dir">Dirección</span><br><span class="role adm">Administración</span></td><td><b class="t">¿La app no deja guardar por órdenes o casos abiertos?</b><b>Sí:</b> un supervisor con órdenes abiertas o casos postventa abiertos no cambia de rol ni de unidad: Administración los reasigna (<span class="mono">PK-SOP-L2-01</span>, <span class="mono">08</span>) y se guarda de nuevo. <b>No:</b> terminar.</td><td class="rec">Aviso con los folios.</td></tr>
+    </tbody>
+  </table>
+
+  <h3>5.2 Desactivación y reactivación</h3>
+  <table class="proc">
+    <thead><tr><th></th><th>Responsable</th><th>Actividad</th><th>Registro en la app</th></tr></thead>
+    <tbody>
+      <tr><td class="n"><span>1</span></td><td class="who"><span class="role dir">Dirección</span></td><td><b class="t">Desactivar la cuenta</b>Apagar <b>Activo</b> en la fila, revisar las órdenes abiertas que muestra <b>Desactivar usuario</b>, marcar <i>Entiendo que … ya no podrá iniciar sesión</i> y pulsar <span class="ui">Desactivar usuario</span>. Necesita conexión.<span class="l3">Configuración › Desactivar o reactivar una cuenta</span></td><td class="rec">Cuenta inactiva; historial y órdenes se conservan.</td></tr>
+      <tr><td class="n"><span>2</span></td><td class="who"><span class="role adm">Administración</span></td><td><b class="t">Reasignar sus órdenes</b>Si la app lista <b>Órdenes por reasignar</b>, Administración cambia el supervisor de cada una con <span class="ui">Editar datos</span> y motivo (<span class="mono">PK-SOP-L2-01</span>).</td><td class="rec"><i>Reasignó la orden de … a …</i></td></tr>
+      <tr><td class="n"><span>3</span></td><td class="who"><span class="role dir">Dirección</span></td><td><b class="t">Reactivar, si procede</b>Encender <b>Activo</b>: vuelve a entrar con su correo y contraseña.</td><td class="rec">Reactivación en la bitácora.</td></tr>
+    </tbody>
+  </table>
+
+  <h3>5.3 Mantenimiento de catálogos</h3>
+  <table class="proc">
+    <thead><tr><th></th><th>Responsable</th><th>Actividad</th><th>Registro en la app</th></tr></thead>
+    <tbody>
+      <tr><td class="n"><span>1</span></td><td class="who"><span class="role adm">Administración</span><br><span class="role dir">Dirección</span></td><td><b class="t">Dar de alta o corregir el registro</b>En Configuración › <span class="ui">Catálogos</span>: clientes y sus sitios (con coordenadas; en Monterrey la longitud es negativa), tipos de servicio (con <b>Horas por jornada</b> de 1 a 12), materiales y personal. Administración, en su unidad; Dirección, en la unidad elegida. Apagar a un trabajador lo saca de la lista al asignar cuadrillas.<span class="l3">Configuración › Catálogos</span></td><td class="rec">Movimiento <i>Catálogo</i> en la bitácora.</td></tr>
+    </tbody>
+  </table>
+
+  <h2 class="section"><span class="no">6</span>Controles</h2>
+  <table>
+    <thead><tr><th style="width:36%">Control</th><th>Cómo lo asegura la app</th></tr></thead>
+    <tbody>
+      <tr><td><b>Solo Dirección administra cuentas</b></td><td>Administración y el supervisor no tienen la pestaña <span class="ui">Usuarios y permisos</span>: <i>Solo Dirección administra usuarios y permisos.</i></td></tr>
+      <tr><td><b>Cuenta individual</b></td><td>Un correo por usuario; la contraseña la define la persona (12 caracteres o más, minúscula, mayúscula y número). El servidor rechaza contraseñas filtradas.</td></tr>
+      <tr><td><b>Cambios de acceso con conexión</b></td><td>Invitar, reenviar, cambiar el correo, desactivar y reactivar se bloquean sin señal: <i>Necesita conexión</i>.</td></tr>
+      <tr><td><b>Nadie se cambia a sí mismo</b></td><td>No se puede cambiar el propio rol, unidad o estado.</td></tr>
+      <tr><td><b>Sin órdenes huérfanas</b></td><td>No cambia el rol o la unidad de quien tiene órdenes o casos abiertos; al desactivar, lista las <b>Órdenes por reasignar</b>.</td></tr>
+      <tr><td><b>Desactivar no borra</b></td><td>Exige casilla de confirmación y ofrece <span class="ui">Deshacer</span>; historial, bitácora y órdenes se conservan.</td></tr>
+      <tr><td><b>Permisos por rol</b></td><td>La matriz es la misma para todos los de un rol; las acciones fuera del rol aparecen apagadas con la razón.</td></tr>
+      <tr><td><b>Catálogos por unidad</b></td><td>Administración solo modifica los de su unidad; el supervisor no administra catálogos. Un cliente con órdenes no cambia de unidad.</td></tr>
+      <tr><td><b>Personal con jornadas abiertas</b></td><td>Al desactivarlo o cambiarlo de unidad, la app avisa cuántas jornadas tiene y pide confirmar; sigue en ellas.</td></tr>
+      <tr><td><b>Trazabilidad</b></td><td>Cada cambio de usuario y de catálogo queda en la bitácora; nadie la edita.</td></tr>
+    </tbody>
+  </table>
+
+  <h2 class="section"><span class="no">7</span>Excepciones y escalamiento</h2>
+  <table>
+    <thead><tr><th style="width:32%">Situación</th><th>Qué hacer</th><th style="width:20%">Quién decide</th></tr></thead>
+    <tbody>
+      <tr><td>Una persona olvidó su contraseña</td><td>Ella misma usa <span class="ui">¿Olvidó su contraseña?</span> y abre el enlace en el mismo dispositivo. Si no le llega, Dirección revisa el correo de su cuenta. Recuperación de cuentas por Dirección: <span class="tbd">Por definir</span>.</td><td><span class="tbd">Por definir</span></td></tr>
+      <tr><td>La app dice que no tiene acceso activo</td><td>Dirección revisa que la cuenta exista y esté activa.</td><td><span class="role dir">Dirección</span></td></tr>
+      <tr><td>Quien deja la app tiene cambios sin enviar</td><td>Antes de desactivar, pedirle que deje su cola al día (<span class="mono">PK-SOP-L2-11</span>): con la cuenta desactivada, lo pendiente no llega al servidor.</td><td><span class="role dir">Dirección</span></td></tr>
+      <tr><td>Alguien necesita un permiso que su rol no tiene</td><td>No se otorgan permisos por persona. Cambiar la matriz: <span class="tbd">Por definir</span>.</td><td><span class="tbd">Por definir</span></td></tr>
+      <tr><td>Ver información de otras unidades</td><td>Hoy solo Dirección; decisión pendiente.</td><td><span class="tbd">Por definir</span></td></tr>
+      <tr><td>El supervisor detecta un dato de catálogo incorrecto</td><td>Pedir la corrección a Administración de su unidad.</td><td><span class="role adm">Administración</span></td></tr>
+      <tr><td>Aviso de privacidad, retención y eliminación de datos</td><td>El aviso es un borrador: descargarlo (<span class="ui">Descargar .txt</span>) para revisión legal. Plazos de conservación y respaldos: <span class="tbd">Por definir</span>.</td><td><span class="role dir">Dirección</span> · <span class="tbd">Por definir</span></td></tr>
+    </tbody>
+  </table>
+
+  <h2 class="section"><span class="no">8</span>Registros</h2>
+  <table>
+    <thead><tr><th style="width:32%">Registro</th><th>Dónde se consulta</th><th style="width:26%">Quién lo ve</th></tr></thead>
+    <tbody>
+      <tr><td>Usuarios (rol, unidad, correo, teléfono, órdenes abiertas)</td><td>Configuración › Usuarios y permisos</td><td>Dirección</td></tr>
+      <tr><td>Altas, cambios, desactivaciones y reactivaciones</td><td>Bitácora (Usuario)</td><td>Dirección; Administración, su unidad</td></tr>
+      <tr><td>Cambios de catálogo</td><td>Configuración › Catálogos; Bitácora (Catálogo)</td><td>Dirección y Administración</td></tr>
+      <tr><td>Permisos por rol y aviso de privacidad</td><td>Matriz de permisos; Mis permisos; Privacidad</td><td>Matriz: Dirección; lo demás, todos</td></tr>
+    </tbody>
+  </table>
+
+  <h2 class="section"><span class="no">9</span>Indicadores</h2>
+  <table>
+    <thead><tr><th style="width:30%">Medida</th><th>Qué muestra la app</th><th style="width:28%">Dónde se ve</th></tr></thead>
+    <tbody>
+      <tr><td><b>Usuarios por rol</b></td><td>Cuántas cuentas hay de cada rol.</td><td>Configuración › Usuarios y permisos (filtro por rol)</td></tr>
+      <tr><td><b>Registros por catálogo</b></td><td>Cuántos clientes, tipos, materiales y personas tiene cada catálogo.</td><td>Configuración › Catálogos</td></tr>
+      <tr><td><b>Movimientos de usuarios y catálogos</b></td><td>Cambios por tipo de registro y por persona en el periodo.</td><td>Bitácora › Qué se registra</td></tr>
+      <tr><td><b>Decisiones pendientes de permisos</b></td><td>Preguntas abiertas sobre usuarios, órdenes cerradas y otras unidades.</td><td>Configuración › Matriz de permisos</td></tr>
+    </tbody>
+  </table>
+  <p>La app no calcula indicadores de este procedimiento (por ejemplo, tiempo de la invitación a la primera entrada). Medidas y metas: <span class="tbd">Por definir</span>.</p>
+
+  <h2 class="section"><span class="no">10</span>Documentos relacionados</h2>
+  <table class="kv">
+    <tbody>
+      <tr><td>Nivel 1</td><td><span class="mono">PK-SOP-L1</span> · P-09 Todo cambio deja rastro · P-10 Cada quien ve lo que le corresponde · P-11 Privacidad de fotos, ubicación y firmas.</td></tr>
+      <tr><td>Nivel 2</td><td><span class="mono">PK-SOP-L2-01</span> Alta de la orden · <span class="mono">PK-SOP-L2-02</span> Programación · <span class="mono">PK-SOP-L2-11</span> Operación sin conexión.</td></tr>
+      <tr><td>Nivel 3</td><td>Manual de usuario: Configuración · Entrar a la app · Equipo · Apéndice: roles, permisos y estados.</td></tr>
+    </tbody>
+  </table>
+</section>
