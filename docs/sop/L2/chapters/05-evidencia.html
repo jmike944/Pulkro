@@ -1,0 +1,161 @@
+<section class="chapter" id="pk-sop-l2-05" data-code="PK-SOP-L2-05">
+  <header class="sop-head">
+    <div class="band">
+      <div class="top"><span class="code">PK-SOP-L2-05</span><span class="lvl">Procedimiento · Nivel 2</span></div>
+      <h1>Control de evidencia fotográfica</h1>
+      <p class="purpose">El supervisor asegura que cada jornada ejecutada tenga fotos <b>ANTES</b> y <b>DESPUÉS</b> confiables, atiende las solicitudes de evidencia que crea la app antes de que venzan y revisa las fotos marcadas, sin recrear nunca una escena.</p>
+    </div>
+    <dl class="meta">
+      <div><dt>Dueño del proceso</dt><dd><span class="role sup">Supervisor</span></dd></div>
+      <div><dt>Participan</dt><dd><span class="roles"><span class="role adm">Administración</span><span class="role dir">Dirección</span><span class="role app">La app</span></span></dd></div>
+      <div><dt>Versión</dt><dd>1.0 · borrador</dd></div>
+      <div><dt>Emisión</dt><dd>17 oct 2026</dd></div>
+      <div class="wide"><dt>Empieza cuando</dt><dd>Se registra la entrada de una jornada: se habilitan las fotos y, si falta la foto ANTES, corre su solicitud de evidencia.</dd></div>
+      <div class="wide"><dt>Termina cuando</dt><dd>Cada jornada ejecutada tiene al menos una foto ANTES y una DESPUÉS (solicitudes <span class="pill teal">Recibida</span>), o la falta queda cubierta por una excepción autorizada al validar el cierre.</dd></div>
+      <div class="full"><dt>Instrucción de trabajo (Nivel 3)</dt><dd>Manual de usuario › Evidencias · La jornada en campo › Fotos ANTES · La jornada en campo › Fotos DESPUÉS y comparación · Reportes y envío al cliente › Elegir las fotos</dd></div>
+    </dl>
+  </header>
+
+  <h2 class="section"><span class="no">1</span>Objetivo</h2>
+  <p>Garantizar que la evidencia fotográfica de cada jornada esté <b>completa y sea confiable</b>: una foto ANTES y una DESPUÉS por jornada ejecutada como mínimo, con su hora real, su origen y su ubicación; detectar a tiempo la que falta y recuperarla dentro de su plazo; y, cuando ya no se puede obtener, documentarlo con una excepción en lugar de recrear la escena. Es requisito para validar el cierre (<span class="mono">PK-SOP-L2-06</span>) y es lo que el cliente ve en su reporte (<span class="mono">PK-SOP-L2-07</span>).</p>
+
+  <h2 class="section"><span class="no">2</span>Alcance</h2>
+  <table class="kv">
+    <tbody>
+      <tr><td>Aplica a</td><td>Las fotos ANTES y DESPUÉS de todas las jornadas ejecutadas, en todas las órdenes y unidades: su captura, las solicitudes de evidencia, las marcas de revisión, la selección para el reporte y el cumplimiento fotográfico.</td></tr>
+      <tr><td>No incluye</td><td>Las fotos de incidencias (<span class="mono">PK-SOP-L2-04</span>) y de postventa (<span class="mono">PK-SOP-L2-08</span>); el registro de entrada y salida (<span class="mono">PK-SOP-L2-03</span>); la autorización de la excepción de evidencia (<span class="mono">PK-SOP-L2-06</span>); la generación del reporte (<span class="mono">PK-SOP-L2-07</span>).</td></tr>
+      <tr><td>Entradas</td><td>Jornada con entrada registrada; fotos capturadas en sitio; solicitudes de evidencia que crea la app.</td></tr>
+      <tr><td>Salidas</td><td>Fotos ANTES y DESPUÉS por jornada y área, con sus datos de captura; solicitudes recibidas; fotos elegidas para el reporte; cumplimiento fotográfico medido.</td></tr>
+    </tbody>
+  </table>
+
+  <h2 class="section"><span class="no">3</span>Responsabilidades</h2>
+  <table class="raci">
+    <thead><tr><th>Actividad</th><th>Supervisor</th><th>Administración</th><th>Dirección</th></tr></thead>
+    <tbody>
+      <tr><td>Tomar las fotos ANTES y DESPUÉS de cada área</td><td><span class="ra a">A</span></td><td><span class="ra i">I</span></td><td><span class="ra i">I</span></td></tr>
+      <tr><td>Revisar las solicitudes de evidencia y sus plazos</td><td><span class="ra a">A</span></td><td><span class="ra i">I</span></td><td><span class="ra i">I</span></td></tr>
+      <tr><td>Subir la foto que falta</td><td><span class="ra a">A</span></td><td><span class="ra i">I</span></td><td><span class="ra i">I</span></td></tr>
+      <tr><td>Revisar las fotos marcadas</td><td><span class="ra a">A</span></td><td><span class="ra i">I</span></td><td><span class="ra i">I</span></td></tr>
+      <tr><td>Documentar la foto que no se puede obtener (excepción)</td><td><span class="ra a">A</span></td><td><span class="ra i">I</span></td><td><span class="ra i">I</span></td></tr>
+      <tr><td>Elegir las fotos del reporte</td><td><span class="ra a">A</span></td><td><span class="ra i">I</span></td><td><span class="ra i">I</span></td></tr>
+      <tr><td>Revisar el cumplimiento fotográfico</td><td><span class="ra r">R</span></td><td><span class="ra i">I</span></td><td><span class="ra i">I</span></td></tr>
+    </tbody>
+  </table>
+  <div class="raci-legend"><span><span class="ra r">R</span>Responsable</span><span><span class="ra a">A</span>Aprueba y responde por el resultado</span><span><span class="ra c">C</span>Consultado</span><span><span class="ra i">I</span>Informado</span></div>
+  <p>La pantalla Evidencias es del supervisor y muestra solo sus órdenes. Dirección y Administración consultan las mismas fotos, en solo lectura, en la pestaña <span class="ui">Evidencia</span> de cada orden, y el cumplimiento en Indicadores › Calidad. Quién responde por la meta de cumplimiento: <span class="tbd">Por definir</span>.</p>
+
+  <h2 class="section"><span class="no">4</span>Definiciones</h2>
+  <table class="kv">
+    <tbody>
+      <tr><td>Foto ANTES · DESPUÉS</td><td>Cómo estaba cada área antes de empezar y cómo quedó. Son obligatorias para el cierre: al menos una de cada una por jornada ejecutada, idealmente una por área.</td></tr>
+      <tr><td>Área</td><td>Nombre del lugar fotografiado. Una foto ANTES y una DESPUÉS con el mismo nombre de área forman pareja y se comparan con el jalador.</td></tr>
+      <tr><td>Solicitud de evidencia</td><td>Aviso que la app crea sola cuando una jornada ejecutada no tiene la foto que le corresponde. La ANTES se pide desde la entrada y la DESPUÉS desde la salida; cada una vence al final del día siguiente.</td></tr>
+      <tr><td>Datos de captura</td><td>Hora real de la toma y de dónde sale (guardada en la foto, fecha del archivo o momento de adjuntarla), origen (<b>Cámara de la app</b> o <b>Galería del dispositivo</b>), ubicación con su fuente y quién la capturó.</td></tr>
+      <tr><td>Marcas de revisión</td><td><span class="ui">Galería</span>, <span class="pill amber">Revisar hora</span> y <span class="pill amber">Pendiente</span>: no impiden nada, pero piden revisar la foto antes de confiar en ella.</td></tr>
+      <tr><td>Excepción de evidencia</td><td>Autorización del supervisor, al validar el cierre, para cerrar sin una foto que no se pudo obtener, con justificación. El cliente la ve en su reporte.</td></tr>
+      <tr><td>Cumplimiento fotográfico</td><td>Porcentaje de cierres validados con fotos ANTES y DESPUÉS en cada jornada ejecutada.</td></tr>
+    </tbody>
+  </table>
+
+  <h2 class="section"><span class="no">5</span>Desarrollo</h2>
+  <div class="flowstrip">
+    <div class="st sup"><small>Supervisor</small>Fotos ANTES al llegar</div>
+    <div class="st sup"><small>Supervisor</small>Fotos DESPUÉS al terminar</div>
+    <div class="st app"><small>La app</small>Solicitud si falta</div>
+    <div class="st dec"><small>Decisión</small>¿Aún se puede tomar?</div>
+    <div class="st sup"><small>Supervisor</small>Subir la foto</div>
+    <div class="st sup"><small>Supervisor</small>Revisar marcas y elegir</div>
+    <div class="st end"><small>Resultado</small>Evidencia completa → cierre</div>
+  </div>
+  <table class="proc">
+    <thead><tr><th></th><th>Responsable</th><th>Actividad</th><th>Registro en la app</th></tr></thead>
+    <tbody>
+      <tr><td class="n"><span>1</span></td><td class="who"><span class="role sup">Supervisor</span></td><td><b class="t">Tomar las fotos ANTES</b>Con la entrada registrada y antes de intervenir cada área (<span class="mono">PK-SOP-L2-03</span>). Escribir o elegir el <span class="ui">Área</span> y usar <span class="ui primary">Tomar foto</span> siempre que se pueda: la foto de cámara lleva la hora y la ubicación del momento, sin dudas.<span class="l3">La jornada en campo › Fotos ANTES</span></td><td class="rec">Foto ANTES con área, hora real, origen y ubicación.</td></tr>
+      <tr><td class="n"><span>2</span></td><td class="who"><span class="role sup">Supervisor</span></td><td><b class="t">Tomar las fotos DESPUÉS</b>Al terminar, desde el mismo ángulo que la ANTES y con el mismo nombre de área. La app sugiere primero las áreas marcadas con <b>falta</b>. Revisar la comparación <b>Antes y después</b>.<span class="l3">La jornada en campo › Fotos DESPUÉS y comparación</span></td><td class="rec">Foto DESPUÉS; pareja por área.</td></tr>
+      <tr><td class="n"><span>3</span></td><td class="who"><span class="role app">La app</span></td><td><b class="t">Crear la solicitud de lo que falta</b>Si la jornada tiene entrada y no tiene foto ANTES, o tiene salida y no tiene DESPUÉS, la app crea la solicitud con su plazo y la muestra en Evidencias › <span class="ui">Pendientes</span>, en Pendientes › Evidencia faltante y en Requieren atención (<i>Falta foto ANTES</i> o <i>Falta foto DESPUÉS</i>).<span class="l3">Evidencias › Solicitudes de evidencia</span></td><td class="rec">Solicitud con plazo: <span class="pill slate">Vence en 2 días</span>, <span class="pill amber">Vence hoy</span> o <span class="pill red">Vencida por 1 día</span>.</td></tr>
+      <tr><td class="n"><span>4</span></td><td class="who"><span class="role sup">Supervisor</span></td><td><b class="t">Revisar las solicitudes</b>En Evidencias › <span class="ui">Pendientes</span>, atender primero las vencidas (aparecen arriba; el filtro <span class="ui">Estado: Vencidas</span> las aísla). Frecuencia de revisión: <span class="tbd">Por definir</span>.<span class="l3">Evidencias › Solicitudes de evidencia</span></td><td class="rec">Indicadores <b>Abiertas</b>, <b>Vencidas</b> y <b>Respuesta</b>.</td></tr>
+      <tr><td class="n"><span class="dec"><i>?</i></span></td><td class="who"><span class="role sup">Supervisor</span></td><td><b class="t">¿La foto todavía se puede tomar sin recrear la escena?</b><b>Sí:</b> subirla (paso 5). <b>No</b> (el área ya se intervino o se limpió, el cliente la cerró o no permitió fotografiarla): no recrear la escena; documentar el motivo y autorizar la excepción al validar el cierre (<span class="mono">PK-SOP-L2-06</span>).<span class="l3">Evidencias › Excepciones de evidencia</span></td><td class="rec">Excepción autorizada, al validar el cierre.</td></tr>
+      <tr><td class="n"><span>5</span></td><td class="who"><span class="role sup">Supervisor</span></td><td><b class="t">Subir la foto que falta</b>Abrir la solicitud y pulsar <span class="ui primary">Subir foto DESPUÉS</span> (o <span class="ui">Subir foto ANTES</span>); en el teléfono, <span class="ui primary">Tomar foto DESPUÉS</span>. Elegir el área (las de las fotos ANTES aparecen primero) y usar las fotos ANTES de referencia para el encuadre. También se puede capturar desde la jornada.<span class="l3">Evidencias › Subir la foto que falta</span></td><td class="rec">Solicitud <span class="pill teal">Recibida</span>; historial de la solicitud.</td></tr>
+      <tr><td class="n"><span>6</span></td><td class="who"><span class="role sup">Supervisor</span></td><td><b class="t">Revisar las fotos marcadas</b>Abrir en el visor las que llevan <span class="ui">Galería</span> o <span class="pill amber">Revisar hora</span> y comprobar la hora, su fuente, el origen y el GPS. Si una foto no corresponde, <span class="ui">Eliminar foto</span> y tomar la correcta. Las <span class="pill amber">Pendiente</span> se envían solas con la señal. Criterio para aceptar una foto marcada: <span class="tbd">Por definir</span>.<span class="l3">Evidencias › Marcas de revisión</span></td><td class="rec">Marcas en la miniatura; advertencia y eliminaciones en la bitácora.</td></tr>
+      <tr><td class="n"><span>7</span></td><td class="who"><span class="role sup">Supervisor</span></td><td><b class="t">Elegir las fotos del reporte</b>Con el interruptor <span class="ui">Incluir en el reporte</span> del visor (en la jornada o la orden) o en la pestaña <span class="ui">Fotos</span> del reporte, de preferencia pares ANTES y DESPUÉS por área. La selección final sigue <span class="mono">PK-SOP-L2-07</span>.<span class="l3">Reportes y envío al cliente › Elegir las fotos</span></td><td class="rec">Etiqueta <span class="ui">En reporte</span>; bitácora.</td></tr>
+      <tr><td class="n"><span>8</span></td><td class="who"><span class="role sup">Supervisor</span></td><td><b class="t">Continuar con el cierre</b>Si con la foto la orden queda lista, la app ofrece <span class="ui primary">Validar cierre</span>: seguir <span class="mono">PK-SOP-L2-06</span>.<span class="l3">Cierre y validación</span></td><td class="rec">—</td></tr>
+    </tbody>
+  </table>
+  <div class="note warn"><b class="note-t">Nunca recrear una escena</b><p>Si falta una foto ANTES y el área ya se limpió, no se recrea la escena para fotografiarla. La evidencia que falta se declara con una excepción justificada, que el cliente ve en su reporte.</p></div>
+
+  <h3>5.1 Revisión del cumplimiento</h3>
+  <table class="proc">
+    <thead><tr><th></th><th>Responsable</th><th>Actividad</th><th>Registro en la app</th></tr></thead>
+    <tbody>
+      <tr><td class="n"><span>1</span></td><td class="who"><span class="role sup">Supervisor</span></td><td><b class="t">Revisar el cumplimiento propio</b>En Evidencias › <span class="ui">Cumplimiento</span>, elegir <span class="ui">Mes</span>, <span class="ui">90 días</span> o <span class="ui">Año</span>: cierres <b>Completos</b>, <b>Con excepción</b> y <b>Sin evidencia</b>, el avance por supervisor y la foto que falta más.<span class="l3">Evidencias › Cumplimiento fotográfico</span></td><td class="rec">—</td></tr>
+      <tr><td class="n"><span class="dec"><i>?</i></span></td><td class="who"><span class="role sup">Supervisor</span></td><td><b class="t">¿Hay cierres sin evidencia completa?</b>Validados sin alguna foto y sin excepción: abrirlos con <span class="ui">Ver solicitud</span>. Una orden cerrada no admite fotos nuevas; para agregarlas hay que reabrirla (<span class="mono">PK-SOP-L2-06</span>, sección 5.1). Cuándo reabrir por este motivo: <span class="tbd">Por definir</span>.</td><td class="rec">Lista <b>Cierres sin evidencia completa</b>.</td></tr>
+      <tr><td class="n"><span>2</span></td><td class="who"><span class="role adm">Administración</span><br><span class="role dir">Dirección</span></td><td><b class="t">Consultar la evidencia</b>En la pestaña <span class="ui">Evidencia</span> de la orden: cada jornada lleva <b>Completa</b>, <b>Falta ANTES</b>, <b>Falta DESPUÉS</b> o <b>DESPUÉS al terminar</b>, y el recuadro punteado dice quién captura la que falta. El cumplimiento del periodo está en Indicadores › Calidad.<span class="l3">Órdenes › Las pestañas de la orden</span></td><td class="rec">—</td></tr>
+    </tbody>
+  </table>
+
+  <h2 class="section"><span class="no">6</span>Controles</h2>
+  <table>
+    <thead><tr><th style="width:36%">Control</th><th>Cómo lo asegura la app</th></tr></thead>
+    <tbody>
+      <tr><td><b>ANTES y DESPUÉS obligatorias</b></td><td>Sin ellas en cada jornada ejecutada, el cierre se bloquea, salvo excepción autorizada con justificación de al menos 15 caracteres.</td></tr>
+      <tr><td><b>Fotos después de la entrada</b></td><td>La captura de fotos de una jornada se habilita al registrar su entrada.</td></tr>
+      <tr><td><b>Solicitudes automáticas</b></td><td>Aparecen y desaparecen según las fotos que existen: nadie las da de alta ni las descarta a mano. La DESPUÉS no se pide mientras la cuadrilla sigue en sitio; las de órdenes canceladas y de cierres con excepción no aparecen.</td></tr>
+      <tr><td><b>Plazo</b></td><td>Vence al final del día siguiente a la entrada (ANTES) o a la salida (DESPUÉS); las vencidas se listan primero.</td></tr>
+      <tr><td><b>Datos de captura</b></td><td>Cada foto guarda la hora real de la toma, el origen, la ubicación con su fuente y quién la capturó; el visor los muestra.</td></tr>
+      <tr><td><b>Fotos de galería y fuera de horario</b></td><td>La foto elegida de la galería se marca <span class="ui">Galería</span>. Una ANTES tomada después de la salida o una DESPUÉS tomada antes de la entrada se guarda, pero queda marcada <span class="pill amber">Revisar hora</span> y con advertencia en la bitácora.</td></tr>
+      <tr><td><b>Sin señal</b></td><td>La foto se guarda en el teléfono con la marca <span class="pill amber">Pendiente</span> y se envía sola; hasta subirla, solo existe en ese teléfono.</td></tr>
+      <tr><td><b>Solo el supervisor captura y elige</b></td><td>Dirección y Administración ven los interruptores de fotos apagados, con la razón.</td></tr>
+      <tr><td><b>Orden cerrada</b></td><td>No se agregan ni se eliminan fotos ANTES o DESPUÉS: hay que reabrir la orden, lo que genera una nueva versión del reporte.</td></tr>
+      <tr><td><b>Eliminar una foto</b></td><td>Pide confirmación y queda en la bitácora de auditoría.</td></tr>
+    </tbody>
+  </table>
+
+  <h2 class="section"><span class="no">7</span>Excepciones y escalamiento</h2>
+  <table>
+    <thead><tr><th style="width:32%">Situación</th><th>Qué hacer</th><th style="width:20%">Quién decide</th></tr></thead>
+    <tbody>
+      <tr><td>Falta la foto ANTES y el área ya se intervino</td><td>No recrear la escena. Documentar el motivo y autorizar la excepción al validar el cierre (<span class="mono">PK-SOP-L2-06</span>).</td><td><span class="role sup">Supervisor</span></td></tr>
+      <tr><td>El cliente cerró el área o no permitió fotografiarla</td><td>Autorizar la excepción con una justificación concreta; queda en el reporte, en la bitácora y en Cumplimiento.</td><td><span class="role sup">Supervisor</span></td></tr>
+      <tr><td>Solicitud vencida</td><td>Subir la foto en cuanto se pueda, si aún es posible sin recrear la escena. A quién se escala una vencida: <span class="tbd">Por definir</span>.</td><td><span class="role sup">Supervisor</span> · <span class="tbd">Por definir</span></td></tr>
+      <tr><td>Foto con <span class="pill amber">Revisar hora</span> o de galería con datos dudosos</td><td>Verificar en el visor la hora, su fuente y el GPS; si no corresponde a la jornada, eliminarla y tomar la correcta, si todavía es posible.</td><td><span class="role sup">Supervisor</span> · criterio <span class="tbd">Por definir</span></td></tr>
+      <tr><td>Supervisión remota: el supervisor no está para tomar las fotos</td><td>Cómo se obtienen: <span class="tbd">Por definir</span>. Si se adjuntan desde la galería, la app las marca <span class="ui">Galería</span> (<span class="mono">PK-SOP-L2-03</span>).</td><td><span class="tbd">Por definir</span></td></tr>
+      <tr><td>Fotos pendientes de sincronizar</td><td>No cerrar sesión, no borrar los datos del navegador y abrir la app con señal para que se envíen (<span class="mono">PK-SOP-L2-11</span>).</td><td><span class="role sup">Supervisor</span></td></tr>
+      <tr><td>Cierre validado sin foto ni excepción</td><td>Revisarlo en Cumplimiento; agregar la foto exige reabrir la orden (<span class="mono">PK-SOP-L2-06</span>, sección 5.1).</td><td><span class="role sup">Supervisor</span> de la orden · <span class="tbd">Por definir</span></td></tr>
+    </tbody>
+  </table>
+
+  <h2 class="section"><span class="no">8</span>Registros</h2>
+  <table>
+    <thead><tr><th style="width:32%">Registro</th><th>Dónde se consulta</th><th style="width:26%">Quién lo ve</th></tr></thead>
+    <tbody>
+      <tr><td>Fotos ANTES y DESPUÉS con sus datos de captura</td><td>Jornada; Orden › Evidencia; Evidencias › Galería; visor de fotos</td><td>Los tres roles, según su alcance (Galería, solo el supervisor)</td></tr>
+      <tr><td>Solicitudes de evidencia y su historial</td><td>Evidencias › Pendientes</td><td>Supervisor</td></tr>
+      <tr><td>Movimientos de fotos (adjuntó, eliminó, incluyó en reporte, advertencias de hora)</td><td>Bitácora; Orden › Actividad (filtro Evidencia)</td><td>Los tres roles, según su alcance</td></tr>
+      <tr><td>Fotos elegidas para el reporte</td><td>Orden › Evidencia (<i>En el reporte</i>); reporte PDF</td><td>Los tres roles y el cliente</td></tr>
+      <tr><td>Excepción de evidencia</td><td>Reporte PDF; Bitácora; Evidencias › Cumplimiento</td><td>Los tres roles y el cliente</td></tr>
+    </tbody>
+  </table>
+
+  <h2 class="section"><span class="no">9</span>Indicadores</h2>
+  <table>
+    <thead><tr><th style="width:30%">Indicador</th><th>Cómo se calcula</th><th style="width:28%">Dónde se ve</th></tr></thead>
+    <tbody>
+      <tr><td><b>Solicitudes abiertas y vencidas</b></td><td>Solicitudes pendientes (y cuántas órdenes afectan) y las que pasaron su plazo.</td><td>Evidencias › Pendientes</td></tr>
+      <tr><td><b>Respuesta</b></td><td>Tiempo promedio de la salida a la primera foto DESPUÉS, últimos 30 días; <b>En sitio</b> si todas se tomaron antes de salir.</td><td>Evidencias › Pendientes</td></tr>
+      <tr><td><b>Cumplimiento fotográfico</b></td><td>Cierres validados con ANTES y DESPUÉS en cada jornada ejecutada, sobre el total de cierres validados.</td><td>Evidencias › Cumplimiento; Indicadores › Calidad; Inicio</td></tr>
+      <tr><td><b>Excepciones y cierres incompletos</b></td><td>Cierres con excepción autorizada y validados sin foto ni excepción.</td><td>Evidencias › Cumplimiento</td></tr>
+      <tr><td><b>Su evidencia este año</b></td><td>Fotos ANTES y DESPUÉS del supervisor en el año, en cuántos cierres, y su cumplimiento.</td><td>Hoy (supervisor)</td></tr>
+    </tbody>
+  </table>
+  <p>Meta de cumplimiento fotográfico, máximo de solicitudes vencidas y tiempo de respuesta esperado: <span class="tbd">Por definir</span>.</p>
+
+  <h2 class="section"><span class="no">10</span>Documentos relacionados</h2>
+  <table class="kv">
+    <tbody>
+      <tr><td>Nivel 1</td><td><span class="mono">PK-SOP-L1</span> · Política de evidencia obligatoria y de excepciones.</td></tr>
+      <tr><td>Nivel 2</td><td><span class="mono">PK-SOP-L2-03</span> Ejecución de la jornada · <span class="mono">PK-SOP-L2-06</span> Cierre · <span class="mono">PK-SOP-L2-07</span> Reporte final · <span class="mono">PK-SOP-L2-11</span> Sin conexión.</td></tr>
+      <tr><td>Nivel 3</td><td>Manual de usuario: Evidencias · La jornada en campo · Cierre y validación · Reportes y envío al cliente · Órdenes.</td></tr>
+    </tbody>
+  </table>
+</section>

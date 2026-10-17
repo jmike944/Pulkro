@@ -1,0 +1,159 @@
+<section class="chapter" id="pk-sop-l2-07" data-code="PK-SOP-L2-07">
+  <header class="sop-head">
+    <div class="band">
+      <div class="top"><span class="code">PK-SOP-L2-07</span><span class="lvl">Procedimiento · Nivel 2</span></div>
+      <h1>Reporte final y envío al cliente</h1>
+      <p class="purpose">El supervisor arma el reporte del servicio, genera la versión en PDF y la comparte con el cliente por WhatsApp, correo o descarga. Cada intento queda registrado <b>sin confirmación de entrega</b>.</p>
+    </div>
+    <dl class="meta">
+      <div><dt>Dueño del proceso</dt><dd><span class="role sup">Supervisor</span></dd></div>
+      <div><dt>Participan</dt><dd><span class="roles"><span class="role cli">Cliente</span><span class="role app">La app</span></span></dd></div>
+      <div><dt>Versión</dt><dd>1.0 · borrador</dd></div>
+      <div><dt>Emisión</dt><dd>17 oct 2026</dd></div>
+      <div class="wide"><dt>Empieza cuando</dt><dd>La orden queda <span class="pill navy">Finalizada</span> con el cierre validado (<span class="mono">PK-SOP-L2-06</span>) o el reporte tiene cambios sin generar.</dd></div>
+      <div class="wide"><dt>Termina cuando</dt><dd>La versión vigente tiene al menos un intento de envío registrado y la orden está en <span class="pill teal">Reporte enviado</span>.</dd></div>
+      <div class="full"><dt>Instrucción de trabajo (Nivel 3)</dt><dd>Manual de usuario › Reportes y envío al cliente · Órdenes › Acciones sobre la orden · Trabajo sin conexión y sincronización</dd></div>
+    </dl>
+  </header>
+
+  <h2 class="section"><span class="no">1</span>Objetivo</h2>
+  <p>Entregar al cliente <b>un solo reporte por servicio</b>, con todas sus jornadas, las fotos ANTES y DESPUÉS, las incidencias y la conformidad, en un PDF que nunca sale con datos incompletos. Cada versión y cada intento de envío quedan registrados: qué se entregó, cuándo, por qué canal y a quién, sin afirmar nunca que el cliente lo recibió.</p>
+
+  <h2 class="section"><span class="no">2</span>Alcance</h2>
+  <table class="kv">
+    <tbody>
+      <tr><td>Aplica a</td><td>Todas las órdenes con cierre validado, en todas las unidades, incluidas las nuevas versiones (v2, v3…) y la descarga del PDF por Dirección y Administración.</td></tr>
+      <tr><td>No incluye</td><td>El cierre y la reapertura (<span class="mono">PK-SOP-L2-06</span>), la encuesta y las quejas (<span class="mono">PK-SOP-L2-08</span>) y los problemas de sincronización (<span class="mono">PK-SOP-L2-11</span>).</td></tr>
+      <tr><td>Entradas</td><td>Orden <span class="pill navy">Finalizada</span> con fotos ANTES y DESPUÉS, descripción del cierre y conformidad del cliente.</td></tr>
+      <tr><td>Salidas</td><td>PDF <span class="mono">Reporte_OS-…_vN.pdf</span>, intentos de envío registrados y orden en <span class="pill teal">Reporte enviado</span>.</td></tr>
+    </tbody>
+  </table>
+
+  <h2 class="section"><span class="no">3</span>Responsabilidades</h2>
+  <table class="raci">
+    <thead><tr><th>Actividad</th><th>Supervisor</th><th>Administración</th><th>Dirección</th><th>Cliente</th></tr></thead>
+    <tbody>
+      <tr><td>Elegir las fotos y revisar la descripción</td><td><span class="ra a">A</span></td><td></td><td></td><td></td></tr>
+      <tr><td>Generar la versión del PDF</td><td><span class="ra a">A</span></td><td><span class="ra i">I</span></td><td><span class="ra i">I</span></td><td></td></tr>
+      <tr><td>Compartir el reporte con el cliente</td><td><span class="ra a">A</span></td><td><span class="ra i">I</span></td><td><span class="ra i">I</span></td><td><span class="ra i">I</span></td></tr>
+      <tr><td>Confirmar con el cliente que lo recibió</td><td><span class="ra a">A</span></td><td></td><td></td><td><span class="ra c">C</span></td></tr>
+      <tr><td>Descargar el PDF desde la orden</td><td></td><td><span class="ra r">R</span></td><td><span class="ra r">R</span></td><td></td></tr>
+    </tbody>
+  </table>
+  <div class="raci-legend"><span><span class="ra r">R</span>Responsable</span><span><span class="ra a">A</span>Aprueba y responde por el resultado</span><span><span class="ra c">C</span>Consultado</span><span><span class="ra i">I</span>Informado</span></div>
+  <p>Las pantallas <b>Reportes</b> y <b>Reporte final</b> son solo del supervisor asignado. Dirección y Administración consultan el envío en la orden y descargan desde ahí la versión vigente (sección 5.2); esa descarga no cuenta como envío.</p>
+
+  <h2 class="section"><span class="no">4</span>Definiciones</h2>
+  <table class="kv">
+    <tbody>
+      <tr><td>Versión</td><td>Cada PDF generado del reporte (v1, v2…). No se modifica: un cambio sale como versión nueva y las anteriores se conservan con sus envíos. La vigente lleva la etiqueta <i>Actual</i>.</td></tr>
+      <tr><td>Intento de envío</td><td>Registro de que el supervisor inició un envío por WhatsApp, correo o descarga: quién, cuándo, canal, destinatario y versión, con la nota <i>sin confirmación de entrega</i>.</td></tr>
+      <tr><td>PDF definitivo</td><td>El que puede salir al cliente: todos los registros de la orden llegaron al servidor y ningún folio es provisional («PEND»).</td></tr>
+      <tr><td>Cambios sin generar</td><td>Fotos o descripción modificadas, o un cierre validado otra vez, después de la última versión.</td></tr>
+    </tbody>
+  </table>
+
+  <h2 class="section"><span class="no">5</span>Desarrollo</h2>
+  <div class="flowstrip">
+    <div class="st sup"><small>Supervisor</small>Orden Finalizada</div>
+    <div class="st sup"><small>Supervisor</small>Fotos y descripción</div>
+    <div class="st app"><small>La app</small>Generar PDF vN</div>
+    <div class="st dec"><small>Decisión</small>¿Todo sincronizado?</div>
+    <div class="st sup"><small>Supervisor</small>Compartir con el cliente</div>
+    <div class="st cli"><small>Cliente</small>Confirma recepción</div>
+    <div class="st end"><small>Resultado</small>Reporte enviado → encuesta</div>
+  </div>
+  <table class="proc">
+    <thead><tr><th></th><th>Responsable</th><th>Actividad</th><th>Registro en la app</th></tr></thead>
+    <tbody>
+      <tr><td class="n"><span>1</span></td><td class="who"><span class="role sup">Supervisor</span></td><td><b class="t">Abrir el reporte</b>Pulsar <span class="ui primary">Generar reporte</span> al validar el cierre, o abrir la orden desde <span class="ui">Reportes</span> (pestaña <span class="ui">Por generar</span>), desde Pendientes o con <span class="ui">⋯</span> › <span class="ui">Ver reporte</span>. Se abre la página <b>Reporte final</b>. Si aparece <i>Antes de generar el reporte</i>, la orden no tiene el cierre validado: completarlo según <span class="mono">PK-SOP-L2-06</span>.<span class="l3">Reportes y envío al cliente › El taller del reporte</span></td><td class="rec">Reportes › <i>Por generar</i>; Pendientes › <i>Reportes por compartir</i>.</td></tr>
+      <tr><td class="n"><span>2</span></td><td class="who"><span class="role sup">Supervisor</span></td><td><b class="t">Elegir las fotos</b>En la pestaña <span class="ui">Fotos</span>, tocar cada foto para incluirla o quitarla, o usar <span class="ui">Sugerir pares</span>. Se recomiendan <b>hasta 12 fotos</b>; la app avisa si se pasa o si no hay ninguna foto DESPUÉS o ninguna ANTES.<span class="l3">Reportes y envío al cliente › El taller del reporte</span></td><td class="rec">Fotos seleccionadas en la tarjeta <i>Reporte final</i>.</td></tr>
+      <tr><td class="n"><span>3</span></td><td class="who"><span class="role sup">Supervisor</span></td><td><b class="t">Revisar la descripción y la vista previa</b>Ajustar la descripción con <span class="ui">Editar descripción</span> (<span class="ui">Restaurar</span> vuelve al texto del cierre). Revisar la hoja, marcada BORRADOR: datos del servicio, jornadas, incidencias, fotos, conformidad y excepción de evidencia, si la hubo.<span class="l3">Reportes y envío al cliente › Qué contiene el reporte</span></td><td class="rec">Descripción del servicio del reporte.</td></tr>
+      <tr><td class="n"><span>4</span></td><td class="who"><span class="role sup">Supervisor</span><br><span class="role app">La app</span></td><td><b class="t">Generar el PDF</b>Pulsar <span class="ui primary">Generar PDF v1</span>. La tarjeta muestra el avance y termina en <i>Versión v1 lista para compartir</i>. El PDF se arma en el dispositivo, aun sin conexión.<span class="l3">Reportes y envío al cliente › Generar el PDF y sus versiones</span></td><td class="rec">Versión en <i>Versiones</i>; bitácora <i>Generó reporte PDF v1</i>.</td></tr>
+      <tr><td class="n"><span class="dec"><i>?</i></span></td><td class="who"><span class="role app">La app</span></td><td><b class="t">¿Hay registros de la orden sin sincronizar?</b><b>Sí:</b> compartir y descargar quedan desactivados; con señal se habilitan al terminar la sincronización, sin señal o con errores seguir <span class="mono">PK-SOP-L2-11</span> (<span class="ui">Ver sincronización</span>). <b>No:</b> continuar.<span class="l3">Reportes y envío al cliente › Sin sincronizar, no se envía</span></td><td class="rec">Aviso <i>Sin conexión</i> o <i>Sincronización con errores</i>.</td></tr>
+      <tr><td class="n"><span>5</span></td><td class="who"><span class="role sup">Supervisor</span></td><td><b class="t">Compartir con el cliente</b>Elegir <span class="ui primary">Compartir por WhatsApp</span> (contacto en sitio), <span class="ui">Enviar por correo</span> (contacto del cliente) o <span class="ui">Descargar PDF</span> (para entregarlo por otro medio). En el teléfono, la hoja de compartir lleva el PDF adjunto; en una computadora y por correo, adjuntar el archivo descargado antes de enviar.<span class="l3">Reportes y envío al cliente › Compartir con el cliente</span></td><td class="rec">Historial de envíos con la nota <i>sin confirmación de entrega</i>; bitácora <i>Inició envío por…</i>; orden <span class="pill teal">Reporte enviado</span>.</td></tr>
+      <tr><td class="n"><span>6</span></td><td class="who"><span class="role sup">Supervisor</span><br><span class="role cli">Cliente</span></td><td><b class="t">Confirmar que el cliente lo recibió</b>La app nunca marca un reporte como recibido: confirmarlo con el cliente. Si no le llegó, compartir de nuevo. Cómo se deja constancia de la confirmación: <span class="tbd">Por definir</span>.</td><td class="rec">Cada reenvío, como otro intento.</td></tr>
+      <tr><td class="n"><span>7</span></td><td class="who"><span class="role sup">Supervisor</span></td><td><b class="t">Pasar a la postventa</b>Pedir la encuesta (<span class="ui primary">Enviar encuesta</span> en el teléfono, o Pendientes › <i>Encuestas por enviar</i>) según <span class="mono">PK-SOP-L2-08</span>.<span class="l3">Postventa › Invitar al cliente a calificar</span></td><td class="rec">—</td></tr>
+    </tbody>
+  </table>
+  <div class="note phone-tip"><b class="note-t">Buena práctica</b><p>Compartir desde el teléfono: el PDF viaja adjunto en la hoja de compartir, sin pasos extra. Si se cancela la hoja de compartir, no se registra ningún intento.</p></div>
+
+  <h3>5.1 Nueva versión del reporte</h3>
+  <table class="proc">
+    <thead><tr><th></th><th>Responsable</th><th>Actividad</th><th>Registro en la app</th></tr></thead>
+    <tbody>
+      <tr><td class="n"><span>1</span></td><td class="who"><span class="role sup">Supervisor</span></td><td><b class="t">Atender el aviso de la tarjeta</b>La tarjeta <i>Reporte final</i> avisa <i>Hay cambios sin generar. Se creará la v2; la v1 queda en el historial</i>, u <i>Orden reabierta tras el cierre</i>.</td><td class="rec">Aviso en la tarjeta del reporte.</td></tr>
+      <tr><td class="n"><span class="dec"><i>?</i></span></td><td class="who"><span class="role sup">Supervisor</span></td><td><b class="t">¿La orden se reabrió?</b><b>Sí:</b> validar el cierre otra vez (<span class="mono">PK-SOP-L2-06</span>, sección 5.1); antes de eso la app no genera la versión. <b>No:</b> continuar.</td><td class="rec">Orden <span class="pill violet">Reabierta</span> hasta el nuevo cierre.</td></tr>
+      <tr><td class="n"><span>2</span></td><td class="who"><span class="role sup">Supervisor</span></td><td><b class="t">Generar y compartir la nueva versión</b>Pulsar <span class="ui primary">Generar PDF v2</span> y repetir los pasos 3 a 6. El mensaje de WhatsApp y el correo citan el folio y la versión.<span class="l3">Reportes y envío al cliente › Generar el PDF y sus versiones</span></td><td class="rec">v2 <i>Actual</i>; la v1 se conserva con sus envíos.</td></tr>
+    </tbody>
+  </table>
+
+  <h3>5.2 Consulta y descarga por Dirección y Administración</h3>
+  <table class="proc">
+    <thead><tr><th></th><th>Responsable</th><th>Actividad</th><th>Registro en la app</th></tr></thead>
+    <tbody>
+      <tr><td class="n"><span>1</span></td><td class="who"><span class="role adm">Administración</span><br><span class="role dir">Dirección</span></td><td><b class="t">Consultar el envío</b>En el detalle de la orden, la tarjeta del siguiente paso dice el último envío (<i>WhatsApp hace 6 días · sin confirmación de entrega</i>); la pestaña <span class="ui">Actividad</span> muestra cada versión y cada intento.<span class="l3">Órdenes › El detalle de una orden</span></td><td class="rec">Línea de tiempo; Actividad; Bitácora.</td></tr>
+      <tr><td class="n"><span>2</span></td><td class="who"><span class="role adm">Administración</span><br><span class="role dir">Dirección</span></td><td><b class="t">Descargar el PDF vigente</b>Abrir <span class="ui">⋯</span> › <span class="ui">Descargar PDF · v1</span>. Aparece apagada mientras no haya versión generada. No es un envío y no cambia el estado.<span class="l3">Órdenes › Acciones sobre la orden</span></td><td class="rec">Sin registro de envío.</td></tr>
+    </tbody>
+  </table>
+
+  <h2 class="section"><span class="no">6</span>Controles</h2>
+  <table>
+    <thead><tr><th style="width:36%">Control</th><th>Cómo lo asegura la app</th></tr></thead>
+    <tbody>
+      <tr><td><b>Solo el supervisor asignado genera y comparte</b></td><td>Los demás roles ven <i>Solo el supervisor asignado genera y comparte el reporte</i>.</td></tr>
+      <tr><td><b>Solo con cierre validado</b></td><td>Genera versiones de órdenes <span class="pill navy">Finalizada</span>, <span class="pill teal">Reporte enviado</span> o <span class="pill violet">Seguimiento postventa</span>; una orden reabierta exige validar el cierre otra vez.</td></tr>
+      <tr><td><b>Un reporte por servicio, con versiones fijas</b></td><td>Una orden de varias jornadas emite un solo reporte. Cualquier cambio sale como v2, v3…; las anteriores se conservan con sus envíos.</td></tr>
+      <tr><td><b>Envío manual, sin confirmación</b></td><td>Cada intento queda con la nota <i>sin confirmación de entrega</i>; la app nunca marca un reporte como recibido.</td></tr>
+      <tr><td><b>Solo PDF definitivo</b></td><td>Compartir y descargar se desactivan mientras haya registros de la orden sin sincronizar; el reporte nunca sale con folios provisionales.</td></tr>
+      <tr><td><b>La descarga del supervisor cuenta</b></td><td><span class="ui">Descargar PDF</span> en el taller es un intento por el canal Descarga; bajar una versión anterior desde <i>Versiones</i> no lo es.</td></tr>
+      <tr><td><b>Estado automático</b></td><td>El primer intento pasa la orden de <span class="pill navy">Finalizada</span> a <span class="pill teal">Reporte enviado</span>.</td></tr>
+      <tr><td><b>Lo que el cliente siempre ve</b></td><td>Las incidencias, la excepción de evidencia y la conformidad salen en el reporte.</td></tr>
+    </tbody>
+  </table>
+
+  <h2 class="section"><span class="no">7</span>Excepciones y escalamiento</h2>
+  <table>
+    <thead><tr><th style="width:32%">Situación</th><th>Qué hacer</th><th style="width:20%">Quién decide</th></tr></thead>
+    <tbody>
+      <tr><td>Sin señal o sincronización con errores</td><td>Generar la versión y compartirla cuando la orden se sincronice (<span class="mono">PK-SOP-L2-11</span>).</td><td><span class="role sup">Supervisor</span></td></tr>
+      <tr><td>El teléfono no ofrece la hoja de compartir</td><td>Usar <span class="ui">Descargar PDF</span> y adjuntar el archivo a mano.</td><td><span class="role sup">Supervisor</span></td></tr>
+      <tr><td>Falta o está mal el contacto del cliente</td><td>Entregar con <span class="ui">Descargar PDF</span> por el medio disponible; corregir el dato en Configuración › Catálogos (<span class="mono">PK-SOP-L2-10</span>).</td><td><span class="role sup">Supervisor</span> · <span class="role adm">Administración</span></td></tr>
+      <tr><td>El cliente no recibió el reporte</td><td>Compartirlo de nuevo; queda como otro intento.</td><td><span class="role sup">Supervisor</span></td></tr>
+      <tr><td>El cliente detecta un error en el reporte</td><td>Reabrir la orden, validar de nuevo y emitir la nueva versión (5.1). Si lo plantea como queja, registrar además el caso (<span class="mono">PK-SOP-L2-08</span>).</td><td><span class="role sup">Supervisor</span> de la orden</td></tr>
+      <tr><td>Un reporte listo lleva tiempo sin compartirse</td><td>Reportes lo señala con <span class="ui">Compartir ahora</span>. Plazo máximo del cierre al envío: <span class="tbd">Por definir</span>.</td><td><span class="tbd">Por definir</span></td></tr>
+    </tbody>
+  </table>
+
+  <h2 class="section"><span class="no">8</span>Registros</h2>
+  <table>
+    <thead><tr><th style="width:32%">Registro</th><th>Dónde se consulta</th><th style="width:26%">Quién lo ve</th></tr></thead>
+    <tbody>
+      <tr><td>Versiones (número, quién, cuándo, fotos)</td><td>Reporte final › Versiones; Bitácora</td><td>Supervisor; los demás roles en la Bitácora</td></tr>
+      <tr><td>Intentos de envío (canal, destinatario, fecha, versión, quién)</td><td>Reporte final › Historial de envíos; Actividad de la orden; Bitácora</td><td>Los tres roles, según su alcance</td></tr>
+      <tr><td>PDF del reporte</td><td>Dispositivo de quien lo descarga; el cliente lo recibe</td><td>Los tres roles y el cliente</td></tr>
+      <tr><td>Estado <span class="pill teal">Reporte enviado</span></td><td>Línea de tiempo de la orden (<i>Reporte al cliente</i>); Órdenes</td><td>Los tres roles, según su alcance</td></tr>
+    </tbody>
+  </table>
+
+  <h2 class="section"><span class="no">9</span>Indicadores</h2>
+  <table>
+    <thead><tr><th style="width:30%">Indicador</th><th>Cómo se calcula</th><th style="width:28%">Dónde se ve</th></tr></thead>
+    <tbody>
+      <tr><td><b>Cierre → envío</b></td><td>Tiempo promedio del cierre validado al primer envío, dividido en <i>Cierre → PDF</i> y <i>PDF → primer envío</i>.</td><td>Reportes (supervisor)</td></tr>
+      <tr><td><b>Cierre a reporte enviado</b></td><td>El mismo tiempo, para las órdenes del periodo.</td><td>Indicadores › Operación › Cómo avanza el trabajo</td></tr>
+      <tr><td><b>Reporte enviado</b></td><td>Órdenes programadas en el periodo con envío iniciado (no recibido).</td><td>Indicadores › Operación › Del plan al cliente</td></tr>
+      <tr><td><b>Canales de envío</b></td><td>Reparto de los intentos entre WhatsApp y correo.</td><td>Reportes (supervisor)</td></tr>
+    </tbody>
+  </table>
+  <p>Meta de tiempo del cierre validado al primer envío: <span class="tbd">Por definir</span>.</p>
+
+  <h2 class="section"><span class="no">10</span>Documentos relacionados</h2>
+  <table class="kv">
+    <tbody>
+      <tr><td>Nivel 1</td><td><span class="mono">PK-SOP-L1</span> · Políticas de envío manual sin confirmación de entrega y de cambios después del cierre.</td></tr>
+      <tr><td>Nivel 2</td><td><span class="mono">PK-SOP-L2-06</span> Cierre y validación · <span class="mono">PK-SOP-L2-08</span> Postventa · <span class="mono">PK-SOP-L2-10</span> Usuarios y catálogos · <span class="mono">PK-SOP-L2-11</span> Operación sin conexión.</td></tr>
+      <tr><td>Nivel 3</td><td>Manual de usuario: Reportes y envío al cliente · Órdenes · Trabajo sin conexión y sincronización.</td></tr>
+    </tbody>
+  </table>
+</section>

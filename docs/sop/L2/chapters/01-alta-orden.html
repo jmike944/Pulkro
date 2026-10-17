@@ -1,0 +1,161 @@
+<section class="chapter" id="pk-sop-l2-01" data-code="PK-SOP-L2-01">
+  <header class="sop-head">
+    <div class="band">
+      <div class="top"><span class="code">PK-SOP-L2-01</span><span class="lvl">Procedimiento · Nivel 2</span></div>
+      <h1>Alta de la orden de servicio</h1>
+      <p class="purpose">Administración registra en la app el trabajo que ya autorizó el sistema comercial: cliente, sitio, servicio, supervisor responsable y jornadas propuestas. La orden queda en <b>Borrador</b>, lista para que el supervisor la programe.</p>
+    </div>
+    <dl class="meta">
+      <div><dt>Dueño del proceso</dt><dd><span class="role adm">Administración</span></dd></div>
+      <div><dt>Participan</dt><dd><span class="roles"><span class="role sup">Supervisor</span><span class="role dir">Dirección</span><span class="role app">La app</span></span></dd></div>
+      <div><dt>Versión</dt><dd>1.0 · borrador</dd></div>
+      <div><dt>Emisión</dt><dd>17 oct 2026</dd></div>
+      <div class="wide"><dt>Empieza cuando</dt><dd>Administración recibe un trabajo autorizado en el sistema comercial, con su referencia (por ejemplo <span class="mono">COT-2026-1187</span>).</dd></div>
+      <div class="wide"><dt>Termina cuando</dt><dd>La orden queda <span class="pill slate">Borrador</span> con folio, supervisor y jornadas propuestas, y el supervisor la ve en <b>Por asignar</b>.</dd></div>
+      <div class="full"><dt>Instrucción de trabajo (Nivel 3)</dt><dd>Manual de usuario › Nueva orden · Órdenes › Editar datos · Órdenes › Archivar y cancelar · Configuración › Catálogos</dd></div>
+    </dl>
+  </header>
+
+  <h2 class="section"><span class="no">1</span>Objetivo</h2>
+  <p>Asegurar que <b>todo trabajo que se ejecuta tenga una orden de servicio</b> ligada a su autorización comercial, completa desde el alta y sin duplicados: es el registro único del servicio, del que cuelgan jornadas, evidencia, cierre, reporte y postventa.</p>
+
+  <h2 class="section"><span class="no">2</span>Alcance</h2>
+  <table class="kv">
+    <tbody>
+      <tr><td>Aplica a</td><td>Todo trabajo autorizado, de una o varias jornadas. Incluye corregir y cancelar una orden abierta.</td></tr>
+      <tr><td>No incluye</td><td>La autorización comercial (fuera de la app), la cuadrilla y las fechas definitivas (<span class="mono">PK-SOP-L2-02</span>) y los catálogos y cuentas (<span class="mono">PK-SOP-L2-10</span>).</td></tr>
+      <tr><td>Entradas</td><td>Trabajo autorizado con su referencia comercial.</td></tr>
+      <tr><td>Salidas</td><td>Orden <span class="pill slate">Borrador</span> con folio, supervisor y jornadas propuestas.</td></tr>
+    </tbody>
+  </table>
+
+  <h2 class="section"><span class="no">3</span>Responsabilidades</h2>
+  <table class="raci">
+    <thead><tr><th>Actividad</th><th>Supervisor</th><th>Administración</th><th>Dirección</th></tr></thead>
+    <tbody>
+      <tr><td>Verificar la autorización y la referencia comercial</td><td></td><td><span class="ra r">R</span></td><td></td></tr>
+      <tr><td>Dar de alta el cliente o el sitio que falte</td><td></td><td><span class="ra r">R</span></td><td><span class="ra i">I</span></td></tr>
+      <tr><td>Capturar la orden y asignar el supervisor</td><td><span class="ra i">I</span></td><td><span class="ra a">A</span></td><td><span class="ra i">I</span></td></tr>
+      <tr><td>Crear la orden con la confirmación de autorización</td><td><span class="ra i">I</span></td><td><span class="ra a">A</span></td><td><span class="ra i">I</span></td></tr>
+      <tr><td>Corregir datos de la orden</td><td><span class="ra r">R</span></td><td><span class="ra a">A</span></td><td><span class="ra i">I</span></td></tr>
+      <tr><td>Cancelar una orden abierta</td><td><span class="ra i">I</span></td><td><span class="ra a">A</span></td><td><span class="ra i">I</span></td></tr>
+    </tbody>
+  </table>
+  <div class="raci-legend"><span><span class="ra r">R</span>Responsable</span><span><span class="ra a">A</span>Aprueba y responde por el resultado</span><span><span class="ra c">C</span>Consultado</span><span><span class="ra i">I</span>Informado</span></div>
+  <p>Solo Administración da de alta órdenes, y solo para clientes de su unidad. El supervisor corrige únicamente los datos operativos de sus órdenes; Dirección consulta. Ninguno de los dos tiene <span class="ui">Nueva orden</span>: si abren el asistente, la app muestra <i>Sin permiso para crear órdenes</i> o <i>Dirección solo consulta</i>.</p>
+
+  <h2 class="section"><span class="no">4</span>Definiciones</h2>
+  <table class="kv">
+    <tbody>
+      <tr><td>Trabajo autorizado</td><td>Servicio que el cliente aprobó en el sistema comercial externo. La app no cotiza ni autoriza: solo lo registra con su referencia.</td></tr>
+      <tr><td>Referencia comercial</td><td>Identificador de la autorización (formato habitual <span class="mono">COT-2026-1187</span>). La app la guarda en mayúsculas y avisa si otra orden no cancelada ya la usa.</td></tr>
+      <tr><td>Jornada propuesta</td><td>Día de trabajo (fecha, entrada y salida) que Administración propone en el alta, sin cuadrilla. El supervisor la confirma o la ajusta al programar.</td></tr>
+      <tr><td>Borrador</td><td>Orden dada de alta sin cuadrilla. Pasa a <span class="pill blue">Programada</span> cuando el supervisor asigna al personal.</td></tr>
+      <tr><td>Folio provisional</td><td><span class="mono">OS-PEND-…</span>: folio de una orden creada sin conexión hasta que llega al servidor, que asigna el definitivo.</td></tr>
+    </tbody>
+  </table>
+
+  <h2 class="section"><span class="no">5</span>Desarrollo</h2>
+  <div class="flowstrip">
+    <div class="st adm"><small>Administración</small>Trabajo autorizado</div>
+    <div class="st dec"><small>Decisión</small>¿Cliente y sitio en catálogo?</div>
+    <div class="st adm"><small>Administración</small>Cliente, sitio y referencia</div>
+    <div class="st adm"><small>Administración</small>Servicio y actividades</div>
+    <div class="st adm"><small>Administración</small>Supervisor y jornadas</div>
+    <div class="st app"><small>La app</small>Validación y folio</div>
+    <div class="st end"><small>Resultado</small>Borrador → supervisor</div>
+  </div>
+  <table class="proc">
+    <thead><tr><th></th><th>Responsable</th><th>Actividad</th><th>Registro en la app</th></tr></thead>
+    <tbody>
+      <tr><td class="n"><span>1</span></td><td class="who"><span class="role adm">Administración</span></td><td><b class="t">Confirmar la autorización</b>Tener a la mano la referencia de la cotización autorizada. Sin autorización no se da de alta la orden.<span class="l3">Nueva orden › Antes de empezar</span></td><td class="rec">—</td></tr>
+      <tr><td class="n"><span class="dec"><i>?</i></span></td><td class="who"><span class="role adm">Administración</span></td><td><b class="t">¿El cliente, el sitio y el tipo de servicio están en el catálogo?</b><b>No:</b> darlos de alta primero (sección 5.1). <b>Sí:</b> continuar.</td><td class="rec">Catálogo de la unidad.</td></tr>
+      <tr><td class="n"><span>2</span></td><td class="who"><span class="role adm">Administración</span></td><td><b class="t">Capturar cliente, sitio y contacto</b>Pulsar <span class="ui primary">Nueva orden</span>. Elegir el cliente (solo los de su unidad) y el sitio; revisar <b>Nombre</b> y <b>Teléfono</b> de quien recibe a la cuadrilla; escribir la <b>Referencia del sistema comercial</b> y marcar la prioridad. Nada se guarda hasta <span class="ui primary">Crear orden</span>.<span class="l3">Nueva orden › Paso 1 · Cliente y sitio</span></td><td class="rec">Cliente, sitio, contacto en sitio, referencia y prioridad.</td></tr>
+      <tr><td class="n"><span class="dec"><i>?</i></span></td><td class="who"><span class="role adm">Administración</span></td><td><b class="t">¿La app avisa «Ya existe la orden OS-… con esta referencia»?</b><b>Sí:</b> abrir esa orden; si es el mismo trabajo, salir sin crear otra. El aviso no bloquea. <b>No:</b> continuar.</td><td class="rec">Aviso ámbar junto a la referencia.</td></tr>
+      <tr><td class="n"><span>3</span></td><td class="who"><span class="role adm">Administración</span></td><td><b class="t">Definir el servicio</b>Elegir el <b>Tipo de servicio</b>, revisar el título sugerido y dejar solo las actividades contratadas (al menos una). Anotar materiales, si aplica, e <b>Instrucciones especiales</b>: accesos, horarios, EPP o productos a evitar.<span class="l3">Nueva orden › Paso 2 · Servicio</span></td><td class="rec">Detalle del servicio.</td></tr>
+      <tr><td class="n"><span>4</span></td><td class="who"><span class="role adm">Administración</span></td><td><b class="t">Asignar el supervisor y proponer jornadas</b>Elegir en <b>Supervisor asignado</b> a un supervisor activo de la unidad del cliente (la lista muestra su carga). Ajustar <b>Fecha</b>, <b>Entrada</b> y <b>Salida</b> de cada jornada, hasta 14. La cuadrilla no se asigna aquí.<span class="l3">Nueva orden › Paso 3 · Programación y cuadrilla</span></td><td class="rec">Supervisor asignado; jornadas sin cuadrilla.</td></tr>
+      <tr><td class="n"><span>5</span></td><td class="who"><span class="role adm">Administración</span><br><span class="role app">La app</span></td><td><b class="t">Revisar y crear la orden</b>Revisar el comprobante, marcar la casilla <i>Confirmo que el trabajo está autorizado…</i> y pulsar <span class="ui primary">Crear orden</span>. Si falta algo, la app lleva al paso.<span class="l3">Nueva orden › Paso 4 · Revisión</span></td><td class="rec">Orden <span class="pill slate">Borrador</span> con folio; <i>Trabajo autorizado</i> y <i>Alta manual de la orden</i> en la línea de tiempo.</td></tr>
+      <tr><td class="n"><span>6</span></td><td class="who"><span class="role app">La app</span><br><span class="role sup">Supervisor</span></td><td><b class="t">Entregar la orden al supervisor</b>Aparece en su Agenda › <b>Por asignar</b> y en Pendientes. La app no envía avisos; aviso por otro medio: <span class="tbd">Por definir</span>. Sigue <span class="mono">PK-SOP-L2-02</span>.<span class="l3">Nueva orden › Qué pasa después</span></td><td class="rec">Paso <i>Asignar cuadrilla</i> pendiente.</td></tr>
+    </tbody>
+  </table>
+
+  <h3>5.1 Cliente, sitio o servicio que no está en el catálogo</h3>
+  <table class="proc">
+    <thead><tr><th></th><th>Responsable</th><th>Actividad</th><th>Registro en la app</th></tr></thead>
+    <tbody>
+      <tr><td class="n"><span>1</span></td><td class="who"><span class="role adm">Administración</span></td><td><b class="t">Dar de alta el cliente y su sitio</b>En Catálogos › <span class="ui">Clientes y sitios</span>, <span class="ui primary">Nuevo cliente</span> con su contacto principal (recibe el reporte) y <span class="ui primary">Agregar sitio</span> con dirección y coordenadas: sin sitio no se programa la orden.<span class="l3">Configuración › Clientes y sitios</span></td><td class="rec">Cliente y sitio en el catálogo; bitácora (Catálogo).</td></tr>
+      <tr><td class="n"><span>2</span></td><td class="who"><span class="role adm">Administración</span></td><td><b class="t">Agregar el tipo de servicio o el material</b>Son de toda la empresa: <span class="ui primary">Nuevo tipo</span> o <span class="ui primary">Nuevo material</span>. Quién autoriza nuevos elementos: <span class="tbd">Por definir</span> (<span class="mono">PK-SOP-L2-10</span>).<span class="l3">Configuración › Tipos de servicio, materiales y personal</span></td><td class="rec">Tipo o material en el catálogo.</td></tr>
+    </tbody>
+  </table>
+
+  <h3>5.2 Corrección y cancelación de una orden abierta</h3>
+  <table class="proc">
+    <thead><tr><th></th><th>Responsable</th><th>Actividad</th><th>Registro en la app</th></tr></thead>
+    <tbody>
+      <tr><td class="n"><span>1</span></td><td class="who"><span class="role adm">Administración</span><br><span class="role sup">Supervisor</span></td><td><b class="t">Corregir datos</b><span class="ui">⋯</span> › <span class="ui">Editar datos</span>: Administración corrige todo (título, servicio, sitio, supervisor, referencia, prioridad); el supervisor, solo contacto, instrucciones, actividades y materiales. Escribir el <b>Motivo del cambio</b> y pulsar <span class="ui primary">Guardar cambios</span>. Fechas y cuadrilla: <span class="mono">PK-SOP-L2-02</span>.<span class="l3">Órdenes › Editar datos</span></td><td class="rec">Actividad y Bitácora con autor, fecha y motivo.</td></tr>
+      <tr><td class="n"><span>2</span></td><td class="who"><span class="role adm">Administración</span></td><td><b class="t">Cancelar con motivo y avisar</b><span class="ui">⋯</span> › <span class="ui">Cancelar orden</span>: elegir el motivo (<i>El cliente canceló el servicio</i>, <i>Orden duplicada</i>, <i>Fuera del alcance autorizado</i>), marcar la casilla y confirmar. Avisar al supervisor: la app no lo hace. Quién autoriza cancelar: <span class="tbd">Por definir</span>.<span class="l3">Órdenes › Archivar y cancelar</span></td><td class="rec">Orden <span class="pill slate">Cancelada</span>; motivo en la línea de tiempo y la bitácora.</td></tr>
+    </tbody>
+  </table>
+
+  <h2 class="section"><span class="no">6</span>Controles</h2>
+  <table>
+    <thead><tr><th style="width:36%">Control</th><th>Cómo lo asegura la app</th></tr></thead>
+    <tbody>
+      <tr><td><b>Solo Administración da de alta</b></td><td>El supervisor y Dirección no tienen <span class="ui">Nueva orden</span>. Solo Administración cancela.</td></tr>
+      <tr><td><b>Alcance de la unidad</b></td><td>Solo ofrece clientes de la unidad de Administración y supervisores activos de la unidad del cliente.</td></tr>
+      <tr><td><b>Datos completos</b></td><td>No avanza sin cliente, sitio, contacto con teléfono de 10 dígitos o más, referencia de 5 caracteres o más, tipo de servicio, título, una actividad, supervisor y una jornada.</td></tr>
+      <tr><td><b>Jornadas válidas</b></td><td>Rechaza fechas pasadas, dos jornadas el mismo día y salida antes de la entrada; admite hasta 14 jornadas. Avisa, sin bloquear, si la jornada cae en domingo o dura más de 12 h.</td></tr>
+      <tr><td><b>Referencia repetida</b></td><td>Aviso ámbar si otra orden no cancelada la usa (o «fuera de su alcance»); no bloquea.</td></tr>
+      <tr><td><b>Confirmación de autorización</b></td><td><span class="ui">Crear orden</span> exige marcar la casilla con la referencia. La orden se guarda siempre como <span class="pill slate">Borrador</span>.</td></tr>
+      <tr><td><b>Nada se guarda a medias</b></td><td>El asistente no guarda borradores: al salir sin crear la orden, lo capturado se pierde sin preguntar.</td></tr>
+      <tr><td><b>Cambios con motivo</b></td><td>Editar y cancelar exigen motivo de al menos 5 caracteres y quedan en la bitácora. Solo se cancelan órdenes abiertas: lo capturado se conserva. Una orden cerrada o cancelada ya no se edita.</td></tr>
+      <tr><td><b>Sin conexión</b></td><td>La orden se guarda en el dispositivo con folio <span class="mono">OS-PEND-…</span> y se sincroniza al reconectar.</td></tr>
+    </tbody>
+  </table>
+
+  <h2 class="section"><span class="no">7</span>Excepciones y escalamiento</h2>
+  <table>
+    <thead><tr><th style="width:32%">Situación</th><th>Qué hacer</th><th style="width:20%">Quién decide</th></tr></thead>
+    <tbody>
+      <tr><td>La referencia ya está en otra orden</td><td>Si es el mismo trabajo, no crear otra; si ya se creó, cancelar la repetida con <i>Orden duplicada</i>. Si una referencia ampara varias órdenes: <span class="tbd">Por definir</span>.</td><td><span class="role adm">Administración</span></td></tr>
+      <tr><td>La referencia es de otra unidad</td><td>Aclararlo antes de crear la orden; Dirección ve las órdenes de todas las unidades.</td><td><span class="tbd">Por definir</span></td></tr>
+      <tr><td>No aparece ningún supervisor</td><td>Solo se listan supervisores activos de la unidad del cliente: pedir a Dirección que revise las cuentas (<span class="mono">PK-SOP-L2-10</span>).</td><td><span class="role dir">Dirección</span></td></tr>
+      <tr><td>Domingo o jornada de más de 12 h</td><td>Confirmar el acceso con el cliente; el supervisor confirma las fechas al programar (<span class="mono">PK-SOP-L2-02</span>).</td><td><span class="role adm">Administración</span></td></tr>
+      <tr><td>Sin conexión al dar de alta</td><td>Crear la orden: se sincroniza al volver la señal (<span class="mono">PK-SOP-L2-11</span>).</td><td><span class="role adm">Administración</span></td></tr>
+      <tr><td>El supervisor asignado no podrá atenderla</td><td>Cambiar el <b>Supervisor</b> con <span class="ui">Editar datos</span> y motivo (5.2).</td><td><span class="role adm">Administración</span></td></tr>
+      <tr><td>El cliente cambia el alcance</td><td>Ajustar actividades y materiales con motivo (5.2). Si exige nueva autorización comercial: <span class="tbd">Por definir</span>.</td><td><span class="role adm">Administración</span></td></tr>
+    </tbody>
+  </table>
+
+  <h2 class="section"><span class="no">8</span>Registros</h2>
+  <table>
+    <thead><tr><th style="width:32%">Registro</th><th>Dónde se consulta</th><th style="width:26%">Quién lo ve</th></tr></thead>
+    <tbody>
+      <tr><td>Orden de servicio con su referencia comercial</td><td>Órdenes › detalle; Excel de Órdenes</td><td>Los tres roles, según su alcance (Excel: Administración y Dirección)</td></tr>
+      <tr><td>Trabajo autorizado y alta manual (quién, cuándo, unidad)</td><td>Orden › Resumen › línea de tiempo</td><td>Los tres roles, según su alcance</td></tr>
+      <tr><td>Correcciones, reasignación y cancelación, con motivo</td><td>Orden › Actividad; Bitácora</td><td>Los tres roles, según su alcance</td></tr>
+      <tr><td>Clientes y sitios dados de alta</td><td>Configuración › Catálogos; Bitácora</td><td>Administración y Dirección</td></tr>
+    </tbody>
+  </table>
+
+  <h2 class="section"><span class="no">9</span>Indicadores</h2>
+  <table>
+    <thead><tr><th style="width:30%">Indicador</th><th>Cómo se calcula</th><th style="width:28%">Dónde se ve</th></tr></thead>
+    <tbody>
+      <tr><td><b>Alta a programación</b></td><td>Tiempo promedio de la alta de la orden a la primera asignación de cuadrilla.</td><td>Indicadores › Operación › Cómo avanza el trabajo</td></tr>
+      <tr><td><b>Del alta al reporte</b></td><td>Promedio, en días, de la alta al primer envío del reporte.</td><td>Indicadores › Operación › Cómo avanza el trabajo</td></tr>
+      <tr><td><b>Borradores</b></td><td>Órdenes de un periodo terminado que se quedaron sin programar.</td><td>Indicadores › Operación › Del plan al cliente</td></tr>
+      <tr><td><b>Canceladas o reprogramadas</b></td><td>Órdenes del periodo que cambiaron de plan.</td><td>Indicadores › Operación › Dónde está el trabajo</td></tr>
+    </tbody>
+  </table>
+  <p>Las órdenes canceladas por duplicado se consultan en la Bitácora buscando <i>Orden duplicada</i>; la app no las calcula como indicador. Metas: <span class="tbd">Por definir</span>.</p>
+
+  <h2 class="section"><span class="no">10</span>Documentos relacionados</h2>
+  <table class="kv">
+    <tbody>
+      <tr><td>Nivel 1</td><td><span class="mono">PK-SOP-L1</span> · P-01 Solo se ejecuta trabajo autorizado · P-02 Cada orden tiene un supervisor responsable · P-09 Todo cambio deja rastro.</td></tr>
+      <tr><td>Nivel 2</td><td><span class="mono">PK-SOP-L2-02</span> Programación de jornadas · <span class="mono">PK-SOP-L2-10</span> Usuarios, permisos y catálogos · <span class="mono">PK-SOP-L2-11</span> Operación sin conexión.</td></tr>
+      <tr><td>Nivel 3</td><td>Manual de usuario: Nueva orden · Órdenes · Configuración · Clientes.</td></tr>
+    </tbody>
+  </table>
+</section>

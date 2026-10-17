@@ -1,0 +1,163 @@
+<section class="chapter" id="pk-sop-l2-09" data-code="PK-SOP-L2-09">
+  <header class="sop-head">
+    <div class="band">
+      <div class="top"><span class="code">PK-SOP-L2-09</span><span class="lvl">Procedimiento · Nivel 2</span></div>
+      <h1>Seguimiento de indicadores y control operativo</h1>
+      <p class="purpose">Dirección y Administración revisan la operación con las cifras que la app calcula de los registros de campo, encuentran lo que se desvía, identifican quién debe actuar y conservan el corte del periodo.</p>
+    </div>
+    <dl class="meta">
+      <div><dt>Dueño del proceso</dt><dd><span class="role dir">Dirección</span></dd></div>
+      <div><dt>Participan</dt><dd><span class="roles"><span class="role adm">Administración</span><span class="role sup">Supervisor</span></span></dd></div>
+      <div><dt>Versión</dt><dd>1.0 · borrador</dd></div>
+      <div><dt>Emisión</dt><dd>17 oct 2026</dd></div>
+      <div class="wide"><dt>Empieza cuando</dt><dd>Dirección o Administración revisa la operación en Inicio, Pendientes o Indicadores. Frecuencia de revisión: <span class="tbd">Por definir</span>.</dd></div>
+      <div class="wide"><dt>Termina cuando</dt><dd>Cada desviación encontrada tiene identificado a quién le toca actuar y, si se requiere, el corte del periodo quedó exportado.</dd></div>
+      <div class="full"><dt>Instrucción de trabajo (Nivel 3)</dt><dd>Manual de usuario › Indicadores · Inicio y Pendientes · Bitácora · Equipo</dd></div>
+    </dl>
+  </header>
+
+  <h2 class="section"><span class="no">1</span>Objetivo</h2>
+  <p>Revisar la operación con cifras que salen de los mismos registros que se capturan en campo, sin datos escritos a mano para el tablero, para detectar a tiempo lo que se atrasa, lo que falla en calidad y cómo se reparte la carga del equipo. Cada revisión se apoya en la Bitácora, que conserva quién hizo cada cambio, cuándo y por qué.</p>
+
+  <h2 class="section"><span class="no">2</span>Alcance</h2>
+  <table class="kv">
+    <tbody>
+      <tr><td>Aplica a</td><td>Inicio, Pendientes, Indicadores (Operación, Calidad y Personal), Bitácora y Equipo, en todas las unidades (Dirección) o en la unidad propia (Administración).</td></tr>
+      <tr><td>No incluye</td><td>La atención de cada pendiente, que sigue su propio procedimiento (<span class="mono">PK-SOP-L2-02</span> a <span class="mono">PK-SOP-L2-08</span>); usuarios, permisos y catálogos (<span class="mono">PK-SOP-L2-10</span>); costos, materiales y productividad individual, que la app aún no mide.</td></tr>
+      <tr><td>Entradas</td><td>Entradas y salidas, fotos, incidencias, cierres validados, envíos de reporte, encuestas y casos postventa.</td></tr>
+      <tr><td>Salidas</td><td>Desviaciones con su responsable identificado; Excel o PDF del periodo; consultas de auditoría resueltas con la Bitácora.</td></tr>
+    </tbody>
+  </table>
+
+  <h2 class="section"><span class="no">3</span>Responsabilidades</h2>
+  <table class="raci">
+    <thead><tr><th>Actividad</th><th>Supervisor</th><th>Administración</th><th>Dirección</th></tr></thead>
+    <tbody>
+      <tr><td>Revisar Inicio y Pendientes</td><td><span class="ra r">R</span></td><td><span class="ra r">R</span></td><td><span class="ra a">A</span></td></tr>
+      <tr><td>Revisar los indicadores del periodo</td><td></td><td><span class="ra r">R</span></td><td><span class="ra a">A</span></td></tr>
+      <tr><td>Dar seguimiento a una desviación</td><td><span class="ra c">C</span></td><td><span class="ra r">R</span></td><td><span class="ra a">A</span></td></tr>
+      <tr><td>Revisar la carga del equipo</td><td></td><td><span class="ra r">R</span></td><td><span class="ra a">A</span></td></tr>
+      <tr><td>Consultar la Bitácora</td><td><span class="ra i">I</span></td><td><span class="ra r">R</span></td><td><span class="ra a">A</span></td></tr>
+      <tr><td>Exportar o imprimir el corte</td><td></td><td><span class="ra r">R</span></td><td><span class="ra a">A</span></td></tr>
+    </tbody>
+  </table>
+  <div class="raci-legend"><span><span class="ra r">R</span>Responsable</span><span><span class="ra a">A</span>Aprueba y responde por el resultado</span><span><span class="ra c">C</span>Consultado</span><span><span class="ra i">I</span>Informado</span></div>
+  <p>Administración consulta su unidad; Dirección, todas las unidades o la que elija. El supervisor no tiene Indicadores ni Equipo: ve sus propias cifras en Hoy, su cola de trabajo en Pendientes y, en la Bitácora, los movimientos de sus órdenes.</p>
+
+  <h2 class="section"><span class="no">4</span>Definiciones</h2>
+  <table class="kv">
+    <tbody>
+      <tr><td>Alcance</td><td>Lo que un rol ve: sus asignaciones (supervisor), su unidad (Administración) o todas las unidades o la elegida (Dirección).</td></tr>
+      <tr><td>Servicio terminado</td><td>Orden con el cierre validado por el supervisor.</td></tr>
+      <tr><td>Programado · ocurrido</td><td>El embudo cuenta las órdenes con inicio programado en el periodo; cierres, horas, incidencias y encuestas cuentan por su propia fecha.</td></tr>
+      <tr><td>Corte</td><td>En un periodo en curso todo se mide hasta hoy y se compara con el periodo anterior al mismo punto.</td></tr>
+      <tr><td>Fase 2</td><td>Indicadores pedidos que la app aún no calcula: costos y rentabilidad, consumo de materiales y productividad por trabajador.</td></tr>
+    </tbody>
+  </table>
+
+  <h2 class="section"><span class="no">5</span>Desarrollo</h2>
+  <div class="flowstrip">
+    <div class="st dir"><small>Dirección</small>Elegir el alcance</div>
+    <div class="st dir"><small>Dir. · Adm.</small>Inicio y Pendientes</div>
+    <div class="st dir"><small>Dir. · Adm.</small>Indicadores del periodo</div>
+    <div class="st dec"><small>Decisión</small>¿Alguna cifra se desvía?</div>
+    <div class="st dir"><small>Dir. · Adm.</small>Detalle y responsable</div>
+    <div class="st sup"><small>Supervisor</small>Corrige en su procedimiento</div>
+    <div class="st end"><small>Resultado</small>Corte del periodo</div>
+  </div>
+  <table class="proc">
+    <thead><tr><th></th><th>Responsable</th><th>Actividad</th><th>Registro en la app</th></tr></thead>
+    <tbody>
+      <tr><td class="n"><span>1</span></td><td class="who"><span class="role dir">Dirección</span></td><td><b class="t">Elegir el alcance</b>En el selector de unidad del menú lateral, elegir <span class="ui">Todas las unidades</span> o una unidad. Es el mismo filtro de toda la app: cambia también Inicio, Equipo y Clientes. Administración ve siempre su unidad.<span class="l3">Indicadores › La pantalla de Indicadores</span></td><td class="rec">—</td></tr>
+      <tr><td class="n"><span>2</span></td><td class="who"><span class="role dir">Dirección</span><br><span class="role adm">Administración</span></td><td><b class="t">Revisar Inicio</b>Servicios terminados del mes contra el anterior; órdenes Pendientes, En proceso e Incidencias; jornadas de <i>Hoy en campo</i>; <i>Requieren atención</i> (hasta seis órdenes, con <span class="ui">Ver</span>) y <i>Qué detiene los cierres</i>.<span class="l3">Inicio y Pendientes › Inicio en escritorio</span></td><td class="rec">—</td></tr>
+      <tr><td class="n"><span>3</span></td><td class="who"><span class="role dir">Dirección</span><br><span class="role adm">Administración</span></td><td><b class="t">Revisar Pendientes</b>Si aparece el selector, elegir <span class="ui">Todo</span>. Cada fila dice <i>A cargo de</i> quién está, cuánto lleva esperando (ámbar desde tres días, rojo si está atrasado) y si <i>Impide el cierre</i>. Administración atiende los suyos: casos y encuestas (<span class="mono">PK-SOP-L2-08</span>).<span class="l3">Inicio y Pendientes › Pendientes</span></td><td class="rec">Cola de Pendientes; ninguno se descarta a mano.</td></tr>
+      <tr><td class="n"><span>4</span></td><td class="who"><span class="role dir">Dirección</span><br><span class="role adm">Administración</span></td><td><b class="t">Elegir el periodo y revisar Operación</b>En Indicadores, elegir <span class="ui">Mes</span>, <span class="ui">Trimestre</span> o <span class="ui">Año</span> y el periodo. Revisar el embudo <i>Del plan al cliente</i> y el <i>Ciclo completo</i>, <i>Cómo avanza el trabajo</i> (con su <i>Cuello de botella</i>), los servicios terminados contra el periodo anterior, las horas reales contra el plan y las incidencias por tipo.<span class="l3">Indicadores › Operación: del plan al cliente</span></td><td class="rec">—</td></tr>
+      <tr><td class="n"><span>5</span></td><td class="who"><span class="role dir">Dirección</span><br><span class="role adm">Administración</span></td><td><b class="t">Revisar Calidad y Personal</b>En <span class="ui">Calidad</span>: satisfacción del cliente (calificación, NPS y tasa de respuesta), cumplimiento fotográfico y servicios con quejas. En <span class="ui">Personal</span>: por supervisor, órdenes cerradas y abiertas, horas reales, horas por servicio y CSAT (en ámbar si es menor a 4).<span class="l3">Indicadores › Calidad · Indicadores › Personal</span></td><td class="rec">—</td></tr>
+      <tr><td class="n"><span class="dec"><i>?</i></span></td><td class="who"><span class="role dir">Dirección</span><br><span class="role adm">Administración</span></td><td><b class="t">¿Alguna cifra se desvía de lo esperado?</b><b>Sí:</b> seguir la sección 5.1. <b>No:</b> continuar. Metas y tolerancias de cada indicador: <span class="tbd">Por definir</span>.</td><td class="rec">—</td></tr>
+      <tr><td class="n"><span>6</span></td><td class="who"><span class="role dir">Dirección</span><br><span class="role adm">Administración</span></td><td><b class="t">Exportar o imprimir el corte</b><span class="ui">Exportar</span> descarga un Excel de seis hojas con el periodo y el alcance en pantalla; <span class="ui">Imprimir / PDF</span> imprime la pestaña abierta con el periodo, el alcance, la fecha de corte y quién lo generó. A quién se distribuye y dónde se archiva: <span class="tbd">Por definir</span>.<span class="l3">Indicadores › Exportar e imprimir</span></td><td class="rec">Archivo <span class="mono">pulkro-indicadores-…xlsx</span> o PDF en el dispositivo.</td></tr>
+    </tbody>
+  </table>
+  <div class="note warn"><b class="note-t">Importante</b><p>Las horas por servicio son provisionales: falta acordar si la productividad se mide por servicio, por jornada o por hora-persona. Las <i>Horas asig.</i> de Equipo no son tiempo trabajado por cada persona.</p></div>
+
+  <h3>5.1 Seguimiento de una desviación</h3>
+  <table class="proc">
+    <thead><tr><th></th><th>Responsable</th><th>Actividad</th><th>Registro en la app</th></tr></thead>
+    <tbody>
+      <tr><td class="n"><span>1</span></td><td class="who"><span class="role dir">Dirección</span><br><span class="role adm">Administración</span></td><td><b class="t">Abrir el detalle de la cifra</b>Pulsar la columna del embudo, la fila de <i>Dónde está el trabajo</i> o el supervisor: el panel lista las órdenes detrás del número. Abrir cada orden y revisar su línea de tiempo y sus pestañas, en modo consulta.<span class="l3">Indicadores › El detalle detrás de cada número</span></td><td class="rec">Panel de detalle; Actividad de la orden.</td></tr>
+      <tr><td class="n"><span>2</span></td><td class="who"><span class="role dir">Dirección</span><br><span class="role adm">Administración</span><br><span class="role sup">Supervisor</span></td><td><b class="t">Identificar quién actúa y contactarlo</b>Pendientes dice a cargo de quién está cada tarea; la corrección sigue su procedimiento (<span class="mono">PK-SOP-L2-02</span> a <span class="mono">PK-SOP-L2-08</span>). La app no envía alertas: contactar al supervisor desde Equipo › <span class="ui">Supervisores</span> (teléfono o correo).<span class="l3">Equipo › Supervisores</span></td><td class="rec">La app no registra el contacto.</td></tr>
+      <tr><td class="n"><span>3</span></td><td class="who"><span class="role dir">Dirección</span><br><span class="role adm">Administración</span></td><td><b class="t">Verificar la corrección</b>Un pendiente desaparece solo cuando se hace lo que pide. Confirmar en la siguiente revisión que la cifra o el pendiente cambió.</td><td class="rec">Acción correctiva en la Bitácora, con usuario y hora.</td></tr>
+    </tbody>
+  </table>
+
+  <h3>5.2 Bitácora y carga del equipo</h3>
+  <table class="proc">
+    <thead><tr><th></th><th>Responsable</th><th>Actividad</th><th>Registro en la app</th></tr></thead>
+    <tbody>
+      <tr><td class="n"><span>1</span></td><td class="who"><span class="role dir">Dirección</span><br><span class="role adm">Administración</span></td><td><b class="t">Reconstruir un hecho en la Bitácora</b>Buscar por folio, persona, acción o motivo, con el periodo <span class="ui">Todo</span>, y filtrar por entidad si hace falta. Cada movimiento dice quién, qué, cuándo, por qué y sobre qué orden. <span class="ui">Excel</span> descarga lo filtrado.<span class="l3">Bitácora › Buscar y filtrar</span></td><td class="rec">Movimientos de solo consulta; Excel de la Bitácora.</td></tr>
+      <tr><td class="n"><span>2</span></td><td class="who"><span class="role dir">Dirección</span><br><span class="role adm">Administración</span></td><td><b class="t">Revisar la carga del equipo</b>En Equipo, revisar las personas asignadas, disponibles y con <span class="pill amber">Doble asignación</span> hoy, las personas asignadas por día de la semana y, en <span class="ui">Supervisores</span>, sus órdenes cerradas y abiertas. Revisar cada doble asignación con el supervisor (<span class="mono">PK-SOP-L2-02</span>).<span class="l3">Equipo › El resumen del equipo</span></td><td class="rec">Estado de hoy de cada persona.</td></tr>
+    </tbody>
+  </table>
+
+  <h2 class="section"><span class="no">6</span>Controles</h2>
+  <table>
+    <thead><tr><th style="width:36%">Control</th><th>Cómo lo asegura la app</th></tr></thead>
+    <tbody>
+      <tr><td><b>Cada rol ve su alcance</b></td><td>Indicadores y Equipo son de Dirección y Administración; Administración queda fija en su unidad.</td></tr>
+      <tr><td><b>Cifras sin captura manual</b></td><td>Todo se calcula con los registros de campo y de seguimiento.</td></tr>
+      <tr><td><b>Comparación al mismo punto</b></td><td>Un periodo en curso se mide hasta hoy y se compara con el mismo día del periodo anterior.</td></tr>
+      <tr><td><b>Envío no es entrega</b></td><td>La etapa <i>Reporte enviado</i> cuenta envíos iniciados, no recibidos.</td></tr>
+      <tr><td><b>Bitácora inalterable</b></td><td>Solo se consulta: nadie edita ni borra un movimiento. Corregir es un cambio nuevo, también registrado.</td></tr>
+      <tr><td><b>Exportación restringida</b></td><td>Los Excel de Indicadores, Órdenes, Bitácora, Clientes y Postventa son solo para Dirección y Administración.</td></tr>
+      <tr><td><b>Lo que no se mide no se estima</b></td><td>El bloque <span class="pill violet">Fase 2</span> aparece borroso y con candado, y no se imprime.</td></tr>
+    </tbody>
+  </table>
+
+  <h2 class="section"><span class="no">7</span>Excepciones y escalamiento</h2>
+  <table>
+    <thead><tr><th style="width:32%">Situación</th><th>Qué hacer</th><th style="width:20%">Quién decide</th></tr></thead>
+    <tbody>
+      <tr><td>Una cifra no cuadra</td><td>Revisar el detalle y la Bitácora. Lo capturado sin conexión aparece al sincronizarse (<span class="mono">PK-SOP-L2-11</span>).</td><td><span class="role dir">Dirección</span> · <span class="role adm">Administración</span></td></tr>
+      <tr><td>Una desviación se repite o no se corrige</td><td>Escalamiento y acciones: <span class="tbd">Por definir</span>.</td><td><span class="tbd">Por definir</span></td></tr>
+      <tr><td>Una persona tiene doble asignación</td><td>Revisarla con el supervisor, que arma las cuadrillas (<span class="mono">PK-SOP-L2-02</span>).</td><td><span class="role sup">Supervisor</span></td></tr>
+      <tr><td>Se piden costos, materiales o productividad por trabajador</td><td>No se miden: la app no captura montos, consumos ni tiempos individuales. Requiere una captura nueva (Fase 2).</td><td><span class="role dir">Dirección</span></td></tr>
+      <tr><td>Administración necesita datos de otra unidad</td><td>Solo Dirección ve otras unidades. Quién más podrá verlas: <span class="tbd">Por definir</span>.</td><td><span class="role dir">Dirección</span></td></tr>
+    </tbody>
+  </table>
+
+  <h2 class="section"><span class="no">8</span>Registros</h2>
+  <table>
+    <thead><tr><th style="width:32%">Registro</th><th>Dónde se consulta</th><th style="width:26%">Quién lo ve</th></tr></thead>
+    <tbody>
+      <tr><td>Excel de indicadores (resumen, servicios por día, órdenes, incidencias, productividad por supervisor y encuestas)</td><td>Archivo descargado en el dispositivo</td><td>Dirección y Administración</td></tr>
+      <tr><td>PDF impreso de una pestaña</td><td>Archivo o impresión</td><td>Dirección y Administración</td></tr>
+      <tr><td>Bitácora (cada cambio con usuario, fecha y motivo)</td><td>Bitácora; Actividad de la orden; Excel de la Bitácora</td><td>Los tres roles, según su alcance (Excel: Dirección y Administración)</td></tr>
+    </tbody>
+  </table>
+  <p>Tiempo de conservación de los cortes exportados: <span class="tbd">Por definir</span>.</p>
+
+  <h2 class="section"><span class="no">9</span>Indicadores</h2>
+  <table>
+    <thead><tr><th style="width:30%">Indicador</th><th>Cómo se calcula</th><th style="width:28%">Dónde se ve</th></tr></thead>
+    <tbody>
+      <tr><td><b>Ciclo completo</b></td><td>Órdenes programadas en el periodo que ya llegaron a <i>Calificadas</i>.</td><td>Indicadores › Operación</td></tr>
+      <tr><td><b>Servicios terminados</b></td><td>Cierres validados del periodo, contra el periodo anterior al mismo punto.</td><td>Indicadores › Operación; Inicio</td></tr>
+      <tr><td><b>Del alta al reporte</b></td><td>Días promedio del alta al primer envío del reporte; la etapa más lenta es el <i>Cuello de botella</i>.</td><td>Indicadores › Operación</td></tr>
+      <tr><td><b>Horas reales por servicio</b></td><td>Suma de entrada a salida de las jornadas, por servicio cerrado, contra las horas del plan.</td><td>Indicadores › Operación</td></tr>
+      <tr><td><b>Incidencias por tipo</b></td><td>Incidencias del periodo, abiertas y porcentaje de servicios terminados con incidencia.</td><td>Indicadores › Operación</td></tr>
+      <tr><td><b>Satisfacción y NPS</b></td><td>Calificación general (1 a 5), NPS y tasa de respuesta de las encuestas.</td><td>Indicadores › Calidad</td></tr>
+      <tr><td><b>Cumplimiento fotográfico</b></td><td>Cierres con ANTES y DESPUÉS en cada jornada, sobre el total de cierres.</td><td>Indicadores › Calidad; Inicio</td></tr>
+      <tr><td><b>Servicios con quejas</b></td><td>Servicios cerrados con caso postventa, sobre los terminados.</td><td>Indicadores › Calidad</td></tr>
+      <tr><td><b>Productividad por supervisor</b></td><td>Órdenes cerradas, horas por servicio (provisional) y CSAT.</td><td>Indicadores › Personal</td></tr>
+    </tbody>
+  </table>
+  <p>No se miden todavía: costos y rentabilidad, consumo de materiales y productividad por trabajador. Metas, tolerancias y frecuencia de revisión: <span class="tbd">Por definir</span>.</p>
+
+  <h2 class="section"><span class="no">10</span>Documentos relacionados</h2>
+  <table class="kv">
+    <tbody>
+      <tr><td>Nivel 1</td><td><span class="mono">PK-SOP-L1</span> · Mapa de procesos y política de registro y auditoría de cambios.</td></tr>
+      <tr><td>Nivel 2</td><td><span class="mono">PK-SOP-L2-02</span> a <span class="mono">PK-SOP-L2-08</span> (procedimientos de la operación) · <span class="mono">PK-SOP-L2-10</span> Usuarios y catálogos · <span class="mono">PK-SOP-L2-11</span> Operación sin conexión.</td></tr>
+      <tr><td>Nivel 3</td><td>Manual de usuario: Indicadores · Inicio y Pendientes · Bitácora · Equipo · Órdenes.</td></tr>
+    </tbody>
+  </table>
+</section>

@@ -1,0 +1,158 @@
+<section class="chapter" id="pk-sop-l2-08" data-code="PK-SOP-L2-08">
+  <header class="sop-head">
+    <div class="band">
+      <div class="top"><span class="code">PK-SOP-L2-08</span><span class="lvl">Procedimiento · Nivel 2</span></div>
+      <h1>Postventa: encuestas, quejas y seguimiento</h1>
+      <p class="purpose">Después del reporte, se pide al cliente que califique el servicio y cada queja se atiende como caso con folio, responsable y fecha compromiso, hasta su conformidad. El ciclo termina al archivar la orden.</p>
+    </div>
+    <dl class="meta">
+      <div><dt>Dueño del proceso</dt><dd><span class="role adm">Administración</span></dd></div>
+      <div><dt>Participan</dt><dd><span class="roles"><span class="role sup">Supervisor</span><span class="role cli">Cliente</span></span></dd></div>
+      <div><dt>Versión</dt><dd>1.0 · borrador</dd></div>
+      <div><dt>Emisión</dt><dd>17 oct 2026</dd></div>
+      <div class="wide"><dt>Empieza cuando</dt><dd>La orden queda en <span class="pill teal">Reporte enviado</span>, o el cliente reporta una queja sobre un servicio con cierre validado.</dd></div>
+      <div class="wide"><dt>Termina cuando</dt><dd>La orden queda <span class="pill slate">Archivada</span>, sin casos abiertos.</dd></div>
+      <div class="full"><dt>Instrucción de trabajo (Nivel 3)</dt><dd>Manual de usuario › Postventa · Encuesta de satisfacción (lo que ve el cliente) · Clientes · Órdenes › Acciones sobre la orden</dd></div>
+    </dl>
+  </header>
+
+  <h2 class="section"><span class="no">1</span>Objetivo</h2>
+  <p>Saber cómo califica el cliente cada servicio y atender cada queja o pendiente posterior al servicio con un responsable y una fecha compromiso, hasta que el cliente confirme que la solución le satisface. Todo queda ligado a la orden original y al historial del cliente.</p>
+
+  <h2 class="section"><span class="no">2</span>Alcance</h2>
+  <table class="kv">
+    <tbody>
+      <tr><td>Aplica a</td><td>Órdenes con cierre validado y reporte enviado, en todas las unidades, y las quejas que el cliente reporta después del servicio por teléfono, WhatsApp, correo, encuesta o en persona.</td></tr>
+      <tr><td>No incluye</td><td>Lo que ocurre durante la ejecución (<span class="mono">PK-SOP-L2-04</span>), el envío del reporte (<span class="mono">PK-SOP-L2-07</span>), la reapertura de la orden (<span class="mono">PK-SOP-L2-06</span>) y la corrección de datos del cliente (<span class="mono">PK-SOP-L2-10</span>).</td></tr>
+      <tr><td>Entradas</td><td>Orden en <span class="pill teal">Reporte enviado</span> o <span class="pill violet">Seguimiento postventa</span>; queja del cliente; respuesta de encuesta.</td></tr>
+      <tr><td>Salidas</td><td>Encuesta respondida; casos <span class="pill slate">Cerrado</span> con resolución y conformidad; orden <span class="pill slate">Archivada</span>.</td></tr>
+    </tbody>
+  </table>
+
+  <h2 class="section"><span class="no">3</span>Responsabilidades</h2>
+  <table class="raci">
+    <thead><tr><th>Actividad</th><th>Supervisor</th><th>Administración</th><th>Dirección</th><th>Cliente</th></tr></thead>
+    <tbody>
+      <tr><td>Generar y compartir la encuesta</td><td><span class="ra r">R</span></td><td><span class="ra a">A</span></td><td><span class="ra i">I</span></td><td><span class="ra i">I</span></td></tr>
+      <tr><td>Responder la encuesta</td><td><span class="ra i">I</span></td><td><span class="ra i">I</span></td><td><span class="ra i">I</span></td><td><span class="ra r">R</span></td></tr>
+      <tr><td>Registrar una respuesta manual</td><td><span class="ra r">R</span></td><td><span class="ra a">A</span></td><td><span class="ra i">I</span></td><td><span class="ra c">C</span></td></tr>
+      <tr><td>Registrar un caso postventa</td><td><span class="ra r">R</span></td><td><span class="ra a">A</span></td><td><span class="ra i">I</span></td><td><span class="ra c">C</span></td></tr>
+      <tr><td>Atender y resolver el caso</td><td><span class="ra r">R</span></td><td><span class="ra a">A</span></td><td><span class="ra i">I</span></td><td></td></tr>
+      <tr><td>Cerrar el caso con la conformidad</td><td><span class="ra r">R</span></td><td><span class="ra a">A</span></td><td><span class="ra i">I</span></td><td><span class="ra c">C</span></td></tr>
+      <tr><td>Archivar la orden</td><td><span class="ra r">R</span></td><td><span class="ra a">A</span></td><td><span class="ra i">I</span></td><td></td></tr>
+    </tbody>
+  </table>
+  <div class="raci-legend"><span><span class="ra r">R</span>Responsable</span><span><span class="ra a">A</span>Aprueba y responde por el resultado</span><span><span class="ra c">C</span>Consultado</span><span><span class="ra i">I</span>Informado</span></div>
+  <p>El supervisor gestiona las órdenes que supervisa; Administración, toda su unidad. Dirección consulta y exporta: los botones de gestión aparecen desactivados con el aviso <i>Solo Administración y Supervisores gestionan quejas y encuestas</i>. La app acepta como responsable de un caso al supervisor de la orden o a alguien de Administración de la unidad; quién atiende cada queja: <span class="tbd">Por definir</span>.</p>
+
+  <h2 class="section"><span class="no">4</span>Definiciones</h2>
+  <table class="kv">
+    <tbody>
+      <tr><td>Encuesta de satisfacción</td><td>Enlace único por servicio que el cliente contesta sin cuenta, en cuatro pasos. Admite una sola respuesta y no vence.</td></tr>
+      <tr><td>Captura manual</td><td>Respuesta que registra el equipo cuando el cliente contesta de palabra. Cuenta igual que la del enlace.</td></tr>
+      <tr><td>Requiere atención</td><td>Respuesta con calificación general de 3 o menos, o recomendación de 6 o menos.</td></tr>
+      <tr><td>Caso postventa</td><td>Queja o pendiente posterior al servicio, ligado a la orden original, con folio PV-…, categoría, severidad, canal, responsable y fecha compromiso.</td></tr>
+      <tr><td>Resuelto · Cerrado</td><td>Resuelto: la solución está registrada. Cerrado: además, el cliente confirmó que le satisface.</td></tr>
+    </tbody>
+  </table>
+
+  <h2 class="section"><span class="no">5</span>Desarrollo</h2>
+  <div class="flowstrip">
+    <div class="st adm"><small>Adm. · Sup.</small>Generar encuesta</div>
+    <div class="st cli"><small>Cliente</small>Responde</div>
+    <div class="st dec"><small>Decisión</small>¿Requiere atención o hay queja?</div>
+    <div class="st adm"><small>Adm. · Sup.</small>Registrar caso</div>
+    <div class="st adm"><small>Adm. · Sup.</small>Atender y resolver</div>
+    <div class="st cli"><small>Cliente</small>Conformidad</div>
+    <div class="st end"><small>Resultado</small>Orden Archivada</div>
+  </div>
+  <table class="proc">
+    <thead><tr><th></th><th>Responsable</th><th>Actividad</th><th>Registro en la app</th></tr></thead>
+    <tbody>
+      <tr><td class="n"><span>1</span></td><td class="who"><span class="role adm">Administración</span><br><span class="role sup">Supervisor</span></td><td><b class="t">Identificar las órdenes por encuestar</b>Abrir Postventa › <span class="ui">Por dar seguimiento</span>: órdenes con reporte enviado en los últimos 45 días que aún no tienen encuesta. También aparecen en Pendientes › <i>Encuestas por enviar</i>. Cuándo pedirla después del reporte: <span class="tbd">Por definir</span>.<span class="l3">Postventa › Invitar al cliente a calificar</span></td><td class="rec">Lista <i>Por dar seguimiento</i>.</td></tr>
+      <tr><td class="n"><span>2</span></td><td class="who"><span class="role adm">Administración</span><br><span class="role sup">Supervisor</span></td><td><b class="t">Generar y compartir la encuesta</b>Pulsar <span class="ui">Generar encuesta</span> y elegir <span class="ui">Por WhatsApp</span>, <span class="ui">Por correo</span>, <span class="ui">QR en sitio</span> o <span class="ui">Solo copiar enlace</span>. WhatsApp y el correo se abren con el mensaje listo: el envío lo hace usted. Sin señal, el enlace queda <i>Por activar</i> hasta sincronizar.</td><td class="rec">Encuesta <span class="pill amber">Pendiente</span>; bitácora <i>Generó enlace de encuesta</i>; orden <span class="pill violet">Seguimiento postventa</span>.</td></tr>
+      <tr><td class="n"><span>3</span></td><td class="who"><span class="role cli">Cliente</span></td><td><b class="t">Responder la encuesta</b>El cliente abre el enlace sin cuenta ni instalación y contesta cuatro pasos: calificación general, detalle, recomendación y comentario.<span class="l3">Encuesta de satisfacción (lo que ve el cliente) › Los cuatro pasos</span></td><td class="rec">Encuesta <span class="pill teal">Respondida</span>; bitácora a nombre de <i>Cliente (encuesta)</i>.</td></tr>
+      <tr><td class="n"><span class="dec"><i>?</i></span></td><td class="who"><span class="role adm">Administración</span><br><span class="role sup">Supervisor</span></td><td><b class="t">¿El cliente contestó de palabra?</b><b>Sí:</b> usar <span class="ui">Registrar respuesta manual</span>: calificación general y recomendación son obligatorias; escribir el comentario con sus palabras y quién respondió. <b>No:</b> continuar.<span class="l3">Postventa › Encuestas y respuestas</span></td><td class="rec">Encuesta <span class="pill teal">Respondida</span> con la marca <i>Captura manual</i>.</td></tr>
+      <tr><td class="n"><span class="dec"><i>?</i></span></td><td class="who"><span class="role adm">Administración</span><br><span class="role sup">Supervisor</span></td><td><b class="t">¿Requiere atención o el cliente reporta una queja?</b><b>Sí:</b> pulsar <span class="ui">Abrir caso postventa</span> en la encuesta (la orden, el canal Encuesta y el comentario ya van escritos) y seguir la sección 5.1. <b>No:</b> continuar.</td><td class="rec">Marca <i>Requiere atención</i> en Encuestas.</td></tr>
+      <tr><td class="n"><span>4</span></td><td class="who"><span class="role adm">Administración</span><br><span class="role sup">Supervisor</span></td><td><b class="t">Archivar la orden</b>Cuando no queda nada pendiente con el cliente, en el detalle de la orden abrir <span class="ui">⋯</span> › <span class="ui">Archivar</span>, dejar el motivo <i>Ciclo postventa completo</i> o escribir otro, marcar la casilla y pulsar <span class="ui primary">Archivar orden</span>. Cuándo se da por completo el ciclo: <span class="tbd">Por definir</span>.<span class="l3">Postventa › Cerrar el ciclo de la orden</span></td><td class="rec">Orden <span class="pill slate">Archivada</span>; motivo en la bitácora.</td></tr>
+    </tbody>
+  </table>
+  <div class="note phone-tip"><b class="note-t">Buena práctica</b><p>Ante una calificación baja la app pregunta <i>Calificación baja: ¿abrir un caso?</i> Abrirlo en ese momento: la inconformidad tiene responsable y fecha compromiso desde el primer día.</p></div>
+
+  <h3>5.1 Atención de un caso postventa</h3>
+  <table class="proc">
+    <thead><tr><th></th><th>Responsable</th><th>Actividad</th><th>Registro en la app</th></tr></thead>
+    <tbody>
+      <tr><td class="n"><span>1</span></td><td class="who"><span class="role adm">Administración</span><br><span class="role sup">Supervisor</span></td><td><b class="t">Registrar el caso</b>Pulsar <span class="ui primary">Nuevo caso</span>, elegir la orden original (solo órdenes cerradas), la categoría, la severidad, el canal y describir la queja (mínimo 10 caracteres). Revisar el responsable y la fecha compromiso que propone la app (el supervisor de la orden, a tres días); agregar evidencia si la hay. Plazo de atención por severidad: <span class="tbd">Por definir</span>.<span class="l3">Postventa › Registrar un caso</span></td><td class="rec">Caso PV-… <span class="pill red">Abierto</span>; bitácora <i>Abrió caso postventa</i>; orden <span class="pill violet">Seguimiento postventa</span>.</td></tr>
+      <tr><td class="n"><span>2</span></td><td class="who"><span class="role adm">Administración</span><br><span class="role sup">Supervisor</span></td><td><b class="t">Tomar el caso</b>Pulsar <span class="ui primary">Tomar caso</span>. La app no avisa al cliente: si se le confirma que el caso se atiende, usar <span class="ui">WhatsApp</span> o <span class="ui">Llamar</span> en la tarjeta del cliente.<span class="l3">Postventa › El detalle del caso</span></td><td class="rec">Caso <span class="pill amber">En proceso</span>, con usuario y hora.</td></tr>
+      <tr><td class="n"><span>3</span></td><td class="who"><span class="role adm">Administración</span><br><span class="role sup">Supervisor</span></td><td><b class="t">Atender y documentar</b>Registrar llamadas, acuerdos y visitas con <span class="ui">Agregar nota</span>, y fotos en la evidencia del caso. Consultar la orden original, sus incidencias, la encuesta y el historial del cliente. Si hace falta un repaso o corregir el reporte, el supervisor de la orden la reabre (<span class="mono">PK-SOP-L2-06</span>).</td><td class="rec">Notas y fotos del caso (no van al reporte).</td></tr>
+      <tr><td class="n"><span class="dec"><i>?</i></span></td><td class="who"><span class="role adm">Administración</span><br><span class="role sup">Supervisor</span></td><td><b class="t">¿Debe atenderlo otra persona?</b><b>Sí:</b> pulsar <span class="ui">Reasignar</span> y elegir entre los <i>Responsables de la unidad</i>. <b>No:</b> continuar.<span class="l3">Postventa › Resolver, cerrar o reabrir</span></td><td class="rec"><i>Reasignó el caso a…</i> en el historial.</td></tr>
+      <tr><td class="n"><span>4</span></td><td class="who"><span class="role adm">Administración</span><br><span class="role sup">Supervisor</span></td><td><b class="t">Registrar la resolución</b>Pulsar <span class="ui primary">Marcar resuelto</span>, describir qué se hizo (mínimo 10 caracteres) y confirmar.</td><td class="rec">Caso <span class="pill teal">Resuelto</span>; resolución en el historial.</td></tr>
+      <tr><td class="n"><span>5</span></td><td class="who"><span class="role adm">Administración</span><br><span class="role sup">Supervisor</span><br><span class="role cli">Cliente</span></td><td><b class="t">Cerrar con la conformidad del cliente</b>Cuando el cliente confirme que está conforme, pulsar <span class="ui primary">Cerrar caso</span>, marcar <i>El cliente confirmó su conformidad</i> y confirmar.</td><td class="rec">Caso <span class="pill slate">Cerrado</span>.</td></tr>
+      <tr><td class="n"><span class="dec"><i>?</i></span></td><td class="who"><span class="role adm">Administración</span><br><span class="role sup">Supervisor</span></td><td><b class="t">¿El problema volvió?</b><b>Sí:</b> pulsar <span class="ui">Reabrir</span>, escribir el motivo (mínimo 10 caracteres) y repetir desde el paso 3. <b>No:</b> volver al paso 4 de la sección 5.</td><td class="rec">Caso <span class="pill amber">En proceso</span>; motivo con usuario y fecha.</td></tr>
+    </tbody>
+  </table>
+
+  <h2 class="section"><span class="no">6</span>Controles</h2>
+  <table>
+    <thead><tr><th style="width:36%">Control</th><th>Cómo lo asegura la app</th></tr></thead>
+    <tbody>
+      <tr><td><b>Gestión por rol y alcance</b></td><td>El supervisor, en sus órdenes; Administración, en su unidad. Dirección ve los botones desactivados.</td></tr>
+      <tr><td><b>Caso ligado a una orden cerrada</b></td><td>Solo se elige una orden con cierre validado. Lo que pasa durante la ejecución es incidencia.</td></tr>
+      <tr><td><b>Caso completo</b></td><td>Pide categoría, severidad, canal, descripción, responsable y una fecha compromiso no anterior a hoy; el pie del formulario dice qué falta.</td></tr>
+      <tr><td><b>Responsable válido</b></td><td>Solo el supervisor de la orden o alguien de Administración de la unidad.</td></tr>
+      <tr><td><b>Resolución y conformidad</b></td><td><i>Resuelto</i> exige la resolución; <i>Cerrado</i> exige además marcar la conformidad del cliente. Reabrir exige motivo.</td></tr>
+      <tr><td><b>Trazabilidad</b></td><td>Cada cambio de estado, nota y reasignación queda con usuario y hora en el historial del caso y en la Bitácora.</td></tr>
+      <tr><td><b>Encuesta confiable</b></td><td>Una respuesta por enlace; no se puede cambiar ni contestar desde una sesión del equipo abierta en el dispositivo.</td></tr>
+      <tr><td><b>Envío manual, sin avisos automáticos</b></td><td>La app prepara el mensaje de la encuesta, pero no confirma su entrega ni su lectura, y no avisa al cliente de sus casos.</td></tr>
+      <tr><td><b>Archivo con casos cerrados</b></td><td>Solo órdenes en <span class="pill teal">Reporte enviado</span> o <span class="pill violet">Seguimiento postventa</span> sin casos abiertos. Una queja posterior la regresa a <span class="pill violet">Seguimiento postventa</span>.</td></tr>
+    </tbody>
+  </table>
+
+  <h2 class="section"><span class="no">7</span>Excepciones y escalamiento</h2>
+  <table>
+    <thead><tr><th style="width:32%">Situación</th><th>Qué hacer</th><th style="width:20%">Quién decide</th></tr></thead>
+    <tbody>
+      <tr><td>El cliente no contesta la encuesta</td><td>Volver a compartirla desde Postventa › Encuestas. Cuántas veces y cuánto esperar: <span class="tbd">Por definir</span>.</td><td><span class="role adm">Administración</span></td></tr>
+      <tr><td>El cliente quiere cambiar su respuesta</td><td>No se puede: registrar lo que agrega en un caso postventa.</td><td><span class="role adm">Administración</span> · <span class="role sup">Supervisor</span></td></tr>
+      <tr><td>La queja llega durante la ejecución</td><td>Registrarla como incidencia (<span class="mono">PK-SOP-L2-04</span>), no como caso.</td><td><span class="role sup">Supervisor</span></td></tr>
+      <tr><td>Un caso vence (<i>Vencido</i>) o es de severidad Alta</td><td>Escalamiento y plazos: <span class="tbd">Por definir</span>.</td><td><span class="tbd">Por definir</span></td></tr>
+      <tr><td>El cliente no confirma su conformidad</td><td>El caso sigue <span class="pill teal">Resuelto</span>. Criterio para cerrarlo sin confirmación: <span class="tbd">Por definir</span>.</td><td><span class="tbd">Por definir</span></td></tr>
+      <tr><td>Queja sobre una orden archivada</td><td>Registrar el caso: la orden vuelve a <span class="pill violet">Seguimiento postventa</span>.</td><td><span class="role adm">Administración</span> · <span class="role sup">Supervisor</span></td></tr>
+    </tbody>
+  </table>
+
+  <h2 class="section"><span class="no">8</span>Registros</h2>
+  <table>
+    <thead><tr><th style="width:32%">Registro</th><th>Dónde se consulta</th><th style="width:26%">Quién lo ve</th></tr></thead>
+    <tbody>
+      <tr><td>Encuesta y respuesta (envío, calificaciones, comentario, quién respondió)</td><td>Postventa › Encuestas; Clientes › <i>Lo que dicen</i>; Bitácora</td><td>Los tres roles, según su alcance</td></tr>
+      <tr><td>Caso postventa (datos, notas, evidencia, resolución y estados)</td><td>Postventa › Casos; Bitácora (entidad Caso)</td><td>Los tres roles, según su alcance</td></tr>
+      <tr><td>Historial del cliente</td><td>Clientes › ficha del cliente</td><td>Los tres roles, según su alcance</td></tr>
+      <tr><td>Archivo de la orden (motivo)</td><td>Bitácora; línea de tiempo de la orden</td><td>Los tres roles, según su alcance</td></tr>
+      <tr><td>Excel con las hojas Casos y Encuestas</td><td>Postventa › <span class="ui">Exportar</span></td><td>Dirección y Administración</td></tr>
+    </tbody>
+  </table>
+
+  <h2 class="section"><span class="no">9</span>Indicadores</h2>
+  <table>
+    <thead><tr><th style="width:30%">Indicador</th><th>Cómo se calcula</th><th style="width:28%">Dónde se ve</th></tr></thead>
+    <tbody>
+      <tr><td><b>Calificación general</b></td><td>Promedio de la pregunta general (1 a 5) de las encuestas respondidas, por enlace o a mano.</td><td>Postventa; Indicadores › Calidad</td></tr>
+      <tr><td><b>NPS</b></td><td>Porcentaje de promotores (9–10) menos el de detractores (0–6), de −100 a +100.</td><td>Postventa; Indicadores › Calidad</td></tr>
+      <tr><td><b>Tasa de respuesta</b></td><td>Encuestas respondidas entre encuestas enviadas.</td><td>Postventa; Indicadores › Calidad</td></tr>
+      <tr><td><b>Casos abiertos y vencidos</b></td><td>Casos abiertos o en proceso; cuántos vencen hoy y cuántos pasaron su fecha compromiso.</td><td>Postventa; Pendientes</td></tr>
+      <tr><td><b>Servicios con quejas</b></td><td>Servicios cerrados con al menos un caso, sobre los terminados del periodo, por categoría.</td><td>Indicadores › Calidad; Clientes</td></tr>
+    </tbody>
+  </table>
+  <p>Metas de satisfacción, NPS y tasa de respuesta, y plazo de atención de los casos: <span class="tbd">Por definir</span>.</p>
+
+  <h2 class="section"><span class="no">10</span>Documentos relacionados</h2>
+  <table class="kv">
+    <tbody>
+      <tr><td>Nivel 1</td><td><span class="mono">PK-SOP-L1</span> · Políticas de atención postventa y de comunicación manual con el cliente.</td></tr>
+      <tr><td>Nivel 2</td><td><span class="mono">PK-SOP-L2-04</span> Incidencias · <span class="mono">PK-SOP-L2-06</span> Cierre y validación · <span class="mono">PK-SOP-L2-07</span> Reporte final · <span class="mono">PK-SOP-L2-09</span> Indicadores.</td></tr>
+      <tr><td>Nivel 3</td><td>Manual de usuario: Postventa · Encuesta de satisfacción (lo que ve el cliente) · Clientes · Órdenes.</td></tr>
+    </tbody>
+  </table>
+</section>
