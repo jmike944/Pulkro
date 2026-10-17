@@ -1,0 +1,161 @@
+<section class="chapter" id="pk-sop-l2-11" data-code="PK-SOP-L2-11">
+  <header class="sop-head">
+    <div class="band">
+      <div class="top"><span class="code">PK-SOP-L2-11</span><span class="lvl">Procedimiento · Nivel 2</span></div>
+      <h1>Operación sin conexión y sincronización</h1>
+      <p class="purpose">Sin señal se sigue capturando: la app guarda cada registro en el dispositivo con marca de pendiente y lo envía al volver la conexión. Cada persona cuida que su cola llegue al servidor; nada se borra con cambios sin enviar.</p>
+    </div>
+    <dl class="meta">
+      <div><dt>Dueño del proceso</dt><dd><span class="role dir">Dirección</span></dd></div>
+      <div><dt>Participan</dt><dd><span class="roles"><span class="role sup">Supervisor</span><span class="role adm">Administración</span><span class="role app">La app</span></span></dd></div>
+      <div><dt>Versión</dt><dd>1.0 · borrador</dd></div>
+      <div><dt>Emisión</dt><dd>17 oct 2026</dd></div>
+      <div class="wide"><dt>Empieza cuando</dt><dd>Alguien captura o modifica datos sin señal, o su dispositivo tiene registros por enviar.</dd></div>
+      <div class="wide"><dt>Termina cuando</dt><dd>La cola del dispositivo está <span class="pill teal">Al día</span>, sin registros con error, y el reporte de la orden se puede compartir.</dd></div>
+      <div class="full"><dt>Instrucción de trabajo (Nivel 3)</dt><dd>Manual de usuario › Trabajo sin conexión y sincronización · Configuración › Sincronización y datos · Entrar a la app › Cerrar sesión</dd></div>
+    </dl>
+  </header>
+
+  <h2 class="section"><span class="no">1</span>Objetivo</h2>
+  <p>Que la falta de señal <b>no detenga la operación</b> y que <b>nada de lo capturado se pierda</b>: cada registro se guarda primero en el dispositivo, llega después al servidor con su hora, y el reporte al cliente sale solo con la orden completa.</p>
+
+  <h2 class="section"><span class="no">2</span>Alcance</h2>
+  <table class="kv">
+    <tbody>
+      <tr><td>Aplica a</td><td>Todos los roles y dispositivos, y todo lo que se captura o modifica sin señal.</td></tr>
+      <tr><td>No incluye</td><td>La captura en campo (<span class="mono">PK-SOP-L2-03</span>), el cierre (<span class="mono">06</span>), el reporte (<span class="mono">07</span>) y las cuentas (<span class="mono">10</span>).</td></tr>
+      <tr><td>Entradas</td><td>Registros guardados en el dispositivo con marca de pendiente.</td></tr>
+      <tr><td>Salidas</td><td>Registros con hora del servidor y folio definitivo; respaldo, si se exporta.</td></tr>
+    </tbody>
+  </table>
+
+  <h2 class="section"><span class="no">3</span>Responsabilidades</h2>
+  <table class="raci">
+    <thead><tr><th>Actividad</th><th>Supervisor</th><th>Administración</th><th>Dirección</th></tr></thead>
+    <tbody>
+      <tr><td>Capturar sin señal y seguir trabajando</td><td><span class="ra r">R</span></td><td><span class="ra r">R</span></td><td><span class="ra i">I</span></td></tr>
+      <tr><td>Revisar la cola y llevarla al día</td><td><span class="ra r">R</span></td><td><span class="ra r">R</span></td><td><span class="ra a">A</span></td></tr>
+      <tr><td>Reintentar un envío con error</td><td><span class="ra r">R</span></td><td><span class="ra r">R</span></td><td><span class="ra i">I</span></td></tr>
+      <tr><td>Descartar un cambio que el servidor rechaza</td><td><span class="ra r">R</span></td><td><span class="ra c">C</span></td><td></td></tr>
+      <tr><td>Proteger los datos del dispositivo</td><td><span class="ra r">R</span></td><td><span class="ra r">R</span></td><td><span class="ra a">A</span></td></tr>
+      <tr><td>Exportar el respaldo de datos</td><td></td><td><span class="ra a">A</span></td><td><span class="ra a">A</span></td></tr>
+    </tbody>
+  </table>
+  <div class="raci-legend"><span><span class="ra r">R</span>Responsable</span><span><span class="ra a">A</span>Aprueba y responde por el resultado</span><span><span class="ra c">C</span>Consultado</span><span><span class="ra i">I</span>Informado</span></div>
+  <p>Cada persona responde por enviar lo que capturó en su dispositivo; Dirección, como dueña del sistema, responde por que la operación sin conexión funcione. Quién autoriza descartar un cambio y las políticas de almacenamiento, retención y respaldo del servidor: <span class="tbd">Por definir</span>.</p>
+
+  <h2 class="section"><span class="no">4</span>Definiciones</h2>
+  <table class="kv">
+    <tbody>
+      <tr><td>Registro pendiente</td><td>Captura guardada en el dispositivo que aún no llega al servidor. Lleva su marca: <i>Pendiente</i>, <i>pendiente de sincronizar</i> o <i>Sin sincronizar</i>.</td></tr>
+      <tr><td>Cola de sincronización</td><td>Registros del dispositivo que esperan enviarse. Los de una misma orden salen en el orden en que se capturaron.</td></tr>
+      <tr><td>Hora del servidor</td><td>La que el servidor sella al recibir el registro, junto a la hora del dispositivo con que se capturó.</td></tr>
+      <tr><td>Folio provisional</td><td>Folio con «PEND» (<span class="mono">OS-PEND-…</span>, <span class="mono">INC-PEND-…</span>) hasta que el servidor asigna el definitivo.</td></tr>
+    </tbody>
+  </table>
+
+  <h2 class="section"><span class="no">5</span>Desarrollo</h2>
+  <div class="flowstrip">
+    <div class="st sup"><small>Supervisor</small>Captura sin señal</div>
+    <div class="st app"><small>La app</small>Guarda con marca de pendiente</div>
+    <div class="st app"><small>La app</small>Envía al volver la señal</div>
+    <div class="st dec"><small>Decisión</small>¿Algún registro con error?</div>
+    <div class="st sup"><small>Supervisor</small>Reintentar o consultar</div>
+    <div class="st end"><small>Resultado</small>Cola al día → reporte</div>
+  </div>
+  <table class="proc">
+    <thead><tr><th></th><th>Responsable</th><th>Actividad</th><th>Registro en la app</th></tr></thead>
+    <tbody>
+      <tr><td class="n"><span>1</span></td><td class="who"><span class="role all">Todos los roles</span></td><td><b class="t">Seguir capturando sin señal</b>Entrada y salida con GPS, fotos, incidencias, notas, cierre, órdenes nuevas y cambios se guardan al instante con la hora del teléfono. Necesitan señal los mapas no vistos, los cambios de otros y las cuentas de usuario.<span class="l3">Trabajo sin conexión y sincronización › Cómo viaja un registro</span></td><td class="rec">Registro <span class="pill amber">Pendiente</span> en la cola.</td></tr>
+      <tr><td class="n"><span>2</span></td><td class="who"><span class="role all">Todos los roles</span></td><td><b class="t">Vigilar el estado</b>En escritorio, la fila al pie de la barra lateral; en el teléfono, el punto del avatar y la píldora sobre la barra inferior. Tocarlas abre la cola.<span class="l3">Trabajo sin conexión y sincronización › Dónde ver el estado</span></td><td class="rec">Fila de estado; pendientes en Orden › Actividad.</td></tr>
+      <tr><td class="n"><span>3</span></td><td class="who"><span class="role app">La app</span></td><td><b class="t">Enviar al volver la señal</b>La app envía la cola sola y reintenta si falla la señal. El servidor sella su hora y asigna los folios definitivos.<span class="l3">Trabajo sin conexión y sincronización › Estados de la sincronización</span></td><td class="rec">Registro <span class="pill teal">Sincronizado</span> con hora del servidor.</td></tr>
+      <tr><td class="n"><span class="dec"><i>?</i></span></td><td class="who"><span class="role all">Todos los roles</span></td><td><b class="t">¿Algún registro quedó en Error?</b><b>Sí:</b> atenderlo con la sección 5.1. <b>No:</b> continuar.</td><td class="rec">Registro <span class="pill red">Error</span> con su motivo.</td></tr>
+      <tr><td class="n"><span>4</span></td><td class="who"><span class="role all">Todos los roles</span></td><td><b class="t">Dejar la cola al día</b>Abrir la app con señal al terminar el día y comprobar en Configuración › <span class="ui">Sincronización y datos</span> que dice <span class="pill teal">Al día</span>, sin registros <b>En espera</b> ni <b>Con error</b>.<span class="l3">Configuración › Sincronización y datos</span></td><td class="rec">Última sincronización.</td></tr>
+      <tr><td class="n"><span>5</span></td><td class="who"><span class="role sup">Supervisor</span></td><td><b class="t">Compartir el reporte con la orden completa</b>El cierre se valida aun sin señal, pero el PDF definitivo se comparte cuando toda la orden está en el servidor y sin folios provisionales (<span class="mono">PK-SOP-L2-07</span>).<span class="l3">Trabajo sin conexión y sincronización › Lo que espera a la sincronización</span></td><td class="rec">Reporte habilitado para compartir.</td></tr>
+    </tbody>
+  </table>
+  <div class="note danger"><b class="note-t">Con cambios sin enviar</b><p>Lo pendiente <b>solo existe en ese dispositivo</b>: no cerrar sesión, no borrar los datos del navegador ni desinstalar, no usar ventana privada, no dejar encendido <b>Simular sin conexión</b> y no cambiar la fecha ni la hora del teléfono.</p></div>
+
+  <h3>5.1 Registro con error</h3>
+  <table class="proc">
+    <thead><tr><th></th><th>Responsable</th><th>Actividad</th><th>Registro en la app</th></tr></thead>
+    <tbody>
+      <tr><td class="n"><span>1</span></td><td class="who"><span class="role all">Todos los roles</span></td><td><b class="t">Leer el motivo y reintentar</b>Leer el motivo debajo del registro y pulsar <span class="ui">Reintentar</span>; si el reloj del teléfono va adelantado, corregirlo antes.</td><td class="rec">Registro enviado de nuevo.</td></tr>
+      <tr><td class="n"><span class="dec"><i>?</i></span></td><td class="who"><span class="role sup">Supervisor</span><br><span class="role adm">Administración</span></td><td><b class="t">¿Sigue en error?</b><b>Sí:</b> consultar al supervisor o a Administración antes de descartar; soporte técnico: <span class="tbd">Por definir</span>. <b>No:</b> terminar.</td><td class="rec">—</td></tr>
+      <tr><td class="n"><span>2</span></td><td class="who"><span class="role sup">Supervisor</span></td><td><b class="t">Descartar solo si se acordó</b><span class="ui">Descartar</span> ofrece guardar las fotos que se borrarían y pide marcar la casilla; el dispositivo vuelve a lo que tiene el servidor.<span class="l3">Trabajo sin conexión y sincronización › Fotos pendientes de subir</span></td><td class="rec">Cambio fuera de la cola.</td></tr>
+    </tbody>
+  </table>
+
+  <h3>5.2 Sesión, dispositivo compartido y respaldo</h3>
+  <table class="proc">
+    <thead><tr><th></th><th>Responsable</th><th>Actividad</th><th>Registro en la app</th></tr></thead>
+    <tbody>
+      <tr><td class="n"><span>1</span></td><td class="who"><span class="role all">Todos los roles</span></td><td><b class="t">Cerrar sesión con la cola al día</b>Ante <i>¿Cerrar sesión con cambios sin enviar?</i> o <i>Este dispositivo tiene cambios de otra cuenta</i>, pulsar <span class="ui">Cancelar</span> y enviarlos primero (o pedir a esa persona que entre). Ante <i>Vuelva a entrar</i>, pulsar <span class="ui primary">Entrar de nuevo</span>.<span class="l3">Entrar a la app › Cerrar sesión</span></td><td class="rec">—</td></tr>
+      <tr><td class="n"><span>2</span></td><td class="who"><span class="role all">Todos los roles</span></td><td><b class="t">Proteger los datos del dispositivo</b>Instalar la app en el teléfono y, si <b>Almacenamiento local</b> no está protegido, pulsar <span class="ui">Proteger datos</span>.<span class="l3">Trabajo sin conexión y sincronización › El espacio en el dispositivo</span></td><td class="rec">Almacenamiento protegido.</td></tr>
+      <tr><td class="n"><span>3</span></td><td class="who"><span class="role adm">Administración</span><br><span class="role dir">Dirección</span></td><td><b class="t">Exportar el respaldo</b><span class="ui primary">Exportar respaldo (JSON)</span> descarga lo que su rol puede ver, sin las fotos de cámara (solo su referencia). Frecuencia y resguardo: <span class="tbd">Por definir</span>.</td><td class="rec">Archivo <span class="mono">pulkro-respaldo-…</span></td></tr>
+    </tbody>
+  </table>
+
+  <h2 class="section"><span class="no">6</span>Controles</h2>
+  <table>
+    <thead><tr><th style="width:36%">Control</th><th>Cómo lo asegura la app</th></tr></thead>
+    <tbody>
+      <tr><td><b>Captura sin señal</b></td><td>Guarda cada registro al instante con la hora del teléfono y marca de pendiente; el GPS funciona sin datos móviles.</td></tr>
+      <tr><td><b>Orden de envío</b></td><td>Los registros de una orden salen en el orden de captura; uno que espera a otro dice <i>En espera de «…»</i>.</td></tr>
+      <tr><td><b>Reintentos y errores</b></td><td>Si falla la señal o el servidor tarda, reintenta sola, cada vez con más espera (hasta cada cinco minutos); lo que el servidor rechaza queda en <span class="pill red">Error</span> con su motivo.</td></tr>
+      <tr><td><b>Hora del servidor</b></td><td>Se sella al sincronizar; si el reloj del teléfono va adelantado, el registro espera.</td></tr>
+      <tr><td><b>Reporte completo</b></td><td>El PDF definitivo no se comparte mientras falten datos de la orden por sincronizar ni con folios provisionales.</td></tr>
+      <tr><td><b>Cerrar sesión con pendientes</b></td><td>Pregunta primero, muestra cuántos cambios son y exige marcar <i>Entiendo que esos cambios se perderán</i>.</td></tr>
+      <tr><td><b>Espacio insuficiente</b></td><td>La fila de estado dice <span class="pill amber">Sin guardar</span> («no cierre la app» o «libere espacio») y la app libera primero las fotos ya subidas.</td></tr>
+      <tr><td><b>Dispositivo compartido</b></td><td>Avisa cuántos cambios de otra cuenta se borrarían al entrar.</td></tr>
+      <tr><td><b>Descartar</b></td><td>Exige casilla de confirmación y ofrece guardar las fotos antes.</td></tr>
+      <tr><td><b>Una ventana a la vez</b></td><td>La segunda muestra <i>Pulkro está abierta en otra ventana</i> y <span class="ui">Usar aquí</span>.</td></tr>
+      <tr><td><b>Fotos locales y respaldo</b></td><td>Las fotos se reducen a 1600 px y, hasta subirse, solo existen en ese teléfono. Solo Dirección y Administración exportan respaldo.</td></tr>
+    </tbody>
+  </table>
+
+  <h2 class="section"><span class="no">7</span>Excepciones y escalamiento</h2>
+  <table>
+    <thead><tr><th style="width:32%">Situación</th><th>Qué hacer</th><th style="width:20%">Quién decide</th></tr></thead>
+    <tbody>
+      <tr><td>Sitio sin cobertura toda la jornada</td><td>Capturar normalmente y abrir la app con señal al terminar.</td><td><span class="role sup">Supervisor</span></td></tr>
+      <tr><td>El cliente pide el reporte en sitio, sin señal</td><td>Validar el cierre; el reporte se comparte al sincronizar (<span class="mono">PK-SOP-L2-07</span>).</td><td><span class="role sup">Supervisor</span></td></tr>
+      <tr><td>Un registro sigue en error</td><td>Reintentar y consultar al supervisor o a Administración antes de descartar. Soporte técnico: <span class="tbd">Por definir</span>.</td><td><span class="tbd">Por definir</span></td></tr>
+      <tr><td>Teléfono perdido o dañado con pendientes</td><td>Lo no enviado se pierde. Avisar a Administración; las fotos faltantes siguen <span class="mono">PK-SOP-L2-05</span> y, si no se pueden reponer, la excepción del cierre (<span class="mono">06</span>).</td><td><span class="role sup">Supervisor</span> · <span class="tbd">Por definir</span></td></tr>
+      <tr><td>Cuenta desactivada con pendientes</td><td>Los datos siguen en el dispositivo pero no se envían: pedir a Dirección que revise la cuenta (<span class="mono">PK-SOP-L2-10</span>).</td><td><span class="role dir">Dirección</span></td></tr>
+      <tr><td>Teléfono sin espacio</td><td>No cerrar Pulkro; la app libera primero las fotos ya subidas. Borrar fotos o aplicaciones que no se usen.</td><td>Quien usa el dispositivo</td></tr>
+    </tbody>
+  </table>
+
+  <h2 class="section"><span class="no">8</span>Registros</h2>
+  <table>
+    <thead><tr><th style="width:32%">Registro</th><th>Dónde se consulta</th><th style="width:26%">Quién lo ve</th></tr></thead>
+    <tbody>
+      <tr><td>Cola y actividad de sincronización</td><td>Panel Sincronización; Configuración › Sincronización y datos</td><td>Cada persona, de su dispositivo</td></tr>
+      <tr><td>Estado de cada movimiento de la orden</td><td>Orden › Actividad</td><td>Los tres roles, según su alcance</td></tr>
+      <tr><td>Hora del dispositivo y del servidor; etiqueta <i>Sin conexión</i></td><td>Orden › Jornadas</td><td>Los tres roles, según su alcance</td></tr>
+      <tr><td>Respaldo de datos</td><td>Archivo JSON descargado</td><td>Dirección y Administración</td></tr>
+    </tbody>
+  </table>
+
+  <h2 class="section"><span class="no">9</span>Indicadores</h2>
+  <table>
+    <thead><tr><th style="width:30%">Medida</th><th>Qué muestra la app</th><th style="width:28%">Dónde se ve</th></tr></thead>
+    <tbody>
+      <tr><td><b>Cola del dispositivo</b></td><td>Registros por enviar, <b>En espera</b>, <b>Con error</b> y <b>Enviados</b>, y la última sincronización.</td><td>Configuración › Sincronización y datos</td></tr>
+      <tr><td><b>Pendientes por orden</b></td><td>Movimientos de la orden que faltan por sincronizar («2 sin sincronizar»).</td><td>Orden › Actividad</td></tr>
+      <tr><td><b>Almacenamiento usado</b></td><td>Espacio que ocupa la app y si está protegido.</td><td>Sincronización y datos › Almacenamiento local</td></tr>
+      <tr><td><b>Almacenamiento estimado</b></td><td>Espacio de las fotos al mes, al año y en tres años.</td><td>Sincronización y datos › Almacenamiento estimado</td></tr>
+    </tbody>
+  </table>
+  <p>Son medidas por dispositivo; la app no consolida un indicador de sincronización. Metas: <span class="tbd">Por definir</span>.</p>
+
+  <h2 class="section"><span class="no">10</span>Documentos relacionados</h2>
+  <table class="kv">
+    <tbody>
+      <tr><td>Nivel 1</td><td><span class="mono">PK-SOP-L1</span> · P-08 Sin señal no se detiene la captura · P-11 Privacidad de fotos, ubicación y firmas.</td></tr>
+      <tr><td>Nivel 2</td><td><span class="mono">PK-SOP-L2-03</span> Ejecución de la jornada · <span class="mono">PK-SOP-L2-06</span> Cierre · <span class="mono">PK-SOP-L2-07</span> Reporte final · <span class="mono">PK-SOP-L2-10</span> Usuarios.</td></tr>
+      <tr><td>Nivel 3</td><td>Manual de usuario: Trabajo sin conexión y sincronización · Configuración · Entrar a la app.</td></tr>
+    </tbody>
+  </table>
+</section>

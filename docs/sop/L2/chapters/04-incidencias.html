@@ -1,0 +1,151 @@
+<section class="chapter" id="pk-sop-l2-04" data-code="PK-SOP-L2-04">
+  <header class="sop-head">
+    <div class="band">
+      <div class="top"><span class="code">PK-SOP-L2-04</span><span class="lvl">Procedimiento · Nivel 2</span></div>
+      <h1>Registro y resolución de incidencias</h1>
+      <p class="purpose">El supervisor registra en el momento lo que sale del plan en campo, decide si <b>impide el cierre</b> de la orden y le da seguimiento hasta registrar su <b>resolución</b>.</p>
+    </div>
+    <dl class="meta">
+      <div><dt>Dueño del proceso</dt><dd><span class="role sup">Supervisor</span></dd></div>
+      <div><dt>Participan</dt><dd><span class="roles"><span class="role adm">Administración</span><span class="role dir">Dirección</span><span class="role app">La app</span></span></dd></div>
+      <div><dt>Versión</dt><dd>1.0 · borrador</dd></div>
+      <div><dt>Emisión</dt><dd>17 oct 2026</dd></div>
+      <div class="wide"><dt>Empieza cuando</dt><dd>En una orden abierta ocurre algo fuera del plan: daño, faltante, trabajo adicional, retraso o queja en sitio.</dd></div>
+      <div class="wide"><dt>Termina cuando</dt><dd>La incidencia queda <span class="pill teal">Resuelta</span> y, si impedía el cierre, la orden sale de <span class="pill red">Con incidencia</span>.</dd></div>
+      <div class="full"><dt>Instrucción de trabajo (Nivel 3)</dt><dd>Manual de usuario › Incidencias · La jornada en campo › Incidencias durante la jornada · Órdenes › Las pestañas de la orden</dd></div>
+    </dl>
+  </header>
+
+  <h2 class="section"><span class="no">1</span>Objetivo</h2>
+  <p>Dejar constancia, en el momento y con evidencia, de todo lo que sale del plan durante el servicio; decidir de forma expresa si eso <b>detiene el cierre</b>; y darle seguimiento hasta su resolución, para que la orden, la bitácora y el reporte del cliente cuenten qué pasó y cómo se resolvió.</p>
+
+  <h2 class="section"><span class="no">2</span>Alcance</h2>
+  <table class="kv">
+    <tbody>
+      <tr><td>Aplica a</td><td>Incidencias de las órdenes abiertas, registradas desde la jornada, desde la orden o desde la pantalla Incidencias.</td></tr>
+      <tr><td>No incluye</td><td>Las quejas posteriores al servicio (<span class="mono">PK-SOP-L2-08</span>), la captura de la jornada (<span class="mono">PK-SOP-L2-03</span>) y la validación del cierre (<span class="mono">PK-SOP-L2-06</span>).</td></tr>
+      <tr><td>Entradas</td><td>Un hecho fuera del plan en una orden abierta del supervisor.</td></tr>
+      <tr><td>Salidas</td><td>Incidencia con folio y su resolución; estado de la orden actualizado.</td></tr>
+    </tbody>
+  </table>
+
+  <h2 class="section"><span class="no">3</span>Responsabilidades</h2>
+  <table class="raci">
+    <thead><tr><th>Actividad</th><th>Supervisor</th><th>Administración</th><th>Dirección</th></tr></thead>
+    <tbody>
+      <tr><td>Registrar la incidencia con tipo, severidad, descripción y fotos</td><td><span class="ra a">A</span></td><td><span class="ra i">I</span></td><td><span class="ra i">I</span></td></tr>
+      <tr><td>Decidir si impide el cierre</td><td><span class="ra a">A</span></td><td><span class="ra i">I</span></td><td><span class="ra i">I</span></td></tr>
+      <tr><td>Dar seguimiento a las incidencias abiertas</td><td><span class="ra a">A</span></td><td><span class="ra i">I</span></td><td><span class="ra i">I</span></td></tr>
+      <tr><td>Resolver la incidencia y registrar la resolución</td><td><span class="ra a">A</span></td><td><span class="ra i">I</span></td><td><span class="ra i">I</span></td></tr>
+    </tbody>
+  </table>
+  <div class="raci-legend"><span><span class="ra r">R</span>Responsable</span><span><span class="ra a">A</span>Aprueba y responde por el resultado</span><span><span class="ra c">C</span>Consultado</span><span><span class="ra i">I</span>Informado</span></div>
+  <p>La pantalla Incidencias es del supervisor. Dirección y Administración consultan en la pestaña <span class="ui">Incidencias</span> de la orden, sin registrar ni resolver, y la campana les avisa de las que detienen un cierre (a Administración, también de las de severidad alta). El cliente ve incidencias y resoluciones en su reporte.</p>
+
+  <h2 class="section"><span class="no">4</span>Definiciones</h2>
+  <table class="kv">
+    <tbody>
+      <tr><td>Incidencia</td><td>Hecho fuera del plan registrado en una orden y ligado a una jornada, con folio, tipo, severidad, descripción y fotos.</td></tr>
+      <tr><td>Tipo</td><td>Daños · Faltante de material · Faltante de personal · Trabajo adicional · Retraso / ausencia · Solicitud o queja en sitio · Otra.</td></tr>
+      <tr><td>Severidad</td><td><span class="pill slate">Baja</span>, <span class="pill amber">Media</span> (la que viene marcada) o <span class="pill red">Alta</span>. Criterios para asignarla: <span class="tbd">Por definir</span>.</td></tr>
+      <tr><td>Impide el cierre</td><td>Marca que se decide al registrar: la orden pasa a <span class="pill red">Con incidencia</span> y no se valida el cierre hasta resolverla. Sin ella, la incidencia abierta es solo un aviso.</td></tr>
+      <tr><td>Resolución</td><td>Qué se hizo y con quién se acordó (mínimo 6 caracteres). Se imprime en el reporte junto a la incidencia.</td></tr>
+    </tbody>
+  </table>
+
+  <h2 class="section"><span class="no">5</span>Desarrollo</h2>
+  <div class="flowstrip">
+    <div class="st sup"><small>Supervisor</small>Tipo, severidad y fotos</div>
+    <div class="st dec"><small>Decisión</small>¿Impide el cierre?</div>
+    <div class="st app"><small>La app</small>Folio y estado de la orden</div>
+    <div class="st sup"><small>Supervisor</small>Resolver con resolución</div>
+    <div class="st end"><small>Resultado</small>Orden liberada</div>
+  </div>
+  <table class="proc">
+    <thead><tr><th></th><th>Responsable</th><th>Actividad</th><th>Registro en la app</th></tr></thead>
+    <tbody>
+      <tr><td class="n"><span>1</span></td><td class="who"><span class="role sup">Supervisor</span></td><td><b class="t">Abrir el registro en el momento</b>En la jornada (<span class="ui">Incidencia</span>), en la pestaña <span class="ui">Incidencias</span> de la orden o en la pantalla Incidencias con <span class="ui primary">Registrar incidencia</span>, eligiendo primero la orden (por folio, cliente o sitio).<span class="l3">Incidencias › Registrar una incidencia</span></td><td class="rec">—</td></tr>
+      <tr><td class="n"><span>2</span></td><td class="who"><span class="role sup">Supervisor</span></td><td><b class="t">Elegir tipo y severidad</b>El tipo dice qué pasó; la severidad, qué tan grave es. Revisar la jornada marcada (la que está en curso o la última) y cambiarla si ocurrió en otra.<span class="l3">Incidencias › Tipos y severidad</span></td><td class="rec">Tipo, severidad y jornada.</td></tr>
+      <tr><td class="n"><span>3</span></td><td class="who"><span class="role sup">Supervisor</span></td><td><b class="t">Describir y documentar</b>Qué pasó, dónde y qué se hizo al respecto (mínimo 6 caracteres). Agregar fotos (opcionales) con <span class="ui">Tomar foto</span> o <span class="ui">Galería</span>.</td><td class="rec">Descripción y fotos.</td></tr>
+      <tr><td class="n"><span class="dec"><i>?</i></span></td><td class="who"><span class="role sup">Supervisor</span></td><td><b class="t">¿La orden no debe cerrarse hasta resolverla?</b><b>Sí:</b> activar <span class="ui">Impide el cierre</span>; el recuadro rojo muestra el cambio, por ejemplo <span class="pill blue">En ejecución</span> → <span class="pill red">Con incidencia</span>. <b>No:</b> dejarlo apagado. Criterios: <span class="tbd">Por definir</span>; mientras tanto decide el supervisor.<span class="l3">Incidencias › Impide el cierre</span></td><td class="rec">Marca <i>Impide el cierre</i>.</td></tr>
+      <tr><td class="n"><span>4</span></td><td class="who"><span class="role sup">Supervisor</span><br><span class="role app">La app</span></td><td><b class="t">Registrar</b>Pulsar <span class="ui primary">Registrar incidencia</span>; si sigue desactivado, el formulario dice qué falta. La app asigna el folio, la anota en la bitácora y, si impide el cierre, cambia la orden a <span class="pill red">Con incidencia</span> y avisa a Dirección y Administración. Sin conexión se guarda en el teléfono.</td><td class="rec">Incidencia <span class="pill red">Abierta</span> con folio; estado de la orden.</td></tr>
+      <tr><td class="n"><span>5</span></td><td class="who"><span class="role sup">Supervisor</span></td><td><b class="t">Dar seguimiento</b>Revisar las abiertas en Incidencias › <span class="ui">Abiertas</span> (primero las que impiden el cierre, luego por severidad), en Pendientes y en la jornada, donde el paso <b>Ejecución</b> se pinta de rojo. Plazo de resolución por severidad: <span class="tbd">Por definir</span>.<span class="l3">Incidencias › La pantalla Incidencias</span></td><td class="rec">Contadores <b>Abiertas</b> y <b>Bloquean cierre</b>.</td></tr>
+      <tr><td class="n"><span>6</span></td><td class="who"><span class="role sup">Supervisor</span></td><td><b class="t">Registrar la resolución</b>Resuelto el problema, escribir qué se hizo y con quién se acordó y pulsar <span class="ui primary">Marcar como resuelta</span> (en la jornada, <span class="ui primary">Marcar resuelta</span>; en la orden, <span class="ui primary">Guardar resolución</span>).<span class="l3">Incidencias › Resolver una incidencia</span></td><td class="rec">Resolución con usuario y hora.</td></tr>
+      <tr><td class="n"><span>7</span></td><td class="who"><span class="role app">La app</span></td><td><b class="t">Liberar la orden</b>Si ya no queda otra que impida el cierre, la orden vuelve a <span class="pill violet">Reabierta</span> o <span class="pill amber">Reprogramada</span> si lo estaba o, si no, al estado que le dan sus jornadas. La app avisa el cambio (<i>OS-24397 pasó de “Con incidencia” a “En ejecución”</i>) o que sigue detenida.<span class="l3">Incidencias › Qué pasa con la orden</span></td><td class="rec">Cambio de estado en la línea de tiempo.</td></tr>
+      <tr><td class="n"><span>8</span></td><td class="who"><span class="role sup">Supervisor</span></td><td><b class="t">Continuar</b>Si la orden queda lista, la app ofrece <span class="ui primary">Validar cierre</span> (<span class="mono">PK-SOP-L2-06</span>); si no, seguir la jornada (<span class="mono">PK-SOP-L2-03</span>).</td><td class="rec">—</td></tr>
+    </tbody>
+  </table>
+  <div class="note phone-tip"><b class="note-t">Buena práctica</b><p>Registrar la incidencia en el sitio y con foto, en cuanto ocurre: la hora, el autor y la evidencia quedan en el momento y no dependen de lo que alguien recuerde después.</p></div>
+
+  <h3>5.1 Consulta de Administración y Dirección</h3>
+  <table class="proc">
+    <thead><tr><th></th><th>Responsable</th><th>Actividad</th><th>Registro en la app</th></tr></thead>
+    <tbody>
+      <tr><td class="n"><span>1</span></td><td class="who"><span class="role adm">Administración</span><br><span class="role dir">Dirección</span></td><td><b class="t">Recibir el aviso y consultar</b>La campana avisa <i>Incidencia que detiene el cierre</i> e <i>Incidencia de severidad alta</i> (esta, solo a Administración) y abre la pestaña <span class="ui">Incidencias</span> de la orden, en solo lectura: tipo, severidad, si impide el cierre, descripción, fotos y resolución. También: Inicio › <b>Requieren atención</b> y el Mapa del día.<span class="l3">La pantalla y la navegación › Notificaciones</span></td><td class="rec">—</td></tr>
+      <tr><td class="n"><span class="dec"><i>?</i></span></td><td class="who"><span class="role adm">Administración</span><br><span class="role dir">Dirección</span></td><td><b class="t">¿Requiere intervención?</b>Comunicarlo al supervisor de la orden. A quién se escala y en qué plazo: <span class="tbd">Por definir</span>.</td><td class="rec">—</td></tr>
+    </tbody>
+  </table>
+
+  <h2 class="section"><span class="no">6</span>Controles</h2>
+  <table>
+    <thead><tr><th style="width:36%">Control</th><th>Cómo lo asegura la app</th></tr></thead>
+    <tbody>
+      <tr><td><b>Solo el supervisor asignado</b></td><td>Solo él registra y resuelve; Dirección y Administración ven esos botones apagados, con la razón.</td></tr>
+      <tr><td><b>Solo en órdenes abiertas</b></td><td>En una orden cerrada no se registra una incidencia: hay que reabrirla (<span class="mono">PK-SOP-L2-06</span>, sección 5.1).</td></tr>
+      <tr><td><b>Datos mínimos</b></td><td>Para registrar: tipo, severidad y descripción de al menos 6 caracteres; para resolver: resolución de al menos 6. Mientras falte algo, el botón queda desactivado.</td></tr>
+      <tr><td><b>Folio y bitácora</b></td><td>Folio y movimiento con usuario, fecha y fotos. Sin conexión lleva folio provisional (<span class="mono">INC-PEND-…</span>) hasta sincronizar.</td></tr>
+      <tr><td><b>Impide el cierre</b></td><td>La orden pasa sola a <span class="pill red">Con incidencia</span>; el cierre queda bloqueado y no admite excepción.</td></tr>
+      <tr><td><b>Abiertas que no impiden</b></td><td>No detienen la salida ni el cierre: son aviso y salen en el reporte como <i>Abierta al momento de la emisión</i>.</td></tr>
+      <tr><td><b>Cambios sin guardar</b></td><td>Al cerrar el formulario con texto o fotos sin guardar, la app pregunta <i>¿Descartar cambios?</i>.</td></tr>
+      <tr><td><b>Liberación automática</b></td><td>Al resolver la última que impide el cierre, la orden vuelve a su estado; si quedan otras, sigue detenida y la app lo dice.</td></tr>
+    </tbody>
+  </table>
+
+  <h2 class="section"><span class="no">7</span>Excepciones y escalamiento</h2>
+  <table>
+    <thead><tr><th style="width:32%">Situación</th><th>Qué hacer</th><th style="width:20%">Quién decide</th></tr></thead>
+    <tbody>
+      <tr><td>No está claro si debe impedir el cierre</td><td>Decidirlo al registrarla; la app no permite cambiar la marca después.</td><td><span class="role sup">Supervisor</span> · criterios <span class="tbd">Por definir</span></td></tr>
+      <tr><td>Severidad alta (daño grave, queja seria)</td><td>Registrarla con fotos en el momento; la app avisa a Administración. Quién interviene y en qué plazo: <span class="tbd">Por definir</span>.</td><td><span class="tbd">Por definir</span></td></tr>
+      <tr><td>El cliente pide trabajo fuera del alcance</td><td>Registrar <i>Trabajo adicional</i>. La autorización comercial ocurre fuera de la app.</td><td><span class="tbd">Por definir</span></td></tr>
+      <tr><td>El cliente no acepta el servicio</td><td>No validar el cierre; registrar una <i>Solicitud o queja en sitio</i> y acordar el repaso (<span class="mono">PK-SOP-L2-06</span>).</td><td><span class="tbd">Por definir</span></td></tr>
+      <tr><td>La cuadrilla llegó incompleta</td><td>Registrar <i>Faltante de personal</i> y ajustar la cuadrilla del día (<span class="mono">PK-SOP-L2-03</span>).</td><td><span class="role sup">Supervisor</span></td></tr>
+      <tr><td>La queja llega después del servicio</td><td>Es un caso de postventa (<span class="mono">PK-SOP-L2-08</span>), no una incidencia.</td><td>Según <span class="mono">PK-SOP-L2-08</span></td></tr>
+      <tr><td>Hay que registrar una incidencia en una orden cerrada</td><td>Reabrirla con motivo (<span class="mono">PK-SOP-L2-06</span>); el reporte sale en una nueva versión.</td><td><span class="role sup">Supervisor</span> de la orden</td></tr>
+      <tr><td>Sin conexión en el sitio</td><td>Registrar de todos modos; el folio definitivo llega al sincronizar (<span class="mono">PK-SOP-L2-11</span>).</td><td><span class="role sup">Supervisor</span></td></tr>
+    </tbody>
+  </table>
+
+  <h2 class="section"><span class="no">8</span>Registros</h2>
+  <table>
+    <thead><tr><th style="width:32%">Registro</th><th>Dónde se consulta</th><th style="width:26%">Quién lo ve</th></tr></thead>
+    <tbody>
+      <tr><td>Incidencia (folio, tipo, severidad, descripción, fotos, jornada, autor)</td><td>Incidencias; Orden › Incidencias; jornada; Mapa del día</td><td>Los tres roles, según su alcance</td></tr>
+      <tr><td>Seguimiento de la incidencia</td><td>Detalle de la incidencia</td><td>Supervisor</td></tr>
+      <tr><td>Resolución (texto, usuario, fecha)</td><td>Orden › Incidencias; Bitácora; reporte PDF</td><td>Los tres roles y el cliente</td></tr>
+      <tr><td>Cambios de estado de la orden</td><td>Línea de tiempo de la orden; Bitácora</td><td>Los tres roles, según su alcance</td></tr>
+    </tbody>
+  </table>
+
+  <h2 class="section"><span class="no">9</span>Indicadores</h2>
+  <table>
+    <thead><tr><th style="width:30%">Indicador</th><th>Cómo se calcula</th><th style="width:28%">Dónde se ve</th></tr></thead>
+    <tbody>
+      <tr><td><b>Abiertas</b></td><td>Incidencias sin resolver, y cuántas son de severidad alta.</td><td>Incidencias; Inicio</td></tr>
+      <tr><td><b>Bloquean cierre</b></td><td>Órdenes detenidas por una incidencia que impide el cierre.</td><td>Incidencias</td></tr>
+      <tr><td><b>Tiempo medio de resolución</b></td><td>Promedio del registro a la resolución, últimos 90 días.</td><td>Incidencias</td></tr>
+      <tr><td><b>Resueltas 30 días</b></td><td>Incidencias resueltas en los últimos 30 días.</td><td>Incidencias</td></tr>
+      <tr><td><b>Incidencias por tipo</b></td><td>Incidencias del periodo por tipo, órdenes afectadas y abiertas; porcentaje de servicios terminados con incidencia.</td><td>Indicadores › Operación; Inicio</td></tr>
+    </tbody>
+  </table>
+  <p>Tiempo máximo de resolución por severidad y porcentaje aceptable de servicios con incidencia: <span class="tbd">Por definir</span>.</p>
+
+  <h2 class="section"><span class="no">10</span>Documentos relacionados</h2>
+  <table class="kv">
+    <tbody>
+      <tr><td>Nivel 1</td><td><span class="mono">PK-SOP-L1</span> · P-05 Las incidencias se registran en el momento · P-06 Un solo cierre, con conformidad del cliente.</td></tr>
+      <tr><td>Nivel 2</td><td><span class="mono">PK-SOP-L2-03</span> Ejecución de la jornada · <span class="mono">PK-SOP-L2-06</span> Cierre · <span class="mono">PK-SOP-L2-07</span> Reporte final · <span class="mono">PK-SOP-L2-08</span> Postventa.</td></tr>
+      <tr><td>Nivel 3</td><td>Manual de usuario: Incidencias · La jornada en campo · Órdenes · Cierre y validación · La pantalla y la navegación.</td></tr>
+    </tbody>
+  </table>
+</section>

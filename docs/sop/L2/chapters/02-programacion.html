@@ -1,0 +1,162 @@
+<section class="chapter" id="pk-sop-l2-02" data-code="PK-SOP-L2-02">
+  <header class="sop-head">
+    <div class="band">
+      <div class="top"><span class="code">PK-SOP-L2-02</span><span class="lvl">Procedimiento · Nivel 2</span></div>
+      <h1>Programación de jornadas y asignación de cuadrilla</h1>
+      <p class="purpose">El supervisor da a cada orden sus jornadas (fecha y horario de cada día) y su cuadrilla, y mantiene el plan al día: reprograma, confirma fechas y cambia al personal entre jornadas, siempre con motivo.</p>
+    </div>
+    <dl class="meta">
+      <div><dt>Dueño del proceso</dt><dd><span class="role sup">Supervisor</span></dd></div>
+      <div><dt>Participan</dt><dd><span class="roles"><span class="role adm">Administración</span><span class="role cli">Cliente</span><span class="role app">La app</span></span></dd></div>
+      <div><dt>Versión</dt><dd>1.0 · borrador</dd></div>
+      <div><dt>Emisión</dt><dd>17 oct 2026</dd></div>
+      <div class="wide"><dt>Empieza cuando</dt><dd>Una orden del supervisor está en <span class="pill slate">Borrador</span> o <span class="pill amber">Reprogramada</span>, o hay que mover una jornada pendiente o cambiar al personal.</dd></div>
+      <div class="wide"><dt>Termina cuando</dt><dd>Cada jornada pendiente tiene fecha, horario y cuadrilla, la orden está <span class="pill blue">Programada</span> (o en su estado de ejecución) y el cambio quedó con motivo.</dd></div>
+      <div class="full"><dt>Instrucción de trabajo (Nivel 3)</dt><dd>Manual de usuario › Agenda y asignación · Órdenes › Reprogramar y agregar jornadas · Órdenes › Cambiar la cuadrilla</dd></div>
+    </dl>
+  </header>
+
+  <h2 class="section"><span class="no">1</span>Objetivo</h2>
+  <p>Que cada jornada tenga <b>fecha, horario y cuadrilla</b> del personal activo de la unidad antes de su inicio, y que todo cambio de plan (fechas, días o personas) quede con su motivo: así se sabe en cualquier momento qué día se trabaja, con quién y por qué cambió.</p>
+
+  <h2 class="section"><span class="no">2</span>Alcance</h2>
+  <table class="kv">
+    <tbody>
+      <tr><td>Aplica a</td><td>Las órdenes del supervisor, de una o varias jornadas, desde el alta hasta su última jornada pendiente.</td></tr>
+      <tr><td>No incluye</td><td>Alta, datos generales y cambio de supervisor (<span class="mono">PK-SOP-L2-01</span>), ejecución en campo (<span class="mono">PK-SOP-L2-03</span>) y alta de personal (<span class="mono">PK-SOP-L2-10</span>).</td></tr>
+      <tr><td>Entradas</td><td>Orden en <span class="pill slate">Borrador</span> con jornadas propuestas; orden <span class="pill amber">Reprogramada</span>; cambio de fecha o de personal.</td></tr>
+      <tr><td>Salidas</td><td>Jornadas con fecha, horario y cuadrilla; historial de reasignaciones con motivo.</td></tr>
+    </tbody>
+  </table>
+
+  <h2 class="section"><span class="no">3</span>Responsabilidades</h2>
+  <table class="raci">
+    <thead><tr><th>Actividad</th><th>Supervisor</th><th>Administración</th><th>Dirección</th><th>Cliente</th></tr></thead>
+    <tbody>
+      <tr><td>Revisar lo que hay por asignar y la carga de personal</td><td><span class="ra r">R</span></td><td><span class="ra i">I</span></td><td><span class="ra i">I</span></td><td></td></tr>
+      <tr><td>Programar fechas y cuadrilla</td><td><span class="ra a">A</span></td><td><span class="ra i">I</span></td><td><span class="ra i">I</span></td><td></td></tr>
+      <tr><td>Reprogramar o agregar jornadas</td><td><span class="ra a">A</span></td><td><span class="ra i">I</span></td><td><span class="ra i">I</span></td><td></td></tr>
+      <tr><td>Confirmar las fechas de una orden reprogramada</td><td><span class="ra a">A</span></td><td><span class="ra i">I</span></td><td><span class="ra i">I</span></td><td><span class="ra c">C</span></td></tr>
+      <tr><td>Cambiar la cuadrilla entre jornadas</td><td><span class="ra a">A</span></td><td><span class="ra i">I</span></td><td><span class="ra i">I</span></td><td></td></tr>
+      <tr><td>Avisar a la cuadrilla y al contacto en sitio</td><td><span class="ra r">R</span></td><td></td><td></td><td><span class="ra i">I</span></td></tr>
+    </tbody>
+  </table>
+  <div class="raci-legend"><span><span class="ra r">R</span>Responsable</span><span><span class="ra a">A</span>Aprueba y responde por el resultado</span><span><span class="ra c">C</span>Consultado</span><span><span class="ra i">I</span>Informado</span></div>
+  <p>Administración y Dirección no tienen la Agenda: consultan las jornadas en la pestaña <span class="ui">Jornadas</span> de cada orden, donde los botones aparecen apagados con <i>Solo el supervisor asigna la cuadrilla</i>. El cambio de supervisor lo hace Administración (<span class="mono">PK-SOP-L2-01</span>).</p>
+
+  <h2 class="section"><span class="no">4</span>Definiciones</h2>
+  <table class="kv">
+    <tbody>
+      <tr><td>Jornada</td><td>Un día de trabajo de la orden, con su horario, cuadrilla, entrada, salida, fotos y bitácora. Una orden tiene una jornada por día y un solo cierre.</td></tr>
+      <tr><td>Cuadrilla</td><td>Personas asignadas a una jornada. Puede cambiar entre jornadas, con motivo; los trabajadores no usan la app.</td></tr>
+      <tr><td>Reprogramada</td><td>Orden cuyas fechas se movieron y esperan la aceptación del cliente. Al confirmar fechas vuelve al estado que le corresponde.</td></tr>
+      <tr><td>Doble asignación</td><td>La misma persona en dos jornadas abiertas el mismo día. La app la avisa, pero no la impide.</td></tr>
+      <tr><td>Carga de personal</td><td>Personas con trabajo cada día frente a las disponibles (personal activo) de la unidad.</td></tr>
+    </tbody>
+  </table>
+
+  <h2 class="section"><span class="no">5</span>Desarrollo</h2>
+  <div class="flowstrip">
+    <div class="st adm"><small>Administración</small>Orden en Borrador</div>
+    <div class="st sup"><small>Supervisor</small>Por asignar y carga</div>
+    <div class="st sup"><small>Supervisor</small>Fechas</div>
+    <div class="st sup"><small>Supervisor</small>Cuadrilla</div>
+    <div class="st dec"><small>Decisión</small>¿Doble asignación?</div>
+    <div class="st sup"><small>Supervisor</small>Confirmar con motivo</div>
+    <div class="st end"><small>Resultado</small>Programada → jornada</div>
+  </div>
+  <table class="proc">
+    <thead><tr><th></th><th>Responsable</th><th>Actividad</th><th>Registro en la app</th></tr></thead>
+    <tbody>
+      <tr><td class="n"><span>1</span></td><td class="who"><span class="role sup">Supervisor</span></td><td><b class="t">Revisar lo que hay por asignar</b>En la Agenda, el panel <b>Por asignar</b> reúne las órdenes en Borrador (<span class="ui primary">Programar</span>) y las Reprogramadas (<span class="ui primary">Confirmar fechas</span>). Revisar la <b>Carga de personal</b> de la semana: ámbar desde el 85 % de la plantilla, rojo con más asignaciones que personas.<span class="l3">Agenda y asignación › La pantalla Agenda</span></td><td class="rec">Pendiente <i>Por asignar</i>.</td></tr>
+      <tr><td class="n"><span>2</span></td><td class="who"><span class="role sup">Supervisor</span></td><td><b class="t">Ajustar las fechas</b>Pulsar <span class="ui primary">Programar</span>. La app propone las jornadas de la orden: ajustar <span class="ui">Fecha</span>, <span class="ui">Inicio</span> y <span class="ui">Término</span>; <span class="ui">Agregar otro día</span> suma el siguiente día hábil y el bote de basura quita uno. Pulsar <span class="ui primary">Continuar</span>.<span class="l3">Agenda y asignación › Programar una orden</span></td><td class="rec">—</td></tr>
+      <tr><td class="n"><span>3</span></td><td class="who"><span class="role sup">Supervisor</span></td><td><b class="t">Elegir la cuadrilla</b>Marcar a las personas que trabajarán; la lista solo trae personal activo de la unidad de la orden y se busca por nombre o especialidad. Pulsar <span class="ui primary">Continuar</span>.</td><td class="rec">—</td></tr>
+      <tr><td class="n"><span class="dec"><i>?</i></span></td><td class="who"><span class="role sup">Supervisor</span></td><td><b class="t">¿Alguien ya tiene otra jornada esas fechas?</b>La lista lo marca con un triángulo ámbar y el folio. <b>Sí:</b> decidir si se queda (por ejemplo, termina un servicio y pasa a otro) o elegir a otra persona. <b>No:</b> continuar.<span class="l3">Agenda y asignación › Carga de personal y dobles asignaciones</span></td><td class="rec">Aviso de doble asignación en el paso Confirmar.</td></tr>
+      <tr><td class="n"><span>4</span></td><td class="who"><span class="role sup">Supervisor</span><br><span class="role app">La app</span></td><td><b class="t">Confirmar con motivo</b>Revisar el resumen, escribir el motivo (mínimo 5 caracteres; sugerencias: <i>Programación inicial</i>, <i>Cliente confirmó fechas</i>, <i>Ajuste de disponibilidad</i>), marcar la casilla y pulsar <span class="ui primary">Programar</span>.</td><td class="rec">Orden <span class="pill blue">Programada</span>; jornadas y cuadrilla en la bitácora con usuario, fecha y motivo.</td></tr>
+      <tr><td class="n"><span>5</span></td><td class="who"><span class="role sup">Supervisor</span></td><td><b class="t">Avisar a la cuadrilla y al cliente</b>La app no avisa a nadie: comunicar las fechas por los medios habituales. El día de la jornada sigue <span class="mono">PK-SOP-L2-03</span>.</td><td class="rec">—</td></tr>
+    </tbody>
+  </table>
+  <div class="note tip"><b class="note-t">Consejo</b><p>Si las fechas que propuso Administración ya están acordadas, <span class="ui primary">Asignar cuadrilla</span> en el detalle de la orden asigna al personal a las jornadas pendientes, con motivo, conserva las fechas y deja la orden <span class="pill blue">Programada</span>.</p></div>
+
+  <h3>5.1 Reprogramar o agregar jornadas</h3>
+  <table class="proc">
+    <thead><tr><th></th><th>Responsable</th><th>Actividad</th><th>Registro en la app</th></tr></thead>
+    <tbody>
+      <tr><td class="n"><span>1</span></td><td class="who"><span class="role sup">Supervisor</span></td><td><b class="t">Mover las fechas con motivo</b>Un solo día: hoja de la jornada › <span class="ui">Reprogramar</span>. Varias jornadas o un día más: en la orden, <span class="ui">⋯</span> › <span class="ui">Reprogramar</span> o <span class="ui primary">Agregar jornada</span>. Las jornadas ejecutadas se conservan. Ajustar fecha y horario, elegir o escribir el motivo (<i>Solicitud del cliente</i>, <i>Acceso no disponible</i>, <i>Clima</i>…) y guardar. Desde la hoja, la casilla confirma que usted avisará al contacto en sitio.<span class="l3">Órdenes › Reprogramar y agregar jornadas</span></td><td class="rec">Nuevas fechas en la agenda; bitácora con motivo.</td></tr>
+      <tr><td class="n"><span class="dec"><i>?</i></span></td><td class="who"><span class="role sup">Supervisor</span></td><td><b class="t">¿Las nuevas fechas esperan la aceptación del cliente?</b><b>Sí:</b> dejar marcada <b>Marcar como Reprogramada</b> (orden Programada o con jornada cerrada). <b>No:</b> desmarcarla.</td><td class="rec">Orden <span class="pill amber">Reprogramada</span>; jornadas <i>Por confirmar</i>.</td></tr>
+      <tr><td class="n"><span>2</span></td><td class="who"><span class="role sup">Supervisor</span><br><span class="role cli">Cliente</span></td><td><b class="t">Confirmar las fechas</b>Cuando el cliente acepte, pulsar <span class="ui primary">Confirmar fechas</span> en la orden, o en Agenda › Por asignar con motivo. La orden vuelve a Programada o a su estado de ejecución.</td><td class="rec">Confirmación en la bitácora.</td></tr>
+    </tbody>
+  </table>
+
+  <h3>5.2 Cambiar la cuadrilla entre jornadas</h3>
+  <table class="proc">
+    <thead><tr><th></th><th>Responsable</th><th>Actividad</th><th>Registro en la app</th></tr></thead>
+    <tbody>
+      <tr><td class="n"><span>1</span></td><td class="who"><span class="role sup">Supervisor</span></td><td><b class="t">Elegir personas, motivo y guardar</b>Desde la hoja de la jornada, <span class="ui">Cambiar cuadrilla</span> aplica a ese día (o a todas las pendientes con <span class="ui">Aplicar a todas las jornadas pendientes</span>); desde la orden, a todas las pendientes. Marcar quién entra y quién sale, elegir el motivo (<i>Ausencia de personal</i>, <i>Refuerzo por carga de trabajo</i>, <i>Especialidad requerida</i>…) y pulsar <span class="ui primary">Guardar cuadrilla</span>.<span class="l3">Agenda y asignación › Cambiar la cuadrilla</span></td><td class="rec">Historial de reasignaciones: quién, jornada, entran y salen, motivo y fecha.</td></tr>
+    </tbody>
+  </table>
+
+  <h2 class="section"><span class="no">6</span>Controles</h2>
+  <table>
+    <thead><tr><th style="width:36%">Control</th><th>Cómo lo asegura la app</th></tr></thead>
+    <tbody>
+      <tr><td><b>Solo el supervisor de la orden</b></td><td>La Agenda es del supervisor y muestra solo sus órdenes. Administración y Dirección ven <i>Solo el supervisor reprograma jornadas y confirma fechas</i>.</td></tr>
+      <tr><td><b>Una jornada por día</b></td><td><i>Ya hay otra jornada ese día: elija otra fecha.</i> También si ese día ya se trabajó.</td></tr>
+      <tr><td><b>Fechas válidas</b></td><td>No programa días pasados; cada jornada empieza y termina el mismo día de calendario.</td></tr>
+      <tr><td><b>Lo ejecutado se conserva</b></td><td>Las jornadas ya ejecutadas aparecen con candado y no se mueven; un día que se mueve desde la hoja debe quedar después de la última jornada ejecutada.</td></tr>
+      <tr><td><b>Cuadrilla de la unidad</b></td><td>Solo personal activo de la unidad de la orden, al menos una persona.</td></tr>
+      <tr><td><b>Dobles asignaciones</b></td><td>Avisa en la Agenda y al confirmar; no las impide.</td></tr>
+      <tr><td><b>Motivo y confirmación</b></td><td>Programar, reprogramar y cambiar cuadrilla exigen motivo de al menos 5 caracteres; queda en la bitácora con usuario y fecha.</td></tr>
+      <tr><td><b>Lo que ya no cambia</b></td><td>Una jornada en curso no se reprograma (sí su cuadrilla); una cerrada no cambia ni fecha ni cuadrilla; en una orden finalizada, archivada o cancelada, <i>su plan ya no cambia</i>.</td></tr>
+      <tr><td><b>Incidencia que bloquea</b></td><td>Si al confirmar fechas hay una incidencia abierta que impide el cierre, la orden sigue <span class="pill red">Con incidencia</span> y retoma su estado al resolverla.</td></tr>
+      <tr><td><b>Sin notificaciones</b></td><td>La app no avisa a la cuadrilla ni al cliente.</td></tr>
+    </tbody>
+  </table>
+
+  <h2 class="section"><span class="no">7</span>Excepciones y escalamiento</h2>
+  <table>
+    <thead><tr><th style="width:32%">Situación</th><th>Qué hacer</th><th style="width:20%">Quién decide</th></tr></thead>
+    <tbody>
+      <tr><td>El cliente pide otra fecha</td><td>Reprogramar con motivo; si falta su aceptación, dejar la orden Reprogramada y confirmar al aceptar (5.1).</td><td><span class="role sup">Supervisor</span></td></tr>
+      <tr><td>Sin acceso al sitio o mal clima</td><td>Reprogramar la jornada. Si ya inició, registrar la salida o una incidencia (<span class="mono">PK-SOP-L2-03</span>, <span class="mono">04</span>) y agregar otra jornada.</td><td><span class="role sup">Supervisor</span></td></tr>
+      <tr><td>Falta una persona el día de la jornada</td><td>Cambiar la cuadrilla de esa jornada con <i>Ausencia de personal</i>; se puede aun en curso.</td><td><span class="role sup">Supervisor</span></td></tr>
+      <tr><td>No alcanza el personal de la unidad</td><td>La app solo ofrece personal de la unidad de la orden. Apoyo de otra unidad: <span class="tbd">Por definir</span>.</td><td><span class="tbd">Por definir</span></td></tr>
+      <tr><td>Una persona no aparece en la lista</td><td>Pedir a Administración su alta o reactivación (<span class="mono">PK-SOP-L2-10</span>).</td><td><span class="role adm">Administración</span></td></tr>
+      <tr><td>El supervisor no podrá atender la orden</td><td>Administración cambia el supervisor (<span class="mono">PK-SOP-L2-01</span>).</td><td><span class="role adm">Administración</span></td></tr>
+      <tr><td>Anticipación, número de cambios o aprobación de una reprogramación</td><td>Reglas de reprogramación pendientes en el documento maestro.</td><td><span class="tbd">Por definir</span></td></tr>
+    </tbody>
+  </table>
+
+  <h2 class="section"><span class="no">8</span>Registros</h2>
+  <table>
+    <thead><tr><th style="width:32%">Registro</th><th>Dónde se consulta</th><th style="width:26%">Quién lo ve</th></tr></thead>
+    <tbody>
+      <tr><td>Jornadas (fecha, horario, cuadrilla, estado)</td><td>Agenda; Orden › Jornadas</td><td>Supervisor (Agenda); los tres roles (Jornadas)</td></tr>
+      <tr><td>Historial de reasignaciones</td><td>Orden › Resumen › Cuadrilla; hoja de la jornada</td><td>Los tres roles, según su alcance</td></tr>
+      <tr><td>Programación, reprogramación y confirmación de fechas, con motivo</td><td>Orden › Actividad; Bitácora</td><td>Los tres roles, según su alcance</td></tr>
+      <tr><td>Último motivo de una orden reprogramada</td><td>Agenda › Por asignar</td><td>Supervisor</td></tr>
+    </tbody>
+  </table>
+
+  <h2 class="section"><span class="no">9</span>Indicadores</h2>
+  <table>
+    <thead><tr><th style="width:30%">Indicador</th><th>Cómo se calcula</th><th style="width:28%">Dónde se ve</th></tr></thead>
+    <tbody>
+      <tr><td><b>Alta a programación</b></td><td>Tiempo promedio de la alta de la orden a la primera asignación de cuadrilla.</td><td>Indicadores › Operación › Cómo avanza el trabajo</td></tr>
+      <tr><td><b>Programación a inicio</b></td><td>Tiempo promedio de la asignación de cuadrilla a la primera entrada en sitio.</td><td>Indicadores › Operación › Cómo avanza el trabajo</td></tr>
+      <tr><td><b>Programadas y por iniciar</b></td><td>Órdenes del periodo con cuadrilla y fechas; las que inician después de hoy.</td><td>Indicadores › Operación › Del plan al cliente</td></tr>
+      <tr><td><b>Canceladas o reprogramadas</b></td><td>Órdenes del periodo que cambiaron de plan.</td><td>Indicadores › Operación › Dónde está el trabajo</td></tr>
+      <tr><td><b>Carga y dobles asignaciones</b></td><td>Personas asignadas cada día contra las disponibles; personas con dos jornadas el mismo día.</td><td>Agenda › Carga de personal</td></tr>
+    </tbody>
+  </table>
+  <p>Metas de tiempo de programación, carga y reprogramaciones: <span class="tbd">Por definir</span>.</p>
+
+  <h2 class="section"><span class="no">10</span>Documentos relacionados</h2>
+  <table class="kv">
+    <tbody>
+      <tr><td>Nivel 1</td><td><span class="mono">PK-SOP-L1</span> · P-02 Cada orden tiene un supervisor responsable · P-09 Todo cambio deja rastro.</td></tr>
+      <tr><td>Nivel 2</td><td><span class="mono">PK-SOP-L2-01</span> Alta de la orden · <span class="mono">PK-SOP-L2-03</span> Ejecución de la jornada · <span class="mono">PK-SOP-L2-10</span> Usuarios, permisos y catálogos.</td></tr>
+      <tr><td>Nivel 3</td><td>Manual de usuario: Agenda y asignación · Órdenes · La jornada en campo.</td></tr>
+    </tbody>
+  </table>
+</section>

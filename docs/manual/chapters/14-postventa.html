@@ -1,0 +1,164 @@
+<section class="chapter" id="cap-postventa">
+  <header class="opener">
+    <div class="num">Seguimiento</div>
+    <h1>Postventa</h1>
+    <p class="desc">Lo que pasa después del servicio: <b>quejas con folio, responsable y fecha compromiso</b>, encuestas de satisfacción que usted comparte con el cliente y la <b>calificación promedio</b> siempre a la vista.</p>
+    <div class="glass">
+      <div><div class="eyebrow">En este capítulo</div><ul><li>La pantalla de Postventa</li><li>Estados y datos de un caso</li><li>Registrar un caso</li><li>El detalle del caso</li><li>Resolver, cerrar o reabrir</li><li>Invitar al cliente a calificar</li><li>Encuestas y respuestas</li><li>Cerrar el ciclo de la orden</li></ul></div>
+      <div class="who"><div class="eyebrow">Disponible para</div><span class="roles"><span class="role sup">Supervisor</span><span class="role adm">Administración</span><span class="role dir">Dirección</span></span></div>
+    </div>
+  </header>
+
+  <p class="lead">El trabajo no termina con el reporte. Si el cliente reporta algo después del servicio, se registra como <b>caso postventa</b> y alguien se hace cargo hasta que el cliente quede conforme. Y para saber cómo quedó cada servicio, el cliente recibe una <b>encuesta de satisfacción</b> que contesta desde su teléfono, sin cuenta.</p>
+  <p>Abra la pantalla desde <span class="path">Seguimiento <span class="sep">›</span> Postventa</span> en el menú lateral o, en el teléfono, desde la pestaña <span class="ui">Menú</span>. El número junto a <span class="ui">Postventa</span> es el de casos que siguen abiertos (<span class="pill red">Abierto</span> o <span class="pill amber">En proceso</span>) en su alcance.</p>
+
+  <h2 class="section">Quién gestiona y quién consulta</h2>
+  <table>
+    <thead><tr><th>Rol</th><th>Qué ve</th><th>Qué puede hacer</th></tr></thead>
+    <tbody>
+      <tr><td><span class="role sup">Supervisor</span></td><td>Los casos y encuestas de las órdenes que supervisa.</td><td>Registrar y atender casos, compartir encuestas y capturar respuestas. No exporta.</td></tr>
+      <tr><td><span class="role adm">Administración</span></td><td>Todo lo de su unidad.</td><td>Lo mismo que el supervisor, en toda su unidad, y <span class="ui">Exportar</span>.</td></tr>
+      <tr><td><span class="role dir">Dirección</span></td><td>Todas las unidades o la elegida en el menú lateral.</td><td>Consulta y exporta. Los botones de gestión aparecen desactivados con el aviso «Solo Administración y Supervisores gestionan quejas y encuestas».</td></tr>
+    </tbody>
+  </table>
+
+  <h2 class="section">La pantalla de Postventa</h2>
+  <p>Arriba, una frase resume su alcance: cuántos casos siguen abiertos, cuántos vencen hoy, cuántos ya están vencidos y la calificación promedio de los últimos 30 días. Debajo están el panel de satisfacción y tres pestañas.</p>
+  <figure class="shot"><div class="frame"><img src="shots/14-postventa.jpg" alt="Pantalla de Postventa de Administración: resumen, panel de satisfacción del cliente con la tendencia del año y las pestañas Casos, Encuestas y Por dar seguimiento"><span class="mark" style="left:86.2%;top:8.6%">1</span><span class="mark" style="left:35.3%;top:29.3%">2</span><span class="mark" style="left:56.2%;top:29.3%">3</span><span class="mark" style="left:51.3%;top:82.1%">4</span></div><figcaption><b>Postventa (Administración).</b> El panel de satisfacción y, debajo, las pestañas con el tablero de casos.</figcaption></figure>
+  <ol class="legend">
+    <li><b>Exportar y Nuevo caso.</b> <span class="ui">Exportar</span> descarga un Excel con dos hojas, Casos y Encuestas. <span class="ui primary">Nuevo caso</span> registra una queja.</li>
+    <li><b>Satisfacción del cliente.</b> Calificación general promedio (de 1 a 5) del periodo elegido, NPS, porcentaje de respuesta y encuestas enviadas, respondidas y casos abiertos.</li>
+    <li><b>La tendencia del año.</b> Satisfacción promedio por mes o, con <span class="ui">Casos</span>, los casos abiertos cada mes. Toque una barra para ver ese mes.</li>
+    <li><b>Pestañas.</b> <span class="ui">Casos</span>, <span class="ui">Encuestas</span> y <span class="ui">Por dar seguimiento</span>, cada una con su número.</li>
+  </ol>
+  <p>El periodo del panel se cambia con el menú <span class="ui">Últimos 30 días</span> (también <span class="ui">Últimos 90 días</span> y <span class="ui">Este año</span>). El <b>NPS</b> mide la recomendación: es el porcentaje de clientes que dieron 9 o 10 (promotores) menos el de quienes dieron de 0 a 6 (detractores). Va de −100 a +100; un valor arriba de +50 es excelente.</p>
+  <div class="note tip"><b class="note-t">Consejo</b><p>Si llega a Postventa desde una orden (por ejemplo, con <span class="ui">Ver seguimiento</span>), la pantalla muestra solo esa orden («Mostrando OS-…»). Pulse <span class="ui">Ver todo</span> para volver a la vista completa.</p></div>
+
+  <h2 class="section">Estados y datos de un caso</h2>
+  <p>Cada caso recorre cuatro estados. Avanzar de uno a otro siempre queda registrado con usuario y hora en el historial del caso y en la <i>Bitácora</i>.</p>
+  <div class="flow"><span class="pill red">Abierto</span><span class="arrow">→</span><span class="pill amber">En proceso</span><span class="arrow">→</span><span class="pill teal">Resuelto</span><span class="arrow">→</span><span class="pill slate">Cerrado</span></div>
+  <table>
+    <thead><tr><th>Estado</th><th>Qué significa</th><th>Cómo se llega</th></tr></thead>
+    <tbody>
+      <tr><td><span class="pill red">Abierto</span></td><td>Sin atender todavía.</td><td>Al registrar el caso.</td></tr>
+      <tr><td><span class="pill amber">En proceso</span></td><td>Alguien ya lo está atendiendo.</td><td>Con <span class="ui">Tomar caso</span> o moviéndolo en el tablero.</td></tr>
+      <tr><td><span class="pill teal">Resuelto</span></td><td>Se registró qué se hizo para atender la queja.</td><td>Con <span class="ui">Marcar resuelto</span>: exige escribir la resolución.</td></tr>
+      <tr><td><span class="pill slate">Cerrado</span></td><td>El cliente confirmó que la resolución le satisface.</td><td>Con <span class="ui">Cerrar caso</span>: exige marcar la conformidad del cliente.</td></tr>
+    </tbody>
+  </table>
+  <p>Además del estado, cada caso guarda su <b>categoría</b>, su <b>severidad</b> (<span class="pill slate">Baja</span> <span class="pill amber">Media</span> <span class="pill red">Alta</span>), el <b>canal</b> por el que llegó, un <b>responsable</b> y una <b>fecha compromiso</b>: el día en que debe quedar atendido.</p>
+
+  <h3>El tablero de casos</h3>
+  <p>La pestaña <span class="ui">Casos</span> muestra un tablero con una columna por estado. Cada tarjeta dice el folio del caso (PV-…), la categoría, el cliente y la orden, la descripción, la severidad y el canal, el responsable y el plazo: <b>Vence en 3 días</b>, <b>Vence hoy</b> (ámbar) o <b>Vencido</b> (rojo). En los casos terminados dice cuándo se resolvió o se cerró. Las columnas <span class="pill teal">Resuelto</span> y <span class="pill slate">Cerrado</span> muestran los cuatro más recientes; los demás aparecen con el botón <span class="ui">Ver 4 más</span> (el número es cuántos faltan).</p>
+  <figure class="shot crop"><div class="frame"><img src="shots/14-tablero.jpg" alt="Primera fila del tablero de casos: una tarjeta en cada columna Abierto, En proceso, Resuelto y Cerrado"></div><figcaption><b>Tablero de casos.</b> Pulse una tarjeta para abrir el caso; el número de cada columna es cuántos casos hay en ese estado.</figcaption></figure>
+  <div class="duo">
+    <figure class="shot phone"><div class="frame"><img src="shots/14-tel-postventa.jpg" alt="Lista de casos en el teléfono con los filtros Activos, Abiertos y En proceso y la tarjeta de un caso abierto"></div><figcaption><b>Casos en el teléfono.</b> Una lista con filtros por estado.</figcaption></figure>
+    <div>
+      <h4>Mover un caso</h4>
+      <p>El botón <span class="ui">···</span> de cada tarjeta abre el menú <b>Mover a</b>. Pasar un caso a <span class="pill amber">En proceso</span> es inmediato. Los cambios marcados <b>Requiere resolución</b> o <b>Requiere conformidad</b> abren antes una confirmación, igual que en el detalle del caso (vea <i>Resolver, cerrar o reabrir</i>). Regresar un caso resuelto o cerrado es reabrirlo: pide el motivo.</p>
+      <p>Desde el mismo menú puede ir al detalle del caso o a la orden original.</p>
+      <div class="note phone-tip"><b class="note-t">En el teléfono</b><p>En lugar de columnas verá una lista con filtros: <span class="ui">Activos</span> (abiertos y en proceso), <span class="ui">Abiertos</span>, <span class="ui">En proceso</span>, <span class="ui">Resueltos</span> y <span class="ui">Cerrados</span>. Cada tarjeta muestra su estado.</p></div>
+    </div>
+  </div>
+
+  <h2 class="section">Registrar un caso</h2>
+  <div class="access">Disponible para <span class="roles"><span class="role sup">Supervisor</span><span class="role adm">Administración</span><span class="role dir off">Dirección</span></span></div>
+  <p>Un caso postventa siempre nace de una <b>orden con cierre validado</b>: es una queja o un pendiente que el cliente reporta después del servicio. Lo que ocurre durante la ejecución se registra como incidencia (consulte el capítulo <i>Incidencias</i>).</p>
+  <div class="duo wide">
+    <figure class="shot crop"><div class="frame"><img src="shots/14-nuevo-caso.jpg" alt="Formulario Nuevo caso postventa con la orden elegida, la categoría Trabajo incompleto, severidad Alta, canal WhatsApp, descripción, responsable y fecha compromiso"></div><figcaption><b>Nuevo caso postventa.</b> El pie del formulario dice qué falta antes de poder registrar.</figcaption></figure>
+    <ol class="steps">
+      <li><b>Pulse Nuevo caso.</b> Está arriba a la derecha de Postventa.</li>
+      <li><b>Elija la orden original.</b> Busque por folio, cliente o servicio; la lista muestra las órdenes cerradas, de la más reciente a la más antigua. Para elegir otra, pulse <span class="ui">Cambiar</span>.</li>
+      <li><b>Marque la categoría y la severidad.</b> Calidad del servicio, Puntualidad, Conducta del personal, Daños a instalaciones, Trabajo incompleto, Facturación u Otro. La severidad inicia en <b>Media</b>.</li>
+      <li><b>Indique cómo llegó.</b> Teléfono, WhatsApp, Correo, Encuesta o Presencial.</li>
+      <li><b>Describa el caso.</b> Qué reporta el cliente, dónde y desde cuándo (al menos 10 caracteres).</li>
+      <li><b>Revise el responsable y la fecha compromiso.</b> Se proponen el supervisor de la orden y una fecha a tres días; puede cambiarlos. La fecha no puede ser anterior a hoy.</li>
+      <li><b>Agregue evidencia si la tiene.</b> Con <span class="ui">Tomar foto</span> o <span class="ui">Galería</span>. Es opcional.</li>
+      <li><b>Pulse Registrar caso.</b> El caso recibe su folio y aparece en la columna <span class="pill red">Abierto</span>.</li>
+    </ol>
+  </div>
+  <p>En la computadora, un aviso confirma el folio y ofrece <span class="ui">Ver caso</span>. En el teléfono el registro se hace en una pantalla completa y termina en <b>Caso registrado</b>, con la fecha compromiso y los botones <span class="ui primary">Ver caso</span> y <span class="ui">Volver a Postventa</span>. El responsable ve el caso en su tablero.</p>
+  <div class="note rule"><b class="note-t">Regla de negocio</b><p><b>El cliente no recibe avisos automáticos.</b> Registrar el caso no le manda nada: si quiere confirmarle que ya se atiende, llámelo o escríbale desde el detalle del caso. Si la orden estaba en <span class="pill teal">Reporte enviado</span> o <span class="pill slate">Archivada</span>, al registrar el caso pasa a <span class="pill violet">Seguimiento postventa</span>.</p></div>
+
+  <h2 class="section">El detalle del caso</h2>
+  <p>Pulse una tarjeta para abrir el caso. El título es la categoría, junto al estado. Debajo están el cliente y la orden (ambos abren su propia pantalla), el canal por el que llegó, quién lo registró y cuándo, y la descripción entre comillas.</p>
+  <figure class="shot"><div class="frame"><img src="shots/14-caso-detalle.jpg" alt="Detalle del caso PV-0064 en proceso: historial del caso con una nota nueva, campo para agregar nota y panel Estado del caso con el botón Marcar resuelto"><span class="mark" style="left:20.4%;top:30.0%">1</span><span class="mark" style="left:69.3%;top:33.2%">2</span><span class="mark" style="left:70.6%;top:72.2%">3</span><span class="mark" style="left:21.4%;top:82.1%">4</span></div><figcaption><b>Detalle de un caso en proceso.</b> A la izquierda, lo que ha pasado; a la derecha, el estado y lo que sigue.</figcaption></figure>
+  <ol class="legend">
+    <li><b>Seguimiento del caso.</b> Cada registro con su usuario y fecha. Al final, el siguiente paso y la fecha compromiso.</li>
+    <li><b>Estado del caso.</b> Avance, responsable, compromiso, severidad, canal y última actualización. Cuando existe, la resolución.</li>
+    <li><b>Acción principal.</b> Cambia según el estado: <span class="ui">Tomar caso</span>, <span class="ui">Marcar resuelto</span> o <span class="ui">Cerrar caso</span>. Debajo, <span class="ui">Reasignar</span> y <span class="ui">Cerrar</span> o <span class="ui">Reabrir</span>.</li>
+    <li><b>Agregar nota.</b> Llamadas, acuerdos, visitas de revisión. Guarde con <span class="ui">Agregar nota</span> o con <span class="kbd">⌘ + Enter</span>.</li>
+  </ol>
+  <p>Más abajo en la misma página:</p>
+  <ul>
+    <li><b>Evidencia del caso.</b> Fotos que respaldan la queja o la resolución, con <span class="ui primary">Foto</span> o desde la galería. Estas fotos se quedan en el caso: no forman parte del reporte del servicio.</li>
+    <li><b>Orden original.</b> Folio, título y estado de la orden, fechas y jornadas, sitio, horas reales, supervisor, cuadrilla y una comparación ANTES/DESPUÉS de las fotos del servicio. <span class="ui">Ver orden</span> abre la orden completa.</li>
+    <li><b>Incidencias durante el servicio.</b> Lo que se registró mientras se hacía el trabajo; sirve de contexto para la queja.</li>
+  </ul>
+  <p>En la columna derecha, debajo del estado, está la tarjeta del cliente: <span class="ui">WhatsApp</span> abre WhatsApp con un saludo que cita el folio del caso («Hola Ernesto, le saluda Pulkro respecto a su reporte PV-0064 del servicio OS-24387.»), <span class="ui">Llamar</span> marca al contacto y <span class="ui">Historial del cliente</span> abre su ficha (consulte el capítulo <i>Clientes</i>). Si el cliente ya contestó la encuesta de ese servicio, la tarjeta <b>Encuesta del servicio</b> muestra su calificación y su comentario.</p>
+
+  <h2 class="section">Resolver, cerrar o reabrir</h2>
+  <div class="access">Disponible para <span class="roles"><span class="role sup">Supervisor</span><span class="role adm">Administración</span><span class="role dir off">Dirección</span></span></div>
+  <div class="duo wide right">
+    <ol class="steps">
+      <li><b>Tome el caso.</b> En un caso <span class="pill red">Abierto</span>, pulse <span class="ui primary">Tomar caso</span>. Pasa a <span class="pill amber">En proceso</span> y, si usted puede ser responsable, queda a su nombre.</li>
+      <li><b>Registre la resolución.</b> Pulse <span class="ui primary">Marcar resuelto</span>, describa qué se hizo (al menos 10 caracteres) y confirme con <span class="ui primary">Marcar como resuelto</span>. El caso pasa a <span class="pill teal">Resuelto</span> y la resolución queda en el historial.</li>
+      <li><b>Confirme con el cliente y cierre.</b> Cuando el cliente diga que está conforme (por teléfono, WhatsApp, correo o en sitio), pulse <span class="ui primary">Cerrar caso</span>, marque <b>El cliente confirmó su conformidad</b> y confirme. El caso pasa a <span class="pill slate">Cerrado</span>.</li>
+    </ol>
+    <figure class="shot crop"><div class="frame"><img src="shots/14-cerrar-caso.jpg" alt="Diálogo Cerrar caso con el resumen del caso, la resolución registrada y la casilla El cliente confirmó su conformidad marcada"></div><figcaption><b>Cerrar caso.</b> El botón se activa al marcar la conformidad.</figcaption></figure>
+  </div>
+  <div class="note rule"><b class="note-t">Regla de negocio</b><p><b>Resuelto no es lo mismo que Cerrado.</b> Un caso resuelto ya tiene registrada su solución; solo se cierra cuando el cliente confirma que le satisface. El botón <span class="ui">Cerrar</span> de un caso en proceso hace los dos pasos a la vez: pide la resolución y la conformidad en la misma ventana.</p></div>
+  <h3>Reasignar y reabrir</h3>
+  <p><span class="ui">Reasignar</span> abre la lista <b>Responsables de la unidad</b>: Administración de la unidad y el supervisor de la orden. El cambio queda en el historial («Reasignó el caso a…»). Un supervisor solo ve las órdenes que supervisa, por eso no se puede asignar un caso al supervisor de otra orden.</p>
+  <p>Si el problema vuelve después de resolver o cerrar el caso, pulse <span class="ui">Reabrir</span>. La ventana <b>Reabrir caso</b> pide el motivo (al menos 10 caracteres; ofrece «El cliente reporta que el problema persiste» y «La queja no quedó atendida por completo»). El caso regresa a <span class="pill amber">En proceso</span> y el motivo queda registrado con su usuario y fecha.</p>
+
+  <h2 class="section">Invitar al cliente a calificar</h2>
+  <div class="access">Disponible para <span class="roles"><span class="role sup">Supervisor</span><span class="role adm">Administración</span><span class="role dir off">Dirección</span></span></div>
+  <p>La pestaña <span class="ui">Por dar seguimiento</span> reúne las órdenes con cierre validado y reporte enviado en los <b>últimos 45 días</b> que aún no tienen encuesta (el envío del reporte se explica en el capítulo <i>Reportes y envío al cliente</i>). Cada fila muestra la fecha de cierre, la orden, cuándo y por dónde salió el reporte, y el contacto a quien irá la invitación.</p>
+  <figure class="shot crop"><div class="frame"><img src="shots/14-generar-encuesta.jpg" alt="Lista Por dar seguimiento con el menú Generar encuesta abierto: Por WhatsApp, Por correo, QR en sitio y Solo copiar enlace"></div><figcaption><b>Generar encuesta.</b> El menú pregunta cómo la compartirá.</figcaption></figure>
+  <ol class="steps">
+    <li><b>Pulse Generar encuesta</b> en la orden.</li>
+    <li><b>Elija cómo compartirla.</b> <span class="ui">Por WhatsApp</span> abre WhatsApp con el mensaje y el enlace, dirigido al contacto en sitio de la orden (o, si no lo tiene, al contacto principal del cliente). <span class="ui">Por correo</span> abre su aplicación de correo con el asunto «¿Cómo quedó su servicio OS-…? · Pulkro». <span class="ui">QR en sitio</span> muestra un código para que el cliente lo escanee ahí mismo. <span class="ui">Solo copiar enlace</span> lo copia para pegarlo donde usted quiera.</li>
+    <li><b>Envíe el mensaje usted.</b> WhatsApp o el correo se abren con todo listo; el envío lo hace usted desde esa aplicación.</li>
+  </ol>
+  <p>El mensaje dice, por ejemplo: «Hola Jesús, le saluda Pulkro. Gracias por confiar en nosotros para el servicio OS-24388 (Limpieza industrial · Planta Monterrey). ¿Nos regala un minuto para calificarlo?», seguido del enlace. Lo que el cliente ve al abrirlo se explica en el capítulo <i>Encuesta de satisfacción (lo que ve el cliente)</i>.</p>
+  <div class="duo">
+    <figure class="shot crop"><div class="frame"><img src="shots/14-encuesta-qr.jpg" alt="Ventana Encuesta por QR con el código, la instrucción para el cliente, el enlace y los botones Copiar enlace, WhatsApp y Correo"></div><figcaption><b>Encuesta por QR.</b> Útil cuando el contacto está con usted en el sitio.</figcaption></figure>
+    <div>
+      <p>Al generarla, la orden se queda en la lista con la etiqueta <b>Encuesta generada</b> y cuatro botones para volver a compartirla (WhatsApp, correo, copiar enlace y QR), además de <span class="ui">Registrar respuesta</span> por si el cliente contesta de palabra. La orden pasa a <span class="pill violet">Seguimiento postventa</span>.</p>
+      <div class="note rule"><b class="note-t">Regla de negocio</b><p><b>El envío es manual: no se confirma la entrega ni la lectura.</b> La app solo prepara el mensaje; sabrá que el cliente lo recibió cuando conteste. Si no tiene teléfono o correo registrado, la app lo avisa para que elija otro canal.</p></div>
+      <p>Si generó la encuesta sin señal, los botones esperan con la etiqueta <b>Por activar</b> («La encuesta se activa al sincronizar»): compártala en cuanto vuelva la conexión (capítulo <i>Trabajo sin conexión y sincronización</i>).</p>
+    </div>
+  </div>
+
+  <h2 class="section">Encuestas y respuestas</h2>
+  <p>La pestaña <span class="ui">Encuestas</span> lista todas las encuestas enviadas en su alcance, de la más reciente a la más antigua. Busque por folio, cliente o comentario y filtre con <span class="ui">Todas</span>, <span class="ui">Pendientes</span> o <span class="ui">Respondidas</span>.</p>
+  <figure class="shot crop"><div class="frame"><img src="shots/14-encuestas.jpg" alt="Tabla de encuestas con orden y cliente, fecha y canal de envío, estado Respondida o Pendiente, calificación en estrellas, NPS y comentario"></div><figcaption><b>Encuestas.</b> Una fila por encuesta, con la respuesta del cliente cuando ya la dio.</figcaption></figure>
+  <table class="kv">
+    <tr><td>Enviada</td><td>Fecha y canal: WhatsApp, Correo, Enlace / QR o Registro manual.</td></tr>
+    <tr><td>Estado</td><td><span class="pill teal">Respondida</span> o <span class="pill amber">Pendiente</span>. Debajo puede decir <b>Captura manual</b> (la respuesta la registró el equipo) o, en rojo, <b>Requiere atención</b>: calificación general de 3 o menos, o recomendación de 6 o menos.</td></tr>
+    <tr><td>Calificación</td><td>Estrellas de 1 a 5: Malo, Regular, Bueno, Muy bueno, Excelente.</td></tr>
+    <tr><td>NPS</td><td>Recomendación de 0 a 10: en verde los promotores (9–10), en ámbar los pasivos (7–8) y en rojo los detractores (0–6).</td></tr>
+    <tr><td>Comentario</td><td>Lo que escribió el cliente y quién respondió.</td></tr>
+  </table>
+  <p><b>Acciones de cada encuesta.</b> El botón al final de la fila (<span class="ui">Acciones</span> en el teléfono) ofrece <span class="ui">Copiar enlace</span> y, mientras la encuesta esté pendiente, <span class="ui">Compartir por WhatsApp</span>, <span class="ui">Ver QR</span> y <span class="ui">Registrar respuesta manual</span>. <span class="ui">Abrir caso postventa</span> abre el formulario de <i>Registrar un caso</i> con la orden, el canal Encuesta y el comentario del cliente ya escritos; en una encuesta que <b>requiere atención</b> esta opción aparece en rojo. Si la orden ya tiene un caso, el menú ofrece <span class="ui">Ver caso PV-…</span> en su lugar.</p>
+
+  <h3>Registrar una respuesta manual</h3>
+  <p>Cuando el cliente contesta por teléfono, por WhatsApp o en persona, registre su respuesta para que cuente igual que una encuesta contestada desde el enlace. Use <span class="ui">Registrar respuesta manual</span> en el menú de la encuesta o <span class="ui">Registrar respuesta</span> en <span class="ui">Por dar seguimiento</span>.</p>
+  <div class="duo wide">
+    <figure class="shot crop"><div class="frame"><img src="shots/14-respuesta-manual.jpg" alt="Ventana Registrar respuesta manual con calificación general de cuatro estrellas, puntualidad de tres, recomendación 8, comentario y nombre de quien respondió"></div><figcaption><b>Registrar respuesta manual.</b> Escriba el comentario con las palabras del cliente.</figcaption></figure>
+    <ol class="steps">
+      <li><b>Marque la calificación general.</b> De una a cinco estrellas. Es obligatoria.</li>
+      <li><b>Ajuste el detalle si lo preguntó.</b> Calidad de la limpieza, Puntualidad y Trato del personal. Si no preguntó un aspecto, se usa la calificación general.</li>
+      <li><b>Marque la recomendación.</b> De 0 (nada probable) a 10 (muy probable). Es obligatoria.</li>
+      <li><b>Escriba el comentario.</b> Opcional.</li>
+      <li><b>Revise quién respondió.</b> Se propone el contacto de la orden; corríjalo si fue otra persona.</li>
+      <li><b>Pulse Guardar respuesta.</b> La encuesta queda <span class="pill teal">Respondida</span> con la marca <b>Captura manual</b>.</li>
+    </ol>
+  </div>
+  <div class="note tip"><b class="note-t">Consejo</b><p>Si la calificación es baja, la app le pregunta «Calificación baja: ¿abrir un caso?» y ofrece <span class="ui">Abrir caso</span>. Hágalo en ese momento: así la inconformidad tiene responsable y fecha compromiso desde el primer día.</p></div>
+
+  <h2 class="section">Cerrar el ciclo de la orden</h2>
+  <p>Cuando ya no queda nada pendiente con el cliente, la orden se <b>archiva</b> desde su detalle, no desde Postventa: pulse el botón <span class="ui">···</span> (Más acciones) y elija <span class="ui">Archivar</span> («Cerrar el ciclo postventa»). El supervisor archiva sus órdenes y Administración las de su unidad. Solo se archivan órdenes en <span class="pill teal">Reporte enviado</span> o <span class="pill violet">Seguimiento postventa</span> y sin casos abiertos («Hay casos postventa abiertos: resuélvalos antes de archivar»). La ventana resume el reporte vigente, las encuestas respondidas y los casos, y propone el motivo «Ciclo postventa completo».</p>
+  <p>La orden archivada se conserva con su reporte, su evidencia y su bitácora; si después llega una queja, al registrar el caso vuelve a <span class="pill violet">Seguimiento postventa</span>. Más detalles en el capítulo <i>Órdenes</i>.</p>
+</section>

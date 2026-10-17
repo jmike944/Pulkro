@@ -1,0 +1,11 @@
+{
+  "title": "Pulkro Cuadrillas · Procedimientos operativos estándar (SOP Nivel 2)",
+  "label": "Pulkro Cuadrillas · SOP Nivel 2 · Procedimientos",
+  "pdf": "../Pulkro_Cuadrillas_SOP_L2_Procedimientos.pdf",
+  "html": "build/document.html",
+  "subject": "Procedimientos operativos estándar de Pulkro Cuadrillas: quién hace qué, cuándo y con qué registro, de la orden autorizada a la postventa",
+  "keywords": "Pulkro, SOP, procedimientos, cuadrillas, órdenes, jornadas, cierre, reporte, postventa, RACI",
+  "chapterLabel": "Procedimiento",
+  "dividers": false,
+  "tocSections": false
+}

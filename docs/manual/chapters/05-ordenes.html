@@ -1,0 +1,215 @@
+<section class="chapter" id="cap-ordenes">
+  <header class="opener">
+    <div class="num">Operación</div>
+    <h1>Órdenes</h1>
+    <p class="desc">Todas las órdenes de servicio de su alcance en <b>una sola lista</b>, con filtros rápidos por etapa, y el <b>detalle de cada orden</b>: su línea de tiempo, jornadas, evidencia, incidencias y actividad.</p>
+    <div class="glass">
+      <div><div class="eyebrow">En este capítulo</div><ul><li>Qué órdenes ve cada rol</li><li>La lista de órdenes</li><li>Pestañas, búsqueda y filtros</li><li>Cómo leer cada fila</li><li>Exportar a Excel</li><li>El detalle de una orden</li><li>Las pestañas de la orden</li><li>Acciones sobre la orden</li></ul></div>
+      <div class="who"><div class="eyebrow">Disponible para</div><span class="roles"><span class="role sup">Supervisor</span><span class="role adm">Administración</span><span class="role dir">Dirección</span></span></div>
+    </div>
+  </header>
+
+  <p class="lead">Una orden de servicio es el trabajo que el cliente ya autorizó en el sistema comercial. Cada orden reúne todo lo que pasa con ese trabajo: quién lo supervisa, qué días se hace y con qué cuadrilla, las fotos ANTES y DESPUÉS, las incidencias, el cierre y el reporte al cliente.</p>
+  <p>Abra la lista desde <span class="path">Operación <span class="sep">›</span> Órdenes</span> en el menú lateral o, en el teléfono, con la pestaña <span class="ui">Órdenes</span> de la barra inferior. El número junto a <span class="ui">Órdenes</span> en el menú es el de órdenes abiertas en su alcance.</p>
+
+  <h2 class="section">Qué órdenes ve cada rol</h2>
+  <p>La lista, los contadores y las búsquedas solo incluyen las órdenes de su alcance:</p>
+  <table>
+    <thead><tr><th>Rol</th><th>Órdenes que ve</th><th>En la lista además…</th></tr></thead>
+    <tbody>
+      <tr><td><span class="role sup">Supervisor</span></td><td>Solo las que tiene asignadas.</td><td>No exporta a Excel ni crea órdenes.</td></tr>
+      <tr><td><span class="role adm">Administración</span></td><td>Todas las de su unidad.</td><td>Filtro por supervisor, <span class="ui">Exportar</span> y <span class="ui primary">Nueva orden</span>.</td></tr>
+      <tr><td><span class="role dir">Dirección</span></td><td>Todas las unidades, o la unidad elegida en el selector del menú lateral.</td><td>Filtros por supervisor y unidad, y <span class="ui">Exportar</span>. Solo consulta.</td></tr>
+    </tbody>
+  </table>
+  <div class="note rule"><b class="note-t">Regla de negocio</b><p>Si abre el enlace de una orden que no existe o que no está en su alcance, la app muestra <b>No encontrado o fuera de su alcance</b> sin decir cuál de los dos casos es. Así un enlace reenviado no revela información de otra unidad o de otro supervisor.</p></div>
+
+  <h2 class="section">La lista de órdenes</h2>
+  <p>Arriba, una frase resume su alcance («23 abiertas, 1 en ejecución hoy y 1 lista para cierre»); debajo hay cuatro contadores por etapa, las pestañas, la búsqueda, los filtros y la lista.</p>
+  <figure class="shot"><div class="frame"><img src="shots/05-lista.jpg" alt="Lista de órdenes de Administración con los contadores por etapa, las pestañas, los filtros y las primeras filas"><span class="mark" style="left:19.9%;top:19.7%">1</span><span class="mark" style="left:75.7%;top:14.9%">2</span><span class="mark" style="left:19.9%;top:29.1%">3</span><span class="mark" style="left:19.9%;top:44.2%">4</span><span class="mark" style="left:19.9%;top:51.0%">5</span><span class="mark" style="left:79.0%;top:51.0%">6</span><span class="mark" style="left:19.9%;top:63.1%">7</span><span class="mark" style="left:88.8%;top:63.1%">8</span></div><figcaption><b>Lista de órdenes (Administración).</b> El supervisor ve la misma pantalla sin <span class="ui">Exportar</span>, <span class="ui primary">Nueva orden</span> ni el filtro de supervisor.</figcaption></figure>
+  <ol class="legend">
+    <li><b>Resumen.</b> Abiertas, en ejecución hoy y listas para cierre; Administración y Dirección ven antes el nombre de la unidad.</li>
+    <li><b>Exportar y Nueva orden.</b> Según su rol (vea <i>Exportar a Excel</i> y el capítulo <i>Nueva orden</i>).</li>
+    <li><b>Contadores por etapa.</b> Cada uno es un filtro rápido: púlselo para ver solo esa etapa.</li>
+    <li><b>Pestañas.</b> Agrupan las órdenes por situación; el número es cuántas hay.</li>
+    <li><b>Búsqueda y filtros.</b> Por folio, título, cliente o dirección; por supervisor, servicio, cliente o unidad.</li>
+    <li><b>Prioridad alta y total.</b> Solo las urgentes; a la derecha, cuántas órdenes quedan.</li>
+    <li><b>Una fila por orden.</b> Fecha, título, folio, cliente, supervisor, cuadrilla, estado y avance.</li>
+    <li><b>Siguiente paso.</b> El botón lleva directo a lo que toca hacer con esa orden.</li>
+  </ol>
+
+  <h2 class="section" data-toc="Pestañas y contadores">Pestañas y contadores por etapa</h2>
+  <p>Al entrar, la lista abre en <span class="ui">Abiertas</span>. Cada pestaña ordena sus órdenes como más sirve para esa situación:</p>
+  <table>
+    <thead><tr><th>Pestaña</th><th>Qué incluye</th><th>Orden</th></tr></thead>
+    <tbody>
+      <tr><td>Abiertas</td><td>Lo que no ha terminado: <span class="pill slate">Borrador</span> <span class="pill blue">Programada</span> <span class="pill blue">En ejecución</span> <span class="pill sky">Jornada cerrada</span> <span class="pill amber">Pendiente de validación</span> <span class="pill red">Con incidencia</span> <span class="pill amber">Reprogramada</span> <span class="pill violet">Reabierta</span></td><td>Primero las que tienen cuadrilla en campo; luego por fecha de inicio.</td></tr>
+      <tr><td>Hoy</td><td>Con una jornada programada para hoy o en curso.</td><td>En campo primero; luego por hora.</td></tr>
+      <tr><td>Por validar</td><td><span class="pill amber">Pendiente de validación</span> o <span class="pill violet">Reabierta</span>: falta validar el cierre.</td><td>Por fecha de término.</td></tr>
+      <tr><td>Con incidencia</td><td><span class="pill red">Con incidencia</span> o con alguna incidencia abierta.</td><td>Por fecha de término.</td></tr>
+      <tr><td>Terminadas</td><td><span class="pill navy">Finalizada</span> <span class="pill teal">Reporte enviado</span> <span class="pill violet">Seguimiento postventa</span> <span class="pill slate">Archivada</span></td><td>El cierre más reciente primero.</td></tr>
+      <tr><td>Todas</td><td>Todas, incluidas las canceladas.</td><td>La más reciente primero.</td></tr>
+    </tbody>
+  </table>
+  <p>Los contadores <b>Programadas</b>, <b>En ejecución</b>, <b>Por validar</b> y <b>Con incidencia</b> llevan debajo una pista: cuántas inician hoy, cuántas tienen cuadrilla en campo, cuántas están listas para cierre o cuántas tienen una incidencia que bloquea el cierre. Pulse un contador para ver solo esa etapa (aparece la etiqueta <b>Filtro</b>) y púlselo otra vez para quitarlo. Funcionan sobre <span class="ui">Abiertas</span>, <span class="ui">Hoy</span> y <span class="ui">Todas</span>; desde otra pestaña, la lista vuelve a <span class="ui">Abiertas</span>.</p>
+
+  <h2 class="section">Buscar y filtrar</h2>
+  <p>Escriba en <span class="ui">Folio, título, cliente o dirección</span>: la búsqueda también encuentra la referencia comercial, el sitio, el municipio y el supervisor, sin importar acentos ni mayúsculas (con varias palabras, la orden debe contenerlas todas). Los filtros son <span class="ui">Supervisor</span> (Administración y Dirección), <span class="ui">Servicio</span>, <span class="ui">Cliente</span> y <span class="ui">Unidad</span> (Dirección); elija <b>Todos</b> para quitar uno. <span class="ui">Prioridad alta</span> deja solo las urgentes y <span class="ui">Limpiar</span> quita la búsqueda y todos los filtros. La lista carga 30 órdenes a la vez; al final, <span class="ui">Mostrar más</span> trae las siguientes.</p>
+
+  <h2 class="section">Cómo leer cada fila</h2>
+  <figure class="shot crop"><div class="frame"><img src="shots/05-filas.jpg" alt="Cinco filas de la lista con estados En ejecución, Pendiente de validación y Programada, y botones Continuar, Cerrar, Solicitar, Entrada y Ver"></div><figcaption><b>Órdenes abiertas de un supervisor.</b> El botón de la derecha cambia según lo que toca hacer: continuar la jornada, cerrar, completar evidencia, registrar entrada o solo ver.</figcaption></figure>
+  <table class="kv">
+    <tbody>
+      <tr><td>Fecha</td><td>Inicio programado: en azul si la orden trabaja hoy, en rojo si ya debió iniciar y no ha iniciado.</td></tr>
+      <tr><td>Orden</td><td>Título (con <b>Alta</b> si es urgente) y folio · cliente · municipio. Pulse la fila para abrir el detalle.</td></tr>
+      <tr><td>Supervisor</td><td>Responsable y la cuadrilla actual, o <b>Sin cuadrilla</b> en ámbar.</td></tr>
+      <tr><td>Estado</td><td>Etiqueta de estado y la pista del siguiente paso: <b>Lista para cierre</b>, <b>Falta foto DESPUÉS</b>, <b>Registrar entrada</b>…</td></tr>
+      <tr><td>Jornadas</td><td>Cerradas de total (<b>1/3</b>) y una barra por jornada: azul oscuro cerrada, azul claro en curso, gris pendiente.</td></tr>
+      <tr><td>Evidencia</td><td>Fotos <b>ANTES</b> y <b>DESPUÉS</b>; una etiqueta ámbar con <b>!</b> indica que falta una foto obligatoria.</td></tr>
+      <tr><td>Horas</td><td>Horas reales (salida menos entrada); un punto azul indica que incluyen la jornada en curso.</td></tr>
+    </tbody>
+  </table>
+  <p>El botón de la derecha es el <b>siguiente paso</b> y abre directamente donde se hace: <span class="ui">Asignar</span> (orden sin cuadrilla), <span class="ui primary">Entrada</span> o <span class="ui primary">Continuar</span> (jornada de hoy o en curso), <span class="ui">Solicitar</span> (falta una foto ANTES o DESPUÉS), <span class="ui primary">Cerrar</span> (lista para cierre), <span class="ui">Resolver</span> (incidencia abierta), <span class="ui primary">Generar</span> o <span class="ui primary">Compartir</span> (reporte de una orden Finalizada), <span class="ui">Encuesta</span> o <span class="ui">Atender</span> (postventa), <span class="ui">Confirmar</span> (fechas de una orden Reprogramada) y <span class="ui">Ver</span> cuando no hay nada pendiente.</p>
+  <div class="note tip"><b class="note-t">Consejo</b><p>Administración y Dirección ven <span class="ui">Ver</span> en los pasos de campo, porque esos los hace el supervisor. Al pasar el cursor sobre el botón (o debajo de él, en el teléfono) la app explica quién actúa: «La entrada con GPS la registra el supervisor en sitio».</p></div>
+
+  <h2 class="section">Exportar a Excel</h2>
+  <div class="access">Disponible para <span class="roles"><span class="role adm">Administración</span><span class="role dir">Dirección</span><span class="role sup off">Supervisor</span></span></div>
+  <p><span class="ui">Exportar</span> descarga un Excel con <b>exactamente las órdenes que está viendo</b>: la pestaña, el contador elegido, la búsqueda y los filtros. Deje en pantalla lo que necesita (por ejemplo, <span class="ui">Terminadas</span> de un cliente) y pulse <span class="ui">Exportar</span>: el archivo <span class="mono">ordenes-&lt;pestaña&gt;-&lt;fecha&gt;.xlsx</span> se descarga y la app confirma con <b>Excel generado</b>.</p>
+  <p>Cada orden es una fila: folio, título, cliente, sitio y dirección, unidad, servicio, supervisor, estado y siguiente paso, prioridad, fechas programadas y de cierre, jornadas, horas reales, fotos ANTES y DESPUÉS, incidencias abiertas y referencia comercial.</p>
+
+  <h2 class="section">El detalle de una orden</h2>
+  <p>Pulse una orden en la lista (o búsquela con <span class="kbd">⌘K</span>). Arriba están el título, el estado y los datos clave; debajo, cinco pestañas. <span class="ui">Resumen</span> reúne la línea de tiempo, el detalle del servicio, las horas, la tarjeta del siguiente paso, el sitio y la cuadrilla (vea la figura siguiente).</p>
+  <p><span class="ui">Abrir jornada J2</span> aparece cuando hay una jornada en curso o programada para hoy y lleva a su pantalla (vea el capítulo <i>La jornada en campo</i>). Para Administración y Dirección dice <span class="ui">Ver jornada</span> y la abre en modo consulta.</p>
+
+  <h3>Línea de tiempo</h3>
+  <p>Cuenta la vida de la orden con registros reales: <b>Trabajo autorizado</b> (con la referencia del sistema comercial), <b>Alta manual de la orden</b> (quién la creó y en qué unidad), <b>Cuadrilla asignada</b> (o <b>Asignar cuadrilla</b> pendiente), una línea por <b>jornada</b> con su entrada, salida, precisión del GPS y duración, <b>Validación de cierre</b>, <b>Reporte al cliente</b> y <b>Seguimiento postventa</b>. El paso actual se resalta, los futuros van en gris y lo que bloquea (una incidencia abierta, una cancelación) se marca en rojo. Si la orden se reabre, aparecen <b>Orden reabierta</b> y <b>Nueva validación de cierre</b>.</p>
+
+  <figure class="shot"><div class="frame"><img src="shots/05-detalle.jpg" alt="Detalle de una orden en ejecución: título, estado, datos del cliente, pestañas, línea de tiempo y tarjeta con las horas reales y el botón Continuar jornada"><span class="mark" style="left:19.9%;top:14.0%">1</span><span class="mark" style="left:19.9%;top:19.6%">2</span><span class="mark" style="left:19.9%;top:25.2%">3</span><span class="mark" style="left:79.6%;top:14.7%">4</span><span class="mark" style="left:19.9%;top:31.8%">5</span><span class="mark" style="left:36.6%;top:39.3%">6</span><span class="mark" style="left:69.9%;top:48.0%">7</span><span class="mark" style="left:71.5%;top:76.1%">8</span></div><figcaption><b>Detalle de una orden en ejecución (Supervisor).</b> Tres jornadas: la primera cerrada, la segunda en curso y la tercera mañana.</figcaption></figure>
+  <ol class="legend">
+    <li><b>Título y estado.</b> Arriba, la ruta Operación › Órdenes › folio para volver a la lista.</li>
+    <li><b>Datos clave.</b> Cliente (abre su ficha), servicio, municipio, referencia comercial, supervisor y <b>Alta</b> si es urgente.</li>
+    <li><b>Avance en una línea.</b> Jornada en curso, horas reales contra el plan, evidencia e incidencias abiertas.</li>
+    <li><b>Abrir jornada y Más acciones.</b> Acceso directo a la jornada de hoy y el menú <span class="ui">⋯</span>.</li>
+    <li><b>Pestañas.</b> Resumen, Jornadas, Evidencia, Incidencias y Actividad, con su conteo.</li>
+    <li><b>Línea de tiempo.</b> El ciclo de la orden, del trabajo autorizado a la postventa.</li>
+    <li><b>Tarjeta del siguiente paso.</b> Horas, situación de la jornada y avance de la evidencia.</li>
+    <li><b>Botón principal.</b> Lo que toca hacer ahora; cambia con el estado de la orden.</li>
+  </ol>
+  <h3>Tarjeta del siguiente paso</h3>
+  <p>Muestra el estado, el folio, las <b>Horas reales</b> contra el plan (o las <b>Horas planeadas</b> si aún no hay entradas), la situación en una línea («Jornada 2 de 3 · hoy» con la hora de entrada, «Listo para validar», «WhatsApp hace 6 días · sin confirmación de entrega») y el avance de la <b>Evidencia</b> («3 de 4 · falta DESPUÉS J2»). Su botón principal sigue la misma lógica que el botón de la lista, con nombres completos: <span class="ui primary">Asignar cuadrilla</span>, <span class="ui primary">Registrar entrada</span>, <span class="ui primary">Continuar jornada</span>, <span class="ui primary">Completar evidencia</span>, <span class="ui primary">Validar cierre</span>, <span class="ui primary">Resolver incidencia</span>, <span class="ui primary">Generar reporte</span>, <span class="ui primary">Compartir reporte</span>, <span class="ui primary">Enviar encuesta</span>, <span class="ui primary">Confirmar fechas</span>, <span class="ui primary">Ver jornadas</span> o <span class="ui primary">Ver seguimiento</span>. Debajo, el supervisor tiene <span class="ui">Vista previa del reporte</span>. Un botón que su rol o el estado no permiten aparece apagado con un candado y la razón («Solo el supervisor autoriza el cierre»).</p>
+
+  <h3>Detalle del servicio y horas</h3>
+  <p><b>Detalle del servicio</b> lista las <b>Actividades</b> contratadas, los <b>Materiales</b> con su cantidad, las <b>Instrucciones especiales</b>, el <b>Contacto en sitio</b> con su teléfono (púlselo para llamar) y la <b>Programación</b>. <b>Horas</b> compara por jornada el plan con el tiempo real y la diferencia (en ámbar si se pasó por más de 30 minutos), y al final da el total de horas reales y el porcentaje del plan.</p>
+
+  <h3>Sitio y cuadrilla</h3>
+  <p>Debajo de la tarjeta, <b>Sitio</b> muestra cliente, sitio, dirección, municipio, contacto y teléfono del contacto en sitio (púlselo para llamar). El mapa marca el sitio y la entrada y salida de la jornada en curso o de la última registrada; una línea dice a qué distancia del sitio se registró la entrada y con qué precisión («Entrada J2 a 22 m del sitio · ±11 m»), o que fue por supervisión remota. <span class="ui">Abrir en Maps</span> abre la ubicación en la app de mapas para trazar la ruta.</p>
+  <div class="duo">
+    <figure class="shot crop"><div class="frame"><img src="shots/05-detalle-cuadrilla.jpg" alt="Panel Cuadrilla con cuatro personas, su especialidad y botón para llamar, el botón Cambiar cuadrilla y el historial de reasignaciones"></div><figcaption><b>Cuadrilla e historial.</b> Columna derecha del Resumen.</figcaption></figure>
+    <div>
+      <h4>Cuadrilla</h4>
+      <p>Las personas asignadas, con su especialidad y un botón para llamarles. El supervisor la modifica con <span class="ui">Cambiar cuadrilla</span>.</p>
+      <h4>Historial de reasignaciones</h4>
+      <p>Cada cambio de personal: quién lo hizo, en qué jornada, a quién agregó (en verde) o quitó (en rojo), el motivo y la fecha. Así se sabe quién trabajó cada día aunque la cuadrilla cambie.</p>
+    </div>
+  </div>
+
+  <h2 class="section">Las pestañas de la orden</h2>
+  <h3>Jornadas</h3>
+  <p>Una orden de varios días tiene <b>una jornada por día</b>, cada una con su propia entrada, salida, fotos y bitácora; el cierre y el reporte siguen siendo uno solo. El encabezado resume cuántas están cerradas y las horas del plan y reales, y ofrece <span class="ui">Reprogramar</span> y <span class="ui primary">Agregar jornada</span> (solo el supervisor).</p>
+  <figure class="shot crop w70"><div class="frame"><img src="shots/05-jornadas.jpg" alt="Tarjeta de la Jornada 1 cerrada con su entrada y salida, horas del dispositivo y del servidor, GPS, evidencia y bitácora"></div><figcaption><b>Una jornada cerrada.</b> La entrada se registró sin conexión y se sincronizó después; la salida fue 28 minutos más tarde que el plan.</figcaption></figure>
+  <p>Cada tarjeta muestra el horario y el plan de horas, cuántas personas, qué día es («día 1 de 3») y el estado <span class="pill slate">Pendiente</span>, <span class="pill blue">En curso</span> o <span class="pill teal">Cerrada</span>. <b>Entrada</b> y <b>Salida</b> dan la hora registrada y su diferencia con el plan, la <b>Hora del dispositivo</b>, la <b>Hora del servidor</b> (o <b>pendiente de sincronizar</b>), el <b>GPS</b> con su precisión y distancia al sitio, y quién <b>Capturó</b>; las etiquetas <b>Sin conexión</b> y <b>Remota</b> avisan cómo se registró. Debajo van la duración, las fotos e incidencias (<b>INC</b>) del día, la cuadrilla con <span class="ui">Cambiar</span> (solo esa jornada), la <b>Bitácora</b>, <span class="ui">Registrar incidencia</span> y el acceso a la jornada (<span class="ui primary">Registrar entrada</span>, <span class="ui primary">Continuar jornada</span>, <span class="ui">Abrir jornada</span> o <span class="ui">Ver jornada</span>). Una orden <span class="pill amber">Reprogramada</span> muestra arriba el aviso <b>Fechas reprogramadas</b> con <span class="ui primary">Confirmar fechas</span>.</p>
+
+  <h3>Evidencia</h3>
+  <p>Reúne las fotos de todas las jornadas. El encabezado dice cuántas categorías obligatorias están cubiertas (ANTES y DESPUÉS de cada jornada ejecutada), cuántas fotos hay y cuántas van en el reporte.</p>
+  <figure class="shot crop w70"><div class="frame"><img src="shots/05-evidencia.jpg" alt="Pestaña Evidencia: Jornada 1 completa con dos comparaciones ANTES y DESPUÉS y las miniaturas con sus interruptores En el reporte"></div><figcaption><b>Evidencia de una jornada completa.</b> Cada comparación junta la foto ANTES y DESPUÉS de la misma área.</figcaption></figure>
+  <p>Cada jornada lleva la etiqueta <b>Completa</b>, <b>Falta ANTES</b>, <b>Falta DESPUÉS</b> o <b>DESPUÉS al terminar</b> (mientras sigue en curso). En las comparaciones, arrastre la barra central para pasar del ANTES al DESPUÉS de la misma área; pulse una miniatura para verla en grande. El interruptor <b>Incluir en reporte</b> / <b>En el reporte</b> elige qué fotos irán al reporte del cliente (solo el supervisor). Un recuadro punteado marca la foto que falta: el supervisor lo pulsa para ir a capturarla y los demás roles ven quién la captura. Las fotos de incidencias van aparte, al final. El supervisor tiene además <span class="ui">Ver en Evidencias</span> (vea el capítulo <i>Evidencias</i>).</p>
+
+  <h3>Incidencias</h3>
+  <p>Lista las incidencias de la orden, primero las abiertas: tipo (Daños, Faltante de material, Retraso / ausencia…), folio, <span class="pill red">Abierta</span> o <span class="pill teal">Resuelta</span>, severidad, si <b>Impide el cierre</b>, descripción, fotos, y quién la registró, cuándo y en qué jornada. Las resueltas muestran la resolución con su autor. El supervisor registra con <span class="ui primary">Registrar incidencia</span> y resuelve con <span class="ui">Resolver</span>: escribe <b>¿Cómo se resolvió?</b> (al menos 6 caracteres) y pulsa <span class="ui primary">Guardar resolución</span>. Vea el capítulo <i>Incidencias</i>.</p>
+
+  <h3>Actividad</h3>
+  <p>Es la bitácora de la orden: <b>cada cambio queda registrado con usuario, fecha y motivo</b>. Los movimientos se agrupan por día (Hoy, Ayer, fecha) y se filtran con <span class="ui">Todo</span>, <span class="ui">Orden</span>, <span class="ui">Campo</span>, <span class="ui">Evidencia</span>, <span class="ui">Reporte</span> y <span class="ui">Postventa</span>. Cada uno lleva una etiqueta que dice si ya llegó al servidor: <b>Sincronizado</b>, <b>Sincronizando</b>, <b>Pendiente</b> o <b>Error</b>; si hay movimientos sin enviar, el encabezado lo indica («2 sin sincronizar»). Vea el capítulo <i>Trabajo sin conexión y sincronización</i>.</p>
+
+  <h2 class="section">Acciones sobre la orden</h2>
+  <p>Además del botón principal de la tarjeta, las acciones están en el menú <span class="ui">⋯</span> (Más acciones), arriba a la derecha. Las que no aplican aparecen apagadas con la razón debajo.</p>
+  <div class="duo">
+    <figure class="shot crop"><div class="frame"><img src="shots/05-menu.jpg" alt="Menú Más acciones del supervisor: Archivar apagado, Editar datos, Reprogramar, Ver reporte y Cancelar orden apagado"></div><figcaption><b>Más acciones (Supervisor).</b> En una orden en ejecución.</figcaption></figure>
+    <div>
+      <table class="matrix">
+        <thead><tr><th>Acción</th><th>Sup.</th><th>Adm.</th><th>Dir.</th></tr></thead>
+        <tbody>
+          <tr><td>Editar todos los datos</td><td class="no">—</td><td class="yes">✓</td><td class="no">—</td></tr>
+          <tr><td>Editar datos operativos</td><td class="yes">✓</td><td class="yes">✓</td><td class="no">—</td></tr>
+          <tr><td>Reprogramar, agregar jornada, confirmar fechas</td><td class="yes">✓</td><td class="no">—</td><td class="no">—</td></tr>
+          <tr><td>Asignar o cambiar la cuadrilla</td><td class="yes">✓</td><td class="no">—</td><td class="no">—</td></tr>
+          <tr><td>Incidencias y fotos del reporte</td><td class="yes">✓</td><td class="no">—</td><td class="no">—</td></tr>
+          <tr><td>Validar el cierre y reabrir</td><td class="yes">✓</td><td class="no">—</td><td class="no">—</td></tr>
+          <tr><td>Generar y compartir el reporte</td><td class="yes">✓</td><td class="no">—</td><td class="no">—</td></tr>
+          <tr><td>Descargar el PDF</td><td class="yes">✓<span class="cell-note">en el reporte</span></td><td class="yes">✓</td><td class="yes">✓</td></tr>
+          <tr><td>Archivar</td><td class="yes">✓</td><td class="yes">✓</td><td class="no">—</td></tr>
+          <tr><td>Cancelar</td><td class="no">—</td><td class="yes">✓</td><td class="no">—</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+  <div class="note warn"><b class="note-t">Importante</b><p>Todo cambio pide un <b>motivo</b> (al menos 5 caracteres; puede elegir una sugerencia y completarla) y queda en la pestaña Actividad con su autor y fecha. Si cierra un diálogo con datos escritos, la app pregunta <b>¿Descartar cambios?</b> antes de perderlos.</p></div>
+
+  <h3>Editar datos</h3>
+  <p><span class="ui">⋯</span> › <span class="ui">Editar datos</span> abre <b>Editar datos de la orden</b>. <b>Administración</b> edita todo: <b>Título</b>, <b>Tipo de servicio</b>, <b>Sitio</b>, <b>Supervisor</b> (de su unidad), <b>Referencia comercial</b> y <b>Prioridad</b>, además de los datos operativos. <b>El supervisor</b> edita solo los datos operativos: <b>Contacto en sitio</b>, <b>Instrucciones especiales</b>, <b>Actividades</b> y <b>Materiales</b>; el diálogo le recuerda que el resto lo modifica Administración. Haga los cambios (abajo, la app lista lo que cambió), escriba el <b>Motivo del cambio</b> y pulse <span class="ui primary">Guardar cambios</span>. Una orden cerrada o cancelada ya no se edita: hay que reabrirla.</p>
+
+  <h3>Reprogramar y agregar jornadas</h3>
+  <div class="duo wide right">
+    <div>
+      <div class="access">Disponible para <span class="roles"><span class="role sup">Supervisor</span></span></div>
+      <p><span class="ui">⋯</span> › <span class="ui">Reprogramar</span> (o el botón de la pestaña Jornadas) abre <b>Reprogramar jornadas</b>. Las jornadas ejecutadas aparecen con candado y <b>se conservan</b>; solo cambian las pendientes.</p>
+      <ol class="steps">
+        <li><b>Ajuste las fechas.</b> Cambie <b>Fecha</b>, <b>Inicio</b> y <b>Término</b>, quite un día o pulse <span class="ui">Agregar otro día</span>.</li>
+        <li><b>Indique el motivo.</b> Elija una sugerencia o escriba el suyo.</li>
+        <li><b>Marque como Reprogramada si hace falta.</b> En una orden Programada o con jornada cerrada, la casilla <b>Marcar como Reprogramada</b> la deja <span class="pill amber">Reprogramada</span> hasta que el cliente confirme.</li>
+        <li><b>Pulse Guardar fechas.</b></li>
+      </ol>
+      <p>Cuando el cliente acepte, pulse <span class="ui primary">Confirmar fechas</span> (tarjeta del Resumen o pestaña Jornadas): la orden vuelve a <span class="pill blue">Programada</span> o a su estado de ejecución. <span class="ui primary">Agregar jornada</span> usa el mismo diálogo para sumar un día.</p>
+    </div>
+    <figure class="shot crop"><div class="frame"><img src="shots/05-reprogramar.jpg" alt="Diálogo Reprogramar jornadas con las jornadas 1 y 2 conservadas, la jornada 3 editable y los motivos sugeridos"></div><figcaption><b>Reprogramar jornadas.</b> Solo la jornada 3, pendiente, se puede mover.</figcaption></figure>
+  </div>
+
+  <h3>Cambiar la cuadrilla</h3>
+  <p><span class="ui">Cambiar cuadrilla</span> (columna derecha del Resumen) cambia al personal de todas las jornadas pendientes, o de la jornada en curso si no hay pendientes; <span class="ui">Cambiar</span>, en la tarjeta de una jornada, solo ese día. La lista marca a quien ya tiene otra jornada esa fecha. Elija, escriba el motivo y pulse <span class="ui primary">Guardar cuadrilla</span>; el cambio queda en el historial de reasignaciones. Vea el capítulo <i>Agenda y asignación</i>.</p>
+
+  <h3>Validar el cierre</h3>
+  <p>Cuando todas las jornadas tienen salida, la orden pasa a <span class="pill amber">Pendiente de validación</span>. Con la evidencia completa, el botón de la tarjeta es <span class="ui primary">Validar cierre</span> (en la lista, <span class="ui primary">Cerrar</span>); si falta una foto, es <span class="ui primary">Completar evidencia</span> con la opción <span class="ui">Validar con excepción autorizada</span>. Solo el supervisor valida. El proceso completo está en el capítulo <i>Cierre y validación</i>, y el reporte al cliente en <i>Reportes y envío al cliente</i>.</p>
+
+  <h3>Reabrir una orden cerrada</h3>
+  <div class="duo wide">
+    <figure class="shot crop"><div class="frame"><img src="shots/05-reabrir.jpg" alt="Diálogo Reabrir OS-24385 con el cierre validado, reporte vigente v1, un envío registrado y el motivo elegido"></div><figcaption><b>Reabrir.</b> La siguiente versión del reporte será la v2.</figcaption></figure>
+    <div>
+      <div class="access">Disponible para <span class="roles"><span class="role sup">Supervisor</span></span></div>
+      <p>Para corregir algo después del cierre (datos del reporte, una queja que pide repasar áreas, fotos adicionales), el supervisor usa <span class="ui">⋯</span> › <span class="ui">Reabrir</span> en una orden <span class="pill navy">Finalizada</span>, <span class="pill teal">Reporte enviado</span> o <span class="pill violet">Seguimiento postventa</span>.</p>
+      <ol class="steps">
+        <li><b>Revise el resumen.</b> Cierre validado, reporte vigente y envíos registrados.</li>
+        <li><b>Escriba el motivo</b> y marque la casilla de confirmación.</li>
+        <li><b>Pulse Reabrir orden.</b> La orden queda <span class="pill violet">Reabierta</span>.</li>
+      </ol>
+      <div class="note rule"><b class="note-t">Regla de negocio</b><p>Al reabrir, <b>el cierre anterior deja de valer</b>: hay que validarlo otra vez y entonces se genera una <b>nueva versión del reporte</b>. Las versiones anteriores y sus envíos se conservan.</p></div>
+    </div>
+  </div>
+
+  <h3>Archivar y cancelar</h3>
+  <p><b>Archivar</b> cierra el ciclo con el cliente: <span class="ui">⋯</span> › <span class="ui">Archivar</span> deja la orden <span class="pill slate">Archivada</span>, fuera de las abiertas y conservada con su reporte, evidencia y bitácora. Se archiva una orden <span class="pill teal">Reporte enviado</span> o <span class="pill violet">Seguimiento postventa</span> sin casos postventa abiertos; el diálogo propone el motivo <b>Ciclo postventa completo</b> y pide marcar la casilla antes de <span class="ui primary">Archivar orden</span>. Archivan Administración y el supervisor de la orden.</p>
+  <p><b>Cancelar</b> es solo de Administración y solo para órdenes abiertas: <span class="ui">⋯</span> › <span class="ui">Cancelar orden</span>. El diálogo muestra cuántas jornadas están pendientes o ya se ejecutaron; elija el motivo (<span class="ui">El cliente canceló el servicio</span>, <span class="ui">Orden duplicada</span>, <span class="ui">Fuera del alcance autorizado</span>), marque la casilla y pulse <span class="ui">Cancelar orden</span> (o <span class="ui">Volver</span>). Las jornadas pendientes no se ejecutarán; lo ya capturado se conserva y el motivo aparece en la línea de tiempo.</p>
+
+  <h3>Reporte, PDF y contacto</h3>
+  <p>El supervisor abre el reporte con <span class="ui">⋯</span> › <span class="ui">Ver reporte</span> o <span class="ui">Vista previa del reporte</span>, y desde ahí lo genera, descarga y envía por WhatsApp o correo (vea <i>Reportes y envío al cliente</i>). Administración y Dirección descargan el PDF con <span class="ui">⋯</span> › <span class="ui">Descargar PDF · v1</span> (la versión vigente); mientras no haya reporte generado, la opción aparece apagada con la razón.</p>
+  <p>Los teléfonos de la orden se pulsan para llamar: el del contacto en sitio y el de cada persona de la cuadrilla. <span class="ui">Abrir en Maps</span> abre la ubicación del sitio y el nombre del cliente lleva a su ficha (vea el capítulo <i>Clientes</i>).</p>
+
+  <h2 class="section" data-toc="Lo que ven Administración y Dirección">Lo que ven Administración y Dirección</h2>
+  <p>Abren el mismo detalle, pero <b>consultan</b> el trabajo de campo: los botones dicen <span class="ui">Ver jornada</span>, <span class="ui">Ver evidencia faltante</span> o <span class="ui">Ver incidencia</span>, y <span class="ui">Cambiar cuadrilla</span>, <span class="ui">Registrar incidencia</span>, los interruptores de fotos y <span class="ui">Validar cierre</span> aparecen apagados con la razón. En el menú <span class="ui">⋯</span>, <span class="ui">Descargar PDF · v1</span> ocupa el lugar de <span class="ui">Ver reporte</span>. Administración además edita todos los datos, archiva y cancela; Dirección solo consulta y descarga el PDF.</p>
+
+  <h2 class="section">Órdenes en el teléfono</h2>
+  <p>Cada orden es una tarjeta con lo mismo que la fila y un botón grande con el siguiente paso. Los filtros se eligen en la hoja de <span class="ui">Filtros</span> y quedan como etiquetas que se tocan para quitarlos. En el detalle, la tarjeta del sitio ofrece <span class="ui">Cómo llegar</span> y <span class="ui">Llamar</span>, y la flecha junto a <b>Órdenes</b> regresa a la lista.</p>
+  <div class="phones three">
+    <figure class="shot phone"><div class="frame"><img src="shots/05-lista-telefono.jpg" alt="Lista de órdenes en el teléfono con búsqueda, botón Filtros y la tarjeta de una orden en ejecución"></div><figcaption><b>Lista.</b> Cada orden es una tarjeta.</figcaption></figure>
+    <figure class="shot phone"><div class="frame"><img src="shots/05-filtros-telefono.jpg" alt="Hoja de filtros en el teléfono con Servicio y Cliente: Bonafont, y botones Quitar filtros y Ver 4 órdenes"></div><figcaption><b>Filtros.</b> Combine y pulse <span class="ui primary">Ver 4 órdenes</span>.</figcaption></figure>
+    <figure class="shot phone"><div class="frame"><img src="shots/05-detalle-telefono-2.jpg" alt="Detalle en el teléfono: tarjeta del sitio con Cómo llegar y Llamar, la cuadrilla y el inicio de la línea de tiempo"></div><figcaption><b>Detalle.</b> El sitio, a un toque.</figcaption></figure>
+  </div>
+</section>

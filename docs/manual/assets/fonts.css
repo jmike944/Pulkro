@@ -1,0 +1,15 @@
+/* The app's fonts (next/font: Geist, Geist Mono, Newsreader, Montserrat), latin subset, as static instances:
+   variable fonts get embedded once per weight and size in the PDF; static ones are subset once. Newsreader comes in
+   two optical sizes (opsz 24 for text headings, opsz 60 "Display" for the big titles). */
+@font-face{font-family:"Geist";font-style:normal;font-weight:400;src:url(../fonts/static/Geist-400.woff2) format("woff2");}
+@font-face{font-family:"Geist";font-style:normal;font-weight:500;src:url(../fonts/static/Geist-500.woff2) format("woff2");}
+@font-face{font-family:"Geist";font-style:normal;font-weight:600;src:url(../fonts/static/Geist-600.woff2) format("woff2");}
+@font-face{font-family:"Geist";font-style:normal;font-weight:700;src:url(../fonts/static/Geist-700.woff2) format("woff2");}
+@font-face{font-family:"Geist Mono";font-style:normal;font-weight:400;src:url(../fonts/static/GeistMono-400.woff2) format("woff2");}
+@font-face{font-family:"Geist Mono";font-style:normal;font-weight:600;src:url(../fonts/static/GeistMono-600.woff2) format("woff2");}
+@font-face{font-family:"Newsreader";font-style:normal;font-weight:400;src:url(../fonts/static/Newsreader-Text.woff2) format("woff2");}
+@font-face{font-family:"Newsreader";font-style:italic;font-weight:400;src:url(../fonts/static/Newsreader-TextItalic.woff2) format("woff2");}
+@font-face{font-family:"Newsreader Display";font-style:normal;font-weight:400;src:url(../fonts/static/Newsreader-Display.woff2) format("woff2");}
+@font-face{font-family:"Newsreader Display";font-style:italic;font-weight:400;src:url(../fonts/static/Newsreader-DisplayItalic.woff2) format("woff2");}
+@font-face{font-family:"Montserrat";font-style:normal;font-weight:700;src:url(../fonts/static/Montserrat-700.woff2) format("woff2");}
+@font-face{font-family:"Montserrat";font-style:normal;font-weight:800;src:url(../fonts/static/Montserrat-800.woff2) format("woff2");}

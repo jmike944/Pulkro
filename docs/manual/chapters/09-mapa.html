@@ -1,0 +1,63 @@
+<section class="chapter" id="cap-mapa">
+  <header class="opener">
+    <div class="num">Operación</div>
+    <h1><em>Mapa</em> del día</h1>
+    <p class="desc">Todos los servicios de un día <b>en el sitio donde se hacen</b>, con su estado, junto a la lista de los mismos servicios. Útil para supervisar en persona o a distancia y para saber <b>qué falta por empezar</b>.</p>
+    <div class="glass">
+      <div><div class="eyebrow">En este capítulo</div><ul><li>La pantalla Mapa del día</li><li>Estados y filtros</li><li>El mapa y la lista</li><li>La ficha del servicio</li><li>El mapa en el teléfono</li><li>Dirección y Administración</li></ul></div>
+      <div class="who"><div class="eyebrow">Disponible para</div><span class="roles"><span class="role sup">Supervisor</span><span class="role adm">Administración</span><span class="role dir">Dirección</span></span></div>
+    </div>
+  </header>
+
+  <p class="lead">Cada rol ve su propio alcance: el supervisor, <b>sus servicios</b>; Administración, los de <b>su unidad</b>; Dirección, los de <b>todas las unidades</b> o de la unidad que elija. Se abre desde <span class="path">Operación<span class="sep">›</span>Mapa</span>; en el teléfono, desde la pestaña <span class="ui">Menú</span>.</p>
+
+  <h2 class="section">La pantalla Mapa del día</h2>
+  <p>El título indica el día (<i>Hoy, viernes 16 de octubre</i>) y debajo, su alcance y cuántos servicios hay. Una línea resume el día: cuántos servicios están en curso, cuántos terminaron, cuántos faltan por iniciar y cuántos tienen una incidencia abierta. Un <b>servicio</b> es una jornada: si una orden dura tres días, cada día aparece en el mapa de su fecha.</p>
+  <div class="note rule"><b class="note-t">Regla de negocio</b><p>Cada punto es el <b>sitio del servicio</b>. El estado y las ubicaciones salen de los registros de entrada y salida; <b>no es un rastreo en tiempo real</b> de la cuadrilla ni del supervisor.</p></div>
+  <figure class="shot"><div class="frame"><img src="shots/09-mapa.jpg" alt="Mapa del día en el escritorio"><span class="mark" style="left:82.7%;top:15%">1</span><span class="mark" style="left:20.6%;top:38.4%">2</span><span class="mark" style="left:20.6%;top:52%">3</span><span class="mark" style="left:66.3%;top:47.8%">4</span></div><figcaption><b>Mapa del día.</b> Resumen y filtros arriba; el mapa a la izquierda y la lista a la derecha. En esta captura el mapa base no pudo cargarse: la app lo indica con <i>Mapa sin conexión</i> y la lista sigue disponible.</figcaption></figure>
+  <ol class="legend">
+    <li><b>Día.</b> <span class="ui">Hoy</span> y las flechas cambian de día.</li>
+    <li><b>Estados.</b> Cuántos servicios hay en cada estado; cada recuadro también filtra.</li>
+    <li><b>Mapa.</b> Un punto por servicio, en su sitio, con el color de su estado.</li>
+    <li><b>Lista.</b> Los mismos servicios, agrupados por estado y ordenados por hora.</li>
+  </ol>
+
+  <h2 class="section">Estados y filtros</h2>
+  <p>Los recuadros de arriba cuentan los servicios del día y filtran el mapa y la lista: toque uno para ver solo esos servicios; tóquelo otra vez, o toque <span class="ui">Todos</span>, para verlos todos.</p>
+  <table>
+    <thead><tr><th>Estado</th><th>Significado</th></tr></thead>
+    <tbody>
+      <tr><td><span class="pill slate">Por iniciar</span></td><td>Aún no tiene registro de entrada. Si ya pasó su hora de inicio, la lista agrega <i>sin entrada</i> en ámbar.</td></tr>
+      <tr><td><span class="pill blue">En curso</span></td><td>Tiene entrada y aún no salida; su punto late en el mapa. El mapa de hoy incluye las jornadas que siguen en curso desde un día anterior.</td></tr>
+      <tr><td><span class="pill teal">Terminadas</span></td><td>Tiene registro de salida; la lista muestra la hora de entrada y de salida.</td></tr>
+      <tr><td><span class="pill red">Con incidencia</span></td><td>La orden tiene una incidencia abierta. Se suma a su estado: el punto lleva un signo <b>!</b> rojo y la fila dice <i>Incidencia</i>.</td></tr>
+    </tbody>
+  </table>
+
+  <h2 class="section">El mapa y la lista</h2>
+  <p>La <b>lista</b> agrupa los servicios en <b>En curso</b>, <b>Por iniciar</b> y <b>Terminadas</b>, por hora de inicio. Cada fila muestra la hora, el cliente y el sitio, el folio, el servicio, la jornada (en órdenes de varios días) y una línea de estado: <i>En curso · 4 h 54 min en sitio</i>, <i>Terminada · 08:17–17:00</i> o <i>Por iniciar · sin entrada</i>.</p>
+  <p>En el <b>mapa</b>, cada servicio es un punto en su sitio, del color de su estado (la leyenda está debajo); si dos servicios comparten sitio, sus puntos se separan un poco. En el escritorio, al pasar el ratón sobre una fila se resalta su punto, y al revés. En pantallas táctiles, el mapa se mueve con dos dedos. Sin señal, el área del mapa muestra <b>Mapa sin conexión</b>; la lista y las fichas siguen funcionando.</p>
+
+  <h2 class="section" data-toc="La ficha del servicio y el teléfono">La ficha del servicio</h2>
+  <p>Toque un servicio, en el mapa o en la lista, para abrir su ficha: en el escritorio se desliza desde la derecha y en el teléfono sube desde abajo. En el teléfono, el mapa ocupa la parte de arriba, la lista queda debajo y los estados son botones que se deslizan de lado.</p>
+  <p>La ficha contiene:</p>
+  <ul>
+    <li><b>Estado</b>, con el tiempo en sitio si está en curso, el aviso <i>Sin entrada · plan 10:30</i> si ya pasó la hora sin entrada, y cuántas incidencias abiertas tiene.</li>
+    <li><b>Sitio</b> y dirección, con <span class="ui">Abrir en Maps</span> para la ruta; <b>Folio</b> (abre la orden), servicio, supervisor, horario programado y <b>Cuadrilla</b>.</li>
+    <li><b>Entrada y salida</b>: la hora de cada registro, a qué distancia del sitio se hizo y cómo se obtuvo la ubicación: <span class="pill teal">GPS</span> con su precisión, <span class="pill amber">Manual</span> o <span class="pill violet">Remota</span>, con la justificación si la hay, y si se capturó sin conexión.</li>
+    <li><b>Fotos de la jornada</b>: cuántas ANTES y DESPUÉS hay.</li>
+    <li><b>Incidencias abiertas</b>: tipo, folio, descripción, severidad y si <i>Bloquea el cierre</i>. Toque una para abrirla.</li>
+  </ul>
+  <p>Abajo, <span class="ui">Ver orden</span> y <span class="ui primary">Abrir jornada</span> (capítulo <em>La jornada en campo</em>). Dirección y Administración ven <span class="ui primary">Ver jornada</span>: la abren en modo consulta.</p>
+
+  <div class="phones three">
+    <figure class="shot crop"><div class="frame"><img src="shots/09-hoja.jpg" style="width:1.8in" alt="Ficha de un servicio en curso con una incidencia abierta"></div><figcaption><b>Ficha en el escritorio.</b> En curso, entrada por GPS y una incidencia abierta.</figcaption></figure>
+    <figure class="shot phone"><div class="frame"><img src="shots/09-tel-mapa.jpg" alt="Mapa del día en el teléfono"></div><figcaption><b>Mapa del día en el teléfono.</b> Estados, mapa y lista.</figcaption></figure>
+    <figure class="shot phone"><div class="frame"><img src="shots/09-tel-hoja.jpg" alt="Ficha del servicio en el teléfono"></div><figcaption><b>Ficha en el teléfono.</b> Desplácela para ver todo.</figcaption></figure>
+  </div>
+
+  <h2 class="section">Dirección y Administración</h2>
+  <div class="access">Disponible para <span class="roles"><span class="role adm">Administración</span><span class="role dir">Dirección</span></span></div>
+  <p>Cuando el día tiene servicios de varios supervisores, aparece el selector <span class="ui">Supervisor: Todos</span>, con el número de servicios de cada uno. Elija a una persona para ver solo sus servicios: el mapa, los conteos y la lista se ajustan. Cada fila de la lista nombra además al supervisor del servicio. Dirección elige la unidad en el selector de unidad del menú lateral (capítulo <em>La pantalla y la navegación</em>); Administración ve siempre su unidad.</p>
+  <div class="note tip"><b class="note-t">Consejo</b><p>Para revisar a media mañana qué servicios no han empezado, toque <span class="ui">Por iniciar</span>: los que dicen <i>sin entrada</i> ya pasaron su hora de inicio.</p></div>
+</section>

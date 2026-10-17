@@ -1,0 +1,141 @@
+<section class="chapter" id="cap-reportes">
+  <header class="opener">
+    <div class="num">Seguimiento</div>
+    <h1>Reportes y <em>envío</em> al cliente</h1>
+    <p class="desc">Un <b>solo reporte PDF por servicio</b>, con todas sus jornadas, fotos ANTES y DESPUÉS, incidencias y conformidad. El supervisor lo genera y lo comparte por <b>WhatsApp o correo</b>; cada envío queda registrado, <b>sin confirmación de entrega</b>.</p>
+    <div class="glass">
+      <div><div class="eyebrow">En este capítulo</div><ul><li>El centro de reportes</li><li>El taller del reporte</li><li>Elegir las fotos</li><li>Qué contiene el reporte</li><li>Generar el PDF y sus versiones</li><li>Compartir con el cliente</li><li>Sin sincronizar, no se envía</li><li>En el teléfono</li></ul></div>
+      <div class="who"><div class="eyebrow">Disponible para</div><span class="roles"><span class="role sup">Supervisor</span><span class="role adm off">Administración</span><span class="role dir off">Dirección</span></span></div>
+    </div>
+  </header>
+
+  <p class="lead">El reporte es lo que el cliente recibe al terminar el servicio. Se habilita cuando el cierre está validado (consulte el capítulo <em>Cierre y validación</em>) y se arma con los datos que ya capturó: no hay que escribirlo desde cero.</p>
+  <p>Generar y compartir el reporte es tarea del supervisor asignado. Dirección y Administración no entran a estas pantallas: descargan el PDF desde el detalle de la orden, en el menú ⋯ con <span class="ui">Descargar PDF · v1</span> (consulte el capítulo <em>Órdenes</em>).</p>
+
+  <h2 class="section">El centro de reportes</h2>
+  <p>Abra <span class="ui">Reportes</span> en el grupo <b>Seguimiento</b> del menú. Aquí aparece cada servicio con cierre validado y en qué punto está su reporte. La frase bajo el título resume los reportes de la semana, los listos para compartir y los que faltan por generar.</p>
+  <p>Cada fila muestra la fecha del cierre, la orden, la versión vigente (<b>v1</b>, <b>v2</b>…) y el último envío, por ejemplo <i>WhatsApp · 11 oct, 13:21 · sin confirmación</i>. El ícono de descarga baja el PDF; se desactiva mientras la orden tenga registros sin sincronizar.</p>
+  <p>Al lado de la lista, <b>Canales de envío</b> reparte los intentos entre WhatsApp y correo, y <b>Cierre → envío</b> mide cuánto pasa en promedio del cierre validado al primer envío, dividido en <i>Cierre → PDF</i> y <i>PDF → primer envío</i>. Un aviso señala el reporte listo que lleva más tiempo sin enviarse, con <span class="ui">Compartir ahora</span>.</p>
+  <figure class="shot"><div class="frame"><img src="shots/13-hub.jpg" alt="Centro de reportes con el resumen semanal y la lista"><span class="mark" style="left:25%;top:61.4%">1</span><span class="mark" style="left:56.4%;top:29.3%">2</span><span class="mark" style="left:20.6%;top:80.4%">3</span><span class="mark" style="left:58.6%;top:93.1%">4</span></div><figcaption><b>Reportes.</b> Un cierre espera su reporte; 43 servicios ya tienen envío iniciado.</figcaption></figure>
+  <ol class="legend">
+    <li><b>Reportes generados.</b> Los de esta semana contra la pasada, y el reparto <b>Por generar</b>, <b>Por compartir</b> y <b>Enviados</b>. Pulse uno para filtrar la lista.</li>
+    <li><b>Últimas 6 semanas.</b> Versiones generadas por semana y envíos iniciados en total.</li>
+    <li><b>Pestañas.</b> <span class="ui">Por generar</span>, <span class="ui">Por compartir</span>, <span class="ui">Enviados</span> y <span class="ui">Todos</span>.</li>
+    <li><b>Acción de cada fila.</b> <span class="ui primary">Generar</span>, <span class="ui primary">Compartir</span>, <span class="ui">Validar cierre</span> (orden reabierta) o <span class="ui">Ver</span>.</li>
+  </ol>
+
+  <h2 class="section">El taller del reporte</h2>
+  <p>Pulse una fila del centro de reportes, <span class="ui primary">Generar reporte</span> al validar el cierre, o <span class="ui">Ver reporte</span> en el menú ⋯ de la orden. Se abre la página <b>Reporte final</b> de esa orden.</p>
+  <figure class="shot"><div class="frame"><img src="shots/13-taller.jpg" alt="Página Reporte final con la vista previa y la tarjeta del reporte"><span class="mark" style="left:20.6%;top:26.9%">1</span><span class="mark" style="left:20.6%;top:33.7%">2</span><span class="mark" style="left:20.6%;top:55%">3</span><span class="mark" style="left:71%;top:59%">4</span><span class="mark" style="left:71%;top:68.1%">5</span></div><figcaption><b>Reporte final antes de generarlo.</b> La vista previa lleva la marca BORRADOR hasta que se genera la versión.</figcaption></figure>
+  <ol class="legend">
+    <li><b>Pestañas.</b> <span class="ui">Vista previa</span> (con el número de páginas) y <span class="ui">Fotos</span> (elegidas de las disponibles).</li>
+    <li><b>Editar descripción.</b> Y el zoom: <span class="ui">Ajustar</span> o <span class="ui">100%</span>.</li>
+    <li><b>Vista previa.</b> La hoja tal como saldrá en el PDF.</li>
+    <li><b>Generar PDF v1.</b> Crea la versión con lo que ve en la vista previa.</li>
+    <li><b>Compartir con el cliente.</b> WhatsApp, correo o descarga; se habilitan al generar el PDF.</li>
+  </ol>
+  <p>Si la orden aún no tiene el cierre validado, en lugar del taller aparece <b>Antes de generar el reporte</b>: la lista de lo que falta, con <span class="ui">Resolver</span> en cada punto, y el botón <span class="ui primary">Validar cierre</span>. La hoja se ve borrosa con el aviso <i>Disponible tras el cierre</i>.</p>
+
+  <h3>Editar la descripción</h3>
+  <p>La descripción del servicio viene del cierre validado. Pulse <span class="ui">Editar descripción</span> para cambiarla: en escritorio se edita directamente sobre la hoja y se termina con <span class="ui primary">Listo</span>; en el teléfono se abre una pantalla con el texto. <span class="ui">Restaurar</span> vuelve al texto del cierre. Cambiar la descripción crea una nueva versión al generar.</p>
+
+  <h3>Elegir las fotos</h3>
+  <div class="duo wide right">
+    <div>
+      <p>En la pestaña <span class="ui">Fotos</span> están las fotos ANTES y DESPUÉS de la orden, agrupadas por área. Toque una foto para incluirla o quitarla del reporte (la marca azul indica que va incluida).</p>
+      <ul>
+        <li><span class="ui">Sugerir pares</span> elige automáticamente pares ANTES y DESPUÉS.</li>
+        <li><span class="ui">Quitar todas</span> deja la selección vacía.</li>
+        <li>Filtre con <span class="ui">Todas</span>, <span class="ui">Antes</span>, <span class="ui">Después</span> o <span class="ui">Elegidas</span>.</li>
+      </ul>
+      <p>La barra bajo el contador recomienda <b>hasta 12 fotos</b> para que el PDF sea ligero en WhatsApp. La app avisa si se pasa, o si el reporte no lleva ninguna foto DESPUÉS (el cliente no vería el resultado) o ninguna ANTES.</p>
+    </div>
+    <figure class="shot crop"><div class="frame"><img src="shots/13-fotos.jpg" alt="Pestaña Fotos con la selección de pares por área"></div><figcaption><b>Fotos del reporte.</b> Dos pares, uno por área.</figcaption></figure>
+  </div>
+  <div class="note tip"><b class="note-t">Consejo</b><p>También puede elegir fotos desde el visor, en la orden o la jornada, con el interruptor <span class="ui">Incluir en el reporte</span>.</p></div>
+
+  <h2 class="section">Qué contiene el reporte</h2>
+  <p>El PDF tiene el formato de la vista previa: hoja A4, encabezado de Pulkro, folio y versión, y un pie con la nota de confidencialidad y el número de página en cada hoja. Estas son las dos primeras páginas de un reporte generado; la última lleva la conformidad, la ubicación GPS y los datos del cierre:</p>
+  <div class="duo wide">
+    <figure class="shot crop"><div class="frame"><img src="shots/13-pdf-p1.jpg" alt="Primera página del reporte PDF"></div><figcaption><b>Página 1.</b> Datos del servicio, jornadas, descripción, actividades e incidencias.</figcaption></figure>
+    <div>
+      <table class="kv">
+        <tr><td>Encabezado</td><td>Folio de la orden, fecha de emisión y número de versión.</td></tr>
+        <tr><td>Datos del servicio</td><td>Cliente, sitio, dirección, contacto en sitio, fechas del servicio, horario programado, horas reales y supervisor.</td></tr>
+        <tr><td>Resumen de jornadas</td><td>Fecha, entrada, salida, horas y precisión del GPS de cada jornada. Marca las entradas manuales, de supervisión remota o sin conexión.</td></tr>
+        <tr><td>Descripción del servicio</td><td>El texto del cierre o el que usted editó.</td></tr>
+        <tr><td>Actividades realizadas</td><td>Las de la orden.</td></tr>
+        <tr><td>Incidencias</td><td>Folio, tipo, severidad, fecha, descripción y resolución, o <i>Abierta al momento de la emisión</i>.</td></tr>
+      </table>
+    </div>
+  </div>
+  <div class="duo right">
+    <div>
+      <table class="kv">
+        <tr><td>Evidencia fotográfica</td><td>Pares ANTES y DESPUÉS por área, cada foto con fecha, hora y coordenadas. Una foto de galería sin GPS propio se imprime sin ubicación.</td></tr>
+        <tr><td>Supervisor y cuadrilla</td><td>Nombre, puesto y teléfono del supervisor, y las personas de la cuadrilla con su especialidad.</td></tr>
+        <tr><td>Conformidad del cliente</td><td>Método, nombre, puesto, fecha, comentario y la firma. Si hubo excepción de evidencia, el motivo y quién la autorizó.</td></tr>
+        <tr><td>Ubicación GPS</td><td>Mapa esquemático y coordenadas del sitio, de cada entrada y de cada salida, con su precisión.</td></tr>
+        <tr><td>Cierre</td><td>Quién validó el cierre y cuándo; quién emitió el reporte y cuándo.</td></tr>
+      </table>
+    </div>
+    <figure class="shot crop"><div class="frame"><img src="shots/13-pdf-p2.jpg" alt="Segunda página del reporte con fotos antes y después"></div><figcaption><b>Página 2.</b> Pares ANTES y DESPUÉS, supervisor y cuadrilla.</figcaption></figure>
+  </div>
+
+  <h2 class="section">Generar el PDF y sus versiones</h2>
+  <div class="duo">
+    <figure class="shot crop"><div class="frame"><img src="shots/13-cambios.jpg" alt="Tarjeta Reporte final con cambios sin generar"></div><figcaption><b>Cambios sin generar.</b> Se creará la v2.</figcaption></figure>
+    <div>
+      <ol class="steps">
+        <li><b>Revise la vista previa y las fotos.</b></li>
+        <li><b>Pulse <span class="ui primary">Generar PDF v1</span>.</b> La tarjeta muestra el avance: <i>Fotos</i>, <i>Versión</i> y <i>PDF</i>. El PDF se arma en el propio dispositivo, aun sin conexión.</li>
+        <li><b>Listo.</b> La tarjeta dice <i>Versión v1 lista para compartir</i> y se habilitan los botones de envío.</li>
+      </ol>
+      <p>La tarjeta <b>Reporte final</b> resume la versión: estado (<span class="pill slate">Sin generar</span>, <span class="pill navy">Generado v1</span> o <span class="pill teal">Envío iniciado</span>), fotos seleccionadas, jornadas, incidencias y páginas.</p>
+      <p>Si después cambia la descripción o las fotos, la tarjeta avisa <i>Hay cambios sin generar. Se creará la v2; la v1 queda en el historial.</i> Lo mismo pasa cuando la orden se reabrió y se validó el cierre otra vez. Pulse <span class="ui primary">Generar PDF v2</span> para emitirla.</p>
+    </div>
+  </div>
+  <div class="note rule"><b class="note-t">Regla de negocio</b><p>Hay un solo reporte por servicio, pero puede tener varias versiones. Una versión generada no se modifica: cualquier cambio sale como v2, v3… y las anteriores se conservan con sus envíos.</p></div>
+
+  <h2 class="section">Compartir con el cliente</h2>
+  <p>Con la versión generada, use los botones de <b>Compartir con el cliente</b>. Debajo se ven los datos de contacto: el contacto en sitio para WhatsApp y el correo del cliente.</p>
+  <table>
+    <thead><tr><th>Botón</th><th>Qué hace</th></tr></thead>
+    <tbody>
+      <tr><td><span class="ui primary">Compartir por WhatsApp</span></td><td>En el teléfono abre la hoja de compartir con el PDF adjunto y un mensaje listo: elija WhatsApp y el chat. En una computadora descarga el PDF y abre WhatsApp con el mensaje para el contacto en sitio; adjunte el PDF en el chat.</td></tr>
+      <tr><td><span class="ui">Enviar por correo</span></td><td>Descarga el PDF y abre su aplicación de correo con un borrador para el contacto del cliente (asunto y texto incluidos). Adjunte el archivo descargado antes de enviar.</td></tr>
+      <tr><td><span class="ui">Descargar PDF</span></td><td>Guarda el archivo <b>Reporte_OS-24395_v1.pdf</b> en el dispositivo para entregarlo como prefiera. También cuenta como un intento de envío, por el canal Descarga.</td></tr>
+    </tbody>
+  </table>
+  <div class="note rule"><b class="note-t">Regla de negocio</b><p>El envío es <b>manual</b>, desde el dispositivo del supervisor. La app registra cada intento (quién, cuándo, por qué canal y a quién) con la nota <i>sin confirmación de entrega</i>; nunca marca un reporte como recibido. Confirme con el cliente que le llegó.</p></div>
+  <div class="duo right">
+    <div>
+      <p>Cada intento aparece en el <b>Historial de envíos</b>, con el canal, el destinatario, la fecha, la versión y quién lo inició. La lista <b>Versiones</b> muestra cada versión con quién la generó, cuándo y cuántas fotos y envíos tiene; la vigente lleva la etiqueta <span class="ui">Actual</span>. El botón de descarga de una versión anterior la baja sin registrar un envío.</p>
+      <p>El primer intento cambia la orden de <span class="pill navy">Finalizada</span> a <span class="pill teal">Reporte enviado</span>. Si cancela la hoja de compartir del teléfono, no se registra ningún intento.</p>
+      <p>Después del envío puede pedir la encuesta de satisfacción: consulte el capítulo <em>Postventa</em>.</p>
+    </div>
+    <figure class="shot crop"><div class="frame"><img src="shots/13-historial.jpg" alt="Versiones e historial de envíos"></div><figcaption><b>Versiones y envíos.</b> Cada intento, con su nota.</figcaption></figure>
+  </div>
+
+  <h2 class="section">Sin sincronizar, no se envía</h2>
+  <div class="duo wide">
+    <figure class="shot crop"><div class="frame"><img src="shots/13-sin-conexion.jpg" alt="Aviso Sin conexión con los botones de envío desactivados"></div><figcaption><b>Sin conexión.</b> El PDF definitivo espera a la sincronización.</figcaption></figure>
+    <div>
+      <p>Mientras la orden tenga registros que no han llegado al servidor (fotos, entradas, el cierre o la propia versión), los botones para compartir y descargar se desactivan:</p>
+      <ul>
+        <li>Con señal, verá <i>Sincronizando… el PDF definitivo se comparte al terminar</i>; se habilitan solos en cuanto termina.</li>
+        <li>Sin señal o con errores, verá <b>Sin conexión</b> o <b>Sincronización con errores</b> y el botón <span class="ui">Ver sincronización</span>.</li>
+      </ul>
+      <p>Puede generar la versión sin señal; lo que espera es el envío. Así el cliente nunca recibe un reporte con datos incompletos o con folios provisionales. Más detalles en el capítulo <em>Trabajo sin conexión y sincronización</em>.</p>
+    </div>
+  </div>
+
+  <h2 class="section">En el teléfono</h2>
+  <p>En el teléfono la tarjeta del reporte va arriba, con un resumen (fotos, pares, jornadas, incidencias y páginas) y un solo botón grande: <span class="ui primary">Generar PDF v1</span> o <span class="ui primary">Compartir reporte</span>. Al pulsarlo se abre una pantalla completa: primero el avance del PDF y luego <b>Compartir con el cliente</b>, con los canales WhatsApp, Correo y Descargar PDF. Al compartir aparece <b>Envío iniciado por WhatsApp</b> con el tiempo transcurrido desde el cierre y los botones <span class="ui primary">Enviar encuesta</span> y <span class="ui">Volver a Hoy</span>.</p>
+  <div class="phones three">
+    <figure class="shot phone"><div class="frame"><img src="shots/13-tel-taller.jpg" alt="Reporte final en el teléfono antes de generar"></div><figcaption><b>Reporte final</b> en el teléfono.</figcaption></figure>
+    <figure class="shot phone"><div class="frame"><img src="shots/13-tel-compartir.jpg" alt="Pantalla Compartir con el cliente"></div><figcaption><b>Compartir con el cliente.</b> Tres canales.</figcaption></figure>
+    <figure class="shot phone"><div class="frame"><img src="shots/13-tel-enviado.jpg" alt="Pantalla Envío iniciado por WhatsApp"></div><figcaption><b>Envío iniciado.</b> Sin confirmación de entrega.</figcaption></figure>
+  </div>
+  <div class="note phone-tip"><b class="note-t">En el teléfono</b><p>Desde el teléfono el PDF viaja adjunto en la hoja de compartir, sin pasos extra. Si su teléfono no la ofrece, use <span class="ui">Descargar PDF</span> y adjúntelo a mano.</p></div>
+</section>

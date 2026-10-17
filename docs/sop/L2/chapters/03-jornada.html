@@ -1,0 +1,154 @@
+<section class="chapter" id="pk-sop-l2-03" data-code="PK-SOP-L2-03">
+  <header class="sop-head">
+    <div class="band">
+      <div class="top"><span class="code">PK-SOP-L2-03</span><span class="lvl">Procedimiento · Nivel 2</span></div>
+      <h1>Ejecución de la jornada en campo</h1>
+      <p class="purpose">El supervisor registra en sitio, en el momento, la evidencia de cada día de trabajo: entrada y salida con hora y ubicación, cuadrilla, fotos ANTES y DESPUÉS, bitácora e incidencias.</p>
+    </div>
+    <dl class="meta">
+      <div><dt>Dueño del proceso</dt><dd><span class="role sup">Supervisor</span></dd></div>
+      <div><dt>Participan</dt><dd><span class="roles"><span class="role adm">Administración</span><span class="role dir">Dirección</span><span class="role app">La app</span></span></dd></div>
+      <div><dt>Versión</dt><dd>1.0 · borrador</dd></div>
+      <div><dt>Emisión</dt><dd>17 oct 2026</dd></div>
+      <div class="wide"><dt>Empieza cuando</dt><dd>Llega el día de una jornada <span class="pill blue">Programada</span> con su cuadrilla (<span class="mono">PK-SOP-L2-02</span>).</dd></div>
+      <div class="wide"><dt>Termina cuando</dt><dd>La jornada queda <span class="pill teal">Cerrada</span> con entrada, salida y fotos ANTES y DESPUÉS.</dd></div>
+      <div class="full"><dt>Instrucción de trabajo (Nivel 3)</dt><dd>Manual de usuario › La jornada en campo · Mapa del día › La ficha del servicio · Inicio y Pendientes › Hoy en el teléfono</dd></div>
+    </dl>
+  </header>
+
+  <h2 class="section"><span class="no">1</span>Objetivo</h2>
+  <p>Asegurar que cada jornada deje una evidencia <b>capturada en sitio y en el momento</b>, que nadie tenga que reconstruir después: a qué hora llegó y se fue la cuadrilla y cómo se obtuvo la ubicación, quién trabajó, cómo estaban las áreas antes y cómo quedaron, y qué pasó durante el trabajo.</p>
+
+  <h2 class="section"><span class="no">2</span>Alcance</h2>
+  <table class="kv">
+    <tbody>
+      <tr><td>Aplica a</td><td>Cada jornada de todas las órdenes, con supervisión presencial o remota, con o sin conexión; y su consulta por Dirección y Administración.</td></tr>
+      <tr><td>No incluye</td><td>La programación (<span class="mono">PK-SOP-L2-02</span>), la resolución de incidencias (<span class="mono">PK-SOP-L2-04</span>), las fotos faltantes (<span class="mono">PK-SOP-L2-05</span>), el cierre (<span class="mono">PK-SOP-L2-06</span>) y la sincronización (<span class="mono">PK-SOP-L2-11</span>).</td></tr>
+      <tr><td>Entradas</td><td>Jornada <span class="pill blue">Programada</span> con horario y cuadrilla; sitio, contacto, actividades y materiales de la orden.</td></tr>
+      <tr><td>Salidas</td><td>Jornada <span class="pill teal">Cerrada</span>; orden en <span class="pill sky">Jornada cerrada</span> o <span class="pill amber">Pendiente de validación</span>.</td></tr>
+    </tbody>
+  </table>
+
+  <h2 class="section"><span class="no">3</span>Responsabilidades</h2>
+  <table class="raci">
+    <thead><tr><th>Actividad</th><th>Supervisor</th><th>Administración</th><th>Dirección</th></tr></thead>
+    <tbody>
+      <tr><td>Registrar la entrada y la salida con hora y ubicación</td><td><span class="ra a">A</span></td><td><span class="ra i">I</span></td><td><span class="ra i">I</span></td></tr>
+      <tr><td>Justificar una ubicación manual o la supervisión remota</td><td><span class="ra a">A</span></td><td><span class="ra i">I</span></td><td><span class="ra i">I</span></td></tr>
+      <tr><td>Confirmar o cambiar la cuadrilla del día</td><td><span class="ra a">A</span></td><td><span class="ra i">I</span></td><td><span class="ra i">I</span></td></tr>
+      <tr><td>Tomar las fotos ANTES y DESPUÉS</td><td><span class="ra a">A</span></td><td><span class="ra i">I</span></td><td><span class="ra i">I</span></td></tr>
+      <tr><td>Registrar notas de bitácora e incidencias</td><td><span class="ra a">A</span></td><td><span class="ra i">I</span></td><td><span class="ra i">I</span></td></tr>
+      <tr><td>Registrar el desglose de horas (opcional)</td><td><span class="ra a">A</span></td><td><span class="ra i">I</span></td><td><span class="ra i">I</span></td></tr>
+      <tr><td>Dar seguimiento al día en modo consulta</td><td></td><td><span class="ra r">R</span></td><td><span class="ra r">R</span></td></tr>
+    </tbody>
+  </table>
+  <div class="raci-legend"><span><span class="ra r">R</span>Responsable</span><span><span class="ra a">A</span>Aprueba y responde por el resultado</span><span><span class="ra c">C</span>Consultado</span><span><span class="ra i">I</span>Informado</span></div>
+  <p>Solo el supervisor asignado captura; la cuadrilla no usa la app. Dirección y Administración abren la misma jornada en <b>modo consulta</b>: en lugar de los botones de captura ven líneas como <i>La salida la registra el supervisor al terminar</i>.</p>
+
+  <h2 class="section"><span class="no">4</span>Definiciones</h2>
+  <table class="kv">
+    <tbody>
+      <tr><td>Jornada</td><td>Un día de trabajo de una orden, con su propia entrada, salida, cuadrilla, fotos y bitácora. Una orden puede tener varias; el cierre es uno solo.</td></tr>
+      <tr><td>Entrada y salida</td><td>Inicio y fin real del trabajo: hora del dispositivo, ubicación con su precisión y, al sincronizar, hora del servidor.</td></tr>
+      <tr><td>Origen de la ubicación</td><td><b>GPS</b> (con precisión en metros), <b>Manual</b> (justificada) o <b>Remota</b> (supervisión remota, con nota). Nunca se presenta como GPS lo que no lo es.</td></tr>
+      <tr><td>Supervisión remota</td><td>Entrada o salida registrada sin estar en el sitio, con nota de cómo se confirmó; guarda la ubicación del teléfono del supervisor.</td></tr>
+      <tr><td>Desglose de horas</td><td>Reparto opcional del tiempo real en sitio entre las actividades de la orden.</td></tr>
+    </tbody>
+  </table>
+
+  <h2 class="section"><span class="no">5</span>Desarrollo</h2>
+  <div class="flowstrip">
+    <div class="st sup"><small>Supervisor</small>Entrada con hora y GPS</div>
+    <div class="st sup"><small>Supervisor</small>Cuadrilla, fotos ANTES y bitácora</div>
+    <div class="st sup"><small>Supervisor</small>Salida y fotos DESPUÉS</div>
+    <div class="st dec"><small>Decisión</small>¿Última jornada?</div>
+    <div class="st end"><small>Resultado</small>Siguiente jornada o cierre</div>
+  </div>
+  <table class="proc">
+    <thead><tr><th></th><th>Responsable</th><th>Actividad</th><th>Registro en la app</th></tr></thead>
+    <tbody>
+      <tr><td class="n"><span>1</span></td><td class="who"><span class="role sup">Supervisor</span></td><td><b class="t">Abrir la jornada</b>Desde Hoy, la Agenda, el Mapa o la pestaña <span class="ui">Jornadas</span> de la orden, de preferencia antes de salir y con señal. Revisar en <b>Datos de la orden</b> dirección, contacto, actividades y materiales.<span class="l3">La jornada en campo › Abrir la jornada</span></td><td class="rec">Pendientes › Entradas de hoy.</td></tr>
+      <tr><td class="n"><span>2</span></td><td class="who"><span class="role sup">Supervisor</span><br><span class="role app">La app</span></td><td><b class="t">Registrar la entrada</b>Al llegar, <span class="ui">Registrar entrada</span>; revisar distancia al sitio y precisión (<span class="ui">Leer de nuevo</span> si no convence), marcar la confirmación y <span class="ui primary">Confirmar entrada</span>. Los avisos (otro día, jornada anterior pendiente, sin cuadrilla, orden reprogramada) no impiden continuar.<span class="l3">La jornada en campo › Registrar la entrada con hora y GPS</span></td><td class="rec">Entrada con hora y GPS ±m; orden <span class="pill blue">En ejecución</span>.</td></tr>
+      <tr><td class="n"><span class="dec"><i>?</i></span></td><td class="who"><span class="role sup">Supervisor</span></td><td><b class="t">¿La lectura requiere justificación o el supervisor no está en el sitio?</b><b>Lectura no confiable</b> (más de 300 m, sin permiso, sin señal): escribir la justificación (mínimo 8 caracteres). <b>Fuera del sitio:</b> <span class="ui">No estoy en el sitio · Supervisión remota</span> y anotar cómo se confirmó (llamada, videollamada o fotos del líder de cuadrilla). <b>No:</b> continuar.<span class="l3">La jornada en campo › Sin señal, sin permiso o lejos del sitio</span></td><td class="rec">Ubicación <b>Manual</b> o <b>Remota</b>, con su nota.</td></tr>
+      <tr><td class="n"><span>3</span></td><td class="who"><span class="role sup">Supervisor</span></td><td><b class="t">Confirmar la cuadrilla del día</b>Si llegó otra persona o faltó alguien: <span class="ui">Cambiar</span>, motivo (mínimo 5 caracteres) y <span class="ui primary">Guardar cuadrilla</span>. Vale solo para esta jornada.<span class="l3">La jornada en campo › Durante el trabajo: cuadrilla y bitácora</span></td><td class="rec">Historial de cuadrilla con motivo.</td></tr>
+      <tr><td class="n"><span>4</span></td><td class="who"><span class="role sup">Supervisor</span></td><td><b class="t">Tomar las fotos ANTES</b>Antes de empezar: al menos una, idealmente una por área, nombrando el <span class="ui">Área</span> y con <span class="ui primary">Tomar foto</span> (<span class="mono">PK-SOP-L2-05</span>).<span class="l3">La jornada en campo › Fotos ANTES</span></td><td class="rec">Fotos con hora real, origen y ubicación.</td></tr>
+      <tr><td class="n"><span>5</span></td><td class="who"><span class="role sup">Supervisor</span></td><td><b class="t">Llevar la bitácora</b>Avances, acuerdos con el cliente y pendientes, con <span class="ui">Nota</span>.</td><td class="rec">Nota con nombre y hora.</td></tr>
+      <tr><td class="n"><span class="dec"><i>?</i></span></td><td class="who"><span class="role sup">Supervisor</span></td><td><b class="t">¿Pasó algo fuera del plan?</b><b>Sí:</b> registrar la incidencia en el momento con <span class="ui">Incidencia</span> (<span class="mono">PK-SOP-L2-04</span>). <b>No:</b> continuar.<span class="l3">La jornada en campo › Incidencias durante la jornada</span></td><td class="rec">Incidencia ligada a la jornada.</td></tr>
+      <tr><td class="n"><span>6</span></td><td class="who"><span class="role sup">Supervisor</span><br><span class="role app">La app</span></td><td><b class="t">Registrar la salida</b>Al terminar la cuadrilla, <span class="ui">Registrar salida</span>, igual que la entrada; atender los avisos (faltan fotos ANTES, aún no hay DESPUÉS, incidencias abiertas) y confirmar. Una incidencia abierta no la impide. Opcional: <span class="ui">Desglose de horas</span> por actividad, con <b>Nota para administración</b> si no cuadra.<span class="l3">La jornada en campo › Registrar la salida y el desglose de horas</span></td><td class="rec">Salida y tiempo real en sitio; jornada <span class="pill teal">Cerrada</span>.</td></tr>
+      <tr><td class="n"><span>7</span></td><td class="who"><span class="role sup">Supervisor</span></td><td><b class="t">Tomar las fotos DESPUÉS</b>Mismo ángulo y mismo nombre de área que la ANTES; la app sugiere primero las áreas con <b>falta</b>.<span class="l3">La jornada en campo › Fotos DESPUÉS y comparación</span></td><td class="rec">Pareja ANTES y DESPUÉS por área.</td></tr>
+      <tr><td class="n"><span class="dec"><i>?</i></span></td><td class="who"><span class="role app">La app</span></td><td><b class="t">¿Era la última jornada de la orden?</b><b>No:</b> la orden pasa a <span class="pill sky">Jornada cerrada</span> y la tarjeta <b>Siguiente jornada</b> dice cuándo y dónde. <b>Sí:</b> pasa a <span class="pill amber">Pendiente de validación</span>; continuar con <span class="ui primary">Validar cierre</span> (<span class="mono">PK-SOP-L2-06</span>).<span class="l3">La jornada en campo › Terminar la jornada</span></td><td class="rec">Estado de la orden.</td></tr>
+    </tbody>
+  </table>
+
+  <h3>5.1 Seguimiento en modo consulta</h3>
+  <table class="proc">
+    <thead><tr><th></th><th>Responsable</th><th>Actividad</th><th>Registro en la app</th></tr></thead>
+    <tbody>
+      <tr><td class="n"><span>1</span></td><td class="who"><span class="role adm">Administración</span><br><span class="role dir">Dirección</span></td><td><b class="t">Revisar el día</b>En <b>Mapa del día</b> o en Hoy en campo; en <span class="ui">Por iniciar</span>, <i>sin entrada</i> indica que ya pasó la hora. <span class="ui primary">Ver jornada</span> la abre en modo consulta. El mapa no es un rastreo en tiempo real.<span class="l3">Mapa del día › Estados y filtros</span></td><td class="rec">—</td></tr>
+      <tr><td class="n"><span class="dec"><i>?</i></span></td><td class="who"><span class="role adm">Administración</span><br><span class="role dir">Dirección</span></td><td><b class="t">¿Hay algo que atender?</b>Sin entrada, ubicación manual o remota, incidencia abierta: avisar al supervisor, que es quien captura y corrige. Criterios y medio de aviso: <span class="tbd">Por definir</span>.<span class="l3">La jornada en campo › Modo consulta</span></td><td class="rec">—</td></tr>
+    </tbody>
+  </table>
+
+  <h2 class="section"><span class="no">6</span>Controles</h2>
+  <table>
+    <thead><tr><th style="width:36%">Control</th><th>Cómo lo asegura la app</th></tr></thead>
+    <tbody>
+      <tr><td><b>Solo el supervisor asignado captura</b></td><td>Dirección y Administración ven la jornada en modo consulta.</td></tr>
+      <tr><td><b>Entrada antes que salida</b></td><td>No hay salida sin entrada ni con una hora anterior a la entrada; la app pide revisar el reloj del teléfono.</td></tr>
+      <tr><td><b>Sin duplicados</b></td><td>Una entrada y una salida por jornada; un segundo registro se rechaza: <i>Esta jornada ya tiene registro de entrada</i>.</td></tr>
+      <tr><td><b>Una jornada abierta a la vez</b></td><td><i>Primero registre la salida de la Jornada 2: no puede haber dos jornadas abiertas</i>.</td></tr>
+      <tr><td><b>Ubicación honesta</b></td><td>A más de 300 m, sin permiso o sin señal exige justificación de al menos 8 caracteres y queda <b>Manual</b>; la remota exige nota y queda <b>Remota</b>. Una precisión mayor a 50 m se marca en ámbar.</td></tr>
+      <tr><td><b>Fotos con hora verificada</b></td><td>Se habilitan con la entrada; una ANTES tomada después de la salida o una DESPUÉS antes de la entrada queda marcada <span class="pill amber">Revisar hora</span>.</td></tr>
+      <tr><td><b>Cuadrilla con motivo</b></td><td>Cambio solo para esa jornada, con motivo e historial; cerrada la jornada, ya no cambia.</td></tr>
+      <tr><td><b>Desglose acotado</b></td><td>Máximo 24 h por jornada; se edita mientras la orden no tenga su cierre validado.</td></tr>
+      <tr><td><b>Estados automáticos</b></td><td>La entrada pone la orden <span class="pill blue">En ejecución</span> y la salida la mueve según sus jornadas; una orden <span class="pill red">Con incidencia</span> sigue así hasta resolverla.</td></tr>
+      <tr><td><b>Sin señal, hora como evidencia</b></td><td>Todo se guarda en el teléfono y se envía al volver la señal (<span class="mono">PK-SOP-L2-11</span>); la hora del servidor se sella al sincronizar y la app avisa si la del teléfono no coincide.</td></tr>
+      <tr><td><b>Orden cerrada</b></td><td>Con el cierre validado no se captura en campo; los cambios generan una nueva versión del reporte.</td></tr>
+    </tbody>
+  </table>
+
+  <h2 class="section"><span class="no">7</span>Excepciones y escalamiento</h2>
+  <table>
+    <thead><tr><th style="width:32%">Situación</th><th>Qué hacer</th><th style="width:20%">Quién decide</th></tr></thead>
+    <tbody>
+      <tr><td>Sin GPS confiable</td><td>Registrar con justificación concreta; queda visible en la jornada y en el reporte.</td><td><span class="role sup">Supervisor</span> · política <span class="tbd">Por definir</span></td></tr>
+      <tr><td>El supervisor no puede estar en el sitio</td><td>Supervisión remota con nota. Cómo se obtienen entonces las fotos: <span class="tbd">Por definir</span>; las de galería quedan marcadas.</td><td><span class="role sup">Supervisor</span> · <span class="tbd">Por definir</span></td></tr>
+      <tr><td>Jornada de otro día o una anterior pendiente</td><td>La app avisa y deja continuar; la entrada queda con la fecha de hoy. Si el plan cambió, ajustar fechas (<span class="mono">PK-SOP-L2-02</span>).</td><td><span class="role sup">Supervisor</span></td></tr>
+      <tr><td>Cuadrilla distinta o incompleta</td><td>Cambiar la cuadrilla de la jornada con motivo; si faltó personal, registrar la incidencia (<span class="mono">PK-SOP-L2-04</span>).</td><td><span class="role sup">Supervisor</span></td></tr>
+      <tr><td>La salida no se registró a tiempo</td><td>Registrarla al detectarlo; fuera del sitio, justificada o remota, anotando en la nota la hora real de término. La app no permite cambiar la hora registrada.</td><td><span class="role sup">Supervisor</span> · <span class="tbd">Por definir</span></td></tr>
+      <tr><td>Hora del teléfono incorrecta</td><td>Corregir la fecha y hora del teléfono; nunca ajustarla para acomodar un registro.</td><td><span class="role sup">Supervisor</span></td></tr>
+      <tr><td>Error en una jornada cerrada</td><td>Se corrige desde la orden; después del cierre, reabriéndola (<span class="mono">PK-SOP-L2-06</span>).</td><td><span class="role sup">Supervisor</span></td></tr>
+    </tbody>
+  </table>
+
+  <h2 class="section"><span class="no">8</span>Registros</h2>
+  <table>
+    <thead><tr><th style="width:32%">Registro</th><th>Dónde se consulta</th><th style="width:26%">Quién lo ve</th></tr></thead>
+    <tbody>
+      <tr><td>Entrada y salida (horas, ubicación, origen y justificación)</td><td>Jornada; Orden › Jornadas; Mapa del día; reporte PDF</td><td>Los tres roles; el cliente, en el reporte</td></tr>
+      <tr><td>Historial de cuadrilla (fecha, usuario, motivo)</td><td>Orden; Bitácora</td><td>Los tres roles, según su alcance</td></tr>
+      <tr><td>Fotos ANTES y DESPUÉS con sus datos</td><td>Jornada; Orden › Evidencia; Evidencias (supervisor)</td><td>Los tres roles; el cliente, las elegidas</td></tr>
+      <tr><td>Notas de bitácora, desglose y movimientos</td><td>Jornada; Orden › Actividad; Seguimiento › Bitácora</td><td>Los tres roles, según su alcance</td></tr>
+    </tbody>
+  </table>
+
+  <h2 class="section"><span class="no">9</span>Indicadores</h2>
+  <table>
+    <thead><tr><th style="width:30%">Indicador</th><th>Cómo se calcula</th><th style="width:28%">Dónde se ve</th></tr></thead>
+    <tbody>
+      <tr><td><b>Horas reales por servicio</b></td><td>Suma de entrada a salida de cada jornada, contra el plan, por tipo de servicio.</td><td>Indicadores › Operación</td></tr>
+      <tr><td><b>Servicios sin entrada</b></td><td>Jornadas del día que pasaron su hora de inicio sin registro de entrada (<i>sin entrada</i>).</td><td>Mapa del día › Por iniciar; Pendientes › Entradas de hoy</td></tr>
+      <tr><td><b>Registros sin GPS</b></td><td>Entradas y salidas con ubicación manual o supervisión remota. La app no lo calcula como indicador: se buscan «manual» o «remota» en la Bitácora.</td><td>Seguimiento › Bitácora</td></tr>
+    </tbody>
+  </table>
+  <p>Tolerancias de horas contra el plan, de entradas tardías y de registros sin GPS: <span class="tbd">Por definir</span>.</p>
+
+  <h2 class="section"><span class="no">10</span>Documentos relacionados</h2>
+  <table class="kv">
+    <tbody>
+      <tr><td>Nivel 1</td><td><span class="mono">PK-SOP-L1</span> · P-03 Entrada y salida con hora y ubicación · P-04 Evidencia ANTES y DESPUÉS obligatoria · P-08 Sin señal no se detiene la captura.</td></tr>
+      <tr><td>Nivel 2</td><td><span class="mono">PK-SOP-L2-02</span> Programación · <span class="mono">PK-SOP-L2-04</span> Incidencias · <span class="mono">PK-SOP-L2-05</span> Evidencia · <span class="mono">PK-SOP-L2-06</span> Cierre · <span class="mono">PK-SOP-L2-11</span> Sin conexión.</td></tr>
+      <tr><td>Nivel 3</td><td>Manual de usuario: La jornada en campo · Mapa del día · Inicio y Pendientes · Trabajo sin conexión y sincronización.</td></tr>
+    </tbody>
+  </table>
+</section>

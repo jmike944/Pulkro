@@ -1,0 +1,99 @@
+<section class="chapter" id="cap-sin-conexion">
+  <header class="opener">
+    <div class="num">Sistema</div>
+    <h1>Trabajo <em>sin conexión</em> y sincronización</h1>
+    <p class="desc">Todo lo que captura se guarda <b>primero en su teléfono</b> y se envía <b>cuando hay señal</b>. Así se trabaja igual en un sótano, una nave o un sitio sin cobertura.</p>
+    <div class="glass">
+      <div><div class="eyebrow">En este capítulo</div><ul><li>Cómo viaja un registro</li><li>Dónde ver el estado</li><li>Estados de la sincronización</li><li>Lo que espera a la sincronización</li><li>Fotos pendientes de subir</li><li>Lo que no debe hacer</li><li>El espacio en el dispositivo</li></ul></div>
+      <div class="who"><div class="eyebrow">Disponible para</div><span class="roles"><span class="role all">Todos los roles</span></span></div>
+    </div>
+  </header>
+
+  <p class="lead">No tiene que hacer nada especial cuando se queda sin señal: siga capturando. La app guarda cada registro en el dispositivo con una marca de pendiente y lo envía sola en cuanto vuelve la conexión. Este capítulo explica cómo saber qué falta por enviar y qué cuidados tener.</p>
+
+  <h2 class="section">Cómo viaja un registro</h2>
+  <ol class="steps">
+    <li><b>Captura local.</b> La entrada y la salida con GPS, las fotos, las incidencias, las notas de bitácora y el cierre se guardan al instante en el dispositivo, con la hora del teléfono. El GPS funciona sin datos móviles.</li>
+    <li><b>Cola.</b> Cada registro espera en la cola de sincronización con su marca de pendiente. Los de una misma orden se envían en el orden en que se capturaron.</li>
+    <li><b>Servidor.</b> Al recuperar la señal, la app envía la cola sola. El servidor le pone su propia hora a cada registro y, cuando toda la orden está en el servidor, se habilita el PDF definitivo del reporte.</li>
+  </ol>
+  <p>La app abre sin conexión las pantallas y órdenes que ya están en el dispositivo. Lo que sí necesita señal: los mapas que no se hayan visto antes, recibir los cambios que hicieron otras personas y, para Dirección, invitar, desactivar o reactivar cuentas.</p>
+  <div class="note rule"><b class="note-t">Regla de negocio</b><p>Se permite capturar sin conexión, pero cada registro queda marcado como pendiente hasta que llega al servidor. El reporte final al cliente no se comparte mientras falten datos de esa orden por sincronizar.</p></div>
+
+  <h2 class="section">Dónde ver el estado</h2>
+  <p>En escritorio, el estado está siempre al pie de la barra lateral, arriba de su nombre. Pulse esa fila para abrir el panel <b>Sincronización</b> con la cola completa.</p>
+  <figure class="shot"><div class="frame"><img src="shots/21-escritorio-sin-conexion.jpg" alt="Jornada en escritorio sin conexión con tres registros pendientes"><span class="mark" style="left:21.4%;top:36.1%">1</span><span class="mark" style="left:19.6%;top:91.6%">2</span></div><figcaption><b>Sin conexión en escritorio.</b> Se agregaron dos fotos DESPUÉS y una nota sin señal.</figcaption></figure>
+  <ol class="legend">
+    <li><b>Aviso de la jornada.</b> «Sin conexión · lo que capture se guarda en el dispositivo y se sincroniza al volver la señal», con el número de pendientes.</li>
+    <li><b>Fila de sincronización.</b> «Sin conexión · 3 pendientes». Púlsela para ver la cola.</li>
+  </ol>
+  <p>El panel <b>Sincronización</b> muestra arriba el estado general («Trabajando sin conexión · 3 registros esperan conexión»), el interruptor <b>Simular sin conexión</b> y la <b>Cola de sincronización</b>: un renglón por registro, del más nuevo al más viejo, con su orden y la hora en que se capturó.</p>
+  <p>Debajo de cada renglón se lee su situación: <b>En espera de conexión</b>, <b>Enviando</b>, <b>Enviado</b> o <b>No se pudo enviar</b>. Si un registro espera a otro de la misma orden, dice «En espera de «…»».</p>
+  <p>Si hay errores, el pie del panel ofrece <span class="ui primary">Reintentar envíos</span>.</p>
+
+  <h3>En el teléfono</h3>
+  <p>En el teléfono no hay barra lateral. El estado se ve en tres lugares: un <b>punto en su avatar</b> (ámbar sin conexión, azul cuando hay algo por enviar), una <b>píldora sobre la barra inferior</b> («Sin conexión · 3 registros por enviar») y, en la pantalla de la jornada, el aviso ámbar con los pendientes. Toque la píldora para abrir la cola. En <b>Menú</b> también hay una fila con el estado.</p>
+  <div class="phones three">
+    <figure class="shot phone"><div class="frame"><img src="shots/21-telefono-jornada.jpg" alt="Jornada en el teléfono sin conexión"></div><figcaption><b>Jornada.</b> El aviso cuenta los pendientes de esa orden.</figcaption></figure>
+    <figure class="shot phone"><div class="frame"><img src="shots/21-telefono-hoy.jpg" alt="Hoy sin conexión con la píldora sobre la barra inferior"></div><figcaption><b>Hoy.</b> Aviso arriba, punto en el avatar y píldora abajo.</figcaption></figure>
+    <figure class="shot phone"><div class="frame"><img src="shots/21-telefono-cola.jpg" alt="Cola de sincronización en el teléfono"></div><figcaption><b>Cola.</b> Sube desde abajo al tocar la píldora.</figcaption></figure>
+  </div>
+  <p>Además, cada registro sin enviar lleva su propia marca: la hora del servidor de una entrada dice «pendiente de sincronizar», una foto muestra <b>Sin sincronizar</b> al ampliarla y la pestaña <b>Actividad</b> de la orden cuenta cuántos movimientos faltan.</p>
+
+  <h2 class="section">Estados de la sincronización</h2>
+  <table>
+    <thead><tr><th>Fila de estado</th><th>Qué significa</th><th>Qué hacer</th></tr></thead>
+    <tbody>
+      <tr><td><span class="pill blue">Sincronizado</span> · hace 4 minutos</td><td>Todo lo capturado está en el servidor.</td><td>Nada.</td></tr>
+      <tr><td><span class="pill sky">Sincronizando</span> · 3 en cola</td><td>Hay señal y la app está enviando.</td><td>Espere unos segundos.</td></tr>
+      <tr><td><span class="pill amber">Sin conexión</span> · 3 pendientes</td><td>No hay señal. Lo capturado está guardado en el dispositivo.</td><td>Siga trabajando; se enviará solo.</td></tr>
+      <tr><td><span class="pill sky">Descargando</span> datos de su cuenta</td><td>Primera descarga de las órdenes de su alcance.</td><td>Puede seguir trabajando.</td></tr>
+      <tr><td><span class="pill amber">Sin actualizar</span></td><td>No se pudieron recibir los cambios del servidor.</td><td>La app reintenta; revise su señal.</td></tr>
+      <tr><td><span class="pill amber">Vuelva a entrar</span> · sin sincronizar</td><td>La sesión de su cuenta se cerró en este dispositivo. Sus datos siguen ahí.</td><td>Pulse <span class="ui primary">Entrar de nuevo</span> en el aviso.</td></tr>
+      <tr><td><span class="pill amber">Sin guardar</span></td><td>El dispositivo no pudo guardar lo último («no cierre la app» o «libere espacio»).</td><td>No cierre la app; libere espacio en el teléfono.</td></tr>
+    </tbody>
+  </table>
+  <p>Cada registro de la cola tiene a su vez uno de cuatro estados: <span class="pill amber">Pendiente</span> (en espera de conexión), <span class="pill blue">Enviando</span>, <span class="pill teal">Sincronizado</span> y <span class="pill red">Error</span>. Si el envío falla por la señal o porque el servidor tarda, la app reintenta sola, cada vez con más espera (hasta cada cinco minutos). Si el servidor rechaza un registro, queda en <b>Error</b> con el motivo; pulse <span class="ui">Reintentar</span> y, si persiste, avise a su supervisor o a Administración.</p>
+  <p>La pestaña <b>Sincronización y datos</b> de Configuración muestra lo mismo con más detalle: registros por enviar, <b>En espera</b>, <b>Con error</b> y <b>Enviados</b>, el camino del registro («Cola local» detenida en «Sin conexión»), la actividad reciente y el espacio usado. Consulte el capítulo <em>Configuración</em>.</p>
+
+  <h2 class="section">Lo que espera a la sincronización</h2>
+  <div class="duo">
+    <figure class="shot phone"><div class="frame"><img src="shots/21-telefono-reporte.jpg" alt="Compartir reporte bloqueado por registros sin sincronizar"></div><figcaption><b>Compartir reporte sin conexión.</b> El PDF se generó, pero se comparte al sincronizar.</figcaption></figure>
+    <div>
+      <p>Casi todo funciona sin señal. Lo que espera a que la orden esté completa en el servidor:</p>
+      <ul>
+        <li><b>Compartir el reporte final.</b> Puede generar el PDF, pero al compartirlo aparece «<b>Sin conexión</b> · 1 registro de esta orden aún no llega al servidor. Para no enviar datos incompletos, el PDF definitivo se comparte cuando todo esté sincronizado». Con señal, el aviso cambia a «Sincronizando … el PDF definitivo se comparte al terminar».</li>
+        <li><b>Folios definitivos.</b> Una orden, incidencia o caso nuevo lleva un folio provisional (por ejemplo <b>INC-PEND-…</b>) hasta que llega al servidor y este asigna el definitivo. El reporte no sale con folios provisionales.</li>
+        <li><b>La hora del servidor</b> de cada entrada, salida y foto, que se sella al sincronizar.</li>
+      </ul>
+      <p>El cierre de la orden <b>sí</b> se puede validar sin señal: la lista de requisitos solo avisa «registros sin sincronizar». Consulte los capítulos <em>Cierre y validación</em> y <em>Reportes y envío al cliente</em>.</p>
+    </div>
+  </div>
+
+  <h2 class="section">Fotos pendientes de subir</h2>
+  <p>Cada foto se reduce (hasta 1600 píxeles por lado) y se guarda en el dispositivo antes de subirla. Aparece en la cola como, por ejemplo, «Foto DESPUÉS · OS-24397» con su tamaño. Mientras no se sube, <b>esa foto solo existe en ese teléfono</b>: si el teléfono se pierde o se borran sus datos, la foto se pierde.</p>
+  <p>Si un registro con fotos no se puede aplicar y decide <b>Descartar</b> el cambio desde la cola, la app ofrece primero guardar o compartir esas fotos para que no se pierdan, y pide confirmar con una casilla. Antes de descartar, consúltelo con su supervisor o con Administración.</p>
+
+  <h2 class="section">Lo que no debe hacer</h2>
+  <div class="note danger"><b class="note-t">Atención</b><p>Lo que no se ha enviado <b>solo está en ese dispositivo</b>. Con cambios pendientes:</p>
+    <ul>
+      <li><b>No cierre sesión.</b> La app lo advierte con «¿Cerrar sesión con cambios sin enviar?»: si elige <b>Cerrar sesión y borrar</b>, esos cambios se pierden. Pulse <b>Cancelar</b> y espere a tener señal.</li>
+      <li><b>No borre los datos del navegador</b> ni los del sitio, ni desinstale la app.</li>
+      <li><b>No trabaje en una ventana privada o de incógnito</b>: el navegador borra todo al cerrarla.</li>
+    </ul>
+  </div>
+  <ul>
+    <li><b>No deje encendido «Simular sin conexión».</b> Sirve para practicar; mientras está encendido nada se envía.</li>
+    <li><b>No cambie la fecha ni la hora del teléfono.</b> La hora es evidencia. Si el reloj del teléfono va adelantado, el registro espera a que la hora del servidor lo alcance; si el envío se detiene, corrija la fecha y hora del teléfono y pulse <span class="ui">Reintentar</span>.</li>
+    <li><b>No abra Pulkro en dos ventanas a la vez.</b> La segunda muestra «Pulkro está abierta en otra ventana» con el botón <span class="ui">Usar aquí</span>, que pide a la otra ventana guardar lo pendiente antes de cambiar.</li>
+    <li><b>Abra la app con señal al terminar el día</b>, para que la cola se vacíe.</li>
+  </ul>
+
+  <h2 class="section">El espacio en el dispositivo</h2>
+  <p>La app guarda sus datos en el almacenamiento del navegador. En <b>Configuración › Sincronización y datos › Almacenamiento local</b> verá cuánto espacio usa y si los datos están <b>protegidos contra borrado automático</b>. Si no lo están, pulse <span class="ui">Proteger datos</span>.</p>
+  <div class="note phone-tip"><b class="note-t">En el teléfono</b><p>Instale la app en la pantalla de inicio (en iPhone: <b>Compartir › Agregar a pantalla de inicio</b>). Así el teléfono protege mejor los datos guardados, que de otro modo podrían borrarse si el teléfono se queda sin espacio o si no abre la app en varios días.</p></div>
+  <p>Si el teléfono se queda sin espacio, la fila de estado dice <span class="pill amber">Sin guardar</span> · libere espacio. La app libera primero las copias de fotos que ya están en el servidor; si no alcanza, borre fotos o aplicaciones que no use y no cierre Pulkro hasta que el aviso desaparezca.</p>
+
+  <h3>Si la app le pide volver a entrar</h3>
+  <p>Si la sesión de su cuenta se cierra en el dispositivo (por ejemplo, porque venció), aparece arriba el aviso «<b>Vuelva a entrar.</b> La sesión de su cuenta ya no está abierta en este dispositivo. Sus datos y cambios siguen aquí: entre de nuevo para seguir sincronizando». Pulse <span class="ui primary">Entrar de nuevo</span>, escriba su contraseña y la app lo regresa a la misma pantalla. Mientras tanto puede seguir capturando, pero nada se envía. Consulte el capítulo <em>Entrar a la app</em>.</p>
+</section>

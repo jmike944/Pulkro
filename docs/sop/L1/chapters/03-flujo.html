@@ -1,0 +1,90 @@
+<section class="chapter" id="l1-flujo">
+  <header class="opener">
+    <div class="num">Procesos</div>
+    <h1>El servicio <em>de extremo a extremo</em></h1>
+    <p class="desc">Quién interviene en cada momento del servicio, qué hace la app sola y por qué estados pasa la orden.</p>
+  </header>
+
+  <h2 class="section">Flujo por rol</h2>
+  <p>Cada columna es un momento del servicio; cada fila, quién actúa. Una orden de varios días repite las columnas 3 a 6 una vez por jornada y tiene un solo cierre.</p>
+  <div class="lanes" style="--cols: 9">
+    <div class="head"><div>Rol</div><div>1</div><div>2</div><div>3</div><div>4</div><div>5</div><div>6</div><div>7</div><div>8</div><div>9</div></div>
+    <div class="lane adm">
+      <div class="who">Administración</div>
+      <div class="cell"><div class="act key"><span class="n">O1</span>Alta de la orden autorizada</div></div>
+      <div class="cell"></div><div class="cell"></div><div class="cell"></div><div class="cell"></div><div class="cell"></div><div class="cell"></div><div class="cell"></div>
+      <div class="cell"><div class="act"><span class="n">O6</span>Atiende quejas y archiva</div></div>
+    </div>
+    <div class="lane sup">
+      <div class="who">Supervisor</div>
+      <div class="cell"></div>
+      <div class="cell"><div class="act key"><span class="n">O2</span>Programa jornadas y cuadrilla</div></div>
+      <div class="cell"><div class="act"><span class="n">O3</span>Entrada con hora, GPS y fotos ANTES</div></div>
+      <div class="cell"><div class="act"><span class="n">O3</span>Trabajo, bitácora e incidencias</div></div>
+      <div class="cell"><div class="act"><span class="n">O3</span>Salida con hora, GPS y fotos DESPUÉS</div></div>
+      <div class="cell"><div class="act dec"><span class="n">¿?</span>¿Quedan jornadas? Sí: vuelve a 3</div></div>
+      <div class="cell"><div class="act key"><span class="n">O4</span>Valida el cierre</div></div>
+      <div class="cell"><div class="act key"><span class="n">O5</span>Genera y comparte el reporte</div></div>
+      <div class="cell"><div class="act"><span class="n">O6</span>Da seguimiento a casos</div></div>
+    </div>
+    <div class="lane cli">
+      <div class="who">Cliente</div>
+      <div class="cell"></div><div class="cell"></div><div class="cell"></div><div class="cell"></div><div class="cell"></div><div class="cell"></div>
+      <div class="cell"><div class="act"><span class="n">O4</span>Da su conformidad</div></div>
+      <div class="cell"><div class="act"><span class="n">O5</span>Recibe el reporte</div></div>
+      <div class="cell"><div class="act"><span class="n">O6</span>Responde la encuesta o se queja</div></div>
+    </div>
+    <div class="lane app">
+      <div class="who">La app</div>
+      <div class="cell"><div class="act"><span class="n">S3</span>Asigna folio y registra</div></div>
+      <div class="cell"></div>
+      <div class="cell"><div class="act"><span class="n">O3</span>Guarda hora, GPS y origen de cada foto</div></div>
+      <div class="cell"></div>
+      <div class="cell"><div class="act"><span class="n">O3</span>Pide la foto que falte</div></div>
+      <div class="cell"></div>
+      <div class="cell"><div class="act"><span class="n">O4</span>Revisa los requisitos de cierre</div></div>
+      <div class="cell"><div class="act"><span class="n">O5</span>Registra el envío sin afirmar entrega</div></div>
+      <div class="cell"><div class="act"><span class="n">O6</span>Reúne respuestas</div></div>
+    </div>
+    <div class="lane dir">
+      <div class="who">Dirección</div>
+      <div class="cell" style="grid-column: 2 / -1"><div class="act"><span class="n">E1</span>Consulta en todo momento Inicio, Pendientes, Indicadores y Bitácora de todas las unidades o de la que elija</div></div>
+    </div>
+  </div>
+
+  <h2 class="section">Los quince pasos del flujo confirmado</h2>
+  <p>El documento maestro de requerimientos define este flujo. La tabla lo liga con los procesos de este mapa y con el procedimiento que lo desarrolla.</p>
+  <table>
+    <thead><tr><th style="width:6%">#</th><th>Paso</th><th style="width:19%">Responsable</th><th style="width:10%">Proceso</th><th style="width:18%">Procedimiento</th></tr></thead>
+    <tbody>
+      <tr><td>1</td><td>Inicio: trabajo autorizado</td><td><span class="role adm">Administración</span></td><td class="pcode">O1</td><td class="mono">PK-SOP-L2-01</td></tr>
+      <tr><td>2</td><td>Alta manual de la orden de servicio</td><td><span class="role adm">Administración</span></td><td class="pcode">O1</td><td class="mono">PK-SOP-L2-01</td></tr>
+      <tr><td>3</td><td>Asignar supervisor y cuadrilla variable</td><td><span class="role sup">Supervisor</span></td><td class="pcode">O2</td><td class="mono">PK-SOP-L2-02</td></tr>
+      <tr><td>4</td><td>Programar jornada(s) y recursos</td><td><span class="role sup">Supervisor</span></td><td class="pcode">O2</td><td class="mono">PK-SOP-L2-02</td></tr>
+      <tr><td>5</td><td>Registro de entrada: hora y GPS</td><td><span class="role sup">Supervisor</span></td><td class="pcode">O3</td><td class="mono">PK-SOP-L2-03</td></tr>
+      <tr><td>6</td><td>Fotografías ANTES obligatorias</td><td><span class="role sup">Supervisor</span></td><td class="pcode">O3</td><td class="mono">PK-SOP-L2-03 · 05</td></tr>
+      <tr><td>7</td><td>Ejecución y registro de incidencias</td><td><span class="role sup">Supervisor</span></td><td class="pcode">O3</td><td class="mono">PK-SOP-L2-03 · 04</td></tr>
+      <tr><td>8</td><td>Registro de salida: hora y GPS</td><td><span class="role sup">Supervisor</span></td><td class="pcode">O3</td><td class="mono">PK-SOP-L2-03</td></tr>
+      <tr><td>9</td><td>Fotografías DESPUÉS obligatorias</td><td><span class="role sup">Supervisor</span></td><td class="pcode">O3</td><td class="mono">PK-SOP-L2-03 · 05</td></tr>
+      <tr><td>10</td><td>¿Quedan jornadas pendientes?</td><td><span class="role sup">Supervisor</span></td><td class="pcode">O3</td><td class="mono">PK-SOP-L2-03</td></tr>
+      <tr><td>11</td><td>¿Evidencia completa y cierre validado?</td><td><span class="role sup">Supervisor</span></td><td class="pcode">O4</td><td class="mono">PK-SOP-L2-06</td></tr>
+      <tr><td>12</td><td>Seleccionar fotos y generar el PDF</td><td><span class="role sup">Supervisor</span></td><td class="pcode">O5</td><td class="mono">PK-SOP-L2-07</td></tr>
+      <tr><td>13</td><td>Revisar y compartir por WhatsApp o correo</td><td><span class="role sup">Supervisor</span></td><td class="pcode">O5</td><td class="mono">PK-SOP-L2-07</td></tr>
+      <tr><td>14</td><td>Encuesta, quejas y seguimiento</td><td><span class="role adm">Administración</span> <span class="role sup">Supervisor</span></td><td class="pcode">O6</td><td class="mono">PK-SOP-L2-08</td></tr>
+      <tr><td>15</td><td>Historial, métricas y exportación</td><td><span class="role dir">Dirección</span> <span class="role adm">Administración</span></td><td class="pcode">E1</td><td class="mono">PK-SOP-L2-09</td></tr>
+    </tbody>
+  </table>
+
+  <h2 class="section">Ciclo de vida de la orden</h2>
+  <p>La orden avanza por estos estados. Cada cambio queda en la bitácora con usuario, fecha y, cuando aplica, motivo.</p>
+  <div class="flow"><span class="pill slate">Borrador</span><span class="arrow">→</span><span class="pill blue">Programada</span><span class="arrow">→</span><span class="pill blue">En ejecución</span><span class="arrow">→</span><span class="pill sky">Jornada cerrada</span><span class="arrow">→</span><span class="pill amber">Pendiente de validación</span><span class="arrow">→</span><span class="pill navy">Finalizada</span><span class="arrow">→</span><span class="pill teal">Reporte enviado</span><span class="arrow">→</span><span class="pill violet">Seguimiento postventa</span><span class="arrow">→</span><span class="pill slate">Archivada</span></div>
+  <table>
+    <thead><tr><th style="width:30%">Estado alterno</th><th>Cuándo ocurre</th><th style="width:22%">Quién lo provoca</th></tr></thead>
+    <tbody>
+      <tr><td><span class="pill red">Con incidencia</span></td><td>Hay una incidencia abierta que impide el cierre. Al resolverla, la orden regresa al estado que le corresponde.</td><td><span class="role sup">Supervisor</span></td></tr>
+      <tr><td><span class="pill amber">Reprogramada</span></td><td>Las fechas se movieron con motivo; el supervisor confirma las nuevas fechas.</td><td><span class="role sup">Supervisor</span></td></tr>
+      <tr><td><span class="pill violet">Reabierta</span></td><td>Se reabrió después del cierre para corregir algo; exige motivo, una nueva validación y una nueva versión del reporte.</td><td><span class="role sup">Supervisor</span></td></tr>
+      <tr><td><span class="pill slate">Cancelada</span></td><td>La orden se canceló con motivo; sus jornadas pendientes ya no se ejecutan.</td><td><span class="role adm">Administración</span></td></tr>
+    </tbody>
+  </table>
+</section>

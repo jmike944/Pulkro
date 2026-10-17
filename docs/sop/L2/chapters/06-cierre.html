@@ -1,0 +1,153 @@
+<section class="chapter" id="pk-sop-l2-06" data-code="PK-SOP-L2-06">
+  <header class="sop-head">
+    <div class="band">
+      <div class="top"><span class="code">PK-SOP-L2-06</span><span class="lvl">Procedimiento · Nivel 2</span></div>
+      <h1>Cierre y validación del servicio</h1>
+      <p class="purpose">El supervisor comprueba que el servicio está completo, registra la conformidad del cliente y valida el cierre: la orden queda <b>Finalizada</b> y lista para el reporte.</p>
+    </div>
+    <dl class="meta">
+      <div><dt>Dueño del proceso</dt><dd><span class="role sup">Supervisor</span></dd></div>
+      <div><dt>Participan</dt><dd><span class="roles"><span class="role cli">Cliente</span><span class="role app">La app</span></span></dd></div>
+      <div><dt>Versión</dt><dd>1.0 · borrador</dd></div>
+      <div><dt>Emisión</dt><dd>17 oct 2026</dd></div>
+      <div class="wide"><dt>Empieza cuando</dt><dd>Todas las jornadas de la orden tienen salida registrada (<span class="pill amber">Pendiente de validación</span>) o la orden fue <span class="pill violet">Reabierta</span>.</dd></div>
+      <div class="wide"><dt>Termina cuando</dt><dd>La orden queda <span class="pill navy">Finalizada</span> con el cierre validado y la conformidad del cliente registrada.</dd></div>
+      <div class="full"><dt>Instrucción de trabajo (Nivel 3)</dt><dd>Manual de usuario › Cierre y validación · Evidencias › Excepciones de evidencia · Incidencias › Resolver una incidencia</dd></div>
+    </dl>
+  </header>
+
+  <h2 class="section"><span class="no">1</span>Objetivo</h2>
+  <p>Asegurar que cada orden de servicio se cierre <b>una sola vez</b>, aunque haya tenido varias jornadas, y solo cuando: todas las jornadas tienen salida, hay fotos ANTES y DESPUÉS de cada jornada (o una excepción autorizada y justificada), ninguna incidencia impide el cierre y el cliente dio su conformidad. El cierre validado es la declaración formal de que el servicio se ejecutó conforme a la orden.</p>
+
+  <h2 class="section"><span class="no">2</span>Alcance</h2>
+  <table class="kv">
+    <tbody>
+      <tr><td>Aplica a</td><td>Todas las órdenes de servicio, de una o de varias jornadas, en todas las unidades. Incluye la reapertura de una orden ya cerrada.</td></tr>
+      <tr><td>No incluye</td><td>La captura en sitio (<span class="mono">PK-SOP-L2-03</span>), la resolución de incidencias (<span class="mono">PK-SOP-L2-04</span>), la recuperación de fotos faltantes (<span class="mono">PK-SOP-L2-05</span>) y la generación y envío del reporte (<span class="mono">PK-SOP-L2-07</span>).</td></tr>
+      <tr><td>Entradas</td><td>Orden en <span class="pill amber">Pendiente de validación</span>, <span class="pill violet">Reabierta</span> o <span class="pill red">Con incidencia</span> (en este último caso solo para revisar qué falta).</td></tr>
+      <tr><td>Salidas</td><td>Orden <span class="pill navy">Finalizada</span>, conformidad registrada y, si aplica, excepción de evidencia autorizada.</td></tr>
+    </tbody>
+  </table>
+
+  <h2 class="section"><span class="no">3</span>Responsabilidades</h2>
+  <table class="raci">
+    <thead><tr><th>Actividad</th><th>Supervisor</th><th>Administración</th><th>Dirección</th><th>Cliente</th></tr></thead>
+    <tbody>
+      <tr><td>Revisar los requisitos de cierre</td><td><span class="ra r">R</span></td><td><span class="ra i">I</span></td><td><span class="ra i">I</span></td><td></td></tr>
+      <tr><td>Completar la evidencia o resolver lo que bloquea</td><td><span class="ra r">R</span></td><td></td><td></td><td></td></tr>
+      <tr><td>Autorizar una excepción de evidencia</td><td><span class="ra a">A</span></td><td><span class="ra i">I</span></td><td><span class="ra i">I</span></td><td><span class="ra i">I</span></td></tr>
+      <tr><td>Dar la conformidad del servicio</td><td><span class="ra r">R</span></td><td></td><td></td><td><span class="ra c">C</span></td></tr>
+      <tr><td>Validar el cierre</td><td><span class="ra a">A</span></td><td><span class="ra i">I</span></td><td><span class="ra i">I</span></td><td></td></tr>
+      <tr><td>Reabrir una orden cerrada</td><td><span class="ra a">A</span></td><td><span class="ra i">I</span></td><td><span class="ra i">I</span></td><td></td></tr>
+    </tbody>
+  </table>
+  <div class="raci-legend"><span><span class="ra r">R</span>Responsable</span><span><span class="ra a">A</span>Aprueba y responde por el resultado</span><span><span class="ra c">C</span>Consultado</span><span><span class="ra i">I</span>Informado</span></div>
+  <p>Dirección y Administración ven el estado del cierre en cada orden, pero no lo validan: en su pantalla el botón aparece desactivado con el aviso <i>Solo el supervisor autoriza el cierre</i>.</p>
+
+  <h2 class="section"><span class="no">4</span>Definiciones</h2>
+  <table class="kv">
+    <tbody>
+      <tr><td>Cierre</td><td>Validación única de la orden por el supervisor asignado. Después del cierre, cualquier cambio exige reabrir la orden.</td></tr>
+      <tr><td>Incidencia que impide el cierre</td><td>Incidencia abierta marcada como bloqueante al registrarla. Las abiertas que no bloquean solo son aviso y se incluyen en el reporte.</td></tr>
+      <tr><td>Excepción de evidencia</td><td>Autorización del supervisor para cerrar sin una foto ANTES o DESPUÉS, con justificación escrita. Es visible para el cliente en su reporte.</td></tr>
+      <tr><td>Conformidad</td><td>Aceptación del servicio por parte del cliente: firma en el teléfono del supervisor, verbal o por correo, siempre con el nombre de quien acepta.</td></tr>
+      <tr><td>Reapertura</td><td>Acción que deja sin efecto el cierre para corregir algo. Exige motivo, una nueva validación y genera una nueva versión del reporte.</td></tr>
+    </tbody>
+  </table>
+
+  <h2 class="section"><span class="no">5</span>Desarrollo</h2>
+  <div class="flowstrip">
+    <div class="st sup"><small>Supervisor</small>Orden lista para validar</div>
+    <div class="st app"><small>La app</small>Revisión de requisitos</div>
+    <div class="st dec"><small>Decisión</small>¿Bloqueos o fotos faltantes?</div>
+    <div class="st sup"><small>Supervisor</small>Excepción, si aplica</div>
+    <div class="st cli"><small>Cliente</small>Conformidad</div>
+    <div class="st sup"><small>Supervisor</small>Validar cierre</div>
+    <div class="st end"><small>Resultado</small>Finalizada → reporte</div>
+  </div>
+  <table class="proc">
+    <thead><tr><th></th><th>Responsable</th><th>Actividad</th><th>Registro en la app</th></tr></thead>
+    <tbody>
+      <tr><td class="n"><span>1</span></td><td class="who"><span class="role sup">Supervisor</span></td><td><b class="t">Confirmar que la orden está lista</b>Al registrar la salida de la última jornada, la orden pasa a <span class="pill amber">Pendiente de validación</span>. La tarjeta de la orden dice <i>Listo para validar</i> o qué falta. El cierre también se abre desde Pendientes, la lista de órdenes o el reporte.<span class="l3">Cierre y validación › Cuándo se puede cerrar</span></td><td class="rec">Estado de la orden; línea de tiempo (paso <i>Validación de cierre</i> pendiente).</td></tr>
+      <tr><td class="n"><span>2</span></td><td class="who"><span class="role sup">Supervisor</span><br><span class="role app">La app</span></td><td><b class="t">Revisar los requisitos</b>Abrir <span class="ui">Validar cierre</span>. La app lista cada requisito con su marca: verde si se cumple, roja si bloquea, ámbar si es aviso.<span class="l3">Cierre y validación › La revisión: qué impide cerrar</span></td><td class="rec">Lista de revisión en la ventana de cierre.</td></tr>
+      <tr><td class="n"><span class="dec"><i>?</i></span></td><td class="who"><span class="role sup">Supervisor</span></td><td><b class="t">¿Hay jornadas sin salida o incidencias que impiden el cierre?</b><b>Sí:</b> resolverlas antes de seguir (registrar la salida, <span class="mono">PK-SOP-L2-03</span>; resolver la incidencia, <span class="mono">PK-SOP-L2-04</span>). No admiten excepción. <b>No:</b> continuar.<span class="l3">Cierre y validación › Un cierre bloqueado</span></td><td class="rec">Vínculo del requisito a la jornada o a la incidencia.</td></tr>
+      <tr><td class="n"><span class="dec"><i>?</i></span></td><td class="who"><span class="role sup">Supervisor</span></td><td><b class="t">¿Faltan fotos ANTES o DESPUÉS?</b><b>Sí, y se pueden tomar:</b> completarlas desde la jornada o desde Evidencias (<span class="mono">PK-SOP-L2-05</span>). <b>Sí, y no se pueden obtener</b> (el cliente cerró el área, no permitió fotografiarla): autorizar la excepción con su justificación (mínimo 15 caracteres). Nunca se recrea una escena.<span class="l3">Cierre y validación › Excepción de evidencia</span></td><td class="rec">Excepción autorizada a nombre del supervisor, con fecha y hora.</td></tr>
+      <tr><td class="n"><span>3</span></td><td class="who"><span class="role sup">Supervisor</span><br><span class="role cli">Cliente</span></td><td><b class="t">Registrar la conformidad del cliente</b>Elegir el método: <b>firma en el dispositivo</b> (el cliente firma en el teléfono del supervisor), <b>verbal</b> o <b>por correo</b> (con la referencia del correo). Registrar el nombre de quien acepta y su puesto o relación.<span class="l3">Cierre y validación › Conformidad del cliente</span></td><td class="rec">Método, nombre, puesto y firma (si aplica).</td></tr>
+      <tr><td class="n"><span>4</span></td><td class="who"><span class="role sup">Supervisor</span></td><td><b class="t">Revisar la descripción para el reporte</b>Viene redactada con el tipo de servicio, el sitio y las actividades. Ajustarla si hace falta (mínimo 10 caracteres): es lo que leerá el cliente.<span class="l3">Cierre y validación › Confirmar y validar</span></td><td class="rec">Descripción del servicio del reporte.</td></tr>
+      <tr><td class="n"><span>5</span></td><td class="who"><span class="role sup">Supervisor</span><br><span class="role app">La app</span></td><td><b class="t">Validar el cierre</b>Marcar la confirmación <i>Confirmo que el servicio se ejecutó conforme a la orden y que la evidencia es correcta</i> y pulsar <span class="ui primary">Validar cierre</span>. La app vuelve a revisar todas las reglas. Sin conexión, el cierre se guarda en el teléfono y se sincroniza después.</td><td class="rec">Orden <span class="pill navy">Finalizada</span>; cierre en la bitácora con usuario, fecha y excepción, si la hubo.</td></tr>
+      <tr><td class="n"><span>6</span></td><td class="who"><span class="role sup">Supervisor</span></td><td><b class="t">Continuar con el reporte</b>Desde la ventana <i>Cierre validado</i>, pulsar <span class="ui">Generar reporte</span> y seguir <span class="mono">PK-SOP-L2-07</span>.<span class="l3">Reportes y envío al cliente</span></td><td class="rec">—</td></tr>
+    </tbody>
+  </table>
+  <div class="note phone-tip"><b class="note-t">Buena práctica</b><p>Validar el cierre en sitio, con el cliente presente: la firma queda capturada en el momento y el reporte puede salir enseguida.</p></div>
+
+  <h3>5.1 Reapertura de una orden cerrada</h3>
+  <table class="proc">
+    <thead><tr><th></th><th>Responsable</th><th>Actividad</th><th>Registro en la app</th></tr></thead>
+    <tbody>
+      <tr><td class="n"><span>1</span></td><td class="who"><span class="role sup">Supervisor</span></td><td><b class="t">Reabrir con motivo</b>En la orden (<span class="pill navy">Finalizada</span>, <span class="pill teal">Reporte enviado</span> o <span class="pill violet">Seguimiento postventa</span>), abrir el menú <span class="ui">⋯</span> › <span class="ui">Reabrir</span>, escribir el motivo (mínimo 5 caracteres), marcar la confirmación y pulsar <span class="ui primary">Reabrir orden</span>. Solo órdenes propias.<span class="l3">Cierre y validación › Reabrir una orden cerrada</span></td><td class="rec">Orden <span class="pill violet">Reabierta</span>; motivo, usuario y fecha en la bitácora.</td></tr>
+      <tr><td class="n"><span>2</span></td><td class="who"><span class="role sup">Supervisor</span></td><td><b class="t">Corregir y volver a validar</b>Hacer la corrección (fotos, datos del reporte, repaso) y repetir los pasos 2 a 5 con las mismas reglas.</td><td class="rec">Nuevo cierre validado.</td></tr>
+      <tr><td class="n"><span>3</span></td><td class="who"><span class="role sup">Supervisor</span></td><td><b class="t">Emitir la nueva versión del reporte</b>Al generar el reporte sale como v2, v3… (<span class="mono">PK-SOP-L2-07</span>). Las versiones anteriores y sus envíos se conservan.</td><td class="rec">Historial de versiones del reporte.</td></tr>
+    </tbody>
+  </table>
+
+  <h2 class="section"><span class="no">6</span>Controles</h2>
+  <table>
+    <thead><tr><th style="width:36%">Control</th><th>Cómo lo asegura la app</th></tr></thead>
+    <tbody>
+      <tr><td><b>Solo el supervisor asignado valida</b></td><td>Dirección y Administración ven el botón desactivado: <i>Solo el supervisor autoriza el cierre</i>.</td></tr>
+      <tr><td><b>Todas las jornadas con salida</b></td><td>Bloquea el cierre. No admite excepción.</td></tr>
+      <tr><td><b>Sin incidencias que impidan el cierre</b></td><td>Bloquea el cierre. No admite excepción. Las abiertas que no bloquean pasan al reporte como aviso.</td></tr>
+      <tr><td><b>ANTES y DESPUÉS en cada jornada</b></td><td>Bloquea salvo excepción autorizada con justificación de al menos 15 caracteres; la excepción aparece en el reporte, en la bitácora y en Evidencias › Cumplimiento.</td></tr>
+      <tr><td><b>Conformidad del cliente</b></td><td>Obligatoria: método, nombre y puesto; con firma en el dispositivo, la firma es obligatoria.</td></tr>
+      <tr><td><b>Confirmación expresa</b></td><td>El botón <span class="ui">Validar cierre</span> sigue desactivado hasta marcar la casilla de confirmación, y la app dice qué falta.</td></tr>
+      <tr><td><b>Revalidación al validar</b></td><td>La app vuelve a comprobar todas las reglas en el momento de validar.</td></tr>
+      <tr><td><b>Datos sin sincronizar</b></td><td>Es solo un aviso para cerrar, pero el PDF definitivo del reporte espera a que todo se sincronice.</td></tr>
+      <tr><td><b>Cambios después del cierre</b></td><td>Solo reabriendo, con motivo; exige una nueva validación y genera una nueva versión del reporte.</td></tr>
+    </tbody>
+  </table>
+
+  <h2 class="section"><span class="no">7</span>Excepciones y escalamiento</h2>
+  <table>
+    <thead><tr><th style="width:32%">Situación</th><th>Qué hacer</th><th style="width:20%">Quién decide</th></tr></thead>
+    <tbody>
+      <tr><td>Falta una foto y el área ya no se puede fotografiar</td><td>Autorizar la excepción con una justificación concreta. Queda en el reporte que recibe el cliente.</td><td><span class="role sup">Supervisor</span></td></tr>
+      <tr><td>El cliente no está en sitio para firmar</td><td>Registrar conformidad verbal o por correo, con el nombre de quien acepta y, en su caso, la referencia del correo.</td><td><span class="role sup">Supervisor</span></td></tr>
+      <tr><td>Hay una incidencia abierta</td><td>Si impide el cierre, resolverla primero (<span class="mono">PK-SOP-L2-04</span>). Si no lo impide, se puede cerrar y queda en el reporte.</td><td><span class="role sup">Supervisor</span> · criterios <span class="tbd">Por definir</span></td></tr>
+      <tr><td>El cliente no acepta el servicio</td><td>No validar el cierre; registrar una incidencia de tipo solicitud o queja y acordar el repaso.</td><td><span class="tbd">Por definir</span></td></tr>
+      <tr><td>Sin conexión en sitio</td><td>Validar de todos modos: el cierre se guarda en el teléfono y se sincroniza al volver la señal (<span class="mono">PK-SOP-L2-11</span>).</td><td><span class="role sup">Supervisor</span></td></tr>
+      <tr><td>Error detectado después del cierre</td><td>Reabrir la orden con motivo y volver a validar (sección 5.1).</td><td><span class="role sup">Supervisor</span> de la orden</td></tr>
+    </tbody>
+  </table>
+
+  <h2 class="section"><span class="no">8</span>Registros</h2>
+  <table>
+    <thead><tr><th style="width:32%">Registro</th><th>Dónde se consulta</th><th style="width:26%">Quién lo ve</th></tr></thead>
+    <tbody>
+      <tr><td>Cierre validado (usuario, fecha y hora)</td><td>Orden › Resumen y línea de tiempo; Bitácora</td><td>Los tres roles, según su alcance</td></tr>
+      <tr><td>Conformidad del cliente</td><td>Orden; reporte PDF del cliente</td><td>Los tres roles y el cliente</td></tr>
+      <tr><td>Excepción de evidencia</td><td>Reporte PDF; Bitácora; Evidencias › Cumplimiento</td><td>Los tres roles y el cliente</td></tr>
+      <tr><td>Reapertura (motivo, usuario, fecha)</td><td>Bitácora; línea de tiempo de la orden</td><td>Los tres roles, según su alcance</td></tr>
+    </tbody>
+  </table>
+
+  <h2 class="section"><span class="no">9</span>Indicadores</h2>
+  <table>
+    <thead><tr><th style="width:30%">Indicador</th><th>Cómo se calcula</th><th style="width:28%">Dónde se ve</th></tr></thead>
+    <tbody>
+      <tr><td><b>Servicios terminados</b></td><td>Cierres validados en el periodo.</td><td>Indicadores › Operación; Inicio</td></tr>
+      <tr><td><b>Cumplimiento fotográfico</b></td><td>Cierres validados con fotos ANTES y DESPUÉS en todas sus jornadas, sobre el total de cierres validados.</td><td>Indicadores › Calidad; Evidencias › Cumplimiento</td></tr>
+      <tr><td><b>Inicio a cierre validado</b></td><td>Tiempo promedio de la primera entrada al cierre validado.</td><td>Indicadores › Operación › Cómo avanza el trabajo</td></tr>
+      <tr><td><b>Excepciones autorizadas</b></td><td>Cierres validados con excepción de evidencia.</td><td>Evidencias › Cumplimiento</td></tr>
+    </tbody>
+  </table>
+  <p>Meta de cumplimiento fotográfico y umbral de excepciones aceptables: <span class="tbd">Por definir</span>.</p>
+
+  <h2 class="section"><span class="no">10</span>Documentos relacionados</h2>
+  <table class="kv">
+    <tbody>
+      <tr><td>Nivel 1</td><td><span class="mono">PK-SOP-L1</span> · P-04 Evidencia ANTES y DESPUÉS obligatoria · P-06 Un solo cierre, con conformidad del cliente.</td></tr>
+      <tr><td>Nivel 2</td><td><span class="mono">PK-SOP-L2-03</span> Ejecución de la jornada · <span class="mono">PK-SOP-L2-04</span> Incidencias · <span class="mono">PK-SOP-L2-05</span> Evidencia fotográfica · <span class="mono">PK-SOP-L2-07</span> Reporte final.</td></tr>
+      <tr><td>Nivel 3</td><td>Manual de usuario: Cierre y validación · Evidencias · Incidencias · Reportes y envío al cliente.</td></tr>
+    </tbody>
+  </table>
+</section>
